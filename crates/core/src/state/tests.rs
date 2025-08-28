@@ -401,7 +401,7 @@ fn test_event_map_none() {
     let state_sets = [state_at_bob, state_at_charlie];
     let resolved = match crate::resolve(
         &AuthorizationRules::V1,
-        &StateResolutionV2Rules::V2_0,
+        StateResolutionV2Rules::V2_0,
         &state_sets,
         state_sets
             .iter()

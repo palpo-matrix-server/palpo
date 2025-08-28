@@ -11,8 +11,8 @@ use thiserror::Error;
 // use crate::DepotExt;
 
 use crate::core::MatrixError;
-use crate::core::state::StateError;
 use crate::core::events::room::power_levels::PowerLevelsError;
+use crate::core::state::StateError;
 
 #[derive(Error, Debug)]
 pub enum AppError {

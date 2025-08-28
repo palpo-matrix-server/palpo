@@ -6,7 +6,7 @@ resolver = "2"
 version = "0.1.1"
 authors = ["Chrislearn Young <chris@acroidea.com>"]
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.89"
 description = """
 Matrix server implementation
 """

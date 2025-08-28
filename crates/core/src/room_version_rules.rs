@@ -28,7 +28,7 @@ pub struct RoomVersionRules {
     pub room_id_format: RoomIdFormatVersion,
 
     /// The state resolution algorithm used.
-    pub state_res: StateResolutionVersion,
+    pub state_resolution: StateResolutionVersion,
 
     /// Whether to enforce the key validity period when verifying signatures ([spec]), introduced
     /// in room version 5.
@@ -57,7 +57,7 @@ impl RoomVersionRules {
         disposition: RoomVersionDisposition::Stable,
         event_id_format: EventIdFormatVersion::V1,
         room_id_format: RoomIdFormatVersion::V1,
-        state_res: StateResolutionVersion::V1,
+        state_resolution: StateResolutionVersion::V1,
         enforce_key_validity: false,
         authorization: AuthorizationRules::V1,
         redaction: RedactionRules::V1,
@@ -69,7 +69,7 @@ impl RoomVersionRules {
     ///
     /// [room version 2]: https://spec.matrix.org/latest/rooms/v2/
     pub const V2: Self = Self {
-        state_res: StateResolutionVersion::V2(StateResolutionV2Rules::V2_0),
+        state_resolution: StateResolutionVersion::V2(StateResolutionV2Rules::V2_0),
         ..Self::V1
     };
 
@@ -164,7 +164,7 @@ impl RoomVersionRules {
         room_id_format: RoomIdFormatVersion::V2,
         authorization: AuthorizationRules::V12,
         event_format: EventFormatRules::V12,
-        state_res: StateResolutionVersion::V2(StateResolutionV2Rules::V2_1),
+        state_resolution: StateResolutionVersion::V2(StateResolutionV2Rules::V2_1),
         ..Self::V11
     };
 
@@ -243,15 +243,15 @@ pub enum StateResolutionVersion {
 impl StateResolutionVersion {
     /// Gets the `StateResolutionV2Rules` for the room version, if it uses the second version of
     /// the state resolution algorithm.
-    pub fn v2_rules(&self) -> Option<&StateResolutionV2Rules> {
-        as_variant!(self, StateResolutionVersion::V2)
+    pub fn v2_rules(&self) -> Option<StateResolutionV2Rules> {
+        as_variant!(self, StateResolutionVersion::V2(rules) => *rules)
     }
 }
 
 /// The tweaks in the [state resolution v2 algorithm] for a room version.
 ///
 /// This type can be constructed from one of its constants (like [`StateResolutionV2Rules::V2_0`]),
-/// or by constructing a [`RoomVersionRules`] first and using the `state_res` field (if the room
+/// or by constructing a [`RoomVersionRules`] first and using the `state_resolution` field (if the room
 /// version uses version 2 of the state resolution algorithm).
 ///
 /// [state resolution v2 algorithm]: https://spec.matrix.org/latest/rooms/v2/#state-resolution

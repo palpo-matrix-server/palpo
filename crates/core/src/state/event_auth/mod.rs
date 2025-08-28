@@ -11,7 +11,7 @@ mod room_member;
 mod tests;
 
 use self::room_member::check_room_member;
-use crate::{
+use crate::{OwnedEventId,
     EventId, OwnedUserId, UserId,
     events::{
         StateEventType, TimelineEventType,
@@ -144,9 +144,9 @@ pub async fn auth_check<FetchEvent, EventFut, FetchState, StateFut, Pdu>(
     fetch_state: &FetchState,
 ) -> StateResult<()>
 where
-    FetchEvent: Fn(&EventId) -> EventFut + Sync,
+    FetchEvent: Fn(OwnedEventId) -> EventFut + Sync,
     EventFut: Future<Output = StateResult<Pdu>> + Send,
-    FetchState: Fn(StateEventType, &str) -> StateFut + Sync,
+    FetchState: Fn(StateEventType, String) -> StateFut + Sync,
     StateFut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event + Clone + Sync + Send,
 {
@@ -175,7 +175,7 @@ pub async fn check_state_independent_auth_rules<Pdu, Fetch, Fut>(
     fetch_event: &Fetch,
 ) -> StateResult<()>
 where
-    Fetch: Fn(&EventId) -> Fut + Sync,
+    Fetch: Fn(OwnedEventId) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event + Clone + Sync + Send,
 {
@@ -211,7 +211,7 @@ where
     for auth_event_id in incoming_event.auth_events() {
         let event_id = auth_event_id.borrow();
 
-        let Ok(auth_event) = fetch_event(event_id).await else {
+        let Ok(auth_event) = fetch_event(event_id.to_owned()).await else {
             return Err(StateError::other(format!(
                 "failed to find auth event {event_id}"
             )));
@@ -281,7 +281,7 @@ where
             ))
         })?;
 
-        let room_create_event = fetch_event(room_create_event_id.borrow()).await?;
+        let room_create_event = fetch_event(room_create_event_id.to_owned()).await?;
 
         if room_create_event.rejected() {
             return Err(StateError::other(format!(
@@ -321,7 +321,7 @@ pub async fn check_state_dependent_auth_rules<Pdu, Fetch, Fut>(
     fetch_state: &Fetch,
 ) -> StateResult<()>
 where
-    Fetch: Fn(StateEventType, &str) -> Fut + Sync,
+    Fetch: Fn(StateEventType, String) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event + Clone + Sync + Send,
 {
@@ -772,7 +772,7 @@ trait FetchStateExt<E: Event> {
 
 impl<Pdu, F, Fut> FetchStateExt<Pdu> for F
 where
-    F: Fn(StateEventType, &str) -> Fut,
+    F: Fn(StateEventType, String) -> Fut,
     Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event,
 {

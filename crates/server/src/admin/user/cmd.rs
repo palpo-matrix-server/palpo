@@ -608,14 +608,14 @@ pub(super) async fn force_demote(
         ));
     }
 
-    let mut room_power_levels = room_power_levels
+    let mut power_levels_content: RoomPowerLevelsEventContent = room_power_levels
         .map(TryInto::try_into)
         .transpose()?
         .unwrap_or_default();
-    room_power_levels.users.remove(&user_id);
+    power_levels_content.users.remove(&user_id);
 
     let event = timeline::build_and_append_pdu(
-        PduBuilder::state(String::new(), &room_power_levels),
+        PduBuilder::state(String::new(), &power_levels_content),
         &user_id,
         &room_id,
         &state_lock,

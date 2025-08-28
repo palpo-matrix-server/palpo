@@ -291,7 +291,6 @@ async fn ban_list_of_rooms(ctx: &Context<'_>) -> AppResult<()> {
             );
 
             if let Err(e) = membership::leave_room(user_id, &room_id, None)
-                .boxed()
                 .await
             {
                 warn!("Failed to leave room: {e}");

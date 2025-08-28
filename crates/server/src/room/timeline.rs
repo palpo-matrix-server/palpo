@@ -234,11 +234,6 @@ where
     }
     state::set_forward_extremities(&pdu.room_id, leaves, state_lock)?;
 
-    // See if the event matches any known pushers
-    let power_levels = super::get_power_levels(&pdu.room_id)
-        .await
-        .unwrap_or_default();
-
     #[derive(Deserialize, Clone, Debug)]
     struct ExtractEventId {
         event_id: OwnedEventId,
@@ -308,6 +303,7 @@ where
         let mut highlight = false;
         let mut notify = false;
 
+        let power_levels = crate::room::get_power_levels(pdu.room_id()).await?;
         for action in data::user::pusher::get_actions(
             user_id,
             &rules_for_user,
@@ -629,20 +625,22 @@ pub async fn create_hash_and_sign_event(
         rejection_reason: None,
     };
 
+    let fetch_event = async |event_id: OwnedEventId| {
+        timeline::get_pdu(&event_id)
+            .map(|s| s.pdu)
+            .map_err(|_| StateError::other("missing PDU"))
+    };
+    let fetch_state = async |k: StateEventType, s: String| {
+        auth_events
+            .get(&(k, s.to_owned()))
+            .map(|s| s.pdu.clone())
+            .ok_or_else(|| StateError::other("missing auth events"))
+    };
     crate::core::state::event_auth::auth_check(
         &room_rules.authorization,
         &pdu,
-        &async |event_id| {
-            timeline::get_pdu(&event_id)
-                .map(|s| s.pdu)
-                .map_err(|_| StateError::other("missing PDU"))
-        },
-        &async |k, s| {
-            auth_events
-                .get(&(k, s.to_owned()))
-                .map(|s| s.pdu.clone())
-                .ok_or_else(|| StateError::other("missing auth events"))
-        },
+        &fetch_event,
+        &fetch_state,
     )
     .await?;
 
