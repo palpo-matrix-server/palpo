@@ -19,12 +19,12 @@ use super::{
 };
 use crate::{
     OwnedEventId, UnixMillis,
-    events::{MessageLikeEventContent, MessageLikeEventType, RedactContent,
+    events::{
+        MessageLikeEventContent, MessageLikeEventType, RedactContent,
         RedactedMessageLikeEventContent, StaticEventContent, relation::Replacement,
         room::message::RelationWithoutReplacement,
     },
     room_version_rules::RedactionRules,
-    serde::RawJsonValue,
 };
 
 /// The payload for an unstable poll start event.

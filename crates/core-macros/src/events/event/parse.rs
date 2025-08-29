@@ -50,34 +50,34 @@ pub(super) fn parse_event_struct_ident_to_kind_variation(
     }
 }
 
-pub(super) trait EventFieldExt {
-    /// Whether the given field as the `#[palpo_event(default)]` attribute.
-    fn has_default_attr(&self) -> Result<bool, syn::Error>;
-}
+// pub(super) trait EventFieldExt {
+//     /// Whether the given field as the `#[palpo_event(default)]` attribute.
+//     fn has_default_attr(&self) -> Result<bool, syn::Error>;
+// }
 
-impl EventFieldExt for Field {
-    fn has_default_attr(&self) -> Result<bool, syn::Error> {
-        for attr in &self.attrs {
-            if !attr.path().is_ident("palpo_event") {
-                continue;
-            }
+// impl EventFieldExt for Field {
+//     fn has_default_attr(&self) -> Result<bool, syn::Error> {
+//         for attr in &self.attrs {
+//             if !attr.path().is_ident("palpo_event") {
+//                 continue;
+//             }
 
-            let mut has_default = false;
+//             let mut has_default = false;
 
-            attr.parse_nested_meta(|meta| {
-                if meta.path.is_ident("default") {
-                    has_default = true;
-                    return Ok(());
-                }
+//             attr.parse_nested_meta(|meta| {
+//                 if meta.path.is_ident("default") {
+//                     has_default = true;
+//                     return Ok(());
+//                 }
 
-                Err(meta.error("unsupported attribute, only `default` is supported"))
-            })?;
+//                 Err(meta.error("unsupported attribute, only `default` is supported"))
+//             })?;
 
-            if has_default {
-                return Ok(true);
-            }
-        }
+//             if has_default {
+//                 return Ok(true);
+//             }
+//         }
 
-        Ok(false)
-    }
-}
+//         Ok(false)
+//     }
+// }

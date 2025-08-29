@@ -5,7 +5,7 @@ use palpo_core::push::PusherIds;
 
 use crate::core::UnixMillis;
 use crate::core::events::AnySyncTimelineEvent;
-use crate::core::events::room::power_levels::{RoomPowerLevels};
+use crate::core::events::room::power_levels::RoomPowerLevels;
 use crate::core::identifiers::*;
 use crate::core::push::{
     Action, PushConditionPowerLevelsCtx, PushConditionRoomCtx, Pusher, PusherKind, Ruleset,

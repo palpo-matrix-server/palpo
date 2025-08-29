@@ -12,7 +12,7 @@ mod tests;
 
 use self::room_member::check_room_member;
 use crate::{
-    EventId, OwnedEventId, OwnedUserId, UserId,
+    OwnedEventId, OwnedUserId, UserId,
     events::{
         StateEventType, TimelineEventType,
         room::{member::MembershipState, power_levels::UserPowerLevel},

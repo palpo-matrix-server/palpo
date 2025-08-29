@@ -53,7 +53,7 @@ pub enum ActiveFocus {
 }
 
 /// The fields to describe the `active_foci`.
-#[derive(ToSchema, Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct ActiveLivekitFocus {
     /// The selection method used to select the LiveKit focus for the rtc session.
     pub focus_selection: FocusSelection,
@@ -67,18 +67,17 @@ impl ActiveLivekitFocus {
     /// * `focus_selection` - The selection method used to select the LiveKit focus for the rtc
     ///   session.
     pub fn new() -> Self {
-        Self {
-            focus_selection: FocusSelection::OldestMembership,
-        }
+        Default::default()
     }
 }
 
 /// How to select the active focus for LiveKit
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, Clone, PartialEq, StringEnum)]
+#[derive(ToSchema, Clone, PartialEq, Default, StringEnum)]
 #[palpo_enum(rename_all = "snake_case")]
 pub enum FocusSelection {
     /// Select the active focus by using the oldest membership and the oldest focus.
+    #[default]
     OldestMembership,
 
     #[doc(hidden)]

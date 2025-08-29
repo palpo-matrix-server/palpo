@@ -1,8 +1,7 @@
 use std::collections::BTreeMap;
 
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::{Ident, LitStr, parse_quote};
 
 use super::{EventEnumEntry, EventEnumInput, EventKind};
 
@@ -34,7 +33,7 @@ pub fn expand_event_type_enums(
 
     for (kind, entries) in entries_map {
         res.extend(
-            generate_enum(kind, &entries, &palpo_core)
+            generate_enum(kind, &entries, palpo_core)
                 .unwrap_or_else(syn::Error::into_compile_error),
         );
     }

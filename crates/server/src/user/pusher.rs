@@ -4,7 +4,7 @@ use url::Url;
 
 use crate::core::UnixMillis;
 use crate::core::client::push::{PusherAction, PusherPostData};
-use crate::core::events::{TimelineEventType};
+use crate::core::events::TimelineEventType;
 use crate::core::identifiers::*;
 use crate::core::push::push_gateway::{
     Device, Notification, NotificationCounts, NotificationPriority, SendEventNotificationReqBody,

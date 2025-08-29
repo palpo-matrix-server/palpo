@@ -60,14 +60,14 @@ pub async fn join_room(
         });
     }
 
-    if let Ok(membership) = room::get_member(room_id, sender_id) {
-        if membership.membership == MembershipState::Ban {
-            tracing::warn!(
-                "{} is banned from {room_id} but attempted to join",
-                sender_id
-            );
-            return Err(MatrixError::forbidden("You are banned from the room.", None).into());
-        }
+    if let Ok(membership) = room::get_member(room_id, sender_id)
+        && membership.membership == MembershipState::Ban
+    {
+        tracing::warn!(
+            "{} is banned from {room_id} but attempted to join",
+            sender_id
+        );
+        return Err(MatrixError::forbidden("You are banned from the room.", None).into());
     }
 
     // Ask a remote server if we are not participating in this room

@@ -14,8 +14,8 @@ use crate::core::events::room::redaction::RoomRedactionEventContent;
 use crate::core::events::space::child::HierarchySpaceChildEvent;
 use crate::core::events::{
     AnyMessageLikeEvent, AnyStateEvent, AnyStrippedStateEvent, AnySyncStateEvent,
-    AnySyncTimelineEvent, AnyTimelineEvent, MessageLikeEventContent,
-    StateEvent, StateEventContent, StateEventType, TimelineEventType,
+    AnySyncTimelineEvent, AnyTimelineEvent, MessageLikeEventContent, StateEvent, StateEventContent,
+    StateEventType, TimelineEventType,
 };
 use crate::core::identifiers::*;
 use crate::core::serde::{
@@ -585,20 +585,20 @@ impl PduEvent {
             return false;
         }
 
-        if let Some(rooms) = &filter.rooms {
-            if !rooms.contains(&self.room_id) {
-                return false;
-            }
+        if let Some(rooms) = &filter.rooms
+            && !rooms.contains(&self.room_id)
+        {
+            return false;
         }
-        if let Some(senders) = &filter.senders {
-            if !senders.contains(&self.sender) {
-                return false;
-            }
+        if let Some(senders) = &filter.senders
+            && !senders.contains(&self.sender)
+        {
+            return false;
         }
-        if let Some(types) = &filter.types {
-            if !types.contains(&self.event_ty.to_string()) {
-                return false;
-            }
+        if let Some(types) = &filter.types
+            && !types.contains(&self.event_ty.to_string())
+        {
+            return false;
         }
         // TODO: url filter
         // if let Some(url_filter) = &filter.url_filter {

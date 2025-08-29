@@ -22,7 +22,7 @@ where
     T: EventContentFromType,
 {
     fn deserialize_with_type(&self, event_type: &str) -> serde_json::Result<T> {
-        T::from_parts(&event_type.to_string(), self.inner())
+        T::from_parts(event_type, self.inner())
     }
 }
 

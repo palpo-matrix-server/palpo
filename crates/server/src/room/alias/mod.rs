@@ -86,26 +86,26 @@ pub fn resolve_local_alias(alias_id: &RoomAliasId) -> AppResult<OwnedRoomId> {
 
 async fn resolve_appservice_alias(room_alias: &RoomAliasId) -> AppResult<OwnedRoomId> {
     for appservice in crate::appservice::all()?.values() {
-        if appservice.aliases.is_match(room_alias.as_str()) {
-            if let Some(url) = &appservice.registration.url {
-                let request = query_room_alias_request(
-                    url,
-                    QueryRoomAliasReqArgs {
-                        room_alias: room_alias.to_owned(),
-                    },
-                )?
-                .into_inner();
-                if matches!(
-                    crate::sending::send_appservice_request::<Option<()>>(
-                        appservice.registration.clone(),
-                        request
-                    )
-                    .await,
-                    Ok(Some(_opt_result))
-                ) {
-                    return resolve_local_alias(room_alias)
-                        .map_err(|_| MatrixError::not_found("Room does not exist.").into());
-                }
+        if appservice.aliases.is_match(room_alias.as_str())
+            && let Some(url) = &appservice.registration.url
+        {
+            let request = query_room_alias_request(
+                url,
+                QueryRoomAliasReqArgs {
+                    room_alias: room_alias.to_owned(),
+                },
+            )?
+            .into_inner();
+            if matches!(
+                crate::sending::send_appservice_request::<Option<()>>(
+                    appservice.registration.clone(),
+                    request
+                )
+                .await,
+                Ok(Some(_opt_result))
+            ) {
+                return resolve_local_alias(room_alias)
+                    .map_err(|_| MatrixError::not_found("Room does not exist.").into());
             }
         }
     }

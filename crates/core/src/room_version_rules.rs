@@ -279,7 +279,6 @@ impl StateResolutionV2Rules {
     pub const V2_1: Self = Self {
         begin_iterative_auth_check_with_empty_state_map: true,
         consider_conflicted_state_subgraph: true,
-        ..Self::V2_0
     };
 }
 

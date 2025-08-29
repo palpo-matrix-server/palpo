@@ -76,16 +76,16 @@ pub fn verify_key_exists(server: &ServerName, key_id: &ServerSigningKeyId) -> Ap
     };
     let keys: RawJson<ServerSigningKeys> = RawJson::from_value(&keys)?;
 
-    if let Ok(Some(verify_keys)) = keys.get_field::<KeysMap<'_>>("verify_keys") {
-        if verify_keys.contains_key(&key_id.as_str()) {
-            return Ok(true);
-        }
+    if let Ok(Some(verify_keys)) = keys.get_field::<KeysMap<'_>>("verify_keys")
+        && verify_keys.contains_key(&key_id.as_str())
+    {
+        return Ok(true);
     }
 
-    if let Ok(Some(old_verify_keys)) = keys.get_field::<KeysMap<'_>>("old_verify_keys") {
-        if old_verify_keys.contains_key(&key_id.as_str()) {
-            return Ok(true);
-        }
+    if let Ok(Some(old_verify_keys)) = keys.get_field::<KeysMap<'_>>("old_verify_keys")
+        && old_verify_keys.contains_key(&key_id.as_str())
+    {
+        return Ok(true);
     }
 
     Ok(false)
@@ -207,22 +207,16 @@ pub async fn get_verify_key(
         return Ok(result);
     }
 
-    if notary_first {
-        if let Ok(result) = get_verify_key_from_notaries(origin, key_id).await {
-            return Ok(result);
-        }
+    if notary_first && let Ok(result) = get_verify_key_from_notaries(origin, key_id).await {
+        return Ok(result);
     }
 
-    if !notary_only {
-        if let Ok(result) = get_verify_key_from_origin(origin, key_id).await {
-            return Ok(result);
-        }
+    if !notary_only && let Ok(result) = get_verify_key_from_origin(origin, key_id).await {
+        return Ok(result);
     }
 
-    if !notary_first {
-        if let Ok(result) = get_verify_key_from_notaries(origin, key_id).await {
-            return Ok(result);
-        }
+    if !notary_first && let Ok(result) = get_verify_key_from_notaries(origin, key_id).await {
+        return Ok(result);
     }
 
     tracing::error!(?key_id, ?origin, "Failed to fetch federation signing-key");

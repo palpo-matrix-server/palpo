@@ -25,7 +25,6 @@ pub use room_version::RoomVersion;
 use crate::events::room::member::MembershipState;
 use crate::events::room::power_levels::UserPowerLevel;
 use crate::events::{StateEventType, TimelineEventType};
-use crate::room_version_rules::RoomVersionRules;
 use crate::state::events::{
     RoomCreateEvent, RoomMemberEvent, RoomPowerLevelsEvent, RoomPowerLevelsIntField,
     power_levels::RoomPowerLevelsEventOptionExt,
@@ -589,18 +588,18 @@ where
     let mut room_create_event = None;
     let mut room_power_levels_event = None;
 
-    if let Some(event) = &event {
-        if rules.room_create_event_id_as_room_id && creators_lock.get().is_none() {
-            // The m.room.create event is not in the auth events, we can get its ID via the room ID.
-            // if let Some(room_create_event_id) = event
-            //     .room_id()
-            //     .and_then(|room_id| room_id.room_create_event_id().ok())
-            // {
-            //     room_create_event = fetch_event(room_create_event_id.borrow()).await.ok();
-            // }
-            if let Some(room_create_event_id) = event.room_id().room_create_event_id().ok() {
-                room_create_event = fetch_event(room_create_event_id.to_owned()).await.ok();
-            }
+    if let Some(event) = &event
+        && (rules.room_create_event_id_as_room_id && creators_lock.get().is_none())
+    {
+        // The m.room.create event is not in the auth events, we can get its ID via the room ID.
+        // if let Some(room_create_event_id) = event
+        //     .room_id()
+        //     .and_then(|room_id| room_id.room_create_event_id().ok())
+        // {
+        //     room_create_event = fetch_event(room_create_event_id.borrow()).await.ok();
+        // }
+        if let Ok(room_create_event_id) = event.room_id().room_create_event_id() {
+            room_create_event = fetch_event(room_create_event_id.to_owned()).await.ok();
         }
     }
 
@@ -677,7 +676,7 @@ where
 ///
 /// Returns the partially resolved state, or an `Err(_)` if one of the state events in the room has
 /// an unexpected format.
-async fn iterative_auth_check<'b, Pdu, Fetch, Fut>(
+async fn iterative_auth_check<Pdu, Fetch, Fut>(
     rules: &AuthorizationRules,
     events: &[OwnedEventId],
     mut state: StateMap<OwnedEventId>,
@@ -731,7 +730,7 @@ where
             // } else {
             //     warn!("missing m.room.create event");
             // }
-            if let Some(room_create_event_id) = event.room_id().room_create_event_id().ok() {
+            if let Ok(room_create_event_id) = event.room_id().room_create_event_id() {
                 let room_create_event = fetch_event(room_create_event_id).await?;
                 auth_events.insert(
                     (StateEventType::RoomCreate, String::new()),
@@ -877,20 +876,20 @@ where
     let mut order_map = HashMap::new();
     for event_id in events.iter() {
         let event_id: &EventId = event_id.borrow();
-        if let Ok(event) = fetch_event(event_id.to_owned()).await {
-            if let Ok(position) = mainline_position(&event, &mainline_map, fetch_event).await {
-                order_map.insert(
+        if let Ok(event) = fetch_event(event_id.to_owned()).await
+            && let Ok(position) = mainline_position(&event, &mainline_map, fetch_event).await
+        {
+            order_map.insert(
+                event_id.to_owned(),
+                (
+                    position,
+                    fetch_event(event_id.to_owned())
+                        .await
+                        .map(|event| event.origin_server_ts())
+                        .ok(),
                     event_id.to_owned(),
-                    (
-                        position,
-                        fetch_event(event_id.to_owned())
-                            .await
-                            .map(|event| event.origin_server_ts())
-                            .ok(),
-                        event_id.to_owned(),
-                    ),
-                );
-            }
+                ),
+            );
         }
 
         // TODO: if these functions are ever made async here

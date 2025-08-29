@@ -28,7 +28,7 @@ use crate::core::federation::event::{
 use crate::core::identifiers::*;
 use crate::core::room_version_rules::StateResolutionV2Rules;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonValue, canonical_json};
-use crate::core::state::{RoomVersion, StateError, StateMap, event_auth};
+use crate::core::state::{StateError, StateMap, event_auth};
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
@@ -244,22 +244,20 @@ fn process_to_outlier_pdu<'a>(
             .select((event_datas::event_sn, event_datas::json_data))
             .first::<(Seqnum, JsonValue)>(&mut connect()?)
             .optional()?
-        {
-            if let Ok(val) =
+            && let Ok(val) =
                 serde_json::from_value::<BTreeMap<String, CanonicalJsonValue>>(event_data.clone())
-            {
-                return Ok((
-                    SnPduEvent::from_json_value(event_id, event_sn, event_data)?,
-                    val,
-                    None,
-                ));
-            }
+        {
+            return Ok((
+                SnPduEvent::from_json_value(event_id, event_sn, event_data)?,
+                val,
+                None,
+            ));
         }
 
         // 1.1. Remove unsigned field
         value.remove("unsigned");
 
-        let room_rules = crate::room::room_rules(&room_version_id)?;
+        let room_rules = crate::room::room_rules(room_version_id)?;
         let origin_server_ts = value.get("origin_server_ts").ok_or_else(|| {
             error!("invalid PDU, no origin_server_ts field");
             MatrixError::missing_param("invalid PDU, no origin_server_ts field")
@@ -412,10 +410,9 @@ fn process_to_outlier_pdu<'a>(
             },
         )
         .await
+            && rejection_reason.is_none()
         {
-            if rejection_reason.is_none() {
-                rejection_reason = Some(e.to_string())
-            }
+            rejection_reason = Some(e.to_string())
         };
 
         debug!("Validation successful.");
@@ -460,8 +457,7 @@ pub async fn process_to_timeline_pdu(
     }
     info!("Upgrading {} to timeline pdu", incoming_pdu.event_id);
     let room_version_id = &room::get_version(room_id)?;
-    let room_version = RoomVersion::new(room_version_id).expect("room version is supported");
-    let room_rules = crate::room::room_rules(&room_version_id)?;
+    let room_rules = crate::room::room_rules(room_version_id)?;
 
     // 10. Fetch missing state and auth chain events by calling /state_ids at backwards extremities
     //     doing all the checks in this list starting at 1. These are not timeline events.
@@ -493,7 +489,7 @@ pub async fn process_to_timeline_pdu(
                 .ok()
                 .and_then(|state_key_id| state_at_incoming_event.get(&state_key_id))
                 .and_then(|event_id| timeline::get_pdu(event_id).ok())
-                .ok_or_else(|| StateError::other(format!("failed to get PDU")))
+                .ok_or_else(|| StateError::other("failed to get PDU"))
         },
     )
     .await?;
@@ -501,7 +497,7 @@ pub async fn process_to_timeline_pdu(
     debug!("Auth check succeeded");
 
     debug!("Gathering auth events");
-    let room_rules = crate::room::room_rules(&room_version_id)?;
+    let room_rules = crate::room::room_rules(room_version_id)?;
     let auth_events = state::get_auth_events(
         room_id,
         &incoming_pdu.event_ty,

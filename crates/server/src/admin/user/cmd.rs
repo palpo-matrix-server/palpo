@@ -1,5 +1,3 @@
-
-
 use crate::admin::{Context, get_room_info, parse_active_local_user_id, parse_local_user_id};
 use crate::core::{
     OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedUserId,
@@ -43,12 +41,12 @@ pub(super) async fn create_user(
     let user_id = parse_local_user_id(&username)?;
     let conf = config::get();
 
-    if let Err(e) = user_id.validate_strict() {
-        if conf.emergency_password.is_none() {
-            return Err(AppError::public(format!(
-                "Username {user_id} contains disallowed characters or spaces: {e}"
-            )));
-        }
+    if let Err(e) = user_id.validate_strict()
+        && conf.emergency_password.is_none()
+    {
+        return Err(AppError::public(format!(
+            "Username {user_id} contains disallowed characters or spaces: {e}"
+        )));
     }
 
     if data::user::user_exists(&user_id)? {

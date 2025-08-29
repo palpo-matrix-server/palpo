@@ -10,7 +10,7 @@
 //! the need for separate Matrix passwords. The implementation supports both:
 //! - Standard OIDC providers (Google) with discovery endpoints
 //! - Pure OAuth 2.0 providers (GitHub) with custom user info endpoints
-//! Both follow the OAuth 2.0 Authorization Code flow with optional PKCE support.
+//!   Both follow the OAuth 2.0 Authorization Code flow with optional PKCE support.
 //!
 //! ## Authentication Flow Diagram
 //!
@@ -1213,9 +1213,7 @@ async fn create_access_token_for_user(
     use crate::data::schema::*;
     use diesel::prelude::*;
 
-    let parsed_device_id: OwnedDeviceId = device_id
-        .try_into()
-        .map_err(|_| MatrixError::invalid_param("Invalid device ID format"))?;
+    let parsed_device_id: OwnedDeviceId = device_id.into();
 
     let mut conn = connect().map_err(|_| MatrixError::unknown("Database connection failed"))?;
 

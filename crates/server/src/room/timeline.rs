@@ -205,28 +205,28 @@ where
             .entry("unsigned".to_owned())
             .or_insert_with(|| CanonicalJsonValue::Object(Default::default()))
         {
-            if let Ok(state_frame_id) = state::get_pdu_frame_id(&pdu.event_id) {
-                if let Ok(prev_state) = state::get_state(
+            if let Ok(state_frame_id) = state::get_pdu_frame_id(&pdu.event_id)
+                && let Ok(prev_state) = state::get_state(
                     state_frame_id - 1,
                     &pdu.event_ty.to_string().into(),
                     state_key,
-                ) {
-                    unsigned.insert(
-                        "prev_content".to_owned(),
-                        CanonicalJsonValue::Object(
-                            utils::to_canonical_object(prev_state.content.clone())
-                                .expect("event is valid, we just created it"),
-                        ),
-                    );
-                    unsigned.insert(
-                        String::from("prev_sender"),
-                        CanonicalJsonValue::String(prev_state.sender.to_string()),
-                    );
-                    unsigned.insert(
-                        String::from("replaces_state"),
-                        CanonicalJsonValue::String(prev_state.event_id.to_string()),
-                    );
-                }
+                )
+            {
+                unsigned.insert(
+                    "prev_content".to_owned(),
+                    CanonicalJsonValue::Object(
+                        utils::to_canonical_object(prev_state.content.clone())
+                            .expect("event is valid, we just created it"),
+                    ),
+                );
+                unsigned.insert(
+                    String::from("prev_sender"),
+                    CanonicalJsonValue::String(prev_state.sender.to_string()),
+                );
+                unsigned.insert(
+                    String::from("replaces_state"),
+                    CanonicalJsonValue::String(prev_state.event_id.to_string()),
+                );
             }
         } else {
             error!("invalid unsigned type in pdu");
@@ -272,15 +272,13 @@ where
             _ => {} // TODO: Aggregate other types
         }
     }
-    if !relates_added {
-        if let Ok(content) = pdu.get_content::<ExtractRelatesToEventId>() {
-            super::pdu_metadata::add_relation(
-                &pdu.room_id,
-                &content.relates_to.event_id,
-                &pdu.event_id,
-                None,
-            )?;
-        }
+    if !relates_added && let Ok(content) = pdu.get_content::<ExtractRelatesToEventId>() {
+        super::pdu_metadata::add_relation(
+            &pdu.room_id,
+            &content.relates_to.event_id,
+            &pdu.event_id,
+            None,
+        )?;
     }
 
     let sync_pdu = pdu.to_sync_room_event();
@@ -402,27 +400,27 @@ where
                 .get_content::<ExtractBody>()
                 .map_err(|_| AppError::internal("Invalid content in pdu."))?;
 
-            if let Some(body) = content.body {
-                if let Ok(admin_room) = super::resolve_local_alias(
+            if let Some(body) = content.body
+                && let Ok(admin_room) = super::resolve_local_alias(
                     <&RoomAliasId>::try_from(format!("#admins:{}", &conf.server_name).as_str())
                         .expect("#admins:server_name is a valid room alias"),
-                ) {
-                    let server_user = config::server_user_id();
+                )
+            {
+                let server_user = config::server_user_id();
 
-                    let to_palpo = body.starts_with(&format!("{server_user}: "))
-                        || body.starts_with(&format!("{server_user} "))
-                        || body == format!("{server_user}:")
-                        || body == format!("{server_user}");
+                let to_palpo = body.starts_with(&format!("{server_user}: "))
+                    || body.starts_with(&format!("{server_user} "))
+                    || body == format!("{server_user}:")
+                    || body == format!("{server_user}");
 
-                    // This will evaluate to false if the emergency password is set up so that
-                    // the administrator can execute commands as palpo
-                    let from_palpo = pdu.sender == server_user && conf.emergency_password.is_none();
+                // This will evaluate to false if the emergency password is set up so that
+                // the administrator can execute commands as palpo
+                let from_palpo = pdu.sender == server_user && conf.emergency_password.is_none();
 
-                    if to_palpo && !from_palpo && admin_room == pdu.room_id {
-                        let _ = crate::admin::executor()
-                            .command(body, Some(pdu.event_id.clone()))
-                            .await;
-                    }
+                if to_palpo && !from_palpo && admin_room == pdu.room_id {
+                    let _ = crate::admin::executor()
+                        .command(body, Some(pdu.event_id.clone()))
+                        .await;
                 }
             }
         }
@@ -464,25 +462,19 @@ where
 
         // If the RoomMember event has a non-empty state_key, it is targeted at someone.
         // If it is our appservice user, we send this PDU to it.
-        if pdu.event_ty == TimelineEventType::RoomMember {
-            if let Some(state_key_uid) = &pdu
+        if pdu.event_ty == TimelineEventType::RoomMember
+            && let Some(state_key_uid) = &pdu
                 .state_key
                 .as_ref()
                 .and_then(|state_key| UserId::parse(state_key.as_str()).ok())
-            {
-                if let Ok(appservice_uid) = UserId::parse_with_server_name(
-                    &*appservice.registration.sender_localpart,
-                    &conf.server_name,
-                ) {
-                    if state_key_uid == &appservice_uid {
-                        crate::sending::send_pdu_appservice(
-                            appservice.registration.id.clone(),
-                            &pdu.event_id,
-                        )?;
-                        continue;
-                    }
-                }
-            }
+            && let Ok(appservice_uid) = UserId::parse_with_server_name(
+                &*appservice.registration.sender_localpart,
+                &conf.server_name,
+            )
+            && state_key_uid == &appservice_uid
+        {
+            crate::sending::send_pdu_appservice(appservice.registration.id.clone(), &pdu.event_id)?;
+            continue;
         }
         let matching_users = || {
             config::get().server_name == pdu.sender.server_name()
@@ -580,20 +572,19 @@ pub async fn create_hash_and_sign_event(
         .unwrap_or(0)
         + 1;
 
-    if let Some(state_key) = &state_key {
-        if let Ok(prev_pdu) =
+    if let Some(state_key) = &state_key
+        && let Ok(prev_pdu) =
             super::get_state(room_id, &event_type.to_string().into(), state_key, None)
-        {
-            unsigned.insert("prev_content".to_owned(), prev_pdu.content.clone());
-            unsigned.insert(
-                "prev_sender".to_owned(),
-                to_raw_value(&prev_pdu.sender).expect("UserId::to_value always works"),
-            );
-            unsigned.insert(
-                "replaces_state".to_owned(),
-                to_raw_value(&prev_pdu.event_id).expect("EventId is valid json"),
-            );
-        }
+    {
+        unsigned.insert("prev_content".to_owned(), prev_pdu.content.clone());
+        unsigned.insert(
+            "prev_sender".to_owned(),
+            to_raw_value(&prev_pdu.sender).expect("UserId::to_value always works"),
+        );
+        unsigned.insert(
+            "replaces_state".to_owned(),
+            to_raw_value(&prev_pdu.event_id).expect("EventId is valid json"),
+        );
     }
 
     let temp_event_id =
@@ -631,7 +622,10 @@ pub async fn create_hash_and_sign_event(
     };
     println!("CCCCCCCCCCCCCCCCC");
     let fetch_state = async |k: StateEventType, s: String| {
-        println!("=======: {k:?}   s:  {s:?}  ===auth_events: {:#?}", auth_events);
+        println!(
+            "=======: {k:?}   s:  {s:?}  ===auth_events: {:#?}",
+            auth_events
+        );
         auth_events
             .get(&(k, s.to_owned()))
             .map(|s| s.pdu.clone())
@@ -801,17 +795,16 @@ pub async fn build_and_append_pdu(
     room_id: &RoomId,
     state_lock: &RoomMutexGuard,
 ) -> AppResult<SnPduEvent> {
-    if let Some(state_key) = &pdu_builder.state_key {
-        if let Ok(curr_state) = super::get_state(
+    if let Some(state_key) = &pdu_builder.state_key
+        && let Ok(curr_state) = super::get_state(
             room_id,
             &pdu_builder.event_type.to_string().into(),
             state_key,
             None,
-        ) {
-            if curr_state.content.get() == pdu_builder.content.get() {
-                return Ok(curr_state);
-            }
-        }
+        )
+        && curr_state.content.get() == pdu_builder.content.get()
+    {
+        return Ok(curr_state);
     }
 
     let (pdu, pdu_json, _event_guard) =
@@ -846,14 +839,13 @@ pub async fn build_and_append_pdu(
         super::participating_servers(room_id)?.into_iter().collect();
 
     // In case we are kicking or banning a user, we need to inform their server of the change
-    if pdu.event_ty == TimelineEventType::RoomMember {
-        if let Some(state_key_uid) = &pdu
+    if pdu.event_ty == TimelineEventType::RoomMember
+        && let Some(state_key_uid) = &pdu
             .state_key
             .as_ref()
             .and_then(|state_key| UserId::parse(state_key.as_str()).ok())
-        {
-            servers.insert(state_key_uid.server_name().to_owned());
-        }
+    {
+        servers.insert(state_key_uid.server_name().to_owned());
     }
 
     // Remove our server from the server list since it will be added to it by room_servers() and/or the if statement above
@@ -962,20 +954,20 @@ pub fn get_pdus(
             if !filter.not_rooms.is_empty() {
                 query = query.filter(events::room_id.ne_all(&filter.not_rooms));
             }
-            if let Some(rooms) = &filter.rooms {
-                if !rooms.is_empty() {
-                    query = query.filter(events::room_id.eq_any(rooms));
-                }
+            if let Some(rooms) = &filter.rooms
+                && !rooms.is_empty()
+            {
+                query = query.filter(events::room_id.eq_any(rooms));
             }
-            if let Some(senders) = &filter.senders {
-                if !senders.is_empty() {
-                    query = query.filter(events::sender_id.eq_any(senders));
-                }
+            if let Some(senders) = &filter.senders
+                && !senders.is_empty()
+            {
+                query = query.filter(events::sender_id.eq_any(senders));
             }
-            if let Some(types) = &filter.types {
-                if !types.is_empty() {
-                    query = query.filter(events::ty.eq_any(types));
-                }
+            if let Some(types) = &filter.types
+                && !types.is_empty()
+            {
+                query = query.filter(events::ty.eq_any(types));
             }
         }
         let events: Vec<(OwnedEventId, Seqnum)> = if dir == Direction::Forward {
@@ -1018,17 +1010,17 @@ pub fn get_pdus(
             break;
         };
         for (event_id, event_sn) in events {
-            if let Ok(mut pdu) = timeline::get_pdu(&event_id) {
-                if pdu.user_can_see(user_id)? {
-                    if pdu.sender != user_id {
-                        pdu.remove_transaction_id()?;
-                    }
-                    pdu.add_age()?;
-                    pdu.add_unsigned_membership(user_id)?;
-                    list.push((event_sn, pdu));
-                    if list.len() >= limit {
-                        break;
-                    }
+            if let Ok(mut pdu) = timeline::get_pdu(&event_id)
+                && pdu.user_can_see(user_id)?
+            {
+                if pdu.sender != user_id {
+                    pdu.remove_transaction_id()?;
+                }
+                pdu.add_age()?;
+                pdu.add_unsigned_membership(user_id)?;
+                list.push((event_sn, pdu));
+                if list.len() >= limit {
+                    break;
                 }
             }
         }

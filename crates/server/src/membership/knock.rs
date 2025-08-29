@@ -54,15 +54,15 @@ pub async fn knock_room(
         return Ok(());
     }
 
-    if let Ok(memeber) = room::get_member(room_id, sender_id) {
-        if memeber.membership == MembershipState::Ban {
-            warn!("{sender_id} is banned from {room_id} but attempted to knock");
-            return Err(MatrixError::forbidden(
-                "You cannot knock on a room you are banned from.",
-                None,
-            )
-            .into());
-        }
+    if let Ok(memeber) = room::get_member(room_id, sender_id)
+        && memeber.membership == MembershipState::Ban
+    {
+        warn!("{sender_id} is banned from {room_id} but attempted to knock");
+        return Err(MatrixError::forbidden(
+            "You cannot knock on a room you are banned from.",
+            None,
+        )
+        .into());
     }
 
     if room::is_server_joined(&config::get().server_name, room_id).unwrap_or(false) {

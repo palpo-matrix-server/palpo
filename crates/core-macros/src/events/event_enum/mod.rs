@@ -1,10 +1,7 @@
 //! Implementation of event enum and event content enum macros.
-
-use std::fmt;
-
 use proc_macro2::{Span, TokenStream};
-use quote::{IdentFragment, ToTokens, format_ident, quote};
-use syn::{Attribute, Data, DataEnum, DeriveInput, Ident, LitStr};
+use quote::{format_ident, quote};
+use syn::{Attribute, Ident};
 
 pub use self::parse::EventEnumInput;
 use self::{
@@ -115,27 +112,27 @@ pub fn expand_event_kind_enums(input: &EventEnumDecl) -> syn::Result<TokenStream
 
 fn expand_event_kind_enum(
     kind: EventKind,
-    var: EventVariation,
+    variation: EventVariation,
     events: &[EventEnumEntry],
     docs: &[TokenStream],
     attrs: &[Attribute],
     variants: &[EventEnumVariant],
     palpo_core: &TokenStream,
 ) -> syn::Result<TokenStream> {
-    let event_struct = kind.to_event_ident(var.into())?;
-    let ident = kind.to_event_enum_ident(var.into())?;
+    let event_struct = kind.to_event_ident(variation)?;
+    let ident = kind.to_event_enum_ident(variation)?;
 
     let variant_decls = variants.iter().map(|v| v.decl());
     let event_ty: Vec<_> = events
         .iter()
-        .map(|event| event.to_event_path(kind, var))
+        .map(|event| event.to_event_path(kind, variation))
         .collect();
 
     let custom_content_ty = format_ident!("Custom{}Content", kind);
 
-    let deserialize_impl = expand_deserialize_impl(kind, var, events, palpo_core)?;
+    let deserialize_impl = expand_deserialize_impl(kind, variation, events, palpo_core)?;
     let field_accessor_impl =
-        expand_accessor_methods(kind, var, variants, &event_struct, palpo_core)?;
+        expand_accessor_methods(kind, variation, variants, &event_struct, palpo_core)?;
     let from_impl = expand_from_impl(&ident, &event_ty, variants);
 
     Ok(quote! {
@@ -170,14 +167,14 @@ fn expand_event_kind_enum(
 
 fn expand_deserialize_impl(
     kind: EventKind,
-    var: EventVariation,
+    variation: EventVariation,
     events: &[EventEnumEntry],
     palpo_core: &TokenStream,
 ) -> syn::Result<TokenStream> {
     let serde = quote! { #palpo_core::__private::serde };
     let serde_json = quote! { #palpo_core::__private::serde_json };
 
-    let ident = kind.to_event_enum_ident(var.into())?;
+    let ident = kind.to_event_enum_ident(variation)?;
 
     let match_arms: TokenStream = events
         .iter()
@@ -188,7 +185,7 @@ fn expand_deserialize_impl(
                 quote! { #(#attrs)* }
             };
             let self_variant = variant.ctor(quote! { Self });
-            let content = event.to_event_path(kind, var);
+            let content = event.to_event_path(kind, variation);
             let ev_types = event.types.iter().map(EventType::as_match_arm);
 
             quote! {
@@ -304,12 +301,12 @@ fn expand_sync_from_into_full(
 /// Implement accessors for the common fields of an `Any*Event` enum.
 fn expand_accessor_methods(
     kind: EventKind,
-    var: EventVariation,
+    variation: EventVariation,
     variants: &[EventEnumVariant],
     event_struct: &Ident,
     palpo_core: &TokenStream,
 ) -> syn::Result<TokenStream> {
-    let ident = kind.to_event_enum_ident(var.into())?;
+    let ident = kind.to_event_enum_ident(variation)?;
     let event_type_enum = format_ident!("{}Type", kind);
     let self_variants: Vec<_> = variants
         .iter()
@@ -319,14 +316,14 @@ fn expand_accessor_methods(
         kind.to_content_kind_trait(EventContentTraitVariation::Original);
 
     let maybe_redacted =
-        kind.is_timeline() && matches!(var, EventVariation::None | EventVariation::Sync);
+        kind.is_timeline() && matches!(variation, EventVariation::None | EventVariation::Sync);
 
     let event_type_match_arms = if maybe_redacted {
         quote! {
             #( #self_variants(event) => event.event_type(), )*
             Self::_Custom(event) => event.event_type(),
         }
-    } else if var == EventVariation::Stripped {
+    } else if variation == EventVariation::Stripped {
         let possibly_redacted_event_content_kind_trait_name =
             kind.to_content_kind_trait(EventContentTraitVariation::PossiblyRedacted);
         quote! {
@@ -449,7 +446,7 @@ fn expand_accessor_methods(
         }
 
         accessors
-    } else if var == EventVariation::Stripped {
+    } else if variation == EventVariation::Stripped {
         // There is no content enum for possibly-redacted content types (yet)
         TokenStream::new()
     } else {
@@ -473,7 +470,7 @@ fn expand_accessor_methods(
     };
 
     let methods = EventField::ALL.iter().map(|field| {
-        field.is_present(kind, var).then(|| {
+        field.is_present(kind, variation).then(|| {
             let docs = format!("Returns this event's `{field}` field.");
             let ident = field.ident();
             let (field_type, is_ref) = field.ty(palpo_core);
@@ -603,7 +600,7 @@ fn expand_json_castable_impl(
                 .chain(event_variations.contains(&var).then_some(&var))
                 .map(|variation| {
                     let EventWithBounds { type_with_generics, impl_generics, where_clause } =
-                        event_kind.to_event_with_bounds(*variation, &palpo_core)?;
+                        event_kind.to_event_with_bounds(*variation, palpo_core)?;
 
                     Ok(quote! {
                         #[automatically_derived]

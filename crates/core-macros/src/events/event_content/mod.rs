@@ -5,18 +5,14 @@ use std::borrow::Cow;
 
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
-use syn::{
-    DeriveInput, Field, Ident, Meta, Token, Type,
-    parse_quote,
-    punctuated::Punctuated,
-};
+use syn::{DeriveInput, Field, Ident, Meta, Token, Type, parse_quote, punctuated::Punctuated};
 
 use self::parse::{ContentAttrs, ContentMeta, EventContentKind, EventFieldMeta, EventTypeFragment};
 use super::enums::{
     EventContentTraitVariation, EventContentVariation, EventKind, EventTypes, EventVariation,
 };
 use crate::events::enums::EventType;
-use crate::util::{PrivateField, m_prefix_name_to_type_name};
+use crate::util::PrivateField;
 
 mod parse;
 
@@ -146,7 +142,7 @@ pub fn expand_event_content(
         generate_event_type_aliases(kind, ident, &input.vis, &event_types, palpo_core)
             .unwrap_or_else(syn::Error::into_compile_error);
 
-    let json_castable_impl = generate_json_castable_impl(ident, &[], &palpo_core);
+    let json_castable_impl = generate_json_castable_impl(ident, &[], palpo_core);
 
     Ok(quote! {
         #redacted_event_content
@@ -301,17 +297,16 @@ fn generate_possibly_redacted_event_content<'a>(
             let mut keep_field = false;
             let mut unsupported_serde_attribute = None;
 
-            if let Type::Path(type_path) = &f.ty {
-                if type_path
+            if let Type::Path(type_path) = &f.ty
+                && type_path
                     .path
                     .segments
                     .first()
                     .filter(|s| s.ident == "Option")
                     .is_some()
-                {
-                    // Keep the field if it's an `Option`.
-                    keep_field = true;
-                }
+            {
+                // Keep the field if it's an `Option`.
+                keep_field = true;
             }
 
             let mut attrs = f
@@ -327,30 +322,29 @@ fn generate_possibly_redacted_event_content<'a>(
                         // Don't re-emit our `palpo_event` attributes.
                         Ok(None)
                     } else {
-                        if a.path().is_ident("serde") {
-                            if let Meta::List(list) = &a.meta {
-                                let nested: Punctuated<Meta, Token![,]> =
-                                    list.parse_args_with(Punctuated::parse_terminated)?;
-                                for meta in &nested {
-                                    if meta.path().is_ident("default") {
-                                        // Keep the field if it deserializes to its default value.
-                                        keep_field = true;
-                                    } else if !meta.path().is_ident("rename")
-                                        && !meta.path().is_ident("alias")
-                                        && unsupported_serde_attribute.is_none()
-                                    {
-                                        // Error if the field is not kept and uses an unsupported
-                                        // serde attribute.
-                                        unsupported_serde_attribute =
-                                            Some(syn::Error::new_spanned(
-                                                meta,
-                                                "Can't generate PossiblyRedacted struct with \
+                        if a.path().is_ident("serde")
+                            && let Meta::List(list) = &a.meta
+                        {
+                            let nested: Punctuated<Meta, Token![,]> =
+                                list.parse_args_with(Punctuated::parse_terminated)?;
+                            for meta in &nested {
+                                if meta.path().is_ident("default") {
+                                    // Keep the field if it deserializes to its default value.
+                                    keep_field = true;
+                                } else if !meta.path().is_ident("rename")
+                                    && !meta.path().is_ident("alias")
+                                    && unsupported_serde_attribute.is_none()
+                                {
+                                    // Error if the field is not kept and uses an unsupported
+                                    // serde attribute.
+                                    unsupported_serde_attribute = Some(syn::Error::new_spanned(
+                                        meta,
+                                        "Can't generate PossiblyRedacted struct with \
                                                  unsupported serde attribute\n\
                                                  Expected one of `default`, `rename` or `alias`\n\
                                                  Use the `custom_possibly_redacted` attribute \
                                                  and create the struct manually",
-                                            ));
-                                    }
+                                    ));
                                 }
                             }
                         }
@@ -414,10 +408,10 @@ fn generate_possibly_redacted_event_content<'a>(
             generate_json_castable_impl(
                 &possibly_redacted_ident,
                 &[ident, &redacted_ident],
-                &palpo_core,
+                palpo_core,
             )
         } else {
-            generate_json_castable_impl(&possibly_redacted_ident, &[ident], &palpo_core)
+            generate_json_castable_impl(&possibly_redacted_ident, &[ident], palpo_core)
         };
 
         Ok(quote! {
@@ -604,8 +598,8 @@ fn generate_event_type_aliases(
 
 fn generate_event_content_impl<'a>(
     ident: &Ident,
-    vis: &syn::Visibility,
-    mut fields: Option<impl Iterator<Item = &'a Field>>,
+    _vis: &syn::Visibility,
+    fields: Option<impl Iterator<Item = &'a Field>>,
     event_types: &EventTypes,
     kind: EventContentKind,
     variation: EventContentVariation,
@@ -765,7 +759,6 @@ fn generate_static_event_content_impl(
     palpo_core: &TokenStream,
 ) -> TokenStream {
     let event_type = event_types.ev_type.without_wildcard();
-    let static_event_type = quote! { #event_type };
 
     let is_prefix = if event_types.is_prefix() {
         quote! { #palpo_core::events::True }
