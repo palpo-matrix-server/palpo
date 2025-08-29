@@ -344,8 +344,10 @@ pub fn get_auth_events(
         .expect("there is always one layer")
         .full_state;
     let mut state_map = StateMap::new();
+    println!("============full_state: {full_state:#?}");
     for state in full_state.iter() {
         let (state_key_id, event_id) = state.split()?;
+        println!("============state_key_id: {state_key_id}  event_id: {event_id}");
         if let Some(key) = sauth_events.remove(&state_key_id) {
             if let Ok(pdu) = timeline::get_pdu(&event_id) {
                 state_map.insert(key, pdu);
