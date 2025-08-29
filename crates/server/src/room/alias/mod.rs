@@ -258,9 +258,11 @@ async fn user_can_remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResu
         // Always allow the Palpo user to remove the alias, since there may not be an admin room
         || config::server_user_id()== user.id
     {
+        println!("====================================user_can_remove_alias  0");
         Ok(true)
         // Checking whether the user is able to change canonical aliases of the room
     } else if let Ok(power_levels) = super::get_power_levels(&room_id).await {
+        println!("====================================user_can_remove_alias  1");
         Ok(power_levels.user_can_send_state(&user.id, StateEventType::RoomCanonicalAlias))
     // If there is no power levels event, only the room creator can change canonical aliases
     } else if let Ok(event) = super::get_state(&room_id, &StateEventType::RoomCreate, "", None) {

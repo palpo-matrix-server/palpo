@@ -705,6 +705,15 @@ impl RoomPowerLevels {
     ///
     /// Shorthand for `power_levels.user_can_do(user_id, PowerLevelAction::SendState(state_type))`.
     pub fn user_can_send_state(&self, user_id: &UserId, state_type: StateEventType) -> bool {
+        println!(
+            "=============state_type: {state_type:?}=====self.for_user(user_id): {:?}",
+            self.for_user(user_id)
+        );
+        println!(
+            "==================ewq: {}",
+            self.for_state(state_type.clone())
+        );
+        println!("======================events:{:#?}", self.events);
         self.for_user(user_id) >= self.for_state(state_type)
     }
 
