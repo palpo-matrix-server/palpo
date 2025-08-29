@@ -1174,7 +1174,14 @@
 # issuer = "https://accounts.google.com"
 # client_id = "your-client-id.apps.googleusercontent.com"
 # client_secret = "your-client-secret"
-# redirect_uri = "https://your-server.com/_matrix/client/v3/oidc/callback/google"
+# redirect_uri = "https://your-server.com/_matrix/client/oidc/callback"
+#
+# [oidc.providers.github]
+# issuer = "https://github.com"
+# client_id = "your-github-oauth-app-id"
+# client_secret = "your-github-oauth-app-secret"
+# redirect_uri = "https://your-server.com/_matrix/client/oidc/callback"
+# scopes = ["read:user", "user:email"]
 #
 # providers = {}
 
@@ -1198,9 +1205,11 @@
 # User ID mapping strategy
 #
 # Controls how Matrix user IDs are generated from OIDC user information:
-# - "email" - Use the email address localpart
-# - "sub" - Use the OIDC subject identifier
+# - "email" - Use the email address localpart (requires public email)
+# - "sub" - Use the OIDC subject identifier (recommended for GitHub)
 # - "preferred_username" - Use the preferred_username claim
+#
+# Note: For GitHub, use "sub" since users may have private emails
 #
 # user_mapping = "email"
 
@@ -1217,6 +1226,9 @@
 #
 # When enabled, only users with verified email addresses can authenticate.
 # The email_verified claim from the OIDC provider is checked.
+#
+# Note: Set to false for GitHub if users have private emails,
+# as private emails will cause authentication to fail.
 #
 # require_email_verified = true
 
