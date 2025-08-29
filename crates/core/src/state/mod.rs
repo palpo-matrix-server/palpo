@@ -353,7 +353,7 @@ async fn sort_power_events<Pdu, Fetch, Fut>(
 where
     Fetch: Fn(OwnedEventId) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
-    Pdu: Event + Clone,
+    Pdu: Event + Clone + Sync + Send,
 {
     debug!("reverse topological sort of power events");
 
@@ -583,7 +583,7 @@ async fn power_level_for_sender<Pdu, Fetch, Fut>(
 where
     Fetch: Fn(OwnedEventId) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
-    Pdu: Event,
+    Pdu: Event + Clone + Sync + Send,
 {
     let event = fetch_event(event_id.to_owned()).await.ok();
     let mut room_create_event = None;
@@ -606,7 +606,7 @@ where
 
     for auth_event_id in event
         .as_ref()
-        .map(|pdu| pdu.auth_events().collect::<Vec<_>>())
+        .map(|pdu| pdu.auth_events())
         .into_iter()
         .flatten()
     {
@@ -834,7 +834,7 @@ async fn mainline_sort<Pdu, Fetch, Fut>(
 where
     Fetch: Fn(OwnedEventId) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
-    Pdu: Event + Clone,
+    Pdu: Event + Clone + Sync + Send,
 {
     debug!("mainline sort of events");
 
@@ -946,7 +946,7 @@ async fn mainline_position<Pdu, Fetch, Fut>(
 where
     Fetch: Fn(OwnedEventId) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
-    Pdu: Event + Clone,
+    Pdu: Event + Clone + Sync + Send,
 {
     let mut current_event = Some(event.to_owned());
 
@@ -987,7 +987,7 @@ async fn add_event_and_auth_chain_to_graph<Pdu, Fetch, Fut>(
 ) where
     Fetch: Fn(OwnedEventId) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
-    Pdu: Event,
+    Pdu: Event + Clone + Sync + Send,
 {
     let mut state = vec![event_id];
 
@@ -1001,7 +1001,7 @@ async fn add_event_and_auth_chain_to_graph<Pdu, Fetch, Fut>(
         for auth_event_id in fetch_event(event_id.to_owned())
             .await
             .as_ref()
-            .map(|event| event.auth_events().collect::<Vec<_>>())
+            .map(|event| event.auth_events())
             .into_iter()
             .flatten()
         {
@@ -1030,7 +1030,7 @@ async fn is_power_event_id<Pdu, Fetch, Fut>(event_id: &EventId, fetch_event: &Fe
 where
     Fetch: Fn(OwnedEventId) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
-    Pdu: Event,
+    Pdu: Event + Clone + Sync + Send,
 {
     match fetch_event(event_id.to_owned()).await {
         Ok(state) => is_power_event(state),

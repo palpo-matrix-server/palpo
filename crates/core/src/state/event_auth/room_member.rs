@@ -36,7 +36,7 @@ pub(super) async fn check_room_member<Pdu, Fetch, Fut>(
 where
     Fetch: Fn(StateEventType, String) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
-    Pdu: Event + Clone,
+    Pdu: Event + Clone + Sync + Send,
 {
     debug!("starting m.room.member check");
 
@@ -128,17 +128,17 @@ async fn check_room_member_join<Pdu, Fetch, Fut>(
 where
     Fetch: Fn(StateEventType, String) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
-    Pdu: Event,
+    Pdu: Event + Clone + Sync + Send,
 {
     let creator = room_create_event.creator(rules)?;
     let creators = room_create_event.creators(rules)?;
 
     let mut prev_events = room_member_event.prev_events();
     let prev_event_is_room_create_event = prev_events
-        .next()
+        .first()
         .is_some_and(|event_id| event_id.borrow() == room_create_event.event_id().borrow());
     let prev_event_is_only_room_create_event =
-        prev_event_is_room_create_event && prev_events.next().is_none();
+        prev_event_is_room_create_event && prev_events.len() == 1;
 
     // v1-v10, if the only previous event is an m.room.create and the state_key is the
     // creator, allow.
@@ -249,7 +249,7 @@ async fn check_room_member_invite<Pdu, Fetch, Fut>(
 where
     Fetch: Fn(StateEventType, String) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
-    Pdu: Event,
+    Pdu: Event + Clone + Sync + Send,
 {
     let third_party_invite = room_member_event.third_party_invite()?;
 
@@ -319,7 +319,7 @@ async fn check_third_party_invite<Pdu, Fetch, Fut>(
 where
     Fetch: Fn(StateEventType, String) -> Fut + Sync,
     Fut: Future<Output = StateResult<Pdu>> + Send,
-    Pdu: Event,
+    Pdu: Event + Clone + Sync + Send,
 {
     let current_target_user_membership = fetch_state.user_membership(target_user).await?;
 
@@ -427,7 +427,7 @@ async fn check_room_member_leave<Pdu, Fetch, Fut>(
 where
     Fetch: Fn(StateEventType, String) -> Fut + Sync,
     Fut: Future<Output = Result<Pdu, StateError>> + Send,
-    Pdu: Event,
+    Pdu: Event + Clone + Sync + Send,
 {
     let sender_membership = fetch_state
         .user_membership(room_member_event.sender())
@@ -507,7 +507,7 @@ async fn check_room_member_ban<Pdu, Fetch, Fut>(
 where
     Fetch: Fn(StateEventType, String) -> Fut + Sync,
     Fut: Future<Output = Result<Pdu, StateError>> + Send,
-    Pdu: Event,
+    Pdu: Event + Clone + Sync + Send,
 {
     let sender_membership = fetch_state
         .user_membership(room_member_event.sender())
@@ -552,7 +552,7 @@ async fn check_room_member_knock<Pdu, Fetch, Fut>(
 where
     Fetch: Fn(StateEventType, String) -> Fut + Sync,
     Fut: Future<Output = Result<Pdu, StateError>> + Send,
-    Pdu: Event,
+    Pdu: Event + Clone + Sync + Send,
 {
     let join_rule = fetch_state.join_rule().await?;
 

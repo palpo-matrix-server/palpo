@@ -50,11 +50,11 @@ pub trait Event {
 
     /// The events before this event.
     // Requires GATs to avoid boxing (and TAIT for making it convenient).
-    fn prev_events(&self) -> Box<dyn DoubleEndedIterator<Item = &Self::Id> + '_>;
+    fn prev_events(&self) ->  &[Self::Id];
 
     /// All the authenticating events for this event.
     // Requires GATs to avoid boxing (and TAIT for making it convenient).
-    fn auth_events(&self) -> Box<dyn DoubleEndedIterator<Item = &Self::Id> + '_>;
+    fn auth_events(&self) -> &[Self::Id];
 
     /// If this event is a redaction event this is the event it redacts.
     fn redacts(&self) -> Option<&Self::Id>;
@@ -94,11 +94,11 @@ impl<T: Event> Event for &T {
         (*self).state_key()
     }
 
-    fn prev_events(&self) -> Box<dyn DoubleEndedIterator<Item = &Self::Id> + '_> {
+    fn prev_events(&self) -> &[Self::Id] {
         (*self).prev_events()
     }
 
-    fn auth_events(&self) -> Box<dyn DoubleEndedIterator<Item = &Self::Id> + '_> {
+    fn auth_events(&self) -> &[Self::Id] {
         (*self).auth_events()
     }
 
@@ -142,11 +142,11 @@ impl<T: Event> Event for Arc<T> {
         (**self).state_key()
     }
 
-    fn prev_events(&self) -> Box<dyn DoubleEndedIterator<Item = &Self::Id> + '_> {
+    fn prev_events(&self) ->  &[Self::Id] {
         (**self).prev_events()
     }
 
-    fn auth_events(&self) -> Box<dyn DoubleEndedIterator<Item = &Self::Id> + '_> {
+    fn auth_events(&self) ->  &[Self::Id] {
         (**self).auth_events()
     }
 

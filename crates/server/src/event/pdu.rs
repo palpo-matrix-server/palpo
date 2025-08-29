@@ -226,12 +226,12 @@ impl crate::core::state::Event for SnPduEvent {
         self.state_key.as_deref()
     }
 
-    fn prev_events(&self) -> Box<dyn DoubleEndedIterator<Item = &Self::Id> + '_> {
-        Box::new(self.prev_events.iter())
+    fn prev_events(&self) -> &[Self::Id] {
+        self.prev_events.deref()
     }
 
-    fn auth_events(&self) -> Box<dyn DoubleEndedIterator<Item = &Self::Id> + '_> {
-        Box::new(self.auth_events.iter())
+    fn auth_events(&self) -> &[Self::Id] {
+        self.auth_events.deref()
     }
 
     fn redacts(&self) -> Option<&Self::Id> {
@@ -643,12 +643,12 @@ impl crate::core::state::Event for PduEvent {
         self.state_key.as_deref()
     }
 
-    fn prev_events(&self) -> Box<dyn DoubleEndedIterator<Item = &Self::Id> + '_> {
-        Box::new(self.prev_events.iter())
+    fn prev_events(&self) -> &[Self::Id] {
+        self.prev_events.deref()
     }
 
-    fn auth_events(&self) -> Box<dyn DoubleEndedIterator<Item = &Self::Id> + '_> {
-        Box::new(self.auth_events.iter())
+    fn auth_events(&self) -> &[Self::Id]  {
+        self.auth_events.deref()
     }
 
     fn redacts(&self) -> Option<&Self::Id> {

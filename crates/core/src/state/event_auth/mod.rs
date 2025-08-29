@@ -208,7 +208,7 @@ where
         HashSet::with_capacity(expected_auth_types.len());
 
     // Since v1, considering auth_events:
-    for auth_event_id in incoming_event.auth_events() {
+    for auth_event_id in incoming_event.auth_events()  {
         let event_id = auth_event_id.borrow();
 
         let Ok(auth_event) = fetch_event(event_id.to_owned()).await else {
@@ -469,7 +469,7 @@ fn check_room_create(
     debug!("start `m.room.create` check");
 
     // Since v1, if it has any previous events, reject.
-    if room_create_event.prev_events().next().is_some() {
+    if !room_create_event.prev_events().is_empty() {
         return Err(StateError::other(
             "`m.room.create` event cannot have previous events",
         ));
@@ -723,7 +723,7 @@ fn check_room_redaction<Pdu>(
     sender_level: UserPowerLevel,
 ) -> StateResult<()>
 where
-    Pdu: Event,
+    Pdu: Event + Clone + Sync + Send,
 {
     let redact_level = current_room_power_levels_event
         .get_as_int_or_default(RoomPowerLevelsIntField::Redact, rules)?;
