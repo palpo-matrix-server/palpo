@@ -535,7 +535,8 @@ where
 
             // Push on the heap once all the outgoing edges have been removed.
             if outgoing_edges.is_empty() {
-                let (power_level, origin_server_ts) = event_details_fn(parent_id.to_owned()).await?;
+                let (power_level, origin_server_ts) =
+                    event_details_fn(parent_id.to_owned()).await?;
                 heap.push(Reverse(TieBreaker {
                     power_level,
                     origin_server_ts,
@@ -605,7 +606,7 @@ where
 
     for auth_event_id in event
         .as_ref()
-        .map(|pdu| pdu.auth_events())
+        .map(|pdu| pdu.auth_events().collect::<Vec<_>>())
         .into_iter()
         .flatten()
     {
@@ -1000,7 +1001,7 @@ async fn add_event_and_auth_chain_to_graph<Pdu, Fetch, Fut>(
         for auth_event_id in fetch_event(event_id.to_owned())
             .await
             .as_ref()
-            .map(|event| event.auth_events())
+            .map(|event| event.auth_events().collect::<Vec<_>>())
             .into_iter()
             .flatten()
         {
