@@ -8,95 +8,99 @@ use crate::macros::config_example;
 #[config_example(filename = "palpo-example.toml", section = "oidc")]
 #[derive(Clone, Debug, Deserialize, Default)]
 pub struct OidcConfig {
-    /// Enable OIDC authentication
+    /// Enable OIDC/OAuth authentication
     ///
-    /// When enabled, users can authenticate using external OIDC providers
-    /// like Google, GitHub, etc. instead of Matrix passwords.
+    /// Allows users to sign in using external providers (Google, GitHub, etc.)
+    /// instead of Matrix passwords
     ///
     /// default: false
     #[serde(default)]
     pub enable: bool,
 
-    /// OIDC provider configuration
+    /// Provider configurations
     ///
-    /// Configure one or more OIDC providers for authentication.
-    /// Each provider must have a unique name as the key.
+    /// Map of provider name to configuration. Each provider needs:
+    /// - issuer: Provider base URL
+    /// - client_id: OAuth app ID
+    /// - client_secret: OAuth app secret  
+    /// - redirect_uri: Callback URL (must match provider settings)
+    /// - scopes (optional): Permissions to request
+    /// - display_name (optional): UI display text
     ///
-    /// example:
-    /// [oidc.providers.google]
-    /// issuer = "https://accounts.google.com"
-    /// client_id = "your-client-id.apps.googleusercontent.com"
-    /// client_secret = "your-client-secret"
-    /// redirect_uri = "https://your-server.com/_matrix/client/v3/oidc/callback/google"
+    /// GitHub example:
+    /// ```toml
+    /// [oidc.providers.github]
+    /// issuer = "https://github.com"
+    /// client_id = "your_app_id"
+    /// client_secret = "your_secret"
+    /// redirect_uri = "https://server/_matrix/client/oidc/callback"
+    /// scopes = ["read:user", "user:email"]
+    /// ```
     ///
     /// default: {}
     #[serde(default)]
     pub providers: BTreeMap<String, OidcProviderConfig>,
 
-    /// Default provider to use when multiple providers are configured
+    /// Default provider name
     ///
-    /// This provider will be used for the main login flow.
-    /// If not specified, the first provider in alphabetical order is used.
+    /// Used when accessing /oidc/auth without specifying provider
     ///
-    /// example: "google"
-    ///
-    /// default: None
+    /// example: "github"
+    /// default: None (first alphabetically)
     pub default_provider: Option<String>,
 
-    /// Allow automatic user registration from OIDC
+    /// Auto-create new users on first login
     ///
-    /// When enabled, new users will be automatically created when they
-    /// authenticate with OIDC for the first time. When disabled, only
-    /// existing users can authenticate via OIDC.
+    /// When true: New accounts created automatically
+    /// When false: Only existing Matrix users can use OAuth login
     ///
     /// default: true
     #[serde(default = "default_true")]
     pub allow_registration: bool,
 
-    /// User ID mapping strategy
+    /// User ID generation strategy (deprecated - auto-detected now)
     ///
-    /// Controls how Matrix user IDs are generated from OIDC user information:
-    /// - "email" - Use the email address localpart
-    /// - "sub" - Use the OIDC subject identifier
-    /// - "preferred_username" - Use the preferred_username claim
+    /// The system now automatically chooses the best identifier:
+    /// 1. Username (GitHub login, preferred_username)
+    /// 2. Email prefix (john from john@example.com)
+    /// 3. Provider ID with "user" prefix
+    ///
+    /// This field is kept for backwards compatibility
     ///
     /// default: "email"
     #[serde(default = "default_user_mapping")]
     pub user_mapping: String,
 
-    /// User ID prefix for OIDC users
+    /// Prefix for OAuth user IDs
     ///
-    /// All OIDC-created users will have this prefix added to their localpart
-    /// to distinguish them from regular Matrix users.
+    /// Adds prefix to distinguish OAuth users from regular Matrix users
+    /// Empty string for cleaner usernames
     ///
-    /// example: "oidc_" (results in @oidc_john:example.com)
-    ///
+    /// example: "gh_" → @gh_username:server
     /// default: ""
     #[serde(default)]
     pub user_prefix: String,
 
-    /// Require email verification
+    /// Require verified email for login
     ///
-    /// When enabled, only users with verified email addresses can authenticate.
-    /// The email_verified claim from the OIDC provider is checked.
+    /// Set to false for GitHub users with private emails
+    /// Set to true for providers where email verification is critical
     ///
     /// default: true
     #[serde(default = "default_true")]
     pub require_email_verified: bool,
 
-    /// Session timeout in seconds
+    /// OAuth session timeout (seconds)
     ///
-    /// How long OIDC authentication state is kept in memory.
-    /// After this time, users need to restart the authentication flow.
+    /// Time limit for completing the OAuth flow
     ///
     /// default: 600 (10 minutes)
     #[serde(default = "default_session_timeout")]
     pub session_timeout: u64,
 
-    /// Enable PKCE (Proof Key for Code Exchange)
+    /// Enable PKCE security extension
     ///
-    /// Enables PKCE for additional security in the OAuth flow.
-    /// Recommended for all deployments, especially mobile/SPA clients.
+    /// Adds extra security to OAuth flow (recommended)
     ///
     /// default: true
     #[serde(default = "default_true")]
@@ -105,74 +109,53 @@ pub struct OidcConfig {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct OidcProviderConfig {
-    /// OIDC provider issuer URL
+    /// Provider base URL
     ///
-    /// The base URL of the OIDC provider. Must support OpenID Connect Discovery.
-    ///
-    /// example: "https://accounts.google.com"
+    /// OAuth provider's base URL (e.g., "https://github.com")
     pub issuer: String,
 
-    /// OAuth 2.0 client ID
+    /// OAuth app client ID
     ///
-    /// The client ID registered with the OIDC provider.
-    ///
-    /// example: "123456-abc.apps.googleusercontent.com"
+    /// Get this from your OAuth app settings
     pub client_id: String,
 
-    /// OAuth 2.0 client secret
+    /// OAuth app client secret
     ///
-    /// The client secret for authenticating with the OIDC provider.
-    /// Keep this value secure and never expose it in logs.
-    ///
-    /// example: "GOCSPX-abc123def456"
+    /// Keep this secure - never commit to version control
     pub client_secret: String,
 
-    /// OAuth 2.0 redirect URI
+    /// Callback URL after authentication
     ///
-    /// The URI where the OIDC provider will redirect after authentication.
-    /// Must be registered with the provider and use HTTPS in production.
-    ///
-    /// example: "https://matrix.example.com/_matrix/client/v3/oidc/callback/google"
+    /// Must exactly match the URL in your OAuth app settings
+    /// Format: "https://your-server/_matrix/client/oidc/callback"
     pub redirect_uri: String,
 
-    /// OAuth 2.0 scopes to request
+    /// Permissions to request from provider
     ///
-    /// List of scopes to request from the OIDC provider.
-    /// "openid" is required, "email" and "profile" are recommended.
-    ///
-    /// example: ["openid", "email", "profile"]
-    ///
-    /// default: ["openid", "email", "profile"]
+    /// GitHub: ["read:user", "user:email"]
+    /// Google: ["openid", "email", "profile"] (default)
     #[serde(default = "default_scopes")]
     pub scopes: Vec<String>,
 
-    /// Additional authorization parameters
+    /// Extra OAuth parameters (optional)
     ///
-    /// Extra parameters to include in the authorization request.
-    /// Provider-specific options can be configured here.
-    ///
+    /// Provider-specific parameters
     /// example: { "prompt" = "select_account" }
     ///
     /// default: {}
     #[serde(default)]
     pub additional_params: BTreeMap<String, String>,
 
-    /// Skip TLS verification (INSECURE - for development only)
-    ///
-    /// WARNING: This disables TLS certificate verification and should
-    /// NEVER be used in production environments.
+    /// Skip TLS verification (DEV ONLY - INSECURE)
     ///
     /// default: false
     #[serde(default)]
     pub skip_tls_verify: bool,
 
-    /// Human-readable display name for this provider
+    /// UI display text for this provider
     ///
-    /// Used in user interfaces to identify this authentication method.
-    ///
-    /// example: "Sign in with Google"
-    ///
-    /// default: provider key name
+    /// example: "Sign in with GitHub"
+    /// default: Provider name
     pub display_name: Option<String>,
 
     /// Custom attribute mapping

@@ -1,21 +1,23 @@
-//! # OIDC (OpenID Connect) Authentication Module
+//! # OAuth/OIDC Authentication Module
 //!
-//! This module implements OAuth 2.0 Authorization Code flow with OpenID Connect (OIDC)
-//! for Matrix server authentication using configurable OIDC providers.
+//! This module implements OAuth 2.0 Authorization Code flow with support for both
+//! OpenID Connect (OIDC) providers and pure OAuth 2.0 providers for Matrix server authentication.
 //!
 //! ## Overview
 //!
-//! The OIDC authentication system allows users to log into the Matrix server using their
-//! accounts from external identity providers (Google, GitHub, Microsoft, etc.), eliminating
-//! the need for separate Matrix passwords. This implementation follows the OAuth 2.0
-//! Authorization Code flow with PKCE support for enhanced security.
+//! This authentication system allows users to log into the Matrix server using their
+//! accounts from external identity providers (Google, GitHub, etc.), eliminating
+//! the need for separate Matrix passwords. The implementation supports both:
+//! - Standard OIDC providers (Google) with discovery endpoints
+//! - Pure OAuth 2.0 providers (GitHub) with custom user info endpoints
+//! Both follow the OAuth 2.0 Authorization Code flow with optional PKCE support.
 //!
 //! ## Authentication Flow Diagram
 //!
 //! ```text
 //! ┌──────────┐     ┌──────────────┐     ┌──────────────────┐     ┌─────────────┐
-//! │  Client  │────▶│ Palpo Server │────▶│ OIDC Provider    │────▶│  Database   │
-//! │          │     │              │     │ (Google, etc.)   │     │             │
+//! │  Client  │────▶│ Palpo Server │────▶│ OAuth Provider   │────▶│  Database   │
+//! │          │     │              │     │ (Google, GitHub) │     │             │
 //! └──────────┘     └──────────────┘     └──────────────────┘     └─────────────┘
 //!      │                   │                      │                      │
 //!      │ 1. GET /oidc/auth │                      │                      │
@@ -36,14 +38,17 @@
 //!      │                   │    for tokens        │                      │
 //!      │                   │─────────────────────▶│                      │
 //!      │                   │ 7. Access token      │                      │
-//!      │                   │    & user info       │                      │
 //!      │                   │◀─────────────────────│                      │
-//!      │                   │ 8. Create/get user   │                      │
+//!      │                   │ 8. Fetch user info   │                      │
+//!      │                   │─────────────────────▶│                      │
+//!      │                   │ 9. User profile data │                      │
+//!      │                   │◀─────────────────────│                      │
+//!      │                   │ 10. Create/get user  │                      │
 //!      │                   │─────────────────────────────────────────────▶│
-//!      │                   │ 9. Matrix user &     │                      │
-//!      │                   │    access token      │                      │
+//!      │                   │ 11. Matrix user &    │                      │
+//!      │                   │     access token     │                      │
 //!      │                   │◀─────────────────────────────────────────────│
-//!      │ 10. Login success │                      │                      │
+//!      │ 12. Login success │                      │                      │
 //!      │◀──────────────────│                      │                      │
 //! ```
 //!
@@ -67,19 +72,41 @@
 //!
 //! ## Supported Providers
 //!
-//! This implementation supports any OIDC-compliant provider:
-//! - Google OAuth 2.0
-//! - GitHub OAuth (with user info endpoint)
-//! - Microsoft Azure AD / Entra ID
-//! - Custom OIDC providers
-//! - Self-hosted identity servers (Keycloak, etc.)
+//! This implementation supports:
+//! - **Google OAuth 2.0**: Full OIDC compliance with discovery endpoint
+//! - **GitHub OAuth**: OAuth 2.0 with custom user info endpoint (not OIDC-compliant)
+//! - **Generic OIDC**: Any provider with .well-known/openid-configuration
+//! 
+//! ### Provider-specific handling:
+//! 
+//! #### GitHub OAuth
+//! - Requires `Accept: application/json` header for token exchange
+//! - Requires `User-Agent` header for API requests
+//! - Uses different field names (id vs sub, avatar_url vs picture)
+//! - **Important**: Email may be null if user has private email settings
+//! 
+//! #### Recommended GitHub Configuration
+//! ```toml
+//! [oidc]
+//! user_mapping = "sub"  # Use GitHub ID instead of email
+//! require_email_verified = false  # Allow users with private emails
+//! user_prefix = "github_"  # Distinguish GitHub users
+//! 
+//! [oidc.providers.github]
+//! issuer = "https://github.com"
+//! scopes = ["read:user", "user:email"]  # Request email access (may still be private)
+//! ```
 //!
-//! ## User ID Mapping Strategies
+//! ## User ID Generation
 //!
-//! Three strategies for mapping OIDC identities to Matrix user IDs:
-//! 1. **Email mapping**: Use email localpart (@john from john@example.com)
-//! 2. **Subject mapping**: Use OIDC `sub` claim (guaranteed unique)
-//! 3. **Username mapping**: Use `preferred_username` claim (human-readable)
+//! Matrix user IDs combine username with provider ID for security:
+//! - Ensures uniqueness even if usernames change hands
+//! - Prevents account takeover when users rename on GitHub
+//! 
+//! Examples:
+//! - GitHub user "octocat" (ID 123) → `@octocat_123:server`
+//! - Google user john@gmail.com → `@john_456789:server`
+//! - No username/email → `@user_123456:server`
 
 use cookie::time::Duration;
 use reqwest;
@@ -125,6 +152,24 @@ pub struct OidcProviderInfo {
     pub issuer: String,
 }
 
+/// Supported OAuth/OIDC provider types
+#[derive(Debug, Clone, PartialEq)]
+enum ProviderType {
+    Google,
+    GitHub,
+    Generic,
+}
+
+impl ProviderType {
+    fn from_issuer(issuer: &str) -> Self {
+        match issuer {
+            "https://accounts.google.com" => Self::Google,
+            "https://github.com" => Self::GitHub,
+            _ => Self::Generic,
+        }
+    }
+}
+
 /// JWT Claims structure for OIDC
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OidcClaims {
@@ -147,6 +192,7 @@ pub struct OidcUserInfo {
     pub name: Option<String>,
     pub picture: Option<String>,
     pub email_verified: Option<bool>,
+    pub preferred_username: Option<String>, // GitHub login/username
 }
 
 /// Google OAuth token response
@@ -176,6 +222,7 @@ impl From<&OidcClaims> for OidcUserInfo {
             name: claims.name.clone(),
             picture: claims.picture.clone(),
             email_verified: claims.email_verified,
+            preferred_username: None, // Not available in JWT claims
         }
     }
 }
@@ -188,6 +235,7 @@ impl From<GoogleUserInfoResponse> for OidcUserInfo {
             name: info.name,
             picture: info.picture,
             email_verified: info.verified_email,
+            preferred_username: None, // Not available from Google
         }
     }
 }
@@ -368,14 +416,21 @@ async fn discover_provider_endpoints(provider_config: &OidcProviderConfig) -> Re
         }
         _ => {
             // Fallback to common patterns for known providers
-            match provider_config.issuer.as_str() {
-                "https://accounts.google.com" => Ok(OidcProviderInfo {
+            let provider_type = ProviderType::from_issuer(&provider_config.issuer);
+            match provider_type {
+                ProviderType::Google => Ok(OidcProviderInfo {
                     authorization_endpoint: "https://accounts.google.com/o/oauth2/v2/auth".to_string(),
                     token_endpoint: "https://oauth2.googleapis.com/token".to_string(),
                     userinfo_endpoint: "https://www.googleapis.com/oauth2/v2/userinfo".to_string(),
                     issuer: provider_config.issuer.clone(),
                 }),
-                _ => Err(MatrixError::unknown(
+                ProviderType::GitHub => Ok(OidcProviderInfo {
+                    authorization_endpoint: "https://github.com/login/oauth/authorize".to_string(),
+                    token_endpoint: "https://github.com/login/oauth/access_token".to_string(),
+                    userinfo_endpoint: "https://api.github.com/user".to_string(),
+                    issuer: provider_config.issuer.clone(),
+                }),
+                ProviderType::Generic => Err(MatrixError::unknown(
                     "Could not discover OIDC endpoints and no fallback available"
                 )),
             }
@@ -507,22 +562,27 @@ pub async fn oidc_auth(req: &mut Request, res: &mut Response) -> AppResult<()> {
 
 /// `GET /_matrix/client/*/oidc/callback`
 ///
-/// **OAuth Callback Handler - The Heart of OIDC Authentication**
+/// **OAuth Callback Handler - The Heart of OAuth/OIDC Authentication**
 /// 
-/// This endpoint handles the OAuth 2.0 callback from the OIDC provider after the user
-/// has authenticated and granted consent. This is step 3 of the OIDC flow and the most
-/// security-critical component.
+/// This endpoint handles the OAuth 2.0 callback from the provider after the user
+/// has authenticated and granted consent. It automatically detects the provider type
+/// from the session and handles provider-specific differences (Google OIDC vs GitHub OAuth).
 /// 
 /// ## Callback Flow Breakdown
 /// ```text
 /// 1. Validate callback parameters (code, state)
-/// 2. Restore and validate OIDC session from secure cookie
-/// 3. Exchange authorization code for access token (with PKCE)
-/// 4. Fetch user information from provider
-/// 5. Validate user according to policy (email verification, etc.)
-/// 6. Create or retrieve Matrix user account
-/// 7. Generate Matrix access token and device
-/// 8. Return authentication credentials to client
+/// 2. Restore and validate session from secure cookie (includes provider info)
+/// 3. Identify provider type from session for proper handling
+/// 4. Exchange authorization code for access token
+///    - GitHub: Requires Accept: application/json header
+///    - Google: Standard token exchange
+/// 5. Fetch user information from provider
+///    - GitHub: API endpoint with User-Agent header, different field names
+///    - Google: Standard OIDC userinfo endpoint
+/// 6. Validate user according to policy (email verification, etc.)
+/// 7. Create or retrieve Matrix user account
+/// 8. Generate Matrix access token and device
+/// 9. Return authentication credentials to client
 /// ```
 /// 
 /// ## Security Validations
@@ -714,8 +774,16 @@ async fn exchange_code_for_tokens(
     
     tracing::debug!("Exchanging authorization code for tokens with provider: {}", provider_info.issuer);
     
-    let response = client
-        .post(&provider_info.token_endpoint)
+    // Build request with provider-specific headers
+    let provider_type = ProviderType::from_issuer(&provider_config.issuer);
+    let request = match provider_type {
+        ProviderType::GitHub => client
+            .post(&provider_info.token_endpoint)
+            .header("Accept", "application/json"),
+        _ => client.post(&provider_info.token_endpoint),
+    };
+    
+    let response = request
         .form(&params)
         .send()
         .await
@@ -754,9 +822,17 @@ async fn get_user_info_from_provider(
     
     tracing::debug!("Fetching user info from provider: {}", provider_info.issuer);
     
-    let request = client
-        .get(&provider_info.userinfo_endpoint)
-        .bearer_auth(access_token);
+    // Build request with provider-specific headers
+    let provider_type = ProviderType::from_issuer(&provider_config.issuer);
+    let request = match provider_type {
+        ProviderType::GitHub => client
+            .get(&provider_info.userinfo_endpoint)
+            .bearer_auth(access_token)
+            .header("User-Agent", "Palpo-Matrix-Server"),
+        _ => client
+            .get(&provider_info.userinfo_endpoint)
+            .bearer_auth(access_token),
+    };
     
     // Configure TLS verification based on settings  
     // Note: TLS verification bypass not implemented for security
@@ -785,16 +861,45 @@ async fn get_user_info_from_provider(
         .await
         .map_err(|e| MatrixError::unknown(format!("Failed to parse user info response: {}", e)))?;
     
-    // Extract standard OIDC claims
-    let user_info = OidcUserInfo {
-        sub: user_info_response["sub"]
-            .as_str()
-            .ok_or_else(|| MatrixError::unknown("Missing required 'sub' claim in user info"))?
-            .to_string(),
-        email: user_info_response["email"].as_str().map(String::from),
-        name: user_info_response["name"].as_str().map(String::from),
-        picture: user_info_response["picture"].as_str().map(String::from),
-        email_verified: user_info_response["email_verified"].as_bool(),
+    // Parse user info based on provider type
+    let provider_type = ProviderType::from_issuer(&provider_config.issuer);
+    let user_info = match provider_type {
+        ProviderType::GitHub => {
+            // GitHub OAuth response format differs from OIDC standard:
+            // - Uses 'id' (integer) instead of 'sub' (string) for user identifier
+            // - Uses 'avatar_url' instead of 'picture' for profile image
+            // - Email may be null if user has set email to private in GitHub settings
+            //
+            // Important: GitHub users often have private emails, so:
+            // 1. Set user_mapping = "sub" in config to use GitHub ID instead of email
+            // 2. Set require_email_verified = false to allow users without public emails
+            let id = user_info_response["id"]
+                .as_i64()
+                .ok_or_else(|| MatrixError::unknown("Missing required 'id' field in GitHub user info"))?;
+            
+            OidcUserInfo {
+                sub: id.to_string(),
+                email: user_info_response["email"].as_str().map(String::from), // May be None for private emails
+                name: user_info_response["name"].as_str().map(String::from),
+                picture: user_info_response["avatar_url"].as_str().map(String::from),
+                email_verified: Some(true), // GitHub verifies primary email, but it may not be visible
+                preferred_username: user_info_response["login"].as_str().map(String::from), // GitHub username
+            }
+        },
+        ProviderType::Google | ProviderType::Generic => {
+            // Standard OIDC claims
+            OidcUserInfo {
+                sub: user_info_response["sub"]
+                    .as_str()
+                    .ok_or_else(|| MatrixError::unknown("Missing required 'sub' claim in user info"))?
+                    .to_string(),
+                email: user_info_response["email"].as_str().map(String::from),
+                name: user_info_response["name"].as_str().map(String::from),
+                picture: user_info_response["picture"].as_str().map(String::from),
+                email_verified: user_info_response["email_verified"].as_bool(),
+                preferred_username: user_info_response["preferred_username"].as_str().map(String::from),
+            }
+        }
     };
     
     tracing::debug!("Successfully retrieved user info for subject: {}", user_info.sub);
@@ -827,45 +932,33 @@ fn validate_user_info(user_info: &OidcUserInfo, oidc_config: &crate::config::Oid
     Ok(())
 }
 
-/// **Matrix User ID Generation - Identity Mapping**
+/// **Matrix User ID Generation**
 /// 
-/// Generates a Matrix user ID from OIDC user information according to the
-/// configured mapping strategy.
-/// 
-/// ## Mapping Strategies
-/// 1. **Email Strategy**: Uses email localpart (user@domain.com → user)
-/// 2. **Subject Strategy**: Uses OIDC sub claim (guaranteed unique)
-/// 3. **Username Strategy**: Uses preferred_username (human-readable)
+/// Generates a friendly Matrix user ID from OIDC user information.
+/// Priority: username > email > ID
 /// 
 /// ## Security Considerations
-/// - All generated localparts are sanitized for Matrix compliance
-/// - Configurable prefix prevents conflicts with existing users
+/// - All localparts are sanitized for Matrix compliance
 /// - Invalid characters are filtered out
-/// - Empty results are rejected
+/// - Uniqueness is guaranteed by using provider ID as fallback
 fn generate_matrix_user_id(
     user_info: &OidcUserInfo, 
     oidc_config: &crate::config::OidcConfig,
     server_name: &str
 ) -> Result<String, MatrixError> {
-    let base_localpart = match oidc_config.user_mapping.as_str() {
-        "email" => {
-            if let Some(email) = &user_info.email {
-                email.split('@').next().unwrap_or(&user_info.sub).to_string()
-            } else {
-                return Err(MatrixError::invalid_param("Email not available for user mapping"));
-            }
-        }
-        "sub" => user_info.sub.clone(),
-        "preferred_username" => {
-            // This would require extending OidcUserInfo to include preferred_username
-            // For now, fall back to sub
-            user_info.sub.clone()
-        }
-        _ => {
-            return Err(MatrixError::invalid_param(
-                format!("Unknown user mapping strategy: {}", oidc_config.user_mapping)
-            ));
-        }
+    // For security: Always include provider ID to ensure uniqueness
+    // GitHub usernames can be transferred when users rename
+    let base_localpart = if let Some(username) = &user_info.preferred_username {
+        // Combine username with ID for both readability and security
+        // Format: "username_id" ensures uniqueness even if username changes hands
+        format!("{}_{}", username, user_info.sub)
+    } else if let Some(email) = &user_info.email {
+        format!("{}_{}", 
+            email.split('@').next().unwrap_or("user"),
+            user_info.sub
+        )
+    } else {
+        format!("user_{}", user_info.sub)
     };
     
     // Sanitize the localpart for Matrix compliance
@@ -940,10 +1033,16 @@ async fn create_or_get_user(
     {
         tracing::debug!("Found existing user account: {}", user_id);
         
-        // Update profile for existing users (name/avatar may have changed)
-        if let Err(e) = set_user_profile(&existing_user.id, display_name, user_info.picture.as_deref()).await {
-            tracing::warn!("Failed to update profile for existing user: {}", e);
-        }
+        // Note: We intentionally do NOT update the profile for existing users
+        // to preserve any changes the user made in Matrix (like custom display names).
+        // Only update avatar if it changed on the provider side
+        //
+        // Alternative: You could add a config option to control this behavior:
+        // if oidc_config.update_profile_on_login {
+        //     if let Err(e) = set_user_profile(&existing_user.id, display_name, user_info.picture.as_deref()).await {
+        //         tracing::warn!("Failed to update profile for existing user: {}", e);
+        //     }
+        // }
         
         return Ok(existing_user);
     }

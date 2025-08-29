@@ -49,9 +49,21 @@ uris = ["turn:turn.matrix.org?transport=udp", "turn:turn.matrix.org?transport=tc
 enable = true
 enable_pkce = true
 session_timeout = 1800
+require_email_verified = false
+allow_registration = true
+default_provider = "github"
+user_prefix = ""
 
 [oidc.providers.google]
 issuer = "https://accounts.google.com"
 client_id = "your-google-client-id.apps.googleusercontent.com"
 client_secret = "GOCSPX-your-google-client-secret"
-redirect_uri = "https://your-domain.com/_matrix/client/oidc/callback"
+redirect_uri = "https://your-server.com/_matrix/client/oidc/callback"
+
+[oidc.providers.github]
+issuer = "https://github.com"
+client_id = "your-github-oauth-app-id"
+client_secret = "your-github-oauth-app-secret"
+redirect_uri = "https://your-server.com/_matrix/client/oidc/callback"
+scopes = ["read:user", "user:email"]
+display_name = "Sign in with GitHub"
