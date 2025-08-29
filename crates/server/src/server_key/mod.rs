@@ -11,7 +11,6 @@ use serde_json::value::RawValue as RawJsonValue;
 pub use verify::*;
 
 use crate::core::federation::discovery::{ServerSigningKeys, VerifyKey};
-use crate::core::room_version_rules::RedactionRules;
 use crate::core::serde::{Base64, CanonicalJsonObject, JsonValue, RawJson};
 use crate::core::signatures::{self, PublicKeyMap, PublicKeySet};
 use crate::core::{

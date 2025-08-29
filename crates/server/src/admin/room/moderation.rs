@@ -1,5 +1,4 @@
 use clap::Subcommand;
-use futures_util::FutureExt;
 
 use crate::admin::{Context, get_room_info};
 use crate::core::{OwnedRoomId, OwnedRoomOrAliasId, RoomAliasId, RoomId, RoomOrAliasId};

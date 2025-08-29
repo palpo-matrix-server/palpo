@@ -7,7 +7,6 @@ use crate::core::appservice::query::{QueryRoomAliasReqArgs, query_room_alias_req
 use crate::core::client::room::AliasResBody;
 use crate::core::events::TimelineEventType;
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
-use crate::core::events::room::power_levels::{RoomPowerLevels, RoomPowerLevelsEventContent};
 use crate::core::federation::query::directory_request;
 use crate::core::identifiers::*;
 use crate::data::connect;

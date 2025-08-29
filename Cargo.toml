@@ -101,7 +101,6 @@ serde_regex = { version = "1.1.0" }
 smallvec = { version = "1.15.1" }
 sha2 = "0.10.8"
 sha1 = "0.10.6"
-smallstr = "0.3.1"
 strum = "0.27.2"
 strum_macros = "0.27.2"
 subslice = "0.2.3"

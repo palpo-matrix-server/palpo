@@ -133,7 +133,7 @@ where
     let creator = room_create_event.creator(rules)?;
     let creators = room_create_event.creators(rules)?;
 
-    let mut prev_events = room_member_event.prev_events();
+    let prev_events = room_member_event.prev_events();
     let prev_event_is_room_create_event = prev_events
         .first()
         .is_some_and(|event_id| event_id.borrow() == room_create_event.event_id().borrow());

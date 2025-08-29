@@ -7,7 +7,6 @@ use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
 use syn::{
     DeriveInput, Field, Ident, Meta, Token, Type,
-    parse::{Parse, ParseStream},
     parse_quote,
     punctuated::Punctuated,
 };

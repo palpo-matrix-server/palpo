@@ -25,7 +25,7 @@ use crate::core::serde::{
     CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJsonValue, to_canonical_value,
 };
 use crate::core::state::{Event, StateError};
-use crate::core::{Direction, RoomVersion, Seqnum, UnixMillis, user_id};
+use crate::core::{Direction, Seqnum, UnixMillis, user_id};
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
@@ -560,7 +560,6 @@ pub async fn create_hash_and_sign_event(
             "non-create event for room `{room_id}` of unknown version"
         )));
     };
-    let room_version = RoomVersion::new(&room_version_id).expect("room version is supported");
     let room_rules = crate::room::room_rules(&room_version_id)?;
 
     let auth_events = state::get_auth_events(

@@ -11,7 +11,6 @@ use crate::core::events::room::create::RoomCreateEventContent;
 use crate::core::events::room::member::MembershipState;
 use crate::core::events::{AnyStrippedStateEvent, RoomAccountDataEventType};
 use crate::core::identifiers::*;
-use crate::core::room_version_rules::{AuthorizationRules, RoomVersionRules};
 use crate::core::serde::{
     CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJson, RawJsonValue,
 };

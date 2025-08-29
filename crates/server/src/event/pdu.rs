@@ -14,7 +14,7 @@ use crate::core::events::room::redaction::RoomRedactionEventContent;
 use crate::core::events::space::child::HierarchySpaceChildEvent;
 use crate::core::events::{
     AnyMessageLikeEvent, AnyStateEvent, AnyStrippedStateEvent, AnySyncStateEvent,
-    AnySyncTimelineEvent, AnyTimelineEvent, MessageLikeEventContent, MessageLikeEventType,
+    AnySyncTimelineEvent, AnyTimelineEvent, MessageLikeEventContent,
     StateEvent, StateEventContent, StateEventType, TimelineEventType,
 };
 use crate::core::identifiers::*;

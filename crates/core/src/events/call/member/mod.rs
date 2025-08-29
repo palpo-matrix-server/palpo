@@ -21,10 +21,10 @@ use tracing::warn;
 use crate::macros::EventContent;
 use crate::room_version_rules::RedactionRules;
 use crate::{
-    OwnedDeviceId, OwnedUserId, PrivOwnedStr, UnixMillis,
+    OwnedDeviceId, PrivOwnedStr, UnixMillis,
     events::{
         PossiblyRedactedStateEventContent, RedactContent, RedactedStateEventContent,
-        StateEventType, StaticEventContent, StaticStateEventContent,
+        StateEventType, StaticEventContent,
     },
     serde::StringEnum,
 };

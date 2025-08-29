@@ -259,7 +259,6 @@ fn process_to_outlier_pdu<'a>(
         // 1.1. Remove unsigned field
         value.remove("unsigned");
 
-        let room_version = RoomVersion::new(room_version_id).expect("room version is supported");
         let room_rules = crate::room::room_rules(&room_version_id)?;
         let origin_server_ts = value.get("origin_server_ts").ok_or_else(|| {
             error!("invalid PDU, no origin_server_ts field");

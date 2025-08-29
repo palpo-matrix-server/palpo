@@ -19,8 +19,7 @@ use super::{
 };
 use crate::{
     OwnedEventId, UnixMillis,
-    events::{
-        EventContentFromType, MessageLikeEventContent, MessageLikeEventType, RedactContent,
+    events::{MessageLikeEventContent, MessageLikeEventType, RedactContent,
         RedactedMessageLikeEventContent, StaticEventContent, relation::Replacement,
         room::message::RelationWithoutReplacement,
     },

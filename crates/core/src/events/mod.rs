@@ -176,7 +176,6 @@ use std::collections::BTreeSet;
 
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize, Serializer, de::IgnoredAny};
-use smallstr::SmallString;
 
 pub use self::{
     content::*,
