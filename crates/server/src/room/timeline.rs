@@ -620,12 +620,9 @@ pub async fn create_hash_and_sign_event(
             .map(|s| s.pdu)
             .map_err(|_| StateError::other("missing PDU"))
     };
-    println!("CCCCCCCCCCCCCCCCC");
+    println!("CCCCCCCCCCCCCCCCC===auth_events: {:#?}", auth_events);
     let fetch_state = async |k: StateEventType, s: String| {
-        println!(
-            "=======: {k:?}   s:  {s:?}  ===auth_events: {:#?}",
-            auth_events
-        );
+        println!("=======: {k:?}   s:  {s:?}",);
         auth_events
             .get(&(k, s.to_owned()))
             .map(|s| s.pdu.clone())
