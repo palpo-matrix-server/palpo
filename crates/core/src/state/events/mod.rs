@@ -50,7 +50,7 @@ pub trait Event {
 
     /// The events before this event.
     // Requires GATs to avoid boxing (and TAIT for making it convenient).
-    fn prev_events(&self) ->  &[Self::Id];
+    fn prev_events(&self) -> &[Self::Id];
 
     /// All the authenticating events for this event.
     // Requires GATs to avoid boxing (and TAIT for making it convenient).
@@ -142,11 +142,11 @@ impl<T: Event> Event for Arc<T> {
         (**self).state_key()
     }
 
-    fn prev_events(&self) ->  &[Self::Id] {
+    fn prev_events(&self) -> &[Self::Id] {
         (**self).prev_events()
     }
 
-    fn auth_events(&self) ->  &[Self::Id] {
+    fn auth_events(&self) -> &[Self::Id] {
         (**self).auth_events()
     }
 

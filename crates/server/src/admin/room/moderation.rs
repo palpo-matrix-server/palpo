@@ -290,9 +290,7 @@ async fn ban_list_of_rooms(ctx: &Context<'_>) -> AppResult<()> {
 				 evicting admins too)",
             );
 
-            if let Err(e) = membership::leave_room(user_id, &room_id, None)
-                .await
-            {
+            if let Err(e) = membership::leave_room(user_id, &room_id, None).await {
                 warn!("Failed to leave room: {e}");
             }
 

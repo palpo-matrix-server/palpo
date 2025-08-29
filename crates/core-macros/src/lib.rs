@@ -7,8 +7,7 @@
 
 use identifiers::expand_id_dst;
 use palpo_identifiers_validation::{
-    device_key_id, event_id, mxc_uri, room_alias_id, room_id, room_version_id, server_name,
-    user_id,
+    device_key_id, event_id, mxc_uri, room_alias_id, room_id, room_version_id, server_name, user_id,
 };
 use proc_macro::TokenStream;
 use quote::quote;
@@ -74,7 +73,6 @@ pub fn event_enum(input: TokenStream) -> TokenStream {
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }
-
 
 /// Generates traits implementations and types for an event content.
 ///

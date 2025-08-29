@@ -76,22 +76,22 @@
 //! - **Google OAuth 2.0**: Full OIDC compliance with discovery endpoint
 //! - **GitHub OAuth**: OAuth 2.0 with custom user info endpoint (not OIDC-compliant)
 //! - **Generic OIDC**: Any provider with .well-known/openid-configuration
-//! 
+//!
 //! ### Provider-specific handling:
-//! 
+//!
 //! #### GitHub OAuth
 //! - Requires `Accept: application/json` header for token exchange
 //! - Requires `User-Agent` header for API requests
 //! - Uses different field names (id vs sub, avatar_url vs picture)
 //! - **Important**: Email may be null if user has private email settings
-//! 
+//!
 //! #### Recommended GitHub Configuration
 //! ```toml
 //! [oidc]
 //! user_mapping = "sub"  # Use GitHub ID instead of email
 //! require_email_verified = false  # Allow users with private emails
 //! user_prefix = "github_"  # Distinguish GitHub users
-//! 
+//!
 //! [oidc.providers.github]
 //! issuer = "https://github.com"
 //! scopes = ["read:user", "user:email"]  # Request email access (may still be private)
@@ -102,7 +102,7 @@
 //! Matrix user IDs combine username with provider ID for security:
 //! - Ensures uniqueness even if usernames change hands
 //! - Prevents account takeover when users rename on GitHub
-//! 
+//!
 //! Examples:
 //! - GitHub user "octocat" (ID 123) → `@octocat_123:server`
 //! - Google user john@gmail.com → `@john_456789:server`
@@ -432,7 +432,8 @@ async fn discover_provider_endpoints(
             let provider_type = ProviderType::from_issuer(&provider_config.issuer);
             match provider_type {
                 ProviderType::Google => Ok(OidcProviderInfo {
-                    authorization_endpoint: "https://accounts.google.com/o/oauth2/v2/auth".to_string(),
+                    authorization_endpoint: "https://accounts.google.com/o/oauth2/v2/auth"
+                        .to_string(),
                     token_endpoint: "https://oauth2.googleapis.com/token".to_string(),
                     userinfo_endpoint: "https://www.googleapis.com/oauth2/v2/userinfo".to_string(),
                     issuer: provider_config.issuer.clone(),
@@ -444,7 +445,7 @@ async fn discover_provider_endpoints(
                     issuer: provider_config.issuer.clone(),
                 }),
                 ProviderType::Generic => Err(MatrixError::unknown(
-                    "Could not discover OIDC endpoints and no fallback available"
+                    "Could not discover OIDC endpoints and no fallback available",
                 )),
             }
         }
@@ -581,11 +582,11 @@ pub async fn oidc_auth(req: &mut Request, res: &mut Response) -> AppResult<()> {
 /// `GET /_matrix/client/*/oidc/callback`
 ///
 /// **OAuth Callback Handler - The Heart of OAuth/OIDC Authentication**
-/// 
+///
 /// This endpoint handles the OAuth 2.0 callback from the provider after the user
 /// has authenticated and granted consent. It automatically detects the provider type
 /// from the session and handles provider-specific differences (Google OIDC vs GitHub OAuth).
-/// 
+///
 /// ## Callback Flow Breakdown
 /// ```text
 /// 1. Validate callback parameters (code, state)
@@ -809,9 +810,12 @@ async fn exchange_code_for_tokens(
     if let Some(verifier) = code_verifier {
         params.push(("code_verifier", verifier));
     }
-    
-    tracing::debug!("Exchanging authorization code for tokens with provider: {}", provider_info.issuer);
-    
+
+    tracing::debug!(
+        "Exchanging authorization code for tokens with provider: {}",
+        provider_info.issuer
+    );
+
     // Build request with provider-specific headers
     let provider_type = ProviderType::from_issuer(&provider_config.issuer);
     let request = match provider_type {
@@ -820,7 +824,7 @@ async fn exchange_code_for_tokens(
             .header("Accept", "application/json"),
         _ => client.post(&provider_info.token_endpoint),
     };
-    
+
     let response = request
         .form(&params)
         .send()
@@ -866,7 +870,7 @@ async fn get_user_info_from_provider(
     let client = reqwest::Client::new();
 
     tracing::debug!("Fetching user info from provider: {}", provider_info.issuer);
-    
+
     // Build request with provider-specific headers
     let provider_type = ProviderType::from_issuer(&provider_config.issuer);
     let request = match provider_type {
@@ -878,8 +882,8 @@ async fn get_user_info_from_provider(
             .get(&provider_info.userinfo_endpoint)
             .bearer_auth(access_token),
     };
-    
-    // Configure TLS verification based on settings  
+
+    // Configure TLS verification based on settings
     // Note: TLS verification bypass not implemented for security
     // If needed, this would require configuring a custom reqwest client
     if provider_config.skip_tls_verify {
@@ -912,7 +916,7 @@ async fn get_user_info_from_provider(
         .json()
         .await
         .map_err(|e| MatrixError::unknown(format!("Failed to parse user info response: {}", e)))?;
-    
+
     // Parse user info based on provider type
     let provider_type = ProviderType::from_issuer(&provider_config.issuer);
     let user_info = match provider_type {
@@ -925,10 +929,10 @@ async fn get_user_info_from_provider(
             // Important: GitHub users often have private emails, so:
             // 1. Set user_mapping = "sub" in config to use GitHub ID instead of email
             // 2. Set require_email_verified = false to allow users without public emails
-            let id = user_info_response["id"]
-                .as_i64()
-                .ok_or_else(|| MatrixError::unknown("Missing required 'id' field in GitHub user info"))?;
-            
+            let id = user_info_response["id"].as_i64().ok_or_else(|| {
+                MatrixError::unknown("Missing required 'id' field in GitHub user info")
+            })?;
+
             OidcUserInfo {
                 sub: id.to_string(),
                 email: user_info_response["email"].as_str().map(String::from), // May be None for private emails
@@ -937,19 +941,23 @@ async fn get_user_info_from_provider(
                 email_verified: Some(true), // GitHub verifies primary email, but it may not be visible
                 preferred_username: user_info_response["login"].as_str().map(String::from), // GitHub username
             }
-        },
+        }
         ProviderType::Google | ProviderType::Generic => {
             // Standard OIDC claims
             OidcUserInfo {
                 sub: user_info_response["sub"]
                     .as_str()
-                    .ok_or_else(|| MatrixError::unknown("Missing required 'sub' claim in user info"))?
+                    .ok_or_else(|| {
+                        MatrixError::unknown("Missing required 'sub' claim in user info")
+                    })?
                     .to_string(),
                 email: user_info_response["email"].as_str().map(String::from),
                 name: user_info_response["name"].as_str().map(String::from),
                 picture: user_info_response["picture"].as_str().map(String::from),
                 email_verified: user_info_response["email_verified"].as_bool(),
-                preferred_username: user_info_response["preferred_username"].as_str().map(String::from),
+                preferred_username: user_info_response["preferred_username"]
+                    .as_str()
+                    .map(String::from),
             }
         }
     };
@@ -997,10 +1005,10 @@ fn validate_user_info(
 }
 
 /// **Matrix User ID Generation**
-/// 
+///
 /// Generates a friendly Matrix user ID from OIDC user information.
 /// Priority: username > email > ID
-/// 
+///
 /// ## Security Considerations
 /// - All localparts are sanitized for Matrix compliance
 /// - Invalid characters are filtered out
@@ -1017,7 +1025,8 @@ fn generate_matrix_user_id(
         // Format: "username_id" ensures uniqueness even if username changes hands
         format!("{}_{}", username, user_info.sub)
     } else if let Some(email) = &user_info.email {
-        format!("{}_{}", 
+        format!(
+            "{}_{}",
             email.split('@').next().unwrap_or("user"),
             user_info.sub
         )
@@ -1104,7 +1113,7 @@ async fn create_or_get_user(
         .first::<DbUser>(&mut conn)
     {
         tracing::debug!("Found existing user account: {}", user_id);
-        
+
         // Note: We intentionally do NOT update the profile for existing users
         // to preserve any changes the user made in Matrix (like custom display names).
         // Only update avatar if it changed on the provider side
@@ -1115,7 +1124,7 @@ async fn create_or_get_user(
         //         tracing::warn!("Failed to update profile for existing user: {}", e);
         //     }
         // }
-        
+
         return Ok(existing_user);
     }
 

@@ -647,7 +647,7 @@ impl crate::core::state::Event for PduEvent {
         self.prev_events.deref()
     }
 
-    fn auth_events(&self) -> &[Self::Id]  {
+    fn auth_events(&self) -> &[Self::Id] {
         self.auth_events.deref()
     }
 

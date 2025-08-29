@@ -6,7 +6,8 @@ use salvo::oapi::{Components, RefOr, Schema, ToSchema};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::IdParseError;
-use crate::macros::DisplayAsRefStr; use crate::room_version_rules::RoomVersionRules;
+use crate::macros::DisplayAsRefStr;
+use crate::room_version_rules::RoomVersionRules;
 
 /// A Matrix [room version] ID.
 ///

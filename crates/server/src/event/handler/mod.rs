@@ -487,8 +487,7 @@ pub async fn process_to_timeline_pdu(
         &room_rules.authorization,
         &incoming_pdu,
         &async |event_id| {
-            timeline::get_pdu(&event_id)
-                .map_err(|_| StateError::other("missing PDU"))
+            timeline::get_pdu(&event_id).map_err(|_| StateError::other("missing PDU"))
         },
         &async |k, s| {
             state::ensure_field_id(&k.to_string().into(), &s)
@@ -518,8 +517,7 @@ pub async fn process_to_timeline_pdu(
         &room_rules.authorization,
         &incoming_pdu,
         &async |event_id| {
-            timeline::get_pdu(&event_id)
-                .map_err(|_| StateError::other("missing PDU"))
+            timeline::get_pdu(&event_id).map_err(|_| StateError::other("missing PDU"))
         },
         &async |k, s| {
             auth_events

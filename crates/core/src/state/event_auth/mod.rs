@@ -11,8 +11,8 @@ mod room_member;
 mod tests;
 
 use self::room_member::check_room_member;
-use crate::{OwnedEventId,
-    EventId, OwnedUserId, UserId,
+use crate::{
+    EventId, OwnedEventId, OwnedUserId, UserId,
     events::{
         StateEventType, TimelineEventType,
         room::{member::MembershipState, power_levels::UserPowerLevel},
@@ -208,7 +208,7 @@ where
         HashSet::with_capacity(expected_auth_types.len());
 
     // Since v1, considering auth_events:
-    for auth_event_id in incoming_event.auth_events()  {
+    for auth_event_id in incoming_event.auth_events() {
         let event_id = auth_event_id.borrow();
 
         let Ok(auth_event) = fetch_event(event_id.to_owned()).await else {
