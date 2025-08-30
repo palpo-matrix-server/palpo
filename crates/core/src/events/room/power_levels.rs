@@ -31,7 +31,7 @@ pub struct RoomPowerLevelsEventContent {
     /// The level required to ban a user.
     #[serde(
         default = "default_power_level",
-        skip_serializing_if = "is_default_power_level",
+        // skip_serializing_if = "is_default_power_level",
         deserialize_with = "crate::serde::deserialize_v1_powerlevel"
     )]
     pub ban: i64,
@@ -41,7 +41,7 @@ pub struct RoomPowerLevelsEventContent {
     /// This is a mapping from event type to power level required.
     #[serde(
         default,
-        skip_serializing_if = "BTreeMap::is_empty",
+        // skip_serializing_if = "BTreeMap::is_empty",
         deserialize_with = "crate::serde::btreemap_deserialize_v1_powerlevel_values"
     )]
     pub events: BTreeMap<TimelineEventType, i64>,
@@ -49,7 +49,7 @@ pub struct RoomPowerLevelsEventContent {
     /// The default level required to send message events.
     #[serde(
         default,
-        skip_serializing_if = "crate::serde::is_default",
+        // skip_serializing_if = "crate::serde::is_default",
         deserialize_with = "crate::serde::deserialize_v1_powerlevel"
     )]
     pub events_default: i64,
@@ -57,7 +57,7 @@ pub struct RoomPowerLevelsEventContent {
     /// The level required to invite a user.
     #[serde(
         default,
-        skip_serializing_if = "crate::serde::is_default",
+        // skip_serializing_if = "crate::serde::is_default",
         deserialize_with = "crate::serde::deserialize_v1_powerlevel"
     )]
     pub invite: i64,
@@ -65,7 +65,7 @@ pub struct RoomPowerLevelsEventContent {
     /// The level required to kick a user.
     #[serde(
         default = "default_power_level",
-        skip_serializing_if = "is_default_power_level",
+        // skip_serializing_if = "is_default_power_level",
         deserialize_with = "crate::serde::deserialize_v1_powerlevel"
     )]
     pub kick: i64,
@@ -73,7 +73,7 @@ pub struct RoomPowerLevelsEventContent {
     /// The level required to redact an event.
     #[serde(
         default = "default_power_level",
-        skip_serializing_if = "is_default_power_level",
+        // skip_serializing_if = "is_default_power_level",
         deserialize_with = "crate::serde::deserialize_v1_powerlevel"
     )]
     pub redact: i64,
@@ -81,7 +81,7 @@ pub struct RoomPowerLevelsEventContent {
     /// The default level required to send state events.
     #[serde(
         default = "default_power_level",
-        skip_serializing_if = "is_default_power_level",
+        // skip_serializing_if = "is_default_power_level",
         deserialize_with = "crate::serde::deserialize_v1_powerlevel"
     )]
     pub state_default: i64,
@@ -91,7 +91,7 @@ pub struct RoomPowerLevelsEventContent {
     /// This is a mapping from `user_id` to power level for that user.
     #[serde(
         default,
-        skip_serializing_if = "BTreeMap::is_empty",
+        // skip_serializing_if = "BTreeMap::is_empty",
         deserialize_with = "crate::serde::btreemap_deserialize_v1_powerlevel_values"
     )]
     pub users: BTreeMap<OwnedUserId, i64>,
@@ -99,7 +99,7 @@ pub struct RoomPowerLevelsEventContent {
     /// The default power level for every user in the room.
     #[serde(
         default,
-        skip_serializing_if = "crate::serde::is_default",
+        // skip_serializing_if = "crate::serde::is_default",
         deserialize_with = "crate::serde::deserialize_v1_powerlevel"
     )]
     pub users_default: i64,
@@ -107,7 +107,8 @@ pub struct RoomPowerLevelsEventContent {
     /// The power level requirements for specific notification types.
     ///
     /// This is a mapping from `key` to power level for that notifications key.
-    #[serde(default, skip_serializing_if = "NotificationPowerLevels::is_default")]
+    // #[serde(default, skip_serializing_if = "NotificationPowerLevels::is_default")]
+    #[serde(default)]
     pub notifications: NotificationPowerLevels,
 }
 
