@@ -36,8 +36,10 @@ impl NamespaceRegex {
 
     /// Checks if this namespace has exlusive rights to a namespace
     pub fn is_exclusive_match(&self, heystack: &str) -> bool {
-        if let Some(exclusive) = &self.exclusive && exclusive.is_match(heystack) {
-                return true;
+        if let Some(exclusive) = &self.exclusive
+            && exclusive.is_match(heystack)
+        {
+            return true;
         }
         false
     }

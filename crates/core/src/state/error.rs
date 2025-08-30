@@ -13,6 +13,10 @@ pub enum StateError {
     #[error("Failed to find event {0}")]
     NotFound(OwnedEventId),
 
+    /// Forbidden.
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
+
     /// An auth event is invalid.
     #[error("Invalid auth event: {0}")]
     AuthEvent(String),
@@ -32,6 +36,9 @@ pub enum StateError {
 impl StateError {
     pub fn auth_event(error: impl Into<String>) -> Self {
         StateError::AuthEvent(error.into())
+    }
+    pub fn forbidden(error: impl Into<String>) -> Self {
+        StateError::Forbidden(error.into())
     }
     pub fn other(error: impl Into<String>) -> Self {
         StateError::Other(error.into())

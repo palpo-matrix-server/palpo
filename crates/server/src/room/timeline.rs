@@ -620,9 +620,7 @@ pub async fn create_hash_and_sign_event(
             .map(|s| s.pdu)
             .map_err(|_| StateError::other("missing PDU"))
     };
-    println!("CCCCCCCCCCCCCCCCC===auth_events: {:#?}", auth_events);
     let fetch_state = async |k: StateEventType, s: String| {
-        println!("=======: {k:?}   s:  {s:?}",);
         auth_events
             .get(&(k, s.to_owned()))
             .map(|s| s.pdu.clone())
@@ -653,7 +651,7 @@ pub async fn create_hash_and_sign_event(
         Err(e) => {
             return match e {
                 AppError::Signatures(crate::core::signatures::Error::PduSize) => {
-                    Err(MatrixError::unknown("Message is too long").into())
+                    Err(MatrixError::too_large("Message is too long").into())
                 }
                 _ => Err(MatrixError::unknown("Signing event failed").into()),
             };

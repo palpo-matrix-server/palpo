@@ -22,12 +22,12 @@ use crate::{
     state::events::{
         RoomCreateEvent, RoomJoinRulesEvent, RoomMemberEvent, RoomPowerLevelsEvent,
         RoomThirdPartyInviteEvent,
-        member::{RoomMemberEventOptionExt, RoomMemberEventContent},
+        member::{RoomMemberEventContent, RoomMemberEventOptionExt},
         power_levels::{RoomPowerLevelsEventOptionExt, RoomPowerLevelsIntField},
     },
     state::{Event, StateError, StateResult},
     utils::RoomIdExt,
-}; 
+};
 
 /// Get the list of [relevant auth events] required to authorize the event of the given type.
 ///
@@ -783,7 +783,8 @@ where
     async fn user_membership(&self, user_id: &UserId) -> StateResult<MembershipState> {
         self(StateEventType::RoomMember, user_id.as_str().into())
             .await
-            .map(RoomMemberEvent::new).ok()
+            .map(RoomMemberEvent::new)
+            .ok()
             .membership()
     }
 

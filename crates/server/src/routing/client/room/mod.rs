@@ -717,14 +717,6 @@ pub(super) async fn create_room(
         &body.visibility,
         users,
     )?;
-    println!(
-        "DDDDDDDDDDDDDDDDDDDDbody.power_level_content_override.as_ref()  {:#?}",
-        body.power_level_content_override.as_ref()
-    );
-    println!(
-        "ddddddddddddddddfeault power_levels_content: {:#?}",
-        power_levels_content
-    );
 
     timeline::build_and_append_pdu(
         PduBuilder {

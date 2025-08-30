@@ -3,6 +3,7 @@ use std::io;
 use std::string::FromUtf8Error;
 
 use async_trait::async_trait;
+use palpo_core::serde::duration::ms;
 use salvo::http::{StatusCode, StatusError};
 use salvo::oapi::{self, EndpointOutRegister, ToSchema};
 use salvo::prelude::{Depot, Request, Response, Writer};
@@ -123,6 +124,17 @@ impl Writer for AppError {
             Self::Internal(_msg) => MatrixError::unknown("Unknown error."),
             // Self::LocalUnableProcess(msg) => MatrixError::unrecognized(msg),
             Self::Matrix(e) => e,
+            Self::State(e) => {
+                if let StateError::Forbidden(msg) = e {
+                    tracing::error!(error = ?msg, "forbidden error.");
+                    MatrixError::forbidden(msg, None)
+                } else if let StateError::AuthEvent(msg) = e {
+                    tracing::error!(error = ?msg, "forbidden error.");
+                    MatrixError::forbidden(msg, None)
+                } else {
+                    MatrixError::unknown(e.to_string())
+                }
+            }
             Self::Uiaa(uiaa) => {
                 use crate::core::client::uiaa::ErrorKind;
                 if res.status_code.map(|c| c.is_success()).unwrap_or(true) {

@@ -43,12 +43,12 @@ where
     // Since v1, if there is no state_key property, or no membership property in content,
     // reject.
     let Some(state_key) = room_member_event.state_key() else {
-        return Err(StateError::other(
+        return Err(StateError::forbidden(
             "missing `state_key` field in `m.room.member` event",
         ));
     };
     let target_user = <&UserId>::try_from(state_key).map_err(|e| {
-        StateError::other(format!(
+        StateError::forbidden(format!(
             "invalid `state_key` field in `m.room.member` event: {e}"
         ))
     })?;
@@ -112,7 +112,7 @@ where
             check_room_member_knock(room_member_event, target_user, rules, fetch_state).await
         }
         // Since v1, otherwise, the membership is unknown. Reject.
-        _ => Err(StateError::other("unknown membership")),
+        _ => Err(StateError::forbidden("unknown membership")),
     }
 }
 
@@ -150,7 +150,7 @@ where
 
     // Since v1, if the sender does not match state_key, reject.
     if room_member_event.sender() != target_user {
-        return Err(StateError::other(
+        return Err(StateError::forbidden(
             "sender of join event must match target user",
         ));
     }
@@ -159,7 +159,7 @@ where
 
     // Since v1, if the sender is banned, reject.
     if current_membership == MembershipState::Ban {
-        return Err(StateError::other("banned user cannot join room"));
+        return Err(StateError::forbidden("banned user cannot join room"));
     }
 
     let join_rule = fetch_state.join_rule().await?;
@@ -197,7 +197,7 @@ where
         let Some(authorized_via_user) = room_member_event.join_authorised_via_users_server()?
         else {
             // The field is absent, we cannot authorize.
-            return Err(StateError::other(
+            return Err(StateError::forbidden(
                 "cannot join restricted room without `join_authorised_via_users_server` field \
                  if not invited",
             ));
@@ -207,7 +207,7 @@ where
         let authorized_via_user_membership =
             fetch_state.user_membership(&authorized_via_user).await?;
         if authorized_via_user_membership != MembershipState::Join {
-            return Err(StateError::other(
+            return Err(StateError::forbidden(
                 "`join_authorised_via_users_server` is not joined",
             ));
         }
@@ -222,7 +222,7 @@ where
         return if authorized_via_user_power_level >= invite_power_level {
             Ok(())
         } else {
-            Err(StateError::other(
+            Err(StateError::forbidden(
                 "`join_authorised_via_users_server` does not have enough power",
             ))
         };
@@ -233,7 +233,9 @@ where
     if join_rule == JoinRuleKind::Public {
         Ok(())
     } else {
-        Err(StateError::other("cannot join a room that is not `public`"))
+        Err(StateError::forbidden(
+            "cannot join a room that is not `public`",
+        ))
     }
 }
 
@@ -270,7 +272,7 @@ where
 
     // Since v1, if the sender’s current membership state is not join, reject.
     if sender_membership != MembershipState::Join {
-        return Err(StateError::other(
+        return Err(StateError::forbidden(
             "cannot invite user if sender is not joined",
         ));
     }
@@ -282,7 +284,7 @@ where
         current_target_user_membership,
         MembershipState::Join | MembershipState::Ban
     ) {
-        return Err(StateError::other(
+        return Err(StateError::forbidden(
             "cannot invite user that is joined or banned",
         ));
     }
@@ -302,7 +304,7 @@ where
     if sender_power_level >= invite_power_level {
         Ok(())
     } else {
-        Err(StateError::other(
+        Err(StateError::forbidden(
             "sender does not have enough power to invite",
         ))
     }
@@ -515,7 +517,7 @@ where
 
     // Since v1, if the sender’s current membership state is not join, reject.
     if sender_membership != MembershipState::Join {
-        return Err(StateError::other("cannot ban if sender is not joined"));
+        return Err(StateError::forbidden("cannot ban if sender is not joined"));
     }
 
     let creators = room_create_event.creators(rules)?;
