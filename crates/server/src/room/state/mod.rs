@@ -425,7 +425,9 @@ pub fn get_state(
     state_key: &str,
 ) -> AppResult<SnPduEvent> {
     let event_id = get_state_event_id(frame_id, event_type, state_key)?;
-    timeline::get_pdu(&event_id)
+    let pdu = timeline::get_pdu(&event_id);
+    println!("PPPPPPdu: {pdu:#?}");
+    pdu
 }
 pub fn get_state_content<T>(
     frame_id: i64,
