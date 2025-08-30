@@ -544,11 +544,14 @@ pub async fn get_power_levels(room_id: &RoomId) -> AppResult<RoomPowerLevels> {
     let creators = create.creators(&rules.authorization)?;
 
     let content = get_power_levels_event_content(room_id)?;
-    Ok(RoomPowerLevels::new(
+    println!("==============power levels content: {content:#?}");
+    let power_levels = RoomPowerLevels::new(
         content.into(),
         &rules.authorization,
         creators,
-    ))
+    );
+    println!("==============power levels: {power_levels:#?}");
+    Ok(power_levels)
 }
 pub fn get_power_levels_event_content(room_id: &RoomId) -> AppResult<RoomPowerLevelsEventContent> {
     get_state_content::<RoomPowerLevelsEventContent>(
