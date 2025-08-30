@@ -272,7 +272,7 @@ pub fn hash_and_sign_event(
     object: &mut CanonicalJsonObject,
     room_version: &RoomVersionId,
 ) -> AppResult<()> {
-    let room_rules = crate::room::room_rules(room_version)?;
+    let room_rules = crate::room::get_rules(room_version)?;
     signatures::hash_and_sign_event(
         config::get().server_name.as_str(),
         config::keypair(),

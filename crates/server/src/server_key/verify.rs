@@ -51,7 +51,7 @@ pub async fn verify_event(
     room_version: Option<&RoomVersionId>,
 ) -> AppResult<Verified> {
     let room_version = room_version.unwrap_or(&RoomVersionId::V11);
-    let room_rules = crate::room::room_rules(room_version)?;
+    let room_rules = crate::room::get_rules(room_version)?;
     let keys = get_event_keys(event, &room_rules).await?;
     signatures::verify_event(&keys, event, &room_rules).map_err(Into::into)
 }
@@ -61,7 +61,7 @@ pub async fn verify_json(
     room_version: Option<&RoomVersionId>,
 ) -> AppResult<()> {
     let room_version = room_version.unwrap_or(&RoomVersionId::V11);
-    let room_rules = crate::room::room_rules(room_version)?;
+    let room_rules = crate::room::get_rules(room_version)?;
 
     let keys = get_event_keys(event, &room_rules).await?;
     signatures::verify_json(&keys, event).map_err(Into::into)

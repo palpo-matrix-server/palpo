@@ -109,7 +109,7 @@ pub(super) async fn state_at_incoming_resolved(
     }
 
     let state_lock = room::lock_state(room_id).await;
-    let room_rules = crate::room::room_rules(room_version_id)?;
+    let room_rules = crate::room::get_rules(room_version_id)?;
     let result = resolve(
         &room_rules.authorization,
         room_rules

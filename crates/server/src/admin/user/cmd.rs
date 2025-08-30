@@ -1,3 +1,5 @@
+use palpo_core::state::room_version;
+
 use crate::admin::{Context, get_room_info, parse_active_local_user_id, parse_local_user_id};
 use crate::core::{
     OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedUserId,
@@ -582,6 +584,8 @@ pub(super) async fn force_demote(
 ) -> AppResult<()> {
     let user_id = parse_local_user_id(&user_id)?;
     let room_id = crate::room::alias::resolve(&room_id).await?;
+    let room_version = crate::room::get_version(&room_id)?;
+    let room_rule = crate::room::get_rules(&room_version)?;
 
     assert!(user_id.is_local(), "parsed user_id must be a local user");
     let state_lock = crate::room::lock_state(&room_id).await;
@@ -605,7 +609,7 @@ pub(super) async fn force_demote(
     let mut power_levels_content: RoomPowerLevelsEventContent = room_power_levels
         .map(TryInto::try_into)
         .transpose()?
-        .unwrap_or_default();
+        .unwrap_or_else(|| RoomPowerLevelsEventContent::new(&room_rule.authorization));
     power_levels_content.users.remove(&user_id);
 
     let event = timeline::build_and_append_pdu(

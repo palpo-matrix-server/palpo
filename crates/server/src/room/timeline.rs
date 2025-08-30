@@ -552,7 +552,7 @@ pub async fn create_hash_and_sign_event(
             "non-create event for room `{room_id}` of unknown version"
         )));
     };
-    let room_rules = crate::room::room_rules(&room_version_id)?;
+    let room_rules = crate::room::get_rules(&room_version_id)?;
 
     let auth_events = state::get_auth_events(
         room_id,

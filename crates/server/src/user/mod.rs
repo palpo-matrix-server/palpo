@@ -137,6 +137,8 @@ pub async fn full_user_deactivate(
     for room_id in all_joined_rooms {
         let state_lock = room::lock_state(room_id).await;
 
+        let room_version = room::get_version(room_id)?;
+        let room_rules = room::get_rules(&room_version)?;
         let room_power_levels = room::get_power_levels(room_id).await.ok();
 
         let user_can_change_self = room_power_levels.as_ref().is_some_and(|power_levels| {
@@ -150,7 +152,7 @@ pub async fn full_user_deactivate(
             let mut power_levels_content: RoomPowerLevelsEventContent = room_power_levels
                 .map(TryInto::try_into)
                 .transpose()?
-                .unwrap_or_default();
+                .unwrap_or_else(|| RoomPowerLevelsEventContent::new(&room_rules.authorization));
             power_levels_content.users.remove(user_id);
 
             // ignore errors so deactivation doesn't fail

@@ -257,7 +257,7 @@ fn process_to_outlier_pdu<'a>(
         // 1.1. Remove unsigned field
         value.remove("unsigned");
 
-        let room_rules = crate::room::room_rules(room_version_id)?;
+        let room_rules = crate::room::get_rules(room_version_id)?;
         let origin_server_ts = value.get("origin_server_ts").ok_or_else(|| {
             error!("invalid PDU, no origin_server_ts field");
             MatrixError::missing_param("invalid PDU, no origin_server_ts field")
@@ -277,7 +277,7 @@ fn process_to_outlier_pdu<'a>(
             Ok(crate::core::signatures::Verified::Signatures) => {
                 // Redact
                 warn!("Calculated hash does not match: {}", event_id);
-                let rules = crate::room::room_rules(room_version_id)?;
+                let rules = crate::room::get_rules(room_version_id)?;
                 let obj = match canonical_json::redact(value, &rules.redaction, None) {
                     Ok(obj) => obj,
                     Err(_) => return Err(MatrixError::invalid_param("redaction failed").into()),
@@ -457,7 +457,7 @@ pub async fn process_to_timeline_pdu(
     }
     info!("Upgrading {} to timeline pdu", incoming_pdu.event_id);
     let room_version_id = &room::get_version(room_id)?;
-    let room_rules = crate::room::room_rules(room_version_id)?;
+    let room_rules = crate::room::get_rules(room_version_id)?;
 
     // 10. Fetch missing state and auth chain events by calling /state_ids at backwards extremities
     //     doing all the checks in this list starting at 1. These are not timeline events.
@@ -497,7 +497,7 @@ pub async fn process_to_timeline_pdu(
     debug!("Auth check succeeded");
 
     debug!("Gathering auth events");
-    let room_rules = crate::room::room_rules(room_version_id)?;
+    let room_rules = crate::room::get_rules(room_version_id)?;
     let auth_events = state::get_auth_events(
         room_id,
         &incoming_pdu.event_ty,
@@ -677,7 +677,7 @@ async fn resolve_state(
         .collect();
     debug!("Resolving state");
 
-    let room_rules = crate::room::room_rules(room_version_id)?;
+    let room_rules = crate::room::get_rules(room_version_id)?;
     let state = match crate::core::state::resolve(
         &room_rules.authorization,
         room_rules
