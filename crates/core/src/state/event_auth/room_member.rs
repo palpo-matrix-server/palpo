@@ -449,7 +449,7 @@ where
         return if membership_is_invite_or_join || membership_is_knock {
             Ok(())
         } else {
-            Err(StateError::other(
+            Err(StateError::forbidden(
                 "cannot leave if not joined, invited or knocked",
             ))
         };
@@ -457,7 +457,7 @@ where
 
     // Since v1, if the sender’s current membership state is not join, reject.
     if sender_membership != MembershipState::Join {
-        return Err(StateError::other("cannot kick if sender is not joined"));
+        return Err(StateError::forbidden("cannot kick if sender is not joined"));
     }
 
     let creators = room_create_event.creators(rules)?;
@@ -474,7 +474,7 @@ where
     if current_target_user_membership == MembershipState::Ban
         && sender_power_level < ban_power_level
     {
-        return Err(StateError::other(
+        return Err(StateError::forbidden(
             "sender does not have enough power to unban",
         ));
     }
@@ -491,7 +491,7 @@ where
     if sender_power_level >= kick_power_level && target_user_power_level < sender_power_level {
         Ok(())
     } else {
-        Err(StateError::other(
+        Err(StateError::forbidden(
             "sender does not have enough power to kick target user",
         ))
     }
@@ -537,7 +537,7 @@ where
     if sender_power_level >= ban_power_level && target_user_power_level < sender_power_level {
         Ok(())
     } else {
-        Err(StateError::other(
+        Err(StateError::forbidden(
             "sender does not have enough power to ban target user",
         ))
     }
@@ -564,14 +564,14 @@ where
     if join_rule != JoinRuleKind::Knock
         && (rules.knock_restricted_join_rule && !matches!(join_rule, JoinRuleKind::KnockRestricted))
     {
-        return Err(StateError::other(
+        return Err(StateError::forbidden(
             "join rule is not set to knock or knock_restricted, knocking is not allowed",
         ));
     }
 
     // Since v7, if sender does not match state_key, reject.
     if room_member_event.sender() != target_user {
-        return Err(StateError::other(
+        return Err(StateError::forbidden(
             "cannot make another user knock, sender does not match target user",
         ));
     }
@@ -588,7 +588,7 @@ where
     ) {
         Ok(())
     } else {
-        Err(StateError::other(
+        Err(StateError::forbidden(
             "cannot knock if user is banned, invited or joined",
         ))
     }

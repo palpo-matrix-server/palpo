@@ -342,7 +342,7 @@ where
     if !federate
         && room_create_event.sender().server_name() != incoming_event.sender().server_name()
     {
-        return Err(StateError::other(
+        return Err(StateError::forbidden(
             "room is not federated and event's sender domain \
             does not match `m.room.create` event's sender domain",
         ));
@@ -359,7 +359,7 @@ where
         //
         // v1-v5, if sender's domain doesn't match state_key, reject.
         if incoming_event.state_key() != Some(sender.server_name().as_str()) {
-            return Err(StateError::other(
+            return Err(StateError::forbidden(
                 "server name of the `state_key` of `m.room.aliases` event \
                 does not match the server name of the sender",
             ));
@@ -380,7 +380,7 @@ where
     let sender_membership = fetch_state.user_membership(sender).await?;
 
     if sender_membership != MembershipState::Join {
-        return Err(StateError::other("sender's membership is not `join`"));
+        return Err(StateError::forbidden("sender's membership is not `join`"));
     }
 
     let creators = room_create_event.creators(rules)?;
@@ -397,7 +397,7 @@ where
             .get_as_int_or_default(RoomPowerLevelsIntField::Invite, rules)?;
 
         if sender_power_level < invite_power_level {
-            return Err(StateError::other(
+            return Err(StateError::forbidden(
                 "sender does not have enough power to send invites in this room",
             ));
         }
@@ -414,7 +414,7 @@ where
         rules,
     )?;
     if sender_power_level < event_type_power_level {
-        return Err(StateError::other(format!(
+        return Err(StateError::forbidden(format!(
             "sender does not have enough power to send event of type `{}`",
             incoming_event.event_type()
         )));
@@ -427,7 +427,7 @@ where
         .is_some_and(|k| k.starts_with('@'))
         && incoming_event.state_key() != Some(incoming_event.sender().as_str())
     {
-        return Err(StateError::other(
+        return Err(StateError::forbidden(
             "sender cannot send event with `state_key` matching another user's ID",
         ));
     }

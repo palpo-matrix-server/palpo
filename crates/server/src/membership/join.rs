@@ -452,8 +452,7 @@ pub async fn join_room(
         once(join_event_id.borrow()),
         &state_lock,
     )
-    .await
-    .unwrap();
+    .await?;
     let frame_id_after_join = state::append_to_state(&join_pdu)?;
     drop(event_guard);
 

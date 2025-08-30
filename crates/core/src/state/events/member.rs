@@ -89,17 +89,15 @@ impl RoomMemberEventContent<'_> {
 
     /// If this is a `join` event, the ID of a user on the homeserver that authorized it.
     pub(crate) fn join_authorised_via_users_server(&self) -> StateResult<Option<OwnedUserId>> {
-        #[derive(Deserialize)]
+        #[derive(Deserialize, Default)]
         struct RoomMemberContentJoinAuthorizedViaUsersServer {
             join_authorised_via_users_server: Option<OwnedUserId>,
         }
 
         let content: RoomMemberContentJoinAuthorizedViaUsersServer = from_raw_json_value(self.0)
-            .map_err(|err: serde_json::Error| {
-                format!(
-                "invalid `join_authorised_via_users_server` field in `m.room.member` event: {err}"
-            )
-            })?;
+            .map_err(|e: serde_json::Error| {
+                tracing::error!("invalid `join_authorised_via_users_server` field in `m.room.member` event: {e}")
+            }).unwrap_or_default();
         Ok(content.join_authorised_via_users_server)
     }
 
