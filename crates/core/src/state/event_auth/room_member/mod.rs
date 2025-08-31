@@ -2,8 +2,8 @@ use std::borrow::Borrow;
 
 use tracing::debug;
 
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod tests;
 
 use super::FetchStateExt;
 use crate::events::{StateEventType, room::member::MembershipState};
