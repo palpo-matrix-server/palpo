@@ -4,6 +4,8 @@ use std::time::{Duration, Instant};
 
 use base64::{Engine as _, engine::general_purpose};
 use diesel::prelude::*;
+use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
+use reqwest_retry::{RetryTransientMiddleware, policies::ExponentialBackoff};
 use serde::Deserialize;
 use serde_json::value::to_raw_value;
 use tokio::sync::{Mutex, Semaphore, mpsc};
@@ -116,8 +118,8 @@ pub fn default_client() -> reqwest::Client {
 }
 
 /// Returns a client used for resolving .well-knowns
-pub fn federation_client() -> reqwest::Client {
-    static FEDERATION_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+pub fn federation_client() -> ClientWithMiddleware {
+    static FEDERATION_CLIENT: OnceLock<ClientWithMiddleware> = OnceLock::new();
     FEDERATION_CLIENT
         .get_or_init(|| {
             let conf = crate::config::get();
@@ -129,12 +131,19 @@ pub fn federation_client() -> reqwest::Client {
             //     .as_ref()
             //     .map(|secret| jsonwebtoken::DecodingKey::from_secret(secret.as_bytes()));
 
-            reqwest_client_builder(conf)
+            let retry_policy = ExponentialBackoff::builder()
+                .retry_bounds(Duration::from_secs(5), Duration::from_secs(900))
+                .build_with_max_retries(5);
+
+            let client = reqwest_client_builder(conf)
                 .expect("build reqwest client failed")
                 .dns_resolver(Arc::new(Resolver::new(tls_name_override.clone())))
                 .timeout(Duration::from_secs(2 * 60))
                 .build()
-                .expect("build reqwest client failed")
+                .expect("build reqwest client failed");
+            ClientBuilder::new(client)
+                .with(RetryTransientMiddleware::new_with_policy(retry_policy))
+                .build()
         })
         .clone()
 }

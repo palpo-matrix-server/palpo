@@ -91,6 +91,8 @@ pub enum AppError {
     Clap(#[from] clap::Error),
     #[error("SystemTimeError: `{0}`")]
     SystemTime(#[from] std::time::SystemTimeError),
+    #[error("ReqwestMiddlewareError: `{0}`")]
+    ReqwestMiddleware(#[from] reqwest_middleware::Error),
 }
 
 impl AppError {
