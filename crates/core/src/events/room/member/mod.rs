@@ -445,7 +445,7 @@ pub struct RedactedThirdPartyInvite {
 
 /// A block of content which has been signed, which servers can use to verify a
 /// third party invitation.
-#[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
+#[derive(ToSchema, Serialize, Deserialize, Clone, Debug)]
 pub struct SignedContent {
     /// The invited Matrix user ID.
     ///
@@ -454,6 +454,7 @@ pub struct SignedContent {
 
     /// A single signature from the verifying server, in the format specified by
     /// the Signing Events section of the server-server API.
+    #[salvo(schema(value_type = Object, additional_properties = true))]
     pub signatures: ServerSignatures,
 
     /// The token property of the containing `third_party_invite` object.
@@ -462,11 +463,7 @@ pub struct SignedContent {
 
 impl SignedContent {
     /// Creates a new `SignedContent` with the given mxid, signature and token.
-    pub fn new(
-        signatures: ServerSignatures,
-        mxid: OwnedUserId,
-        token: String,
-    ) -> Self {
+    pub fn new(signatures: ServerSignatures, mxid: OwnedUserId, token: String) -> Self {
         Self {
             mxid,
             signatures,

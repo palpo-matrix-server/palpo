@@ -756,7 +756,7 @@ fn rejected_auth_event() {
         event_id: event_id("IPOWER"),
         room_id: Some(room_id().to_owned()),
         sender: alice().to_owned(),
-        origin_server_ts: UnixMillis(uint!(3)),
+        origin_server_ts: UnixMillis(3),
         state_key: Some(String::new()),
         kind: TimelineEventType::RoomPowerLevels,
         content: to_raw_json_value(&json!({ "users": { alice(): 100 } })).unwrap(),
@@ -764,7 +764,7 @@ fn rejected_auth_event() {
         unsigned: BTreeMap::new(),
         auth_events: vec![event_id("CREATE"), event_id("IMA")],
         prev_events: vec![event_id("IMA")],
-        depth: u0,
+        depth: 0,
         hashes: EventHash {
             sha256: "".to_owned(),
         },

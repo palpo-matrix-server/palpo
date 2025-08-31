@@ -245,12 +245,12 @@ pub enum RoomKeyWithheldCode {
 #[cfg(test)]
 mod tests {
     use assert_matches2::assert_matches;
-    use palpo_common::{EventEncryptionAlgorithm, owned_room_id, serde::Base64};
     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
 
     use super::{
         RoomKeyWithheldCodeInfo, RoomKeyWithheldSessionData, ToDeviceRoomKeyWithheldEventContent,
     };
+    use crate::{EventEncryptionAlgorithm, owned_room_id, serde::Base64};
 
     const PUBLIC_KEY: &[u8] = b"key";
     const BASE64_ENCODED_PUBLIC_KEY: &str = "a2V5";

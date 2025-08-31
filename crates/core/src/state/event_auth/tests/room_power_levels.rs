@@ -2,7 +2,6 @@ use std::{collections::HashSet, sync::Arc};
 
 use crate::events::{TimelineEventType, room::power_levels::UserPowerLevel};
 use as_variant::as_variant;
-use js_int::int;
 use palpo_core::room_version_rules::AuthorizationRules;
 use serde_json::{
     Value as JsonValue, json,

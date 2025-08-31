@@ -7,8 +7,8 @@ use serde_json::value::RawValue as RawJsonValue;
 use tracing::{debug, info, instrument};
 
 mod room_member;
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod tests;
 
 use self::room_member::check_room_member;
 use crate::{

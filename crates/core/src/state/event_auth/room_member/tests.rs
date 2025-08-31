@@ -7,7 +7,7 @@ use crate::events::{
     },
 };
 use palpo_core::{
-    Signatures, room_version_rules::AuthorizationRules, serde::Raw,
+    Signatures, room_version_rules::AuthorizationRules, serde::RawJson,
     third_party_invite::IdentityServerBase64PublicKey,
 };
 use serde_json::{json, value::to_raw_value as to_raw_json_value};
@@ -47,7 +47,8 @@ async fn missing_state_key() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -76,7 +77,8 @@ async fn missing_membership() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -105,7 +107,8 @@ async fn join_after_create_creator_match() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap();
 }
 
@@ -134,7 +137,8 @@ async fn join_after_create_creator_mismatch() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -163,7 +167,8 @@ async fn join_after_create_sender_match() {
         &AuthorizationRules::V11,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap();
 }
 
@@ -192,7 +197,8 @@ async fn join_after_create_sender_mismatch() {
         &AuthorizationRules::V11,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -221,7 +227,8 @@ async fn join_sender_state_key_mismatch() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -260,7 +267,8 @@ async fn join_banned() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -299,7 +307,8 @@ async fn join_invite_join_rule_already_joined() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap();
 }
 
@@ -348,7 +357,8 @@ async fn join_knock_join_rule_already_invited() {
         &AuthorizationRules::V7,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap();
 }
 
@@ -389,7 +399,8 @@ async fn join_knock_join_rule_not_supported() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -433,7 +444,8 @@ async fn join_restricted_join_rule_not_supported() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -477,7 +489,8 @@ async fn join_knock_restricted_join_rule_not_supported() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -520,7 +533,8 @@ async fn join_restricted_join_rule_already_joined() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap();
 }
 
@@ -572,7 +586,8 @@ async fn join_knock_restricted_join_rule_already_invited() {
         &AuthorizationRules::V10,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap();
 }
 
@@ -615,7 +630,8 @@ async fn join_restricted_join_rule_missing_join_authorised_via_users_server() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -661,7 +677,8 @@ async fn join_restricted_join_rule_authorised_via_user_not_in_room() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -716,7 +733,8 @@ async fn join_restricted_join_rule_authorised_via_user_with_not_enough_power() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -792,7 +810,8 @@ async fn join_restricted_join_rule_authorised_via_user() {
             &AuthorizationRules::V8,
             room_create_event,
             fetch_state,
-        ).await
+        )
+        .await
         .unwrap();
     }
 }
@@ -842,7 +861,8 @@ async fn join_public_join_rule() {
             &AuthorizationRules::V8,
             room_create_event.clone(),
             fetch_state,
-        ).await
+        )
+        .await
         .unwrap();
     }
 }
@@ -854,12 +874,11 @@ async fn invite_via_third_party_invite_banned() {
     let mut content = RoomMemberEventContent::new(MembershipState::Invite);
     content.third_party_invite = Some(ThirdPartyInvite::new(
         "e..@p..".to_owned(),
-        Raw::new(&SignedContent::new(
+        SignedContent::new(
             Signatures::new(),
             ella().to_owned(),
             "somerandomtoken".to_owned(),
-        ))
-        .unwrap(),
+        ),
     ));
 
     let incoming_event = to_pdu_event(
@@ -896,7 +915,8 @@ async fn invite_via_third_party_invite_banned() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -932,7 +952,8 @@ async fn invite_via_third_party_invite_missing_signed() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -971,7 +992,8 @@ async fn invite_via_third_party_invite_missing_mxid() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -1022,12 +1044,11 @@ async fn invite_via_third_party_invite_mxid_mismatch() {
     let mut content = RoomMemberEventContent::new(MembershipState::Invite);
     content.third_party_invite = Some(ThirdPartyInvite::new(
         "z..@p..".to_owned(),
-        Raw::new(&SignedContent::new(
+        SignedContent::new(
             Signatures::new(),
             zara().to_owned(),
             "somerandomtoken".to_owned(),
-        ))
-        .unwrap(),
+        ),
     ));
 
     let incoming_event = to_pdu_event(
@@ -1051,7 +1072,8 @@ async fn invite_via_third_party_invite_mxid_mismatch() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -1062,12 +1084,11 @@ async fn invite_via_third_party_invite_missing_room_third_party_invite() {
     let mut content = RoomMemberEventContent::new(MembershipState::Invite);
     content.third_party_invite = Some(ThirdPartyInvite::new(
         "e..@p..".to_owned(),
-        Raw::new(&SignedContent::new(
+        SignedContent::new(
             Signatures::new(),
             ella().to_owned(),
             "somerandomtoken".to_owned(),
-        ))
-        .unwrap(),
+        ),
     ));
 
     let incoming_event = to_pdu_event(
@@ -1109,7 +1130,8 @@ async fn invite_via_third_party_invite_missing_room_third_party_invite() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -1120,12 +1142,11 @@ async fn invite_via_third_party_invite_room_third_party_invite_sender_mismatch()
     let mut content = RoomMemberEventContent::new(MembershipState::Invite);
     content.third_party_invite = Some(ThirdPartyInvite::new(
         "e..@p..".to_owned(),
-        Raw::new(&SignedContent::new(
+        SignedContent::new(
             Signatures::new(),
             ella().to_owned(),
             "somerandomtoken".to_owned(),
-        ))
-        .unwrap(),
+        ),
     ));
 
     let incoming_event = to_pdu_event(
@@ -1151,7 +1172,8 @@ async fn invite_via_third_party_invite_room_third_party_invite_sender_mismatch()
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -1194,7 +1216,8 @@ async fn invite_via_third_party_invite_with_room_missing_signatures() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -1238,7 +1261,8 @@ async fn invite_via_third_party_invite_with_room_empty_signatures() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -1286,7 +1310,8 @@ async fn invite_via_third_party_invite_with_wrong_signature() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -1334,7 +1359,8 @@ async fn invite_via_third_party_invite_with_wrong_signing_algorithm() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -1387,7 +1413,8 @@ async fn invite_via_third_party_invite() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap();
 }
 
@@ -1416,7 +1443,8 @@ async fn invite_sender_not_joined() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -1455,7 +1483,8 @@ async fn invite_banned() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -1484,7 +1513,8 @@ async fn invite_already_joined() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -1523,7 +1553,8 @@ async fn invite_sender_not_enough_power() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -1552,7 +1583,8 @@ async fn invite() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap();
 }
 
@@ -1581,7 +1613,8 @@ async fn leave_after_leave() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -1610,7 +1643,8 @@ async fn leave_after_join() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap();
 }
 
@@ -1649,7 +1683,8 @@ async fn leave_after_invite() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap();
 }
 
@@ -1688,7 +1723,8 @@ async fn leave_after_knock() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap();
 }
 
@@ -1728,7 +1764,8 @@ async fn leave_after_knock_not_supported() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -1757,7 +1794,8 @@ async fn leave_kick_sender_left() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -1796,7 +1834,8 @@ async fn leave_unban_not_enough_power() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -1835,7 +1874,8 @@ async fn leave_unban() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap();
 }
 
@@ -1864,7 +1904,8 @@ async fn leave_kick_not_enough_power() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -1910,7 +1951,8 @@ async fn leave_kick_greater_power() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -1956,7 +1998,8 @@ async fn leave_kick_same_power() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -1985,7 +2028,8 @@ async fn leave_kick() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap();
 }
 
@@ -2014,7 +2058,8 @@ async fn ban_sender_not_joined() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -2043,7 +2088,8 @@ async fn ban_not_enough_power() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -2089,7 +2135,8 @@ async fn ban_greater_power() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -2135,7 +2182,8 @@ async fn ban_same_power() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -2164,7 +2212,8 @@ async fn ban() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap();
 }
 
@@ -2233,7 +2282,8 @@ async fn knock_knock_join_rule() {
         &AuthorizationRules::V7,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap();
 }
 
@@ -2272,7 +2322,8 @@ async fn knock_knock_join_rule_not_supported() {
         &AuthorizationRules::V3,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -2314,7 +2365,8 @@ async fn knock_knock_restricted_join_rule() {
         &AuthorizationRules::V10,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap();
 }
 
@@ -2356,7 +2408,8 @@ async fn knock_knock_restricted_join_rule_not_supported() {
         &AuthorizationRules::V3,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -2395,7 +2448,8 @@ async fn knock_sender_state_key_mismatch() {
         &AuthorizationRules::V7,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -2443,7 +2497,8 @@ async fn knock_after_ban() {
         &AuthorizationRules::V7,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -2491,7 +2546,8 @@ async fn knock_after_invite() {
         &AuthorizationRules::V7,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }
 
@@ -2530,6 +2586,7 @@ async fn knock_after_join() {
         &AuthorizationRules::V7,
         room_create_event,
         fetch_state,
-    ).await
+    )
+    .await
     .unwrap_err();
 }

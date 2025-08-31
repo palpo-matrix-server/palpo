@@ -4,8 +4,8 @@
 
 use std::ops::Deref;
 
-use serde::{Deserialize, Serialize};
 use salvo::oapi::ToSchema;
+use serde::{Deserialize, Serialize};
 
 use crate::serde::{
     Base64, Base64DecodeError,

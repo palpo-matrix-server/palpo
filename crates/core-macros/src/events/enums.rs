@@ -45,7 +45,9 @@ impl EventKind {
         if !self.event_variations().contains(&variation) {
             return Err(syn::Error::new(
                 Span::call_site(),
-                format!("({self:?}, {variation:?}) is not a valid event kind / variation combination"),
+                format!(
+                    "({self:?}, {variation:?}) is not a valid event kind / variation combination"
+                ),
             ));
         }
 

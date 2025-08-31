@@ -4,8 +4,8 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use serde::{Deserialize, Serialize};
 use salvo::oapi::ToSchema;
+use serde::{Deserialize, Serialize};
 
 use super::{
     Base64PublicKeyOrDeviceId, DeviceId, KeyName, OwnedServerName, OwnedSigningKeyId, OwnedUserId,
@@ -27,7 +27,13 @@ pub type EntitySignatures<K> = BTreeMap<OwnedSigningKeyId<K>, String>;
 /// signatures.insert(server_name, key_identifier, signature.into());
 /// ```
 #[derive(ToSchema, Debug, Serialize, Deserialize)]
-#[serde(transparent)]
+#[serde(
+    transparent,
+    bound(
+        serialize = "E: Serialize",
+        deserialize = "E: serde::de::DeserializeOwned"
+    )
+)]
 pub struct Signatures<E: Ord, K: KeyName + ?Sized>(BTreeMap<E, EntitySignatures<K>>);
 
 impl<E: Ord, K: KeyName + ?Sized> Signatures<E, K> {
@@ -184,7 +190,7 @@ mod tests {
         let mut signatures = Signatures::new();
         let server_name = owned_server_name!("example.org");
         let signature = "YbJva03ihSj5mPk+CHMJKUKlCXCPFXjXOK6VqBnN9nA2evksQcTGn6hwQfrgRHIDDXO2le49x7jnWJHMJrJoBQ";
-        signatures.insert_signature(server_name, key_identifier, signature.into());
+        signatures.insert(server_name, key_identifier, signature.into());
 
         let mut more_signatures = Signatures::new();
         more_signatures.extend(signatures.clone());

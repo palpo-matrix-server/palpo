@@ -623,7 +623,10 @@ fn expand_json_castable_impl(
                 .filter(|v| v.is_json_castable_to(variation))
                 // All enum variations can also be cast from other event enums from the same
                 // variation.
-                .chain((event_kind != kind && event_enum_variations.contains(&variation)).then_some(&variation))
+                .chain(
+                    (event_kind != kind && event_enum_variations.contains(&variation))
+                        .then_some(&variation),
+                )
                 .map(|variation| {
                     let other_ident = event_kind
                         .to_event_enum_ident(*variation)

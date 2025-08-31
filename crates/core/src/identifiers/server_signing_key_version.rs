@@ -1,4 +1,3 @@
-use salvo::oapi::ToSchema;
 
 use crate::macros::IdDst;
 use crate::{IdParseError, KeyName};
@@ -13,7 +12,7 @@ use crate::{IdParseError, KeyName};
 ///
 /// [homeserver signing key]: https://spec.matrix.org/latest/server-server-api/#retrieving-server-keys
 #[repr(transparent)]
-#[derive(ToSchema, PartialEq, Eq, PartialOrd, Ord, Hash, IdDst)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, IdDst)]
 #[palpo_id(
     validate = palpo_identifiers_validation::server_signing_key_version::validate,
 )]

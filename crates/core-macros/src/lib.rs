@@ -7,7 +7,8 @@
 
 use identifiers::expand_id_dst;
 use palpo_identifiers_validation::{
-    device_key_id, event_id, mxc_uri, room_alias_id, room_id, room_version_id, server_name, user_id,
+    device_key_id, event_id, mxc_uri, room_alias_id, room_id, room_version_id, server_name,
+    server_signing_key_version, user_id,
 };
 use proc_macro::TokenStream;
 use quote::quote;
@@ -404,6 +405,22 @@ pub fn room_version_id(input: TokenStream) -> TokenStream {
 
     let output = quote! {
         <palpo_core::RoomVersionId as ::std::convert::TryFrom<&str>>::try_from(#id).unwrap()
+    };
+
+    output.into()
+}
+
+/// Compile-time checked `ServerSigningKeyVersion` construction.
+#[proc_macro]
+pub fn server_signing_key_version(input: TokenStream) -> TokenStream {
+    let IdentifierInput { dollar_crate, id } = parse_macro_input!(input as IdentifierInput);
+    assert!(
+        server_signing_key_version::validate(&id.value()).is_ok(),
+        "Invalid server_signing_key_version"
+    );
+
+    let output = quote! {
+        <&#dollar_crate::ServerSigningKeyVersion as ::std::convert::TryFrom<&str>>::try_from(#id).unwrap()
     };
 
     output.into()

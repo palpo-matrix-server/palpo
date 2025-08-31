@@ -96,8 +96,11 @@ impl RoomMemberEventContent<'_> {
 
         let content: RoomMemberContentJoinAuthorizedViaUsersServer = from_raw_json_value(self.0)
             .map_err(|e: serde_json::Error| {
-                tracing::error!("invalid `join_authorised_via_users_server` field in `m.room.member` event: {e}")
-            }).unwrap_or_default();
+                tracing::error!(
+                    "invalid `join_authorised_via_users_server` field in `m.room.member` event: {e}"
+                )
+            })
+            .unwrap_or_default();
         Ok(content.join_authorised_via_users_server)
     }
 

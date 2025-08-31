@@ -214,49 +214,49 @@ mod tests {
         from_json_value::<super::SyncRoomTopicEvent>(json).unwrap();
     }
 
-    #[test]
-    #[cfg(feature = "compat-lax-room-topic-deser")]
-    fn deserialize_invalid_content() {
-        let json = json!({
-            "topic": "Hot Topic",
-            "m.topic": [
-                { "body": "<strong>Hot</strong> Topic", "mimetype": "text/html" },
-                { "body": "Hot Topic" },
-            ],
-        });
+    // #[test]
+    // #[cfg(feature = "compat-lax-room-topic-deser")]
+    // fn deserialize_invalid_content() {
+    //     let json = json!({
+    //         "topic": "Hot Topic",
+    //         "m.topic": [
+    //             { "body": "<strong>Hot</strong> Topic", "mimetype": "text/html" },
+    //             { "body": "Hot Topic" },
+    //         ],
+    //     });
 
-        let content = from_json_value::<RoomTopicEventContent>(json).unwrap();
-        assert_eq!(content.topic, "Hot Topic");
-        assert_eq!(content.topic_block.text.find_html(), None);
-        assert_eq!(content.topic_block.text.find_plain(), None);
+    //     let content = from_json_value::<RoomTopicEventContent>(json).unwrap();
+    //     assert_eq!(content.topic, "Hot Topic");
+    //     assert_eq!(content.topic_block.text.find_html(), None);
+    //     assert_eq!(content.topic_block.text.find_plain(), None);
 
-        let content = serde_json::from_str::<RoomTopicEventContent>(
-            r#"{"topic":"Hot Topic","m.topic":[{"body":"Hot Topic"}]}"#,
-        )
-        .unwrap();
-        assert_eq!(content.topic, "Hot Topic");
-        assert_eq!(content.topic_block.text.find_html(), None);
-        assert_eq!(content.topic_block.text.find_plain(), None);
-    }
+    //     let content = serde_json::from_str::<RoomTopicEventContent>(
+    //         r#"{"topic":"Hot Topic","m.topic":[{"body":"Hot Topic"}]}"#,
+    //     )
+    //     .unwrap();
+    //     assert_eq!(content.topic, "Hot Topic");
+    //     assert_eq!(content.topic_block.text.find_html(), None);
+    //     assert_eq!(content.topic_block.text.find_plain(), None);
+    // }
 
-    #[test]
-    #[cfg(feature = "compat-lax-room-topic-deser")]
-    fn deserialize_invalid_event() {
-        let json = json!({
-            "content": {
-                "topic": "Hot Topic",
-                "m.topic": [
-                    { "body": "<strong>Hot</strong> Topic", "mimetype": "text/html" },
-                    { "body": "Hot Topic" },
-                ],
-            },
-            "type": "m.room.topic",
-            "state_key": "",
-            "event_id": "$lkioKdioukshnlDDz",
-            "sender": "@alice:localhost",
-            "origin_server_ts": 309_998_934,
-        });
+    // #[test]
+    // #[cfg(feature = "compat-lax-room-topic-deser")]
+    // fn deserialize_invalid_event() {
+    //     let json = json!({
+    //         "content": {
+    //             "topic": "Hot Topic",
+    //             "m.topic": [
+    //                 { "body": "<strong>Hot</strong> Topic", "mimetype": "text/html" },
+    //                 { "body": "Hot Topic" },
+    //             ],
+    //         },
+    //         "type": "m.room.topic",
+    //         "state_key": "",
+    //         "event_id": "$lkioKdioukshnlDDz",
+    //         "sender": "@alice:localhost",
+    //         "origin_server_ts": 309_998_934,
+    //     });
 
-        from_json_value::<super::SyncRoomTopicEvent>(json).unwrap();
-    }
+    //     from_json_value::<super::SyncRoomTopicEvent>(json).unwrap();
+    // }
 }

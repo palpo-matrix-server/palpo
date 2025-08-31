@@ -115,7 +115,7 @@ macro_rules! owned_device_id {
 pub mod __private_macros {
     pub use crate::macros::{
         device_key_id, event_id, mxc_uri, room_alias_id, room_id, room_version_id, server_name,
-        user_id,
+        server_signing_key_version, user_id,
     };
 }
 
@@ -188,6 +188,14 @@ macro_rules! owned_room_id {
 macro_rules! room_version_id {
     ($s:literal) => {
         $crate::__private_macros::room_version_id!($crate, $s)
+    };
+}
+
+/// Compile-time checked [`ServerSigningKeyVersion`] construction.
+#[macro_export]
+macro_rules! server_signing_key_version {
+    ($s:literal) => {
+        $crate::__private_macros::server_signing_key_version!($crate, $s)
     };
 }
 

@@ -432,7 +432,6 @@ mod tests {
     use std::collections::BTreeMap;
 
     use assert_matches2::assert_matches;
-    use js_int::int;
     use serde_json::{
         from_str as from_json_str, json, to_string as to_json_string, to_value as to_json_value,
     };
@@ -495,9 +494,9 @@ mod tests {
         expected.insert(
             "bar".into(),
             CanonicalJsonValue::Array(vec![
-                CanonicalJsonValue::Integer(int!(0)),
-                CanonicalJsonValue::Integer(int!(1)),
-                CanonicalJsonValue::Integer(int!(2)),
+                CanonicalJsonValue::Integer(0),
+                CanonicalJsonValue::Integer(1),
+                CanonicalJsonValue::Integer(2),
             ]),
         );
 
@@ -525,9 +524,9 @@ mod tests {
         expected.insert(
             "bar".into(),
             CanonicalJsonValue::Array(vec![
-                CanonicalJsonValue::Integer(int!(0)),
-                CanonicalJsonValue::Integer(int!(1)),
-                CanonicalJsonValue::Integer(int!(2)),
+                CanonicalJsonValue::Integer(0),
+                CanonicalJsonValue::Integer(1),
+                CanonicalJsonValue::Integer(2),
             ]),
         );
 
