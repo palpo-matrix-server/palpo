@@ -1,12 +1,12 @@
 //! Types for the [`m.room.third_party_invite`] event.
 //!
 //! [`m.room.third_party_invite`]: https://spec.matrix.org/latest/client-server-api/#mroomthird_party_invite
-
-use crate::macros::EventContent;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::macros::EventContent;
 use crate::serde::Base64;
+use crate::third_party_invite::IdentityServerBase64PublicKey;
 
 /// The content of an `m.room.third_party_invite` event.
 ///
@@ -29,8 +29,8 @@ pub struct RoomThirdPartyInviteEventContent {
     pub key_validity_url: String,
 
     /// A base64-encoded Ed25519 key with which the token must be signed.
-    #[serde(default = "Base64::empty")]
-    pub public_key: Base64,
+    #[serde(default = "empty_identity_server_base64_public_key")]
+    pub public_key: IdentityServerBase64PublicKey,
 
     /// Keys with which the token may be signed.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -40,7 +40,11 @@ pub struct RoomThirdPartyInviteEventContent {
 impl RoomThirdPartyInviteEventContent {
     /// Creates a new `RoomThirdPartyInviteEventContent` with the given display
     /// name, key validity url and public key.
-    pub fn new(display_name: String, key_validity_url: String, public_key: Base64) -> Self {
+    pub fn new(
+        display_name: String,
+        key_validity_url: String,
+        public_key: IdentityServerBase64PublicKey,
+    ) -> Self {
         Self {
             display_name,
             key_validity_url,
@@ -74,4 +78,9 @@ impl PublicKey {
             public_key,
         }
     }
+}
+
+/// Generate an empty [`IdentityServerBase64PublicKey`].
+fn empty_identity_server_base64_public_key() -> IdentityServerBase64PublicKey {
+    IdentityServerBase64PublicKey(String::new())
 }

@@ -574,7 +574,7 @@ fn expand_accessor_methods(
 fn expand_json_castable_impl(
     ident: &Ident,
     kind: EventKind,
-    var: EventVariation,
+    variation: EventVariation,
     palpo_core: &TokenStream,
 ) -> syn::Result<Option<TokenStream>> {
     // All event types are represented as objects in JSON.
@@ -595,9 +595,9 @@ fn expand_json_castable_impl(
             event_variations
                 .iter()
                 // Filter variations that can't be cast from.
-                .filter(|variation| variation.is_json_castable_to(var))
+                .filter(|v| v.is_json_castable_to(variation))
                 // All enum variations can also be cast from event structs from the same variation.
-                .chain(event_variations.contains(&var).then_some(&var))
+                .chain(event_variations.contains(&variation).then_some(&variation))
                 .map(|variation| {
                     let EventWithBounds { type_with_generics, impl_generics, where_clause } =
                         event_kind.to_event_with_bounds(*variation, palpo_core)?;
@@ -620,10 +620,10 @@ fn expand_json_castable_impl(
             event_enum_variations
                 .iter()
                 // Filter variations that can't be cast from.
-                .filter(|variation| variation.is_json_castable_to(var))
+                .filter(|v| v.is_json_castable_to(variation))
                 // All enum variations can also be cast from other event enums from the same
                 // variation.
-                .chain((event_kind != kind && event_enum_variations.contains(&var)).then_some(&var))
+                .chain((event_kind != kind && event_enum_variations.contains(&variation)).then_some(&variation))
                 .map(|variation| {
                     let other_ident = event_kind
                         .to_event_enum_ident(*variation)

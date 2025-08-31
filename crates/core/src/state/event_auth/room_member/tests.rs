@@ -22,8 +22,8 @@ use crate::{
     },
 };
 
-#[test]
-fn missing_state_key() {
+#[tokio::test]
+async fn missing_state_key() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -47,12 +47,12 @@ fn missing_state_key() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn missing_membership() {
+#[tokio::test]
+async fn missing_membership() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -76,12 +76,12 @@ fn missing_membership() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn join_after_create_creator_match() {
+#[tokio::test]
+async fn join_after_create_creator_match() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -105,12 +105,12 @@ fn join_after_create_creator_match() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap();
 }
 
-#[test]
-fn join_after_create_creator_mismatch() {
+#[tokio::test]
+async fn join_after_create_creator_mismatch() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -134,12 +134,12 @@ fn join_after_create_creator_mismatch() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn join_after_create_sender_match() {
+#[tokio::test]
+async fn join_after_create_sender_match() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -163,12 +163,12 @@ fn join_after_create_sender_match() {
         &AuthorizationRules::V11,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap();
 }
 
-#[test]
-fn join_after_create_sender_mismatch() {
+#[tokio::test]
+async fn join_after_create_sender_mismatch() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -192,12 +192,12 @@ fn join_after_create_sender_mismatch() {
         &AuthorizationRules::V11,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn join_sender_state_key_mismatch() {
+#[tokio::test]
+async fn join_sender_state_key_mismatch() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -221,12 +221,12 @@ fn join_sender_state_key_mismatch() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn join_banned() {
+#[tokio::test]
+async fn join_banned() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -260,12 +260,12 @@ fn join_banned() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn join_invite_join_rule_already_joined() {
+#[tokio::test]
+async fn join_invite_join_rule_already_joined() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -299,12 +299,12 @@ fn join_invite_join_rule_already_joined() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap();
 }
 
-#[test]
-fn join_knock_join_rule_already_invited() {
+#[tokio::test]
+async fn join_knock_join_rule_already_invited() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -348,12 +348,12 @@ fn join_knock_join_rule_already_invited() {
         &AuthorizationRules::V7,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap();
 }
 
-#[test]
-fn join_knock_join_rule_not_supported() {
+#[tokio::test]
+async fn join_knock_join_rule_not_supported() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -389,12 +389,12 @@ fn join_knock_join_rule_not_supported() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn join_restricted_join_rule_not_supported() {
+#[tokio::test]
+async fn join_restricted_join_rule_not_supported() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -433,12 +433,12 @@ fn join_restricted_join_rule_not_supported() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn join_knock_restricted_join_rule_not_supported() {
+#[tokio::test]
+async fn join_knock_restricted_join_rule_not_supported() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -477,12 +477,12 @@ fn join_knock_restricted_join_rule_not_supported() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn join_restricted_join_rule_already_joined() {
+#[tokio::test]
+async fn join_restricted_join_rule_already_joined() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -520,12 +520,12 @@ fn join_restricted_join_rule_already_joined() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap();
 }
 
-#[test]
-fn join_knock_restricted_join_rule_already_invited() {
+#[tokio::test]
+async fn join_knock_restricted_join_rule_already_invited() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -572,12 +572,12 @@ fn join_knock_restricted_join_rule_already_invited() {
         &AuthorizationRules::V10,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap();
 }
 
-#[test]
-fn join_restricted_join_rule_missing_join_authorised_via_users_server() {
+#[tokio::test]
+async fn join_restricted_join_rule_missing_join_authorised_via_users_server() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -615,12 +615,12 @@ fn join_restricted_join_rule_missing_join_authorised_via_users_server() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn join_restricted_join_rule_authorised_via_user_not_in_room() {
+#[tokio::test]
+async fn join_restricted_join_rule_authorised_via_user_not_in_room() {
     let _guard = init_subscriber();
 
     let mut content = RoomMemberEventContent::new(MembershipState::Join);
@@ -661,12 +661,12 @@ fn join_restricted_join_rule_authorised_via_user_not_in_room() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn join_restricted_join_rule_authorised_via_user_with_not_enough_power() {
+#[tokio::test]
+async fn join_restricted_join_rule_authorised_via_user_with_not_enough_power() {
     let _guard = init_subscriber();
 
     let mut content = RoomMemberEventContent::new(MembershipState::Join);
@@ -716,12 +716,12 @@ fn join_restricted_join_rule_authorised_via_user_with_not_enough_power() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn join_restricted_join_rule_authorised_via_user() {
+#[tokio::test]
+async fn join_restricted_join_rule_authorised_via_user() {
     let _guard = init_subscriber();
 
     // Check various contents that might not match the definition of `m.room.join_rules` in the
@@ -792,13 +792,13 @@ fn join_restricted_join_rule_authorised_via_user() {
             &AuthorizationRules::V8,
             room_create_event,
             fetch_state,
-        )
+        ).await
         .unwrap();
     }
 }
 
-#[test]
-fn join_public_join_rule() {
+#[tokio::test]
+async fn join_public_join_rule() {
     let _guard = init_subscriber();
 
     // Check various contents that might not match the definition of `m.room.member` in the
@@ -842,13 +842,13 @@ fn join_public_join_rule() {
             &AuthorizationRules::V8,
             room_create_event.clone(),
             fetch_state,
-        )
+        ).await
         .unwrap();
     }
 }
 
-#[test]
-fn invite_via_third_party_invite_banned() {
+#[tokio::test]
+async fn invite_via_third_party_invite_banned() {
     let _guard = init_subscriber();
 
     let mut content = RoomMemberEventContent::new(MembershipState::Invite);
@@ -896,12 +896,12 @@ fn invite_via_third_party_invite_banned() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn invite_via_third_party_invite_missing_signed() {
+#[tokio::test]
+async fn invite_via_third_party_invite_missing_signed() {
     let _guard = init_subscriber();
 
     let content = json!({
@@ -932,12 +932,12 @@ fn invite_via_third_party_invite_missing_signed() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn invite_via_third_party_invite_missing_mxid() {
+#[tokio::test]
+async fn invite_via_third_party_invite_missing_mxid() {
     let _guard = init_subscriber();
 
     let content = json!({
@@ -971,12 +971,12 @@ fn invite_via_third_party_invite_missing_mxid() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn invite_via_third_party_invite_missing_token() {
+#[tokio::test]
+async fn invite_via_third_party_invite_missing_token() {
     let _guard = init_subscriber();
 
     let content = json!({
@@ -1011,11 +1011,12 @@ fn invite_via_third_party_invite_missing_token() {
         room_create_event,
         fetch_state,
     )
+    .await
     .unwrap_err();
 }
 
-#[test]
-fn invite_via_third_party_invite_mxid_mismatch() {
+#[tokio::test]
+async fn invite_via_third_party_invite_mxid_mismatch() {
     let _guard = init_subscriber();
 
     let mut content = RoomMemberEventContent::new(MembershipState::Invite);
@@ -1050,12 +1051,12 @@ fn invite_via_third_party_invite_mxid_mismatch() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn invite_via_third_party_invite_missing_room_third_party_invite() {
+#[tokio::test]
+async fn invite_via_third_party_invite_missing_room_third_party_invite() {
     let _guard = init_subscriber();
 
     let mut content = RoomMemberEventContent::new(MembershipState::Invite);
@@ -1108,12 +1109,12 @@ fn invite_via_third_party_invite_missing_room_third_party_invite() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn invite_via_third_party_invite_room_third_party_invite_sender_mismatch() {
+#[tokio::test]
+async fn invite_via_third_party_invite_room_third_party_invite_sender_mismatch() {
     let _guard = init_subscriber();
 
     let mut content = RoomMemberEventContent::new(MembershipState::Invite);
@@ -1150,12 +1151,12 @@ fn invite_via_third_party_invite_room_third_party_invite_sender_mismatch() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn invite_via_third_party_invite_with_room_missing_signatures() {
+#[tokio::test]
+async fn invite_via_third_party_invite_with_room_missing_signatures() {
     let _guard = init_subscriber();
 
     let content = json!({
@@ -1193,12 +1194,12 @@ fn invite_via_third_party_invite_with_room_missing_signatures() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn invite_via_third_party_invite_with_room_empty_signatures() {
+#[tokio::test]
+async fn invite_via_third_party_invite_with_room_empty_signatures() {
     let _guard = init_subscriber();
 
     let content = json!({
@@ -1237,12 +1238,12 @@ fn invite_via_third_party_invite_with_room_empty_signatures() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn invite_via_third_party_invite_with_wrong_signature() {
+#[tokio::test]
+async fn invite_via_third_party_invite_with_wrong_signature() {
     let _guard = init_subscriber();
 
     let content = json!({
@@ -1285,12 +1286,12 @@ fn invite_via_third_party_invite_with_wrong_signature() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn invite_via_third_party_invite_with_wrong_signing_algorithm() {
+#[tokio::test]
+async fn invite_via_third_party_invite_with_wrong_signing_algorithm() {
     let _guard = init_subscriber();
 
     let content = json!({
@@ -1333,12 +1334,12 @@ fn invite_via_third_party_invite_with_wrong_signing_algorithm() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn invite_via_third_party_invite() {
+#[tokio::test]
+async fn invite_via_third_party_invite() {
     let _guard = init_subscriber();
 
     let content = json!({
@@ -1386,12 +1387,12 @@ fn invite_via_third_party_invite() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap();
 }
 
-#[test]
-fn invite_sender_not_joined() {
+#[tokio::test]
+async fn invite_sender_not_joined() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -1415,12 +1416,12 @@ fn invite_sender_not_joined() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn invite_banned() {
+#[tokio::test]
+async fn invite_banned() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -1454,12 +1455,12 @@ fn invite_banned() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn invite_already_joined() {
+#[tokio::test]
+async fn invite_already_joined() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -1483,12 +1484,12 @@ fn invite_already_joined() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn invite_sender_not_enough_power() {
+#[tokio::test]
+async fn invite_sender_not_enough_power() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -1522,12 +1523,12 @@ fn invite_sender_not_enough_power() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn invite() {
+#[tokio::test]
+async fn invite() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -1551,12 +1552,12 @@ fn invite() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap();
 }
 
-#[test]
-fn leave_after_leave() {
+#[tokio::test]
+async fn leave_after_leave() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -1580,12 +1581,12 @@ fn leave_after_leave() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn leave_after_join() {
+#[tokio::test]
+async fn leave_after_join() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -1609,12 +1610,12 @@ fn leave_after_join() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap();
 }
 
-#[test]
-fn leave_after_invite() {
+#[tokio::test]
+async fn leave_after_invite() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -1648,12 +1649,12 @@ fn leave_after_invite() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap();
 }
 
-#[test]
-fn leave_after_knock() {
+#[tokio::test]
+async fn leave_after_knock() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -1687,12 +1688,12 @@ fn leave_after_knock() {
         &AuthorizationRules::V8,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap();
 }
 
-#[test]
-fn leave_after_knock_not_supported() {
+#[tokio::test]
+async fn leave_after_knock_not_supported() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -1727,12 +1728,12 @@ fn leave_after_knock_not_supported() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn leave_kick_sender_left() {
+#[tokio::test]
+async fn leave_kick_sender_left() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -1756,12 +1757,12 @@ fn leave_kick_sender_left() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn leave_unban_not_enough_power() {
+#[tokio::test]
+async fn leave_unban_not_enough_power() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -1795,12 +1796,12 @@ fn leave_unban_not_enough_power() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn leave_unban() {
+#[tokio::test]
+async fn leave_unban() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -1834,12 +1835,12 @@ fn leave_unban() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap();
 }
 
-#[test]
-fn leave_kick_not_enough_power() {
+#[tokio::test]
+async fn leave_kick_not_enough_power() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -1863,12 +1864,12 @@ fn leave_kick_not_enough_power() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn leave_kick_greater_power() {
+#[tokio::test]
+async fn leave_kick_greater_power() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -1909,12 +1910,12 @@ fn leave_kick_greater_power() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn leave_kick_same_power() {
+#[tokio::test]
+async fn leave_kick_same_power() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -1955,12 +1956,12 @@ fn leave_kick_same_power() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn leave_kick() {
+#[tokio::test]
+async fn leave_kick() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -1984,12 +1985,12 @@ fn leave_kick() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap();
 }
 
-#[test]
-fn ban_sender_not_joined() {
+#[tokio::test]
+async fn ban_sender_not_joined() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -2013,12 +2014,12 @@ fn ban_sender_not_joined() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn ban_not_enough_power() {
+#[tokio::test]
+async fn ban_not_enough_power() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -2042,12 +2043,12 @@ fn ban_not_enough_power() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn ban_greater_power() {
+#[tokio::test]
+async fn ban_greater_power() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -2088,12 +2089,12 @@ fn ban_greater_power() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn ban_same_power() {
+#[tokio::test]
+async fn ban_same_power() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -2134,12 +2135,12 @@ fn ban_same_power() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn ban() {
+#[tokio::test]
+async fn ban() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -2163,12 +2164,12 @@ fn ban() {
         &AuthorizationRules::V6,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap();
 }
 
-#[test]
-fn knock_public_join_rule() {
+#[tokio::test]
+async fn knock_public_join_rule() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -2193,11 +2194,12 @@ fn knock_public_join_rule() {
         room_create_event,
         fetch_state,
     )
+    .await
     .unwrap_err();
 }
 
-#[test]
-fn knock_knock_join_rule() {
+#[tokio::test]
+async fn knock_knock_join_rule() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -2231,12 +2233,12 @@ fn knock_knock_join_rule() {
         &AuthorizationRules::V7,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap();
 }
 
-#[test]
-fn knock_knock_join_rule_not_supported() {
+#[tokio::test]
+async fn knock_knock_join_rule_not_supported() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -2270,12 +2272,12 @@ fn knock_knock_join_rule_not_supported() {
         &AuthorizationRules::V3,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn knock_knock_restricted_join_rule() {
+#[tokio::test]
+async fn knock_knock_restricted_join_rule() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -2312,12 +2314,12 @@ fn knock_knock_restricted_join_rule() {
         &AuthorizationRules::V10,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap();
 }
 
-#[test]
-fn knock_knock_restricted_join_rule_not_supported() {
+#[tokio::test]
+async fn knock_knock_restricted_join_rule_not_supported() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -2354,12 +2356,12 @@ fn knock_knock_restricted_join_rule_not_supported() {
         &AuthorizationRules::V3,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn knock_sender_state_key_mismatch() {
+#[tokio::test]
+async fn knock_sender_state_key_mismatch() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -2393,12 +2395,12 @@ fn knock_sender_state_key_mismatch() {
         &AuthorizationRules::V7,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn knock_after_ban() {
+#[tokio::test]
+async fn knock_after_ban() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -2441,12 +2443,12 @@ fn knock_after_ban() {
         &AuthorizationRules::V7,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn knock_after_invite() {
+#[tokio::test]
+async fn knock_after_invite() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -2489,12 +2491,12 @@ fn knock_after_invite() {
         &AuthorizationRules::V7,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }
 
-#[test]
-fn knock_after_join() {
+#[tokio::test]
+async fn knock_after_join() {
     let _guard = init_subscriber();
 
     let incoming_event = to_pdu_event(
@@ -2528,6 +2530,6 @@ fn knock_after_join() {
         &AuthorizationRules::V7,
         room_create_event,
         fetch_state,
-    )
+    ).await
     .unwrap_err();
 }

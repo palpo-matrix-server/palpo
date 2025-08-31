@@ -41,29 +41,29 @@ impl EventKind {
     }
 
     /// Get the name of the event type (struct or enum) for this kind and the given variation.
-    pub fn to_event_ident(self, var: EventVariation) -> syn::Result<Ident> {
-        if !self.event_variations().contains(&var) {
+    pub fn to_event_ident(self, variation: EventVariation) -> syn::Result<Ident> {
+        if !self.event_variations().contains(&variation) {
             return Err(syn::Error::new(
                 Span::call_site(),
-                format!("({self:?}, {var:?}) is not a valid event kind / variation combination"),
+                format!("({self:?}, {variation:?}) is not a valid event kind / variation combination"),
             ));
         }
 
-        Ok(format_ident!("{var}{self}"))
+        Ok(format_ident!("{variation}{self}"))
     }
 
     /// Get the name of the `Any*Event` enum for this kind and the given variation.
-    pub fn to_event_enum_ident(self, var: EventVariation) -> syn::Result<Ident> {
-        if !self.event_enum_variations().contains(&var) {
+    pub fn to_event_enum_ident(self, variation: EventVariation) -> syn::Result<Ident> {
+        if !self.event_enum_variations().contains(&variation) {
             return Err(syn::Error::new(
                 Span::call_site(),
                 format!(
-                    "({self:?}, {var:?}) is not a valid event enum kind / variation combination"
+                    "({self:?}, {variation:?}) is not a valid event enum kind / variation combination"
                 ),
             ));
         }
 
-        Ok(format_ident!("Any{var}{self}"))
+        Ok(format_ident!("Any{variation}{self}"))
     }
 
     /// Get the name of the `*EventType` enum for this kind.
@@ -89,10 +89,10 @@ impl EventKind {
     /// Get the event type (struct or enum) with its bounds for this kind and the given variation.
     pub fn to_event_with_bounds(
         self,
-        var: EventVariation,
+        variation: EventVariation,
         palpo_events: &TokenStream,
     ) -> syn::Result<EventWithBounds> {
-        EventWithBounds::new(self, var, palpo_events)
+        EventWithBounds::new(self, variation, palpo_events)
     }
 
     /// Get the list of extra event kinds that are part of the event enum for this kind.
@@ -566,12 +566,12 @@ impl EventField {
     }
 
     /// Whether this field is present in the given kind and variation.
-    pub fn is_present(self, kind: EventKind, var: EventVariation) -> bool {
+    pub fn is_present(self, kind: EventKind, variation: EventVariation) -> bool {
         match self {
             Self::OriginServerTs | Self::EventId => {
                 kind.is_timeline()
                     && matches!(
-                        var,
+                        variation,
                         EventVariation::None
                             | EventVariation::Sync
                             | EventVariation::Original
@@ -588,7 +588,7 @@ impl EventField {
                         | EventKind::RoomRedaction
                         | EventKind::EphemeralRoom
                 ) && matches!(
-                    var,
+                    variation,
                     EventVariation::None | EventVariation::Original | EventVariation::Redacted
                 )
             }
@@ -599,7 +599,7 @@ impl EventField {
                         | EventKind::State
                         | EventKind::RoomRedaction
                         | EventKind::ToDevice
-                ) && var != EventVariation::Initial
+                ) && variation != EventVariation::Initial
             }
         }
     }
@@ -633,12 +633,12 @@ pub struct EventWithBounds {
 impl EventWithBounds {
     pub fn new(
         kind: EventKind,
-        var: EventVariation,
+        variation: EventVariation,
         palpo_core: &TokenStream,
     ) -> syn::Result<Self> {
-        let ident = kind.to_event_ident(var)?;
+        let ident = kind.to_event_ident(variation)?;
 
-        let event_content_trait = match var {
+        let event_content_trait = match variation {
             EventVariation::None
             | EventVariation::Sync
             | EventVariation::Original
@@ -661,7 +661,7 @@ impl EventWithBounds {
 
         let (type_with_generics, impl_generics, where_clause) = match kind {
             EventKind::MessageLike | EventKind::State
-                if matches!(var, EventVariation::None | EventVariation::Sync) =>
+                if matches!(variation, EventVariation::None | EventVariation::Sync) =>
             {
                 // `MessageLike` and `State` event kinds have an extra `RedactContent` bound with a
                 // `where` clause on the variations that match enum types.

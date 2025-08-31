@@ -34,7 +34,6 @@ use crate::{
 /// This is the object containing all the data related to a matrix users
 /// participation in a matrixRTC session. It consists of memberships / sessions.
 #[derive(ToSchema, Clone, Debug, PartialEq, Serialize, Deserialize, EventContent)]
-#[cfg_attr(test, derive(PartialEq))]
 #[palpo_event(type = "org.matrix.msc3401.call.member", kind = State, state_key_type = CallMemberStateKey, custom_redacted, custom_possibly_redacted)]
 #[serde(untagged)]
 pub enum CallMemberEventContent {

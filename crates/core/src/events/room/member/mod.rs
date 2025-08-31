@@ -454,7 +454,7 @@ pub struct SignedContent {
 
     /// A single signature from the verifying server, in the format specified by
     /// the Signing Events section of the server-server API.
-    pub signatures: BTreeMap<OwnedServerName, BTreeMap<OwnedServerSigningKeyId, String>>,
+    pub signatures: ServerSignatures,
 
     /// The token property of the containing `third_party_invite` object.
     pub token: String,
@@ -463,7 +463,7 @@ pub struct SignedContent {
 impl SignedContent {
     /// Creates a new `SignedContent` with the given mxid, signature and token.
     pub fn new(
-        signatures: BTreeMap<OwnedServerName, BTreeMap<OwnedServerSigningKeyId, String>>,
+        signatures: ServerSignatures,
         mxid: OwnedUserId,
         token: String,
     ) -> Self {

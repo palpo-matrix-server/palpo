@@ -228,7 +228,6 @@ pub struct SessionMembershipData {
 /// type of matrixRTC session e.g. calling (`m.call`), third-room, whiteboard
 /// could be possible applications.
 #[derive(ToSchema, Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[cfg_attr(test, derive(PartialEq))]
 #[serde(tag = "application")]
 pub enum Application {
     /// The rtc application (session type) for VoIP call.
@@ -238,7 +237,6 @@ pub enum Application {
 
 /// Call specific parameters membership parameters.
 #[derive(ToSchema, Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[cfg_attr(test, derive(PartialEq))]
 pub struct CallApplicationContent {
     /// An identifier for calls.
     ///

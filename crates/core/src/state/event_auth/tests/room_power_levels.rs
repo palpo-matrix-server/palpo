@@ -1182,7 +1182,7 @@ fn creator_has_infinite_power() {
 
     let current_content = json!({
         "users": {
-            bob(): i64::from(js_int::Int::MAX),
+            bob(): i64::from(i64::MAX),
         },
     });
     let current_room_power_levels_event = to_pdu_event(

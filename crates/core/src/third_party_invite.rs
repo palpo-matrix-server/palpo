@@ -5,6 +5,7 @@
 use std::ops::Deref;
 
 use serde::{Deserialize, Serialize};
+use salvo::oapi::ToSchema;
 
 use crate::serde::{
     Base64, Base64DecodeError,
@@ -22,7 +23,7 @@ use crate::serde::{
 ///
 /// [identity server]: https://spec.matrix.org/latest/identity-service-api/
 /// [compatibility with Sydent]: https://github.com/matrix-org/sydent/issues/593
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(ToSchema, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[allow(clippy::exhaustive_structs)]
 pub struct IdentityServerBase64PublicKey(pub String);
 

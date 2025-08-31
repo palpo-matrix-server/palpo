@@ -121,7 +121,7 @@ impl EventEnumEntry {
     }
 
     /// Get or generate the path of the event type for this entry.
-    pub fn to_event_path(&self, kind: EventKind, var: EventVariation) -> TokenStream {
+    pub fn to_event_path(&self, kind: EventKind, variation: EventVariation) -> TokenStream {
         let path = &self.ev_path;
         let ident = &self.ident;
 
@@ -139,7 +139,7 @@ impl EventEnumEntry {
             }
             _ => "",
         };
-        let event_name = format_ident!("{var}{type_prefix}{ident}Event");
+        let event_name = format_ident!("{variation}{type_prefix}{ident}Event");
 
         quote! { #path::#event_name }
     }

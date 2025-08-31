@@ -5,6 +5,7 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
+use salvo::oapi::ToSchema;
 
 use super::{
     Base64PublicKeyOrDeviceId, DeviceId, KeyName, OwnedServerName, OwnedSigningKeyId, OwnedUserId,
@@ -25,7 +26,7 @@ pub type EntitySignatures<K> = BTreeMap<OwnedSigningKeyId<K>, String>;
 ///     "YbJva03ihSj5mPk+CHMJKUKlCXCPFXjXOK6VqBnN9nA2evksQcTGn6hwQfrgRHIDDXO2le49x7jnWJHMJrJoBQ";
 /// signatures.insert(server_name, key_identifier, signature.into());
 /// ```
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(ToSchema, Debug, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Signatures<E: Ord, K: KeyName + ?Sized>(BTreeMap<E, EntitySignatures<K>>);
 
