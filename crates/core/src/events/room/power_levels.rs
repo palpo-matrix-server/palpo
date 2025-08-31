@@ -565,9 +565,14 @@ impl RoomPowerLevels {
     /// Get the power level of a specific user.
     pub fn for_user(&self, user_id: &UserId) -> UserPowerLevel {
         if self.is_privileged_creator(user_id) {
+            println!("===========for user 0");
             return UserPowerLevel::Infinite;
         }
 
+        println!(
+            "===========for user 1  users: {:#?}  default:  {:#?}",
+            self.users, self.users_default
+        );
         self.users
             .get(user_id)
             .map_or(self.users_default, |pl| *pl)
@@ -658,6 +663,11 @@ impl RoomPowerLevels {
     ///
     /// Shorthand for `power_levels.user_can_do(user_id, PowerLevelAction::Invite)`.
     pub fn user_can_invite(&self, user_id: &UserId) -> bool {
+        println!(
+            "=========  for user: {:?}  self.invite: {:?}",
+            self.for_user(user_id),
+            self.invite
+        );
         self.for_user(user_id) >= self.invite
     }
 

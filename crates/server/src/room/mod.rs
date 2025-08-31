@@ -599,8 +599,10 @@ pub async fn user_can_invite(room_id: &RoomId, sender_id: &UserId, _target_user:
     // Ok(timeline::create_hash_and_sign_event(new_event, sender, room_id).is_ok())
 
     if let Ok(power_levels) = get_power_levels(room_id).await {
+        println!("==========invite  power_levels: {power_levels:#?}");
         power_levels.user_can_invite(sender_id)
     } else {
+        println!("=============invite 2");
         let create_content = get_state_content::<RoomCreateEventContent>(
             room_id,
             &StateEventType::RoomCreate,
