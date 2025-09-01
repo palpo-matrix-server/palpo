@@ -11,8 +11,9 @@ use pkcs8::{
 };
 
 use crate::{
+    SigningKeyAlgorithm, SigningKeyId,
     serde::Base64,
-    signatures::{Algorithm, Error, ParseError, Signature},
+    signatures::{Error, ParseError, Signature},
 };
 
 #[cfg(feature = "ring-compat")]
@@ -85,7 +86,6 @@ impl Ed25519KeyPair {
         if let Some(oak_key) = pubkey {
             // If the document had a public key, we're verifying it.
             let verifying_key = signing_key.verifying_key();
-
             if oak_key != verifying_key.as_bytes() {
                 return Err(ParseError::derived_vs_parsed_mismatch(
                     oak_key,
@@ -181,9 +181,11 @@ impl Ed25519KeyPair {
 impl KeyPair for Ed25519KeyPair {
     fn sign(&self, message: &[u8]) -> Signature {
         Signature {
-            algorithm: Algorithm::Ed25519,
+            key_id: SigningKeyId::from_parts(
+                SigningKeyAlgorithm::Ed25519,
+                self.version.as_str().into(),
+            ),
             signature: self.signing_key.sign(message).to_bytes().to_vec(),
-            version: self.version.clone(),
         }
     }
 }

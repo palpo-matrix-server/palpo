@@ -105,8 +105,8 @@ where
 /// number.
 ///
 /// To be used like this:
-/// `#[serde(deserialize_with = "deserialize_v1_powerlevel")]`
-pub fn deserialize_v1_powerlevel<'de, D>(de: D) -> Result<i64, D::Error>
+/// `#[serde(deserialize_with = "deserialize_v1_power_level")]`
+pub fn deserialize_v1_power_level<'de, D>(de: D) -> Result<i64, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -176,8 +176,8 @@ where
 /// deserialize those to integer numbers.
 ///
 /// To be used like this:
-/// `#[serde(deserialize_with = "btreemap_deserialize_v1_powerlevel_values")]`
-pub fn btreemap_deserialize_v1_powerlevel_values<'de, D, T>(
+/// `#[serde(deserialize_with = "btreemap_deserialize_v1_power_level_values")]`
+pub fn btreemap_deserialize_v1_power_level_values<'de, D, T>(
     de: D,
 ) -> Result<BTreeMap<T, i64>, D::Error>
 where
@@ -192,7 +192,7 @@ where
         where
             D: Deserializer<'de>,
         {
-            deserialize_v1_powerlevel(deserializer).map(IntWrap)
+            deserialize_v1_power_level(deserializer).map(IntWrap)
         }
     }
 
@@ -236,8 +236,8 @@ where
 /// deserialize those to integer numbers in a Vec of sorted pairs.
 ///
 /// To be used like this:
-/// `#[serde(deserialize_with = "vec_deserialize_v1_powerlevel_values")]`
-pub fn vec_deserialize_v1_powerlevel_values<'de, D, T>(de: D) -> Result<Vec<(T, i64)>, D::Error>
+/// `#[serde(deserialize_with = "vec_deserialize_v1_power_level_values")]`
+pub fn vec_deserialize_v1_power_level_values<'de, D, T>(de: D) -> Result<Vec<(T, i64)>, D::Error>
 where
     D: Deserializer<'de>,
     T: Deserialize<'de> + Ord,
@@ -250,7 +250,7 @@ where
         where
             D: Deserializer<'de>,
         {
-            deserialize_v1_powerlevel(deserializer).map(IntWrap)
+            deserialize_v1_power_level(deserializer).map(IntWrap)
         }
     }
 
@@ -300,8 +300,8 @@ where
 /// pairs
 ///
 /// To be used like this:
-/// `#[serde(deserialize_with = "vec_deserialize_int_powerlevel_values")]`
-pub fn vec_deserialize_int_powerlevel_values<'de, D, T>(de: D) -> Result<Vec<(T, i64)>, D::Error>
+/// `#[serde(deserialize_with = "vec_deserialize_int_power_level_values")]`
+pub fn vec_deserialize_int_power_level_values<'de, D, T>(de: D) -> Result<Vec<(T, i64)>, D::Error>
 where
     D: Deserializer<'de>,
     T: Deserialize<'de> + Ord,
@@ -352,11 +352,11 @@ where
 mod tests {
     use serde::Deserialize;
 
-    use super::deserialize_v1_powerlevel;
+    use super::deserialize_v1_power_level;
 
     #[derive(Debug, Deserialize)]
     struct Test {
-        #[serde(deserialize_with = "deserialize_v1_powerlevel")]
+        #[serde(deserialize_with = "deserialize_v1_power_level")]
         num: i64,
     }
 

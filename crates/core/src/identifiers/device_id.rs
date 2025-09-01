@@ -1,7 +1,8 @@
-use crate::macros::IdZst;
 use diesel::expression::AsExpression;
 
 use super::generate_localpart;
+use crate::{KeyName, IdParseError};
+use crate::macros::IdDst;
 
 /// A Matrix key ID.
 ///
@@ -28,7 +29,7 @@ use super::generate_localpart;
 /// assert_eq!(owned_id.as_str(), "ijklmnop");
 /// ```
 #[repr(transparent)]
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, IdZst, AsExpression)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, IdDst, AsExpression)]
 #[diesel(not_sized, sql_type = diesel::sql_types::Text)]
 pub struct DeviceId(str);
 
@@ -37,6 +38,18 @@ impl DeviceId {
     #[allow(clippy::new_ret_no_self)]
     pub fn new() -> OwnedDeviceId {
         Self::from_borrowed(&generate_localpart(8)).to_owned()
+    }
+}
+
+impl KeyName for DeviceId {
+    fn validate(_s: &str) -> Result<(), IdParseError> {
+        Ok(())
+    }
+}
+
+impl KeyName for OwnedDeviceId {
+    fn validate(_s: &str) -> Result<(), IdParseError> {
+        Ok(())
     }
 }
 

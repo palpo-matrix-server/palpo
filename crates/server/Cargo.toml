@@ -129,6 +129,8 @@ rand = { workspace = true }
 rustyline-async = { workspace = true }
 regex = { workspace = true }
 reqwest = { workspace = true, features = ["json"] }
+reqwest-middleware = { workspace = true }
+reqwest-retry = { workspace = true }
 ring = { workspace = true }
 rust-argon2 = { workspace = true }
 salvo = { workspace = true, features = [
