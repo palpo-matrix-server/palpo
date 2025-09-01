@@ -17,7 +17,7 @@ use crate::{
     room_version_rules::AuthorizationRules,
     serde::{
         DebugAsRefStr, DisplayAsRefStr, JsonObject, OrdAsRefStr, PartialEqAsRefStr,
-        PartialOrdAsRefStr, btreemap_deserialize_v1_powerlevel_values, deserialize_v1_powerlevel,
+        PartialOrdAsRefStr, btreemap_deserialize_v1_power_level_values, deserialize_v1_power_level,
         from_raw_json_value,
     },
 };
@@ -104,7 +104,7 @@ impl<E: Event> RoomPowerLevelsEvent<E> {
         let res = if rules.integer_power_levels {
             from_json_value(value.clone())
         } else {
-            deserialize_v1_powerlevel(value)
+            deserialize_v1_power_level(value)
         };
 
         let power_level = res.map(Some).map_err(|error| {
@@ -145,7 +145,7 @@ impl<E: Event> RoomPowerLevelsEvent<E> {
         let res = if rules.integer_power_levels {
             from_json_value(value.clone())
         } else {
-            btreemap_deserialize_v1_powerlevel_values(value)
+            btreemap_deserialize_v1_power_level_values(value)
         };
 
         res.map(Some).map_err(|error| {

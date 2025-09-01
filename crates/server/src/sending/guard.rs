@@ -90,15 +90,12 @@ async fn process() -> AppResult<()> {
                         error!("failed to send event: {event:?}  outgoing_kind:{outgoing_kind:?}");
                         current_transaction_status.entry(outgoing_kind).and_modify(|e| *e = match e {
                             TransactionStatus::Running => {
-                                println!("============running");
                                 TransactionStatus::Failed(1, Instant::now())
                             },
                             TransactionStatus::Retrying(n) => {
-                                println!("============Retrying");
                                 TransactionStatus::Failed(n.saturating_add(1), Instant::now())
                             },
                             TransactionStatus::Failed(_, _) => {
-                                println!("============Failed");
                                 error!("Request that was not even running failed?!");
                                 return
                             },

@@ -32,7 +32,7 @@ pub struct RoomPowerLevelsEventContent {
     #[serde(
         default = "default_power_level",
         // skip_serializing_if = "is_default_power_level",
-        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+        deserialize_with = "crate::serde::deserialize_v1_power_level"
     )]
     pub ban: i64,
 
@@ -42,7 +42,7 @@ pub struct RoomPowerLevelsEventContent {
     #[serde(
         default,
         // skip_serializing_if = "BTreeMap::is_empty",
-        deserialize_with = "crate::serde::btreemap_deserialize_v1_powerlevel_values"
+        deserialize_with = "crate::serde::btreemap_deserialize_v1_power_level_values"
     )]
     pub events: BTreeMap<TimelineEventType, i64>,
 
@@ -50,15 +50,15 @@ pub struct RoomPowerLevelsEventContent {
     #[serde(
         default,
         // skip_serializing_if = "crate::serde::is_default",
-        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+        deserialize_with = "crate::serde::deserialize_v1_power_level"
     )]
     pub events_default: i64,
 
     /// The level required to invite a user.
     #[serde(
-        default,
+        default = "default_power_level",
         // skip_serializing_if = "crate::serde::is_default",
-        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+        deserialize_with = "crate::serde::deserialize_v1_power_level"
     )]
     pub invite: i64,
 
@@ -66,7 +66,7 @@ pub struct RoomPowerLevelsEventContent {
     #[serde(
         default = "default_power_level",
         // skip_serializing_if = "is_default_power_level",
-        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+        deserialize_with = "crate::serde::deserialize_v1_power_level"
     )]
     pub kick: i64,
 
@@ -74,7 +74,7 @@ pub struct RoomPowerLevelsEventContent {
     #[serde(
         default = "default_power_level",
         // skip_serializing_if = "is_default_power_level",
-        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+        deserialize_with = "crate::serde::deserialize_v1_power_level"
     )]
     pub redact: i64,
 
@@ -82,7 +82,7 @@ pub struct RoomPowerLevelsEventContent {
     #[serde(
         default = "default_power_level",
         // skip_serializing_if = "is_default_power_level",
-        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+        deserialize_with = "crate::serde::deserialize_v1_power_level"
     )]
     pub state_default: i64,
 
@@ -92,7 +92,7 @@ pub struct RoomPowerLevelsEventContent {
     #[serde(
         default,
         // skip_serializing_if = "BTreeMap::is_empty",
-        deserialize_with = "crate::serde::btreemap_deserialize_v1_powerlevel_values"
+        deserialize_with = "crate::serde::btreemap_deserialize_v1_power_level_values"
     )]
     pub users: BTreeMap<OwnedUserId, i64>,
 
@@ -100,7 +100,7 @@ pub struct RoomPowerLevelsEventContent {
     #[serde(
         default,
         // skip_serializing_if = "crate::serde::is_default",
-        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+        deserialize_with = "crate::serde::deserialize_v1_power_level"
     )]
     pub users_default: i64,
 
@@ -122,7 +122,7 @@ impl RoomPowerLevelsEventContent {
             ban: default_power_level(),
             events: BTreeMap::new(),
             events_default: 0,
-            invite: 0,
+            invite: default_power_level(),
             kick: default_power_level(),
             redact: default_power_level(),
             state_default: default_power_level(),
@@ -230,7 +230,7 @@ pub struct RedactedRoomPowerLevelsEventContent {
     #[serde(
         default = "default_power_level",
         skip_serializing_if = "is_default_power_level",
-        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+        deserialize_with = "crate::serde::deserialize_v1_power_level"
     )]
     pub ban: i64,
 
@@ -240,7 +240,7 @@ pub struct RedactedRoomPowerLevelsEventContent {
     #[serde(
         default,
         skip_serializing_if = "BTreeMap::is_empty",
-        deserialize_with = "crate::serde::btreemap_deserialize_v1_powerlevel_values"
+        deserialize_with = "crate::serde::btreemap_deserialize_v1_power_level_values"
     )]
     pub events: BTreeMap<TimelineEventType, i64>,
 
@@ -248,7 +248,7 @@ pub struct RedactedRoomPowerLevelsEventContent {
     #[serde(
         default,
         skip_serializing_if = "crate::serde::is_default",
-        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+        deserialize_with = "crate::serde::deserialize_v1_power_level"
     )]
     pub events_default: i64,
 
@@ -259,7 +259,7 @@ pub struct RedactedRoomPowerLevelsEventContent {
     #[serde(
         default,
         skip_serializing_if = "crate::serde::is_default",
-        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+        deserialize_with = "crate::serde::deserialize_v1_power_level"
     )]
     pub invite: i64,
 
@@ -267,7 +267,7 @@ pub struct RedactedRoomPowerLevelsEventContent {
     #[serde(
         default = "default_power_level",
         skip_serializing_if = "is_default_power_level",
-        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+        deserialize_with = "crate::serde::deserialize_v1_power_level"
     )]
     pub kick: i64,
 
@@ -275,7 +275,7 @@ pub struct RedactedRoomPowerLevelsEventContent {
     #[serde(
         default = "default_power_level",
         skip_serializing_if = "is_default_power_level",
-        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+        deserialize_with = "crate::serde::deserialize_v1_power_level"
     )]
     pub redact: i64,
 
@@ -283,7 +283,7 @@ pub struct RedactedRoomPowerLevelsEventContent {
     #[serde(
         default = "default_power_level",
         skip_serializing_if = "is_default_power_level",
-        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+        deserialize_with = "crate::serde::deserialize_v1_power_level"
     )]
     pub state_default: i64,
 
@@ -293,7 +293,7 @@ pub struct RedactedRoomPowerLevelsEventContent {
     #[serde(
         default,
         skip_serializing_if = "BTreeMap::is_empty",
-        deserialize_with = "crate::serde::btreemap_deserialize_v1_powerlevel_values"
+        deserialize_with = "crate::serde::btreemap_deserialize_v1_power_level_values"
     )]
     pub users: BTreeMap<OwnedUserId, i64>,
 
@@ -301,7 +301,7 @@ pub struct RedactedRoomPowerLevelsEventContent {
     #[serde(
         default,
         skip_serializing_if = "crate::serde::is_default",
-        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+        deserialize_with = "crate::serde::deserialize_v1_power_level"
     )]
     pub users_default: i64,
 }
@@ -565,14 +565,9 @@ impl RoomPowerLevels {
     /// Get the power level of a specific user.
     pub fn for_user(&self, user_id: &UserId) -> UserPowerLevel {
         if self.is_privileged_creator(user_id) {
-            println!("===========for user 0");
             return UserPowerLevel::Infinite;
         }
 
-        println!(
-            "===========for user 1  users: {:#?}  default:  {:#?}",
-            self.users, self.users_default
-        );
         self.users
             .get(user_id)
             .map_or(self.users_default, |pl| *pl)
@@ -663,11 +658,6 @@ impl RoomPowerLevels {
     ///
     /// Shorthand for `power_levels.user_can_do(user_id, PowerLevelAction::Invite)`.
     pub fn user_can_invite(&self, user_id: &UserId) -> bool {
-        println!(
-            "=========  for user: {:?}  self.invite: {:?}",
-            self.for_user(user_id),
-            self.invite
-        );
         self.for_user(user_id) >= self.invite
     }
 
@@ -716,15 +706,6 @@ impl RoomPowerLevels {
     ///
     /// Shorthand for `power_levels.user_can_do(user_id, PowerLevelAction::SendState(state_type))`.
     pub fn user_can_send_state(&self, user_id: &UserId, state_type: StateEventType) -> bool {
-        println!(
-            "=============state_type: {state_type:?}=====self.for_user(user_id): {:?}",
-            self.for_user(user_id)
-        );
-        println!(
-            "==================ewq: {}",
-            self.for_state(state_type.clone())
-        );
-        println!("======================events:{:#?}", self.events);
         self.for_user(user_id) >= self.for_state(state_type)
     }
 

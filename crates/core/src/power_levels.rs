@@ -10,7 +10,7 @@ pub struct NotificationPowerLevels {
     /// The level required to trigger an `@room` notification.
     #[serde(
         default = "default_power_level",
-        deserialize_with = "crate::serde::deserialize_v1_powerlevel"
+        deserialize_with = "crate::serde::deserialize_v1_power_level"
     )]
     pub room: i64,
 }
