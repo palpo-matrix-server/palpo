@@ -910,7 +910,7 @@ where
 /// > Let P = P0 be an m.room.power_levels event. Starting with i = 0, repeatedly fetch Pi+1, the
 /// > m.room.power_levels event in the auth_events of Pi. Increment i and repeat until Pi has no
 /// > m.room.power_levels event in its auth_events. The mainline of P0 is the list of events [P0 ,
-/// > P1, … , Pn], fetched in this way.
+/// > P1, …], fetched in this way.
 /// >
 /// > Let e = e0 be another event (possibly another m.room.power_levels event). We can compute a
 /// > similar list of events [e1, …, em], where ej+1 is the m.room.power_levels event in the
