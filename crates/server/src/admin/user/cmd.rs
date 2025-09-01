@@ -1,5 +1,3 @@
-use palpo_core::state::room_version;
-
 use crate::admin::{Context, get_room_info, parse_active_local_user_id, parse_local_user_id};
 use crate::core::{
     OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedUserId,

@@ -1,8 +1,8 @@
 use diesel::expression::AsExpression;
 
 use super::generate_localpart;
-use crate::{KeyName, IdParseError};
 use crate::macros::IdDst;
+use crate::{IdParseError, KeyName};
 
 /// A Matrix key ID.
 ///
