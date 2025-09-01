@@ -30,7 +30,7 @@ use crate::macros::IdDst;
 /// To parse a colon-separated identifier:
 ///
 /// ```
-/// use crate::DeviceKeyId;
+/// use palpo_core::DeviceKeyId;
 ///
 /// let k = DeviceKeyId::parse("ed25519:1").unwrap();
 /// assert_eq!(k.algorithm().as_str(), "ed25519");
@@ -40,7 +40,7 @@ use crate::macros::IdDst;
 /// To construct a colon-separated identifier from its parts:
 ///
 /// ```
-/// use crate::{DeviceKeyAlgorithm, DeviceKeyId};
+/// use palpo_core::{DeviceKeyAlgorithm, DeviceKeyId};
 ///
 /// let k = DeviceKeyId::from_parts(DeviceKeyAlgorithm::Curve25519, "MYDEVICE".into());
 /// assert_eq!(k.as_str(), "curve25519:MYDEVICE");
@@ -73,7 +73,7 @@ impl<A: KeyAlgorithm, K: KeyName + ?Sized> KeyId<A, K> {
     /// # Example
     ///
     /// ```
-    /// use crate::{DeviceKeyAlgorithm, DeviceKeyId};
+    /// use palpo_core::{DeviceKeyAlgorithm, DeviceKeyId};
     ///
     /// let k = DeviceKeyId::parse("ed25519:1").unwrap();
     /// assert_eq!(k.algorithm(), DeviceKeyAlgorithm::Ed25519);
@@ -87,7 +87,7 @@ impl<A: KeyAlgorithm, K: KeyName + ?Sized> KeyId<A, K> {
     /// # Example
     ///
     /// ```
-    /// use crate::{device_id, DeviceKeyId};
+    /// use palpo_core::{device_id, DeviceKeyId};
     ///
     /// let k = DeviceKeyId::parse("ed25519:DEV1").unwrap();
     /// assert_eq!(k.key_name(), device_id!("DEV1"));

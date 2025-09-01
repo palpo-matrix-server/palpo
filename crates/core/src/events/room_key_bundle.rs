@@ -1,19 +1,19 @@
 //! Types for the `m.room_key_bundle` event defined in [MSC4268].
 //!
 //! [MSC4268]: https://github.com/matrix-org/matrix-spec-proposals/pull/4268
-
 use serde::{Deserialize, Serialize};
+use salvo::oapi::ToSchema;
 
 use crate::OwnedRoomId;
 use crate::macros::EventContent;
-use crate::room::EncryptedFile;
+use crate::events::room::EncryptedFile;
 
 /// The content of an `m.room_key_bundle` event.
 ///
 /// Typically encrypted as an `m.room.encrypted` event, then sent as a to-device event.
 ///
 /// This event is defined in [MSC4268](https://github.com/matrix-org/matrix-spec-proposals/pull/4268)
-#[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
+#[derive(ToSchema, Clone, Debug, Deserialize, Serialize, EventContent)]
 #[palpo_event(type = "io.element.msc4268.room_key_bundle", alias = "m.room_key_bundle", kind = ToDevice)]
 pub struct ToDeviceRoomKeyBundleEventContent {
     /// The room that these keys are for.
@@ -39,7 +39,7 @@ mod tests {
     use serde_json::json;
 
     use super::ToDeviceRoomKeyBundleEventContent;
-    use crate::room::{EncryptedFile, JsonWebKey};
+    use crate::events::room::{EncryptedFile, JsonWebKey};
 
     #[test]
     fn serialization() {

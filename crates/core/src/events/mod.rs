@@ -47,7 +47,7 @@
 //!
 //! ```rust
 //! use palpo_core::{RoomVersionId, OwnedEventId};
-//! use palpo_core::events::{EventContent, OriginalSyncMessageLikeEvent};
+//! use palpo_core::events::OriginalSyncMessageLikeEvent;
 //! use palpo_core::macros::EventContent;
 //! use serde::{Deserialize, Serialize};
 //!

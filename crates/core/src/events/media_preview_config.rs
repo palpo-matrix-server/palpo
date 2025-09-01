@@ -1,7 +1,7 @@
 //! Types for the [`m.media_preview_config`] event.
 //!
 //! [`m.media_preview_config`]: https://github.com/matrix-org/matrix-spec-proposals/pull/4278
-
+use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::macros::StringEnum;
@@ -9,7 +9,7 @@ use crate::serde::JsonCastable;
 use crate::{PrivOwnedStr, macros::EventContent};
 
 /// The content of an `m.media_preview_config` event.
-#[derive(Clone, Debug, Default, Deserialize, Serialize, EventContent)]
+#[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize, EventContent)]
 #[palpo_event(type = "m.media_preview_config", kind = GlobalAccountData + RoomAccountData)]
 pub struct MediaPreviewConfigEventContent {
     /// The media previews configuration.
@@ -25,7 +25,7 @@ impl JsonCastable<UnstableMediaPreviewConfigEventContent> for MediaPreviewConfig
 
 /// The content of an `io.element.msc4278.media_preview_config` event,
 /// the unstable version of `m.media_preview_config` in global account data.
-#[derive(Clone, Debug, Default, Deserialize, Serialize, EventContent)]
+#[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize, EventContent)]
 #[palpo_event(type = "io.element.msc4278.media_preview_config", kind = GlobalAccountData + RoomAccountData)]
 #[serde(transparent)]
 pub struct UnstableMediaPreviewConfigEventContent(pub MediaPreviewConfigEventContent);
@@ -33,7 +33,7 @@ pub struct UnstableMediaPreviewConfigEventContent(pub MediaPreviewConfigEventCon
 impl JsonCastable<MediaPreviewConfigEventContent> for UnstableMediaPreviewConfigEventContent {}
 
 /// The configuration that handles if media previews should be shown in the timeline.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, StringEnum, Default)]
+#[derive(ToSchema, Clone, PartialEq, Eq, PartialOrd, Ord, StringEnum, Default)]
 #[palpo_enum(rename_all = "lowercase")]
 #[non_exhaustive]
 pub enum MediaPreviews {
@@ -52,7 +52,7 @@ pub enum MediaPreviews {
 }
 
 /// The configuration to handle if avatars should be shown in invites.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, StringEnum, Default)]
+#[derive(ToSchema, Clone, PartialEq, Eq, PartialOrd, Ord, StringEnum, Default)]
 #[palpo_enum(rename_all = "lowercase")]
 #[non_exhaustive]
 pub enum InviteAvatars {
@@ -123,7 +123,7 @@ mod tests {
     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
 
     use super::{MediaPreviewConfigEventContent, UnstableMediaPreviewConfigEventContent};
-    use crate::{
+    use crate::events::{
         AnyGlobalAccountDataEvent, GlobalAccountDataEvent,
         media_preview_config::{InviteAvatars, MediaPreviews},
     };

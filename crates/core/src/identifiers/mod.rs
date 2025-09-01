@@ -22,11 +22,11 @@ pub use self::{
         SigningKeyAlgorithm,
     },
     device_id::{DeviceId, OwnedDeviceId},
-    device_key_id::{DeviceKeyId, OwnedDeviceKeyId},
     event_id::{EventId, OwnedEventId},
     key_id::{
-        AnyKeyName, DeviceSigningKeyId, KeyId, OwnedDeviceSigningKeyId, OwnedKeyId,
-        OwnedServerSigningKeyId, OwnedSigningKeyId, ServerSigningKeyId, SigningKeyId,
+        AnyKeyName, DeviceKeyId, DeviceSigningKeyId, KeyId, OwnedDeviceKeyId,
+        OwnedDeviceSigningKeyId, OwnedKeyId, OwnedServerSigningKeyId, OwnedSigningKeyId,
+        ServerSigningKeyId, SigningKeyId,
     },
     matrix_uri::{MatrixToUri, MatrixUri},
     mxc_uri::{Mxc, MxcUri, OwnedMxcUri},
@@ -53,7 +53,6 @@ mod base64_public_key_or_device_id;
 mod client_secret;
 mod crypto_algorithms;
 mod device_id;
-mod device_key_id;
 mod event_id;
 mod key_id;
 mod mxc_uri;

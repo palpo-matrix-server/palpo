@@ -18,8 +18,11 @@ pub type EntitySignatures<K> = BTreeMap<OwnedSigningKeyId<K>, String>;
 /// Map of all signatures, grouped by entity
 ///
 /// ```
-/// # use palpo_core::{server_name, KeyId, Signatures, SigningKeyAlgorithm};
-/// let key_identifier = KeyId::from_parts(SigningKeyAlgorithm::Ed25519, "1");
+/// # use palpo_core::{server_name, server_signing_key_version, ServerSigningKeyId, Signatures, SigningKeyAlgorithm};
+/// let key_identifier = ServerSigningKeyId::from_parts(
+///     SigningKeyAlgorithm::Ed25519,
+///     server_signing_key_version!("1")
+/// );
 /// let mut signatures = Signatures::new();
 /// let server_name = server_name!("example.org");
 /// let signature =
