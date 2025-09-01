@@ -216,7 +216,7 @@ impl<'de> Deserialize<'de> for JoinRule {
 #[derive(ToSchema, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Restricted {
     /// Allow rules which describe conditions that allow joining a room.
-    #[serde(default)]
+    #[serde(default, deserialize_with = "crate::serde::ignore_invalid_vec_items")]
     pub allow: Vec<AllowRule>,
 }
 
@@ -639,7 +639,6 @@ mod tests {
 
     use crate::{OwnedRoomId, owned_room_id};
     use assert_matches2::assert_matches;
-    use js_int::uint;
     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
 
     use super::{
@@ -658,7 +657,7 @@ mod tests {
 
         let summary: RoomSummary = from_json_value(json).unwrap();
         assert_eq!(summary.room_id, "!room:localhost");
-        assert_eq!(summary.num_joined_members, uint!(5));
+        assert_eq!(summary.num_joined_members, 5);
         assert!(!summary.world_readable);
         assert!(!summary.guest_can_join);
         assert_matches!(summary.join_rule, JoinRuleSummary::Public);
@@ -676,7 +675,7 @@ mod tests {
 
         let summary: RoomSummary = from_json_value(json).unwrap();
         assert_eq!(summary.room_id, "!room:localhost");
-        assert_eq!(summary.num_joined_members, uint!(5));
+        assert_eq!(summary.num_joined_members, 5);
         assert!(!summary.world_readable);
         assert!(!summary.guest_can_join);
         assert_matches!(summary.join_rule, JoinRuleSummary::Private);
@@ -695,7 +694,7 @@ mod tests {
 
         let summary: RoomSummary = from_json_value(json).unwrap();
         assert_eq!(summary.room_id, "!room:localhost");
-        assert_eq!(summary.num_joined_members, uint!(5));
+        assert_eq!(summary.num_joined_members, 5);
         assert!(!summary.world_readable);
         assert!(!summary.guest_can_join);
         assert_matches!(summary.join_rule, JoinRuleSummary::Restricted(restricted));
@@ -714,7 +713,7 @@ mod tests {
 
         let summary: RoomSummary = from_json_value(json).unwrap();
         assert_eq!(summary.room_id, "!room:localhost");
-        assert_eq!(summary.num_joined_members, uint!(5));
+        assert_eq!(summary.num_joined_members, 5);
         assert!(!summary.world_readable);
         assert!(!summary.guest_can_join);
         assert_matches!(summary.join_rule, JoinRuleSummary::Restricted(restricted));
@@ -727,7 +726,7 @@ mod tests {
             owned_room_id!("!room:localhost"),
             JoinRuleSummary::Knock,
             false,
-            uint!(5),
+            5,
             false,
         );
 
@@ -751,7 +750,7 @@ mod tests {
                 "!otherroom:localhost"
             )])),
             false,
-            uint!(5),
+            5,
             false,
         );
 

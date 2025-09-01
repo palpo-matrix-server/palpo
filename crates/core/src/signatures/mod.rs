@@ -55,7 +55,7 @@ pub use self::{
     keys::{Ed25519KeyPair, KeyPair, PublicKeyMap, PublicKeySet},
     verification::Verified,
 };
-use crate::serde::{AsRefStr, Base64, DisplayAsRefStr, base64::Standard};
+use crate::serde::{Base64, base64::Standard};
 use crate::{AnyKeyName, IdParseError, OwnedSigningKeyId, SigningKeyAlgorithm, SigningKeyId};
 
 mod error;

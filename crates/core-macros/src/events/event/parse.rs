@@ -1,6 +1,6 @@
 //! Parsing helpers specific to the `Event` derive macro.
 
-use syn::{Field, Ident};
+use syn::Ident;
 
 use crate::events::enums::{EventKind, EventVariation};
 

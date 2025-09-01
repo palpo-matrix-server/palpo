@@ -110,7 +110,7 @@ impl Serialize for Mxc<'_> {
 mod tests {
     use palpo_identifiers_validation::error::MxcUriError;
 
-    use super::{MxcUri, OwnedMxcUri};
+    use super::MxcUri;
 
     // #[test]
     // fn parse_mxc_uri() {
