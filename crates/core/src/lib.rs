@@ -12,6 +12,7 @@ pub mod federation;
 #[cfg(feature = "html")]
 pub mod html;
 pub mod identifiers;
+pub mod metadata;
 mod percent_encode;
 pub mod power_levels;
 pub mod presence;
@@ -25,8 +26,7 @@ pub mod third_party;
 pub mod third_party_invite;
 mod time;
 pub mod to_device;
-pub mod metadata;
-pub use metadata::{SupportedVersions, MatrixVersion};
+pub use metadata::{MatrixVersion, SupportedVersions};
 pub mod error;
 pub use error::{MatrixError, UnknownVersionError};
 #[macro_use]

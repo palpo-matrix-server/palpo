@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use serde::{de, Deserialize};
+use serde::{Deserialize, de};
 use url::Url;
 
 #[cfg(feature = "unstable-msc4191")]
@@ -37,7 +37,9 @@ impl<'de> Deserialize<'de> for AuthorizationServerMetadata {
 
         // Require `code` in `response_types_supported`.
         if !response_types_supported.contains(&ResponseType::Code) {
-            return Err(de::Error::custom("missing value `code` in `response_types_supported`"));
+            return Err(de::Error::custom(
+                "missing value `code` in `response_types_supported`",
+            ));
         }
 
         // Require `query` and `fragment` in `response_modes_supported`.
@@ -139,7 +141,7 @@ struct AuthorizationServerMetadataDeHelper {
 #[cfg(test)]
 mod tests {
     use as_variant::as_variant;
-    use serde_json::{from_value as from_json_value, value::Map as JsonMap, Value as JsonValue};
+    use serde_json::{Value as JsonValue, from_value as from_json_value, value::Map as JsonMap};
     use url::Url;
 
     #[cfg(feature = "unstable-msc4191")]
@@ -173,28 +175,61 @@ mod tests {
             from_json_value::<AuthorizationServerMetadata>(metadata_object.into()).unwrap();
 
         assert_eq!(metadata.issuer.as_str(), "https://server.local/");
-        assert_eq!(metadata.authorization_endpoint.as_str(), "https://server.local/authorize");
-        assert_eq!(metadata.token_endpoint.as_str(), "https://server.local/token");
+        assert_eq!(
+            metadata.authorization_endpoint.as_str(),
+            "https://server.local/authorize"
+        );
+        assert_eq!(
+            metadata.token_endpoint.as_str(),
+            "https://server.local/token"
+        );
         assert_eq!(
             metadata.registration_endpoint.as_ref().map(Url::as_str),
             Some("https://server.local/register")
         );
 
         assert_eq!(metadata.response_types_supported.len(), 1);
-        assert!(metadata.response_types_supported.contains(&ResponseType::Code));
+        assert!(
+            metadata
+                .response_types_supported
+                .contains(&ResponseType::Code)
+        );
 
         assert_eq!(metadata.response_modes_supported.len(), 2);
-        assert!(metadata.response_modes_supported.contains(&ResponseMode::Query));
-        assert!(metadata.response_modes_supported.contains(&ResponseMode::Fragment));
+        assert!(
+            metadata
+                .response_modes_supported
+                .contains(&ResponseMode::Query)
+        );
+        assert!(
+            metadata
+                .response_modes_supported
+                .contains(&ResponseMode::Fragment)
+        );
 
         assert_eq!(metadata.grant_types_supported.len(), 2);
-        assert!(metadata.grant_types_supported.contains(&GrantType::AuthorizationCode));
-        assert!(metadata.grant_types_supported.contains(&GrantType::RefreshToken));
+        assert!(
+            metadata
+                .grant_types_supported
+                .contains(&GrantType::AuthorizationCode)
+        );
+        assert!(
+            metadata
+                .grant_types_supported
+                .contains(&GrantType::RefreshToken)
+        );
 
-        assert_eq!(metadata.revocation_endpoint.as_str(), "https://server.local/revoke");
+        assert_eq!(
+            metadata.revocation_endpoint.as_str(),
+            "https://server.local/revoke"
+        );
 
         assert_eq!(metadata.code_challenge_methods_supported.len(), 1);
-        assert!(metadata.code_challenge_methods_supported.contains(&CodeChallengeMethod::S256));
+        assert!(
+            metadata
+                .code_challenge_methods_supported
+                .contains(&CodeChallengeMethod::S256)
+        );
 
         #[cfg(feature = "unstable-msc4191")]
         {
@@ -203,29 +238,44 @@ mod tests {
                 Some("https://server.local/account")
             );
             assert_eq!(metadata.account_management_actions_supported.len(), 6);
-            assert!(metadata
-                .account_management_actions_supported
-                .contains(&AccountManagementAction::Profile));
-            assert!(metadata
-                .account_management_actions_supported
-                .contains(&AccountManagementAction::SessionsList));
-            assert!(metadata
-                .account_management_actions_supported
-                .contains(&AccountManagementAction::SessionView));
-            assert!(metadata
-                .account_management_actions_supported
-                .contains(&AccountManagementAction::SessionEnd));
-            assert!(metadata
-                .account_management_actions_supported
-                .contains(&AccountManagementAction::AccountDeactivate));
-            assert!(metadata
-                .account_management_actions_supported
-                .contains(&AccountManagementAction::CrossSigningReset));
+            assert!(
+                metadata
+                    .account_management_actions_supported
+                    .contains(&AccountManagementAction::Profile)
+            );
+            assert!(
+                metadata
+                    .account_management_actions_supported
+                    .contains(&AccountManagementAction::SessionsList)
+            );
+            assert!(
+                metadata
+                    .account_management_actions_supported
+                    .contains(&AccountManagementAction::SessionView)
+            );
+            assert!(
+                metadata
+                    .account_management_actions_supported
+                    .contains(&AccountManagementAction::SessionEnd)
+            );
+            assert!(
+                metadata
+                    .account_management_actions_supported
+                    .contains(&AccountManagementAction::AccountDeactivate)
+            );
+            assert!(
+                metadata
+                    .account_management_actions_supported
+                    .contains(&AccountManagementAction::CrossSigningReset)
+            );
         }
 
         #[cfg(feature = "unstable-msc4108")]
         assert_eq!(
-            metadata.device_authorization_endpoint.as_ref().map(Url::as_str),
+            metadata
+                .device_authorization_endpoint
+                .as_ref()
+                .map(Url::as_str),
             Some("https://server.local/device")
         );
     }
@@ -236,32 +286,73 @@ mod tests {
         assert!(metadata_object.remove("registration_endpoint").is_some());
         assert!(metadata_object.remove("response_modes_supported").is_some());
         assert!(metadata_object.remove("account_management_uri").is_some());
-        assert!(metadata_object.remove("account_management_actions_supported").is_some());
-        assert!(metadata_object.remove("device_authorization_endpoint").is_some());
+        assert!(
+            metadata_object
+                .remove("account_management_actions_supported")
+                .is_some()
+        );
+        assert!(
+            metadata_object
+                .remove("device_authorization_endpoint")
+                .is_some()
+        );
 
         let metadata =
             from_json_value::<AuthorizationServerMetadata>(metadata_object.into()).unwrap();
 
         assert_eq!(metadata.issuer.as_str(), "https://server.local/");
-        assert_eq!(metadata.authorization_endpoint.as_str(), "https://server.local/authorize");
-        assert_eq!(metadata.token_endpoint.as_str(), "https://server.local/token");
+        assert_eq!(
+            metadata.authorization_endpoint.as_str(),
+            "https://server.local/authorize"
+        );
+        assert_eq!(
+            metadata.token_endpoint.as_str(),
+            "https://server.local/token"
+        );
         assert_eq!(metadata.registration_endpoint, None);
 
         assert_eq!(metadata.response_types_supported.len(), 1);
-        assert!(metadata.response_types_supported.contains(&ResponseType::Code));
+        assert!(
+            metadata
+                .response_types_supported
+                .contains(&ResponseType::Code)
+        );
 
         assert_eq!(metadata.response_modes_supported.len(), 2);
-        assert!(metadata.response_modes_supported.contains(&ResponseMode::Query));
-        assert!(metadata.response_modes_supported.contains(&ResponseMode::Fragment));
+        assert!(
+            metadata
+                .response_modes_supported
+                .contains(&ResponseMode::Query)
+        );
+        assert!(
+            metadata
+                .response_modes_supported
+                .contains(&ResponseMode::Fragment)
+        );
 
         assert_eq!(metadata.grant_types_supported.len(), 2);
-        assert!(metadata.grant_types_supported.contains(&GrantType::AuthorizationCode));
-        assert!(metadata.grant_types_supported.contains(&GrantType::RefreshToken));
+        assert!(
+            metadata
+                .grant_types_supported
+                .contains(&GrantType::AuthorizationCode)
+        );
+        assert!(
+            metadata
+                .grant_types_supported
+                .contains(&GrantType::RefreshToken)
+        );
 
-        assert_eq!(metadata.revocation_endpoint.as_str(), "https://server.local/revoke");
+        assert_eq!(
+            metadata.revocation_endpoint.as_str(),
+            "https://server.local/revoke"
+        );
 
         assert_eq!(metadata.code_challenge_methods_supported.len(), 1);
-        assert!(metadata.code_challenge_methods_supported.contains(&CodeChallengeMethod::S256));
+        assert!(
+            metadata
+                .code_challenge_methods_supported
+                .contains(&CodeChallengeMethod::S256)
+        );
 
         #[cfg(feature = "unstable-msc4191")]
         {
@@ -288,34 +379,81 @@ mod tests {
             from_json_value::<AuthorizationServerMetadata>(metadata_object.into()).unwrap();
 
         assert_eq!(metadata.issuer.as_str(), "https://server.local/");
-        assert_eq!(metadata.authorization_endpoint.as_str(), "https://server.local/authorize");
-        assert_eq!(metadata.token_endpoint.as_str(), "https://server.local/token");
+        assert_eq!(
+            metadata.authorization_endpoint.as_str(),
+            "https://server.local/authorize"
+        );
+        assert_eq!(
+            metadata.token_endpoint.as_str(),
+            "https://server.local/token"
+        );
         assert_eq!(
             metadata.registration_endpoint.as_ref().map(Url::as_str),
             Some("https://server.local/register")
         );
 
         assert_eq!(metadata.response_types_supported.len(), 2);
-        assert!(metadata.response_types_supported.contains(&ResponseType::Code));
-        assert!(metadata.response_types_supported.contains(&ResponseType::from("custom")));
+        assert!(
+            metadata
+                .response_types_supported
+                .contains(&ResponseType::Code)
+        );
+        assert!(
+            metadata
+                .response_types_supported
+                .contains(&ResponseType::from("custom"))
+        );
 
         assert_eq!(metadata.response_modes_supported.len(), 3);
-        assert!(metadata.response_modes_supported.contains(&ResponseMode::Query));
-        assert!(metadata.response_modes_supported.contains(&ResponseMode::Fragment));
-        assert!(metadata.response_modes_supported.contains(&ResponseMode::from("custom")));
+        assert!(
+            metadata
+                .response_modes_supported
+                .contains(&ResponseMode::Query)
+        );
+        assert!(
+            metadata
+                .response_modes_supported
+                .contains(&ResponseMode::Fragment)
+        );
+        assert!(
+            metadata
+                .response_modes_supported
+                .contains(&ResponseMode::from("custom"))
+        );
 
         assert_eq!(metadata.grant_types_supported.len(), 3);
-        assert!(metadata.grant_types_supported.contains(&GrantType::AuthorizationCode));
-        assert!(metadata.grant_types_supported.contains(&GrantType::RefreshToken));
-        assert!(metadata.grant_types_supported.contains(&GrantType::from("custom")));
+        assert!(
+            metadata
+                .grant_types_supported
+                .contains(&GrantType::AuthorizationCode)
+        );
+        assert!(
+            metadata
+                .grant_types_supported
+                .contains(&GrantType::RefreshToken)
+        );
+        assert!(
+            metadata
+                .grant_types_supported
+                .contains(&GrantType::from("custom"))
+        );
 
-        assert_eq!(metadata.revocation_endpoint.as_str(), "https://server.local/revoke");
+        assert_eq!(
+            metadata.revocation_endpoint.as_str(),
+            "https://server.local/revoke"
+        );
 
         assert_eq!(metadata.code_challenge_methods_supported.len(), 2);
-        assert!(metadata.code_challenge_methods_supported.contains(&CodeChallengeMethod::S256));
-        assert!(metadata
-            .code_challenge_methods_supported
-            .contains(&CodeChallengeMethod::from("custom")));
+        assert!(
+            metadata
+                .code_challenge_methods_supported
+                .contains(&CodeChallengeMethod::S256)
+        );
+        assert!(
+            metadata
+                .code_challenge_methods_supported
+                .contains(&CodeChallengeMethod::from("custom"))
+        );
 
         #[cfg(feature = "unstable-msc4191")]
         {
@@ -324,32 +462,49 @@ mod tests {
                 Some("https://server.local/account")
             );
             assert_eq!(metadata.account_management_actions_supported.len(), 7);
-            assert!(metadata
-                .account_management_actions_supported
-                .contains(&AccountManagementAction::Profile));
-            assert!(metadata
-                .account_management_actions_supported
-                .contains(&AccountManagementAction::SessionsList));
-            assert!(metadata
-                .account_management_actions_supported
-                .contains(&AccountManagementAction::SessionView));
-            assert!(metadata
-                .account_management_actions_supported
-                .contains(&AccountManagementAction::SessionEnd));
-            assert!(metadata
-                .account_management_actions_supported
-                .contains(&AccountManagementAction::AccountDeactivate));
-            assert!(metadata
-                .account_management_actions_supported
-                .contains(&AccountManagementAction::CrossSigningReset));
-            assert!(metadata
-                .account_management_actions_supported
-                .contains(&AccountManagementAction::from("custom")));
+            assert!(
+                metadata
+                    .account_management_actions_supported
+                    .contains(&AccountManagementAction::Profile)
+            );
+            assert!(
+                metadata
+                    .account_management_actions_supported
+                    .contains(&AccountManagementAction::SessionsList)
+            );
+            assert!(
+                metadata
+                    .account_management_actions_supported
+                    .contains(&AccountManagementAction::SessionView)
+            );
+            assert!(
+                metadata
+                    .account_management_actions_supported
+                    .contains(&AccountManagementAction::SessionEnd)
+            );
+            assert!(
+                metadata
+                    .account_management_actions_supported
+                    .contains(&AccountManagementAction::AccountDeactivate)
+            );
+            assert!(
+                metadata
+                    .account_management_actions_supported
+                    .contains(&AccountManagementAction::CrossSigningReset)
+            );
+            assert!(
+                metadata
+                    .account_management_actions_supported
+                    .contains(&AccountManagementAction::from("custom"))
+            );
         }
 
         #[cfg(feature = "unstable-msc4108")]
         assert_eq!(
-            metadata.device_authorization_endpoint.as_ref().map(Url::as_str),
+            metadata
+                .device_authorization_endpoint
+                .as_ref()
+                .map(Url::as_str),
             Some("https://server.local/device")
         );
     }
@@ -383,7 +538,11 @@ mod tests {
         from_json_value::<AuthorizationServerMetadata>(metadata_object.into()).unwrap_err();
 
         let mut metadata_object = original_metadata_object;
-        assert!(metadata_object.remove("code_challenge_methods_supported").is_some());
+        assert!(
+            metadata_object
+                .remove("code_challenge_methods_supported")
+                .is_some()
+        );
         from_json_value::<AuthorizationServerMetadata>(metadata_object.into()).unwrap_err();
     }
 

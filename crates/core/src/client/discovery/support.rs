@@ -16,7 +16,6 @@ use serde_json::{Value as JsonValue, from_value as from_json_value, to_value as 
 
 use crate::{MatrixVersion, OwnedUserId, PrivOwnedStr, RoomVersionId, serde::StringEnum};
 
-
 // const METADATA: Metadata = metadata! {
 //     method: GET,
 //     rate_limited: false,
@@ -47,12 +46,18 @@ pub struct SupportResBody {
 impl SupportResBody {
     /// Creates a new `Response` with the given contacts.
     pub fn with_contacts(contacts: Vec<Contact>) -> Self {
-        Self { contacts, support_page: None }
+        Self {
+            contacts,
+            support_page: None,
+        }
     }
 
     /// Creates a new `Response` with the given support page.
     pub fn with_support_page(support_page: String) -> Self {
-        Self { contacts: Vec::new(), support_page: Some(support_page) }
+        Self {
+            contacts: Vec::new(),
+            support_page: Some(support_page),
+        }
     }
 }
 
@@ -81,12 +86,20 @@ pub struct Contact {
 impl Contact {
     /// Creates a new `Contact` with the given role and email address.
     pub fn with_email_address(role: ContactRole, email_address: String) -> Self {
-        Self { role, email_address: Some(email_address), matrix_id: None }
+        Self {
+            role,
+            email_address: Some(email_address),
+            matrix_id: None,
+        }
     }
 
     /// Creates a new `Contact` with the given role and Matrix User ID.
     pub fn with_matrix_id(role: ContactRole, matrix_id: OwnedUserId) -> Self {
-        Self { role, email_address: None, matrix_id: Some(matrix_id) }
+        Self {
+            role,
+            email_address: None,
+            matrix_id: Some(matrix_id),
+        }
     }
 }
 
@@ -106,7 +119,10 @@ pub enum ContactRole {
     ///
     /// The future prefix for this if accepted will be `m.role.moderator`
     #[cfg(feature = "unstable-msc4121")]
-    #[palpo_enum(rename = "support.feline.msc4121.role.moderator", alias = "m.role.moderator")]
+    #[palpo_enum(
+        rename = "support.feline.msc4121.role.moderator",
+        alias = "m.role.moderator"
+    )]
     Moderator,
 
     #[doc(hidden)]

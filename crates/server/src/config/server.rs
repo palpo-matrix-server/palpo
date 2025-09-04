@@ -12,9 +12,9 @@ use super::{
     LoggerConfig, MediaConfig, OidcConfig, PresenceConfig, ProxyConfig, ReadReceiptConfig,
     TurnConfig, TypingConfig, UrlPreviewConfig,
 };
+use crate::core::client::discovery::support::ContactRole;
 use crate::core::serde::{default_false, default_true};
-use crate::core::{OwnedRoomOrAliasId,OwnedUserId, OwnedServerName, RoomVersionId};
-use crate::core::client::discovery::support::{ContactRole};
+use crate::core::{OwnedRoomOrAliasId, OwnedServerName, OwnedUserId, RoomVersionId};
 use crate::env_vars::required_var;
 use crate::macros::config_example;
 use crate::utils::sys;
@@ -26,10 +26,10 @@ const DEPRECATED_KEYS: &[&str; 0] = &[];
 pub struct WellKnownConfig {
     pub client: Option<String>,
     pub server: Option<OwnedServerName>,
-	pub support_page: Option<Url>,
-	pub support_role: Option<ContactRole>,
-	pub support_email: Option<String>,
-	pub support_mxid: Option<OwnedUserId>,
+    pub support_page: Option<Url>,
+    pub support_role: Option<ContactRole>,
+    pub support_email: Option<String>,
+    pub support_mxid: Option<OwnedUserId>,
 }
 
 #[derive(Clone, Debug, Deserialize, Default)]

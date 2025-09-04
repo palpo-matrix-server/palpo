@@ -7,8 +7,8 @@ use std::{
 use salvo::prelude::*;
 use serde::Serialize;
 
-use crate::error::UnknownVersionError;
 use crate::RoomVersionId;
+use crate::error::UnknownVersionError;
 
 /// The Matrix versions Palpo currently understands to exist.
 ///

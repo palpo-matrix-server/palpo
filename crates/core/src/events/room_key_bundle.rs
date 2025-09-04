@@ -1,12 +1,12 @@
 //! Types for the `m.room_key_bundle` event defined in [MSC4268].
 //!
 //! [MSC4268]: https://github.com/matrix-org/matrix-spec-proposals/pull/4268
-use serde::{Deserialize, Serialize};
 use salvo::oapi::ToSchema;
+use serde::{Deserialize, Serialize};
 
 use crate::OwnedRoomId;
-use crate::macros::EventContent;
 use crate::events::room::EncryptedFile;
+use crate::macros::EventContent;
 
 /// The content of an `m.room_key_bundle` event.
 ///

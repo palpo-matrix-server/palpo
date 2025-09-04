@@ -13,7 +13,8 @@ use crate::core::MatrixError;
 use crate::core::client::discovery::{
     client::{ClientResBody, HomeServerInfo},
     support::{Contact, SupportResBody},
-}; use crate::core::federation::directory::ServerResBody;
+};
+use crate::core::federation::directory::ServerResBody;
 use crate::{AppResult, JsonResult, config, hoops, json_ok};
 
 pub mod prelude {

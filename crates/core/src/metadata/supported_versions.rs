@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::serde::{OrdAsRefStr, PartialEqAsRefStr,PartialOrdAsRefStr, StringEnum};
+use crate::serde::{OrdAsRefStr, PartialEqAsRefStr, PartialOrdAsRefStr, StringEnum};
 use crate::{MatrixVersion, PrivOwnedStr};
 
 /// The list of Matrix versions and features supported by a homeserver.
