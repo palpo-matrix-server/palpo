@@ -162,7 +162,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     conf.check().expect("config is not valid!");
 
     crate::logging::init()?;
-
     crate::data::init(&conf.db.clone().into_data_db_config());
 
     if args.console {

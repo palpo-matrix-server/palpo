@@ -26,11 +26,19 @@ impl DieselPool {
         let pool = DieselPool {
             inner: r2d2_config.build_unchecked(manager),
         };
-        match pool.wait_until_healthy(Duration::from_secs(5)) {
-            Ok(()) => {}
-            Err(PoolError::UnhealthyPool) => {}
-            Err(err) => return Err(err),
+        match pool.wait_until_healthy(Duration::from_secs(10)) {
+            Ok(()) => {
+                tracing::info!("Database pool is healthy");
+            }
+            Err(PoolError::UnhealthyPool) => {
+                tracing::error!("Database pool is unhealthy");
+            }
+            Err(e) => {
+                tracing::error!("Database pool is unhealthy: {e}");
+                return Err(e);
+            }
         }
+        tracing::info!("Database pool is created");
 
         Ok(pool)
     }

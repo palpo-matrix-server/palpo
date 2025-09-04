@@ -23,7 +23,7 @@ address = "127.0.0.1:6006"
 [logger]
 format = "pretty" # pretty, json, compact
 #max_concurrent_requests = 100 # How many requests Palpo sends to other servers at the same time
-#level = "warn,state=warn,rocket=off,_=off,sled=off"
+#level = "warn,state=warn,_=off,sled=off"
 
 [db]
 url = "postgres://postgres:root@localhost:5432/palpo_local"

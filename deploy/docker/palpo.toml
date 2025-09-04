@@ -36,7 +36,7 @@ trusted_servers = ["matrix.org"]
 # version = "1"
 
 # max_concurrent_requests = 100 # How many requests Palpo sends to other servers at the same time
-# log = "warn,state=warn,rocket=off,_=off,sled=off"
+# log = "warn,state=warn,_=off,sled=off"
 
 [[listeners]]
 # The local address that the server listens on.
