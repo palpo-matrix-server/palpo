@@ -86,16 +86,24 @@ impl ServerSigningKeys {
     }
 }
 
+// const METADATA: Metadata = metadata! {
+//     method: GET,
+//     rate_limited: false,
+//     authentication: None,
+//     history: {
+//         1.0 => "/.well-known/matrix/server",
+//     }
+// };
 /// Response type for the `discover_homeserver` endpoint.
 #[derive(ToSchema, Serialize, Debug)]
-pub struct ServerWellKnownResBody {
+pub struct ServerResBody {
     /// The server name to delegate server-server communications to, with
     /// optional port.
     #[serde(rename = "m.server")]
     pub server: OwnedServerName,
 }
 
-impl ServerWellKnownResBody {
+impl ServerResBody {
     /// Creates a new `Response` with the given homeserver.
     pub fn new(server: OwnedServerName) -> Self {
         Self { server }

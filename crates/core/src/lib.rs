@@ -25,8 +25,8 @@ pub mod third_party;
 pub mod third_party_invite;
 mod time;
 pub mod to_device;
-pub mod version;
-pub use version::MatrixVersion;
+pub mod metadata;
+pub use metadata::{SupportedVersions, MatrixVersion};
 pub mod error;
 pub use error::{MatrixError, UnknownVersionError};
 #[macro_use]

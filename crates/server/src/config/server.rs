@@ -5,6 +5,7 @@ use regex::RegexSet;
 use salvo::http::HeaderValue;
 use serde::Deserialize;
 use serde::de::IgnoredAny;
+use url::Url;
 
 use super::{
     AdminConfig, BlurhashConfig, CompressionConfig, DbConfig, FederationConfig, JwtConfig,
@@ -12,7 +13,8 @@ use super::{
     TurnConfig, TypingConfig, UrlPreviewConfig,
 };
 use crate::core::serde::{default_false, default_true};
-use crate::core::{OwnedRoomOrAliasId, OwnedServerName, RoomVersionId};
+use crate::core::{OwnedRoomOrAliasId,OwnedUserId, OwnedServerName, RoomVersionId};
+use crate::core::client::discovery::support::{ContactRole};
 use crate::env_vars::required_var;
 use crate::macros::config_example;
 use crate::utils::sys;
@@ -24,7 +26,12 @@ const DEPRECATED_KEYS: &[&str; 0] = &[];
 pub struct WellKnownConfig {
     pub client: Option<String>,
     pub server: Option<OwnedServerName>,
+	pub support_page: Option<Url>,
+	pub support_role: Option<ContactRole>,
+	pub support_email: Option<String>,
+	pub support_mxid: Option<OwnedUserId>,
 }
+
 #[derive(Clone, Debug, Deserialize, Default)]
 pub struct KeypairConfig {
     pub document: String,
@@ -349,7 +356,7 @@ pub struct ServerConfig {
     /// default: 11
     #[serde(default = "default_default_room_version")]
     pub default_room_version: RoomVersionId,
-    pub well_known_client: Option<String>,
+
     #[serde(default = "default_false")]
     pub allow_jaeger: bool,
     #[serde(default = "default_false")]
