@@ -145,12 +145,10 @@ mod tests {
     use url::Url;
 
     #[cfg(feature = "unstable-msc4191")]
-    use crate::discovery::get_authorization_server_metadata::v1::AccountManagementAction;
-    use crate::discovery::get_authorization_server_metadata::{
+    use crate::client::discovery::auth_metadata::AccountManagementAction;
+    use crate::client::discovery::auth_metadata::{
+        AuthorizationServerMetadata, CodeChallengeMethod, GrantType, ResponseMode, ResponseType,
         tests::authorization_server_metadata_json,
-        v1::{
-            AuthorizationServerMetadata, CodeChallengeMethod, GrantType, ResponseMode, ResponseType,
-        },
     };
 
     /// A valid `AuthorizationServerMetadata` with all fields and values, as a JSON object.

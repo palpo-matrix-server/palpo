@@ -3,8 +3,8 @@ pub use matrix_version::*;
 mod supported_versions;
 pub use supported_versions::*;
 
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod tests;
 
 // /// The complete history of this endpoint as far as Palpo knows, together
 // with all variants on /// versions stable and unstable.

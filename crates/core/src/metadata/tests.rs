@@ -4,11 +4,11 @@ use assert_matches2::assert_matches;
 use http::Method;
 
 use super::{
-    AuthScheme,
     MatrixVersion::{self, V1_0, V1_1, V1_2, V1_3},
-    Metadata, StablePathSelector, SupportedVersions, VersionHistory,
+    StablePathSelector, SupportedVersions, VersionHistory,
 };
-use crate::api::error::IntoHttpError;
+use crate::AuthScheme;
+use crate::error::IntoHttpError;
 
 fn stable_only_metadata(stable_paths: &'static [(StablePathSelector, &'static str)]) -> Metadata {
     Metadata {

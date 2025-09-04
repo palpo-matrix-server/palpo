@@ -27,9 +27,17 @@ use crate::error::UnknownVersionError;
 /// respective documentation for more information.
 #[derive(ToSchema, Serialize, Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum MatrixVersion {
-    /// Version 1.0 of the Matrix specification.
+    /// Matrix 1.0 was a release prior to the global versioning system and does not correspond to a
+    /// version of the Matrix specification.
     ///
-    /// Retroactively defined as <https://spec.matrix.org/latest/#legacy-versioning>.
+    /// It matches the following per-API versions:
+    ///
+    /// * Client-Server API: r0.5.0 to r0.6.1
+    /// * Identity Service API: r0.2.0 to r0.3.0
+    ///
+    /// The other APIs are not supported because they do not have a `GET /versions` endpoint.
+    ///
+    /// See <https://spec.matrix.org/latest/#legacy-versioning>.
     V1_0,
 
     /// Version 1.1 of the Matrix specification, released in Q4 2021.
@@ -76,6 +84,36 @@ pub enum MatrixVersion {
     ///
     /// See <https://spec.matrix.org/v1.9/>.
     V1_9,
+
+    /// Version 1.10 of the Matrix specification, released in Q1 2024.
+    ///
+    /// See <https://spec.matrix.org/v1.10/>.
+    V1_10,
+
+    /// Version 1.11 of the Matrix specification, released in Q2 2024.
+    ///
+    /// See <https://spec.matrix.org/v1.11/>.
+    V1_11,
+
+    /// Version 1.12 of the Matrix specification, released in Q3 2024.
+    ///
+    /// See <https://spec.matrix.org/v1.12/>.
+    V1_12,
+
+    /// Version 1.13 of the Matrix specification, released in Q4 2024.
+    ///
+    /// See <https://spec.matrix.org/v1.13/>.
+    V1_13,
+
+    /// Version 1.14 of the Matrix specification, released in Q1 2025.
+    ///
+    /// See <https://spec.matrix.org/v1.14/>.
+    V1_14,
+
+    /// Version 1.15 of the Matrix specification, released in Q2 2025.
+    ///
+    /// See <https://spec.matrix.org/v1.15/>.
+    V1_15,
 }
 
 impl TryFrom<&str> for MatrixVersion {
@@ -97,6 +135,12 @@ impl TryFrom<&str> for MatrixVersion {
             "v1.7" => V1_7,
             "v1.8" => V1_8,
             "v1.9" => V1_9,
+            "v1.10" => V1_10,
+            "v1.11" => V1_11,
+            "v1.12" => V1_12,
+            "v1.13" => V1_13,
+            "v1.14" => V1_14,
+            "v1.15" => V1_15,
             _ => return Err(UnknownVersionError),
         })
     }
@@ -134,6 +178,35 @@ impl MatrixVersion {
         major_l == major_r && minor_l >= minor_r
     }
 
+    /// Get a string representation of this Matrix version.
+    ///
+    /// This is the string that can be found in the response to one of the `GET /versions`
+    /// endpoints. Parsing this string will give the same variant.
+    ///
+    /// Returns `None` for [`MatrixVersion::V1_0`] because it can match several per-API versions.
+    pub const fn as_str(self) -> Option<&'static str> {
+        let string = match self {
+            MatrixVersion::V1_0 => return None,
+            MatrixVersion::V1_1 => "v1.1",
+            MatrixVersion::V1_2 => "v1.2",
+            MatrixVersion::V1_3 => "v1.3",
+            MatrixVersion::V1_4 => "v1.4",
+            MatrixVersion::V1_5 => "v1.5",
+            MatrixVersion::V1_6 => "v1.6",
+            MatrixVersion::V1_7 => "v1.7",
+            MatrixVersion::V1_8 => "v1.8",
+            MatrixVersion::V1_9 => "v1.9",
+            MatrixVersion::V1_10 => "v1.10",
+            MatrixVersion::V1_11 => "v1.11",
+            MatrixVersion::V1_12 => "v1.12",
+            MatrixVersion::V1_13 => "v1.13",
+            MatrixVersion::V1_14 => "v1.14",
+            MatrixVersion::V1_15 => "v1.15",
+        };
+
+        Some(string)
+    }
+
     /// Decompose the Matrix version into its major and minor number.
     pub const fn into_parts(self) -> (u8, u8) {
         match self {
@@ -147,6 +220,12 @@ impl MatrixVersion {
             MatrixVersion::V1_7 => (1, 7),
             MatrixVersion::V1_8 => (1, 8),
             MatrixVersion::V1_9 => (1, 9),
+            MatrixVersion::V1_10 => (1, 10),
+            MatrixVersion::V1_11 => (1, 11),
+            MatrixVersion::V1_12 => (1, 12),
+            MatrixVersion::V1_13 => (1, 13),
+            MatrixVersion::V1_14 => (1, 14),
+            MatrixVersion::V1_15 => (1, 15),
         }
     }
 
@@ -164,9 +243,58 @@ impl MatrixVersion {
             (1, 7) => Ok(MatrixVersion::V1_7),
             (1, 8) => Ok(MatrixVersion::V1_8),
             (1, 9) => Ok(MatrixVersion::V1_9),
+            (1, 10) => Ok(MatrixVersion::V1_10),
+            (1, 11) => Ok(MatrixVersion::V1_11),
+            (1, 12) => Ok(MatrixVersion::V1_12),
+            (1, 13) => Ok(MatrixVersion::V1_13),
+            (1, 14) => Ok(MatrixVersion::V1_14),
+            (1, 15) => Ok(MatrixVersion::V1_15),
             _ => Err(UnknownVersionError),
         }
     }
+
+    /// Constructor for use by the `metadata!` macro.
+    ///
+    /// Accepts string literals and parses them.
+    #[doc(hidden)]
+    pub const fn from_lit(lit: &'static str) -> Self {
+        use konst::{option, primitive::parse_u8, result, string};
+
+        let major: u8;
+        let minor: u8;
+
+        let mut lit_iter = string::split(lit, ".").next();
+
+        {
+            let (checked_first, checked_split) = option::unwrap!(lit_iter); // First iteration always succeeds
+
+            major = result::unwrap_or_else!(parse_u8(checked_first), |_| panic!(
+                "major version is not a valid number"
+            ));
+
+            lit_iter = checked_split.next();
+        }
+
+        match lit_iter {
+            Some((checked_second, checked_split)) => {
+                minor = result::unwrap_or_else!(parse_u8(checked_second), |_| panic!(
+                    "minor version is not a valid number"
+                ));
+
+                lit_iter = checked_split.next();
+            }
+            None => panic!("could not find dot to denote second number"),
+        }
+
+        if lit_iter.is_some() {
+            panic!("version literal contains more than one dot")
+        }
+
+        result::unwrap_or_else!(Self::from_parts(major, minor), |_| panic!(
+            "not a valid version literal"
+        ))
+    }
+
     // Internal function to do ordering in const-fn contexts
     const fn const_ord(&self, other: &Self) -> Ordering {
         let self_parts = self.into_parts();
@@ -214,7 +342,19 @@ impl MatrixVersion {
             // <https://spec.matrix.org/v1.8/rooms/#complete-list-of-room-versions>
             | MatrixVersion::V1_8
             // <https://spec.matrix.org/v1.9/rooms/#complete-list-of-room-versions>
-            | MatrixVersion::V1_9 => RoomVersionId::V10,
+            | MatrixVersion::V1_9 
+             // <https://spec.matrix.org/v1.10/rooms/#complete-list-of-room-versions>
+            | MatrixVersion::V1_10
+            // <https://spec.matrix.org/v1.11/rooms/#complete-list-of-room-versions>
+            | MatrixVersion::V1_11
+            // <https://spec.matrix.org/v1.12/rooms/#complete-list-of-room-versions>
+            | MatrixVersion::V1_12
+            // <https://spec.matrix.org/v1.13/rooms/#complete-list-of-room-versions>
+            | MatrixVersion::V1_13 => RoomVersionId::V10,
+            // <https://spec.matrix.org/v1.14/rooms/#complete-list-of-room-versions>
+            | MatrixVersion::V1_14
+            // <https://spec.matrix.org/v1.15/rooms/#complete-list-of-room-versions>
+            | MatrixVersion::V1_15 => RoomVersionId::V11,
         }
     }
 }

@@ -127,6 +127,7 @@ reqwest = { workspace = true, features = ["json"] }
 salvo = { workspace = true, features = ["jwt-auth", "oapi", "proxy", "serve-static", "sse", "size-limiter"] }
 sanitize-filename = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
+serde_html_form = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
 strum = { workspace = true }

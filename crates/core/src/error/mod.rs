@@ -18,7 +18,7 @@ mod kind_serde;
 pub use kind::*;
 use kind_serde::{ErrorCode, RetryAfter};
 
-use crate::RoomVersionId;
+use crate::{MatrixVersion, RoomVersionId};
 
 macro_rules! simple_kind_fns {
     ($($fname:ident, $kind:ident;)+) => {
@@ -251,6 +251,56 @@ pub enum HeaderSerializationError {
     /// (before the Unix epoch) or the future (after the year 9999).
     #[error("invalid HTTP date")]
     InvalidHttpDate,
+}
+
+/// An error when converting one of ruma's endpoint-specific request or response
+/// types to the corresponding http type.
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+pub enum IntoHttpError {
+    /// Tried to create an authentication request without an access token.
+    #[error("no access token given, but this endpoint requires one")]
+    NeedsAuthentication,
+
+    /// Tried to create a request with an old enough version, for which no unstable endpoint
+    /// exists.
+    ///
+    /// This is also a fallback error for if the version is too new for this endpoint.
+    #[error(
+        "endpoint was not supported by server-reported versions, \
+         but no unstable path to fall back to was defined"
+    )]
+    NoUnstablePath,
+
+    /// Tried to create a request with [`MatrixVersion`]s for all of which this endpoint was
+    /// removed.
+    #[error(
+        "could not create any path variant for endpoint, as it was removed in version {}",
+        .0.as_str().expect("no endpoint was removed in Matrix 1.0")
+    )]
+    EndpointRemoved(MatrixVersion),
+
+    /// JSON serialization failed.
+    #[error("JSON serialization failed: {0}")]
+    Json(#[from] serde_json::Error),
+
+    /// Query parameter serialization failed.
+    #[error("query parameter serialization failed: {0}")]
+    Query(#[from] serde_html_form::ser::Error),
+
+    /// Header serialization failed.
+    #[error("header serialization failed: {0}")]
+    Header(#[from] HeaderSerializationError),
+
+    /// HTTP request construction failed.
+    #[error("HTTP request construction failed: {0}")]
+    Http(#[from] http::Error),
+}
+
+impl From<http::header::InvalidHeaderValue> for IntoHttpError {
+    fn from(value: http::header::InvalidHeaderValue) -> Self {
+        Self::Header(value.into())
+    }
 }
 
 /// An error when deserializing the HTTP headers.

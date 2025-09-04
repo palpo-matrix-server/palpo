@@ -4,12 +4,11 @@
 use std::collections::BTreeSet;
 
 use ::serde::Serialize;
-use maplit::btreemap;
 use salvo::prelude::*;
 use url::Url;
 
+use crate::PrivOwnedStr;
 use crate::serde::{OrdAsRefStr, PartialEqAsRefStr, PartialOrdAsRefStr, RawJson, StringEnum};
-use crate::{MatrixVersion, PrivOwnedStr, RoomVersionId};
 
 mod serde;
 
@@ -367,7 +366,7 @@ mod tests {
     use serde_json::{Value as JsonValue, from_value as from_json_value, json};
     use url::Url;
 
-    use super::v1::AuthorizationServerMetadata;
+    use super::AuthorizationServerMetadata;
 
     /// A valid `AuthorizationServerMetadata` with all fields and values, as a JSON object.
     pub(super) fn authorization_server_metadata_json() -> JsonValue {
