@@ -50,7 +50,7 @@ mod oidc;
 pub use oidc::*;
 
 use crate::AppResult;
-use crate::core::client::discovery::RoomVersionStability;
+use crate::core::client::discovery::capabilities::RoomVersionStability;
 use crate::core::identifiers::*;
 use crate::core::signatures::Ed25519KeyPair;
 

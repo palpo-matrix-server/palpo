@@ -3,13 +3,12 @@
 //! Get the metadata of the authorization server that is trusted by the homeserver.
 use std::collections::BTreeSet;
 
+use ::serde::Serialize;
 use maplit::btreemap;
 use salvo::prelude::*;
-use ::serde::{Deserialize, Serialize};
-use serde_json::{Value as JsonValue, from_value as from_json_value, to_value as to_json_value};
 use url::Url;
 
-use crate::serde::{OrdAsRefStr,RawJson, PartialEqAsRefStr, PartialOrdAsRefStr, StringEnum};
+use crate::serde::{OrdAsRefStr, PartialEqAsRefStr, PartialOrdAsRefStr, RawJson, StringEnum};
 use crate::{MatrixVersion, PrivOwnedStr, RoomVersionId};
 
 mod serde;

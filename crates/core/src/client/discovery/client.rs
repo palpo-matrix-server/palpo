@@ -4,17 +4,16 @@
 //!
 //! Get discovery information about the domain.
 
-use std::{
-    borrow::Cow,
-    collections::{BTreeMap, btree_map},
-};
+use std::borrow::Cow;
 
-use maplit::btreemap;
 use salvo::prelude::*;
+#[cfg(feature = "unstable-msc4143")]
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use serde_json::{Value as JsonValue, from_value as from_json_value, to_value as to_json_value};
+#[cfg(feature = "unstable-msc4143")]
+use serde_json::Value as JsonValue;
 
-use crate::{MatrixVersion, PrivOwnedStr, RoomVersionId, serde::JsonObject};
+use crate::serde::JsonObject;
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,
@@ -122,7 +121,7 @@ impl TileServerInfo {
 
 /// Information about a specific MatrixRTC focus.
 #[cfg(feature = "unstable-msc4143")]
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(ToSchema, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(tag = "type")]
 pub enum RtcFocusInfo {
     /// A LiveKit RTC focus.
@@ -198,7 +197,7 @@ impl RtcFocusInfo {
 
 /// Information about a LiveKit RTC focus.
 #[cfg(feature = "unstable-msc4143")]
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(ToSchema, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct LiveKitRtcFocusInfo {
     /// The URL for the LiveKit service.
     #[serde(rename = "livekit_service_url")]
@@ -208,7 +207,7 @@ pub struct LiveKitRtcFocusInfo {
 /// Information about a custom RTC focus type.
 #[doc(hidden)]
 #[cfg(feature = "unstable-msc4143")]
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(ToSchema, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct CustomRtcFocusInfo {
     /// The type of RTC focus.
     #[serde(rename = "type")]

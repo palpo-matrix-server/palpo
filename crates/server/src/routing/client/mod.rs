@@ -32,8 +32,10 @@ use salvo::prelude::*;
 
 use crate::config;
 use crate::core::client::discovery::{
-    Capabilities, CapabilitiesResBody, RoomVersionStability, RoomVersionsCapability,
-    VersionsResBody,
+    capabilities::{
+        Capabilities, CapabilitiesResBody, RoomVersionStability, RoomVersionsCapability,
+    },
+    versions::VersionsResBody,
 };
 use crate::core::client::search::{ResultCategories, SearchReqArgs, SearchReqBody, SearchResBody};
 use crate::routing::prelude::*;
