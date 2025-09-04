@@ -1,7 +1,7 @@
 //! `GET /_matrix/client/*/capabilities`
 //!
-//! Get information about the server's supported feature set and other relevant
-//! capabilities ([spec]).
+//! Get information about the server's supported feature set and other relevant capabilities
+//! ([spec]).
 //!
 //! [spec]: https://spec.matrix.org/latest/client-server-api/#capabilities-negotiation
 
@@ -16,6 +16,34 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value as JsonValue, from_value as from_json_value, to_value as to_json_value};
 
 use crate::{MatrixVersion, PrivOwnedStr, RoomVersionId, serde::StringEnum};
+
+// /// `/v3/` ([spec])
+// ///
+// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3capabilities
+// const METADATA: Metadata = metadata! {
+//     method: GET,
+//     rate_limited: true,
+//     authentication: AccessToken,
+//     history: {
+//         1.0 => "/_matrix/client/r0/capabilities",
+//         1.1 => "/_matrix/client/v3/capabilities",
+//     }
+// };
+
+/// Response type for the `get_capabilities` endpoint.
+
+#[derive(ToSchema, Serialize, Debug)]
+pub struct CapabilitiesResBody {
+    /// The capabilities the server supports
+    pub capabilities: Capabilities,
+}
+
+impl CapabilitiesResBody {
+    /// Creates a new `Response` with the given capabilities.
+    pub fn new(capabilities: Capabilities) -> Self {
+        Self { capabilities }
+    }
+}
 
 /// Contains information about all the capabilities that the server supports.
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
@@ -391,334 +419,3 @@ impl<'a> Iterator for CapabilitiesIter<'a> {
         }
     }
 }
-
-// const METADATA: Metadata = metadata! {
-//     method: GET,
-//     rate_limited: false,
-//     authentication: None,
-//     history: {
-//         1.0 => "/.well-known/matrix/client",
-//     }
-// };
-
-/// Response type for the `client_well_known` endpoint.
-
-#[derive(ToSchema, Serialize, Debug)]
-pub struct ClientWellKnownResBody {
-    /// Information about the homeserver to connect to.
-    #[serde(rename = "m.homeserver")]
-    pub homeserver: HomeServerInfo,
-
-    /// Information about the identity server to connect to.
-    #[serde(
-        default,
-        rename = "m.identity_server",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub identity_server: Option<IdentityServerInfo>,
-
-    /// Information about the tile server to use to display location data.
-    #[serde(
-        default,
-        rename = "org.matrix.msc3488.tile_server",
-        alias = "m.tile_server",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub tile_server: Option<TileServerInfo>,
-
-    /// Information about the authentication server to connect to when using
-    /// OpenID Connect.
-    #[serde(
-        default,
-        rename = "org.matrix.msc2965.authentication",
-        alias = "m.authentication",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub authentication: Option<AuthenticationServerInfo>,
-
-    /// Information about the homeserver's trusted proxy to use for sliding sync
-    /// development.
-    #[serde(
-        default,
-        rename = "org.matrix.msc3575.proxy",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub sliding_sync_proxy: Option<SlidingSyncProxyInfo>,
-}
-
-impl ClientWellKnownResBody {
-    /// Creates a new `Response` with the given `HomeServerInfo`.
-    pub fn new(homeserver: HomeServerInfo) -> Self {
-        Self {
-            homeserver,
-            identity_server: None,
-            tile_server: None,
-            authentication: None,
-            sliding_sync_proxy: None,
-        }
-    }
-}
-
-/// Information about a discovered homeserver.
-#[derive(ToSchema, Clone, Debug, Deserialize, Hash, Serialize)]
-pub struct HomeServerInfo {
-    /// The base URL for the homeserver for client-server connections.
-    pub base_url: String,
-}
-
-impl HomeServerInfo {
-    /// Creates a new `HomeServerInfo` with the given `base_url`.
-    pub fn new(base_url: String) -> Self {
-        Self { base_url }
-    }
-}
-
-/// Information about a discovered identity server.
-#[derive(ToSchema, Clone, Debug, Deserialize, Hash, Serialize)]
-pub struct IdentityServerInfo {
-    /// The base URL for the identity server for client-server connections.
-    pub base_url: String,
-}
-
-impl IdentityServerInfo {
-    /// Creates an `IdentityServerInfo` with the given `base_url`.
-    pub fn new(base_url: String) -> Self {
-        Self { base_url }
-    }
-}
-
-/// Information about a discovered map tile server.
-#[derive(ToSchema, Clone, Debug, Deserialize, Hash, Serialize)]
-pub struct TileServerInfo {
-    /// The URL of a map tile server's `style.json` file.
-    ///
-    /// See the [Mapbox Style Specification](https://docs.mapbox.com/mapbox-gl-js/style-spec/) for more details.
-    pub map_style_url: String,
-}
-
-impl TileServerInfo {
-    /// Creates a `TileServerInfo` with the given map style URL.
-    pub fn new(map_style_url: String) -> Self {
-        Self { map_style_url }
-    }
-}
-
-/// Information about a discovered authentication server.
-#[derive(ToSchema, Clone, Debug, Deserialize, Hash, Serialize)]
-pub struct AuthenticationServerInfo {
-    /// The OIDC Provider that is trusted by the homeserver.
-    pub issuer: String,
-
-    /// The URL where the user is able to access the account management
-    /// capabilities of the OIDC Provider.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub account: Option<String>,
-}
-
-impl AuthenticationServerInfo {
-    /// Creates an `AuthenticationServerInfo` with the given `issuer` and an
-    /// optional `account`.
-    pub fn new(issuer: String, account: Option<String>) -> Self {
-        Self { issuer, account }
-    }
-}
-
-/// Information about a discovered sliding sync proxy.
-#[derive(ToSchema, Clone, Debug, Deserialize, Hash, Serialize)]
-pub struct SlidingSyncProxyInfo {
-    /// The URL of a sliding sync proxy that is trusted by the homeserver.
-    pub url: String,
-}
-
-impl SlidingSyncProxyInfo {
-    /// Creates a `SlidingSyncProxyInfo` with the given proxy URL.
-    pub fn new(url: String) -> Self {
-        Self { url }
-    }
-}
-
-/// Response type for the `api_versions` endpoint.
-
-#[derive(ToSchema, Serialize, Debug)]
-pub struct VersionsResBody {
-    /// A list of Matrix client API protocol versions supported by the
-    /// homeserver.
-    pub versions: Vec<String>,
-
-    /// Experimental features supported by the server.
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub unstable_features: BTreeMap<String, bool>,
-}
-
-impl VersionsResBody {
-    /// Creates a new `Response` with the given `versions`.
-    pub fn new(versions: Vec<String>) -> Self {
-        Self {
-            versions,
-            unstable_features: BTreeMap::new(),
-        }
-    }
-
-    /// Extracts known Matrix versions from this response.
-    ///
-    /// Matrix versions that Palpo cannot parse, or does not know about, are
-    /// discarded.
-    ///
-    /// The versions returned will be sorted from oldest to latest. Use
-    /// [`.find()`][Iterator::find]
-    /// or [`.rfind()`][DoubleEndedIterator::rfind] to look for a minimum or
-    /// maximum version to use given some constraint.
-    pub fn known_versions(&self) -> impl DoubleEndedIterator<Item = MatrixVersion> {
-        self.versions
-            .iter()
-            // Parse, discard unknown versions
-            .flat_map(|s| s.parse::<MatrixVersion>())
-            // Map to key-value pairs where the key is the major-minor representation
-            // (which can be used as a BTreeMap unlike MatrixVersion itself)
-            .map(|v| (v.into_parts(), v))
-            // Collect to BTreeMap
-            .collect::<BTreeMap<_, _>>()
-            // Return an iterator over just the values (`MatrixVersion`s)
-            .into_values()
-    }
-}
-// /// `/v3/` ([spec])
-// ///
-// /// [spec]: https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3capabilities
-// const METADATA: Metadata = metadata! {
-//     method: GET,
-//     rate_limited: true,
-//     authentication: AccessToken,
-//     history: {
-//         1.0 => "/_matrix/client/r0/capabilities",
-//         1.1 => "/_matrix/client/v3/capabilities",
-//     }
-// };
-
-/// Response type for the `get_capabilities` endpoint.
-
-#[derive(ToSchema, Serialize, Debug)]
-pub struct CapabilitiesResBody {
-    /// The capabilities the server supports
-    pub capabilities: Capabilities,
-}
-
-impl CapabilitiesResBody {
-    /// Creates a new `Response` with the given capabilities.
-    pub fn new(capabilities: Capabilities) -> Self {
-        Self { capabilities }
-    }
-}
-
-// #[cfg(test)]
-// mod tests {
-//     use std::borrow::Cow;
-
-//     use assert_matches2::assert_matches;
-//     use serde_json::json;
-
-//     use crate::MatrixVersion;
-//     use super::Capabilities;
-
-//     #[test]
-//     fn capabilities_iter() -> serde_json::Result<()> {
-//         let mut caps = Capabilities::new();
-//         let custom_cap = json!({
-//             "key": "value",
-//         });
-//         caps.set("m.some_random_capability", custom_cap)?;
-//         let mut caps_iter = caps.iter();
-
-//         let iter_res = caps_iter.next().unwrap();
-//         assert_eq!(iter_res.name(), "m.change_password");
-//         assert_eq!(iter_res.value(), Cow::Borrowed(&json!({ "enabled": true
-// })));
-
-//         let iter_res = caps_iter.next().unwrap();
-//         assert_eq!(iter_res.name(), "m.room_versions");
-//         assert_eq!(
-//             iter_res.value(),
-//             Cow::Borrowed(&json!({ "available": { "1": "stable" },"default"
-// :"1" }))         );
-
-//         let iter_res = caps_iter.next().unwrap();
-//         assert_eq!(iter_res.name(), "m.set_display_name");
-//         assert_eq!(iter_res.value(), Cow::Borrowed(&json!({ "enabled": true
-// })));
-
-//         let iter_res = caps_iter.next().unwrap();
-//         assert_eq!(iter_res.name(), "m.set_avatar_url");
-//         assert_eq!(iter_res.value(), Cow::Borrowed(&json!({ "enabled": true
-// })));
-
-//         let iter_res = caps_iter.next().unwrap();
-//         assert_eq!(iter_res.name(), "m.3pid_changes");
-//         assert_eq!(iter_res.value(), Cow::Borrowed(&json!({ "enabled": true
-// })));
-
-//         let iter_res = caps_iter.next().unwrap();
-//         assert_eq!(iter_res.name(), "m.some_random_capability");
-//         assert_eq!(iter_res.value(), Cow::Borrowed(&json!({ "key": "value"
-// })));
-
-//         assert_matches!(caps_iter.next(), None);
-//         Ok(())
-//     }
-
-//     #[test]
-//     fn known_versions() {
-//         let none = Response::new(vec![]);
-//         assert_eq!(none.known_versions().next(), None);
-
-//         let single_known = Response::new(vec!["r0.6.0".to_owned()]);
-//         assert_eq!(
-//             single_known.known_versions().collect::<Vec<_>>(),
-//             vec![MatrixVersion::V1_0]
-//         );
-
-//         let single_unknown = Response::new(vec!["v0.0".to_owned()]);
-//         assert_eq!(single_unknown.known_versions().next(), None);
-//     }
-
-//     #[test]
-//     fn known_versions_order() {
-//         let sorted = Response::new(vec![
-//             "r0.0.1".to_owned(),
-//             "r0.5.0".to_owned(),
-//             "r0.6.0".to_owned(),
-//             "r0.6.1".to_owned(),
-//             "v1.1".to_owned(),
-//             "v1.2".to_owned(),
-//         ]);
-//         assert_eq!(
-//             sorted.known_versions().collect::<Vec<_>>(),
-//             vec![MatrixVersion::V1_0, MatrixVersion::V1_1,
-// MatrixVersion::V1_2],         );
-
-//         let sorted_reverse = Response::new(vec![
-//             "v1.2".to_owned(),
-//             "v1.1".to_owned(),
-//             "r0.6.1".to_owned(),
-//             "r0.6.0".to_owned(),
-//             "r0.5.0".to_owned(),
-//             "r0.0.1".to_owned(),
-//         ]);
-//         assert_eq!(
-//             sorted_reverse.known_versions().collect::<Vec<_>>(),
-//             vec![MatrixVersion::V1_0, MatrixVersion::V1_1,
-// MatrixVersion::V1_2],         );
-
-//         let random_order = Response::new(vec![
-//             "v1.1".to_owned(),
-//             "r0.6.1".to_owned(),
-//             "r0.5.0".to_owned(),
-//             "r0.6.0".to_owned(),
-//             "r0.0.1".to_owned(),
-//             "v1.2".to_owned(),
-//         ]);
-//         assert_eq!(
-//             random_order.known_versions().collect::<Vec<_>>(),
-//             vec![MatrixVersion::V1_0, MatrixVersion::V1_1,
-// MatrixVersion::V1_2],         );
-//     }
-// }
