@@ -400,7 +400,7 @@ fn process_to_outlier_pdu<'a>(
             &async |event_id| {
                 timeline::get_pdu(&event_id)
                     .map(|s| s.pdu)
-                    .map_err(|_| StateError::other("missing PDU"))
+                    .map_err(|_| StateError::other("missing PDU 1"))
             },
             &async |k, s| {
                 auth_events
@@ -482,7 +482,7 @@ pub async fn process_to_timeline_pdu(
         &room_rules.authorization,
         &incoming_pdu,
         &async |event_id| {
-            timeline::get_pdu(&event_id).map_err(|_| StateError::other("missing PDU"))
+            timeline::get_pdu(&event_id).map_err(|_| StateError::other("missing PDU 2"))
         },
         &async |k, s| {
             state::ensure_field_id(&k.to_string().into(), &s)
@@ -512,7 +512,7 @@ pub async fn process_to_timeline_pdu(
         &room_rules.authorization,
         &incoming_pdu,
         &async |event_id| {
-            timeline::get_pdu(&event_id).map_err(|_| StateError::other("missing PDU"))
+            timeline::get_pdu(&event_id).map_err(|_| StateError::other("missing PDU 3"))
         },
         &async |k, s| {
             auth_events
@@ -689,7 +689,7 @@ async fn resolve_state(
             .iter()
             .map(|set| set.iter().map(|id| id.to_owned()).collect::<HashSet<_>>())
             .collect::<Vec<_>>(),
-        &async |id| timeline::get_pdu(&id).map_err(|_| StateError::other("missing PDU")),
+        &async |id| timeline::get_pdu(&id).map_err(|_| StateError::other("missing PDU 4")),
         |_| None, //TODO
     )
     .await

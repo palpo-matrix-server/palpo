@@ -327,9 +327,11 @@ pub fn get_auth_events(
     } else {
         return Ok(HashMap::new());
     };
+    println!("======frame id: {frame_id}");
 
     let auth_types =
         crate::core::state::auth_types_for_event(kind, sender, state_key, content, auth_rules)?;
+    println!("======auth types: {auth_types:?}");
     let mut sauth_events = auth_types
         .into_iter()
         .filter_map(|(event_type, state_key)| {
@@ -338,11 +340,13 @@ pub fn get_auth_events(
                 .map(|field_id| (field_id, (event_type, state_key)))
         })
         .collect::<HashMap<_, _>>();
+    println!("========== : {sauth_events:?}");
 
     let full_state = load_frame_info(frame_id)?
         .pop()
         .expect("there is always one layer")
         .full_state;
+    println!("==========full_state:{full_state:?}");
     let mut state_map = StateMap::new();
     for state in full_state.iter() {
         let (state_key_id, event_id) = state.split()?;

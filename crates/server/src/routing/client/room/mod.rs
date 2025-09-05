@@ -17,11 +17,12 @@ use salvo::prelude::*;
 use serde_json::json;
 use serde_json::value::to_raw_value;
 
-use crate::core::UnixMillis;
+use crate::core::{room_id, UnixMillis};
 use crate::core::client::directory::{PublicRoomsFilteredReqBody, PublicRoomsReqArgs};
 use crate::core::client::room::{
-    AliasesResBody, CreateRoomReqBody, CreateRoomResBody, InitialSyncReqArgs, InitialSyncResBody,
-    PaginationChunk, RoomPreset, SetReadMarkerReqBody, UpgradeRoomReqBody, UpgradeRoomResBody,
+    AliasesResBody, CreateRoomReqBody, CreateRoomResBody, CreationContent, InitialSyncReqArgs,
+    InitialSyncResBody, PaginationChunk, RoomPreset, SetReadMarkerReqBody, UpgradeRoomReqBody,
+    UpgradeRoomResBody,
 };
 use crate::core::directory::{PublicRoomFilter, PublicRoomsResBody, RoomNetwork};
 use crate::core::events::fully_read::{FullyReadEvent, FullyReadEventContent};
@@ -43,15 +44,14 @@ use crate::core::events::room::topic::RoomTopicEventContent;
 use crate::core::events::{RoomAccountDataEventType, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
 use crate::core::room::{JoinRule, Visibility};
-use crate::core::room_version_rules::AuthorizationRules;
+use crate::core::room_version_rules::{AuthorizationRules, RoomIdFormatVersion,RoomVersionRules};
 use crate::core::serde::{CanonicalJsonObject, JsonValue, RawJson};
-use crate::data;
 use crate::event::PduBuilder;
 use crate::room::{push_action, timeline};
 use crate::user::user_is_ignored;
 use crate::{
-    AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, empty_ok, hoops,
-    json_ok, room,
+    AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, RoomMutexGuard, config,
+    data, empty_ok, hoops, json_ok, room,
 };
 
 const LIMIT_MAX: usize = 100;
@@ -565,10 +565,8 @@ pub(super) async fn create_room(
 ) -> JsonResult<CreateRoomResBody> {
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
-    let room_id = RoomId::new_v1(&config::get().server_name);
 
     let conf = config::get();
-    let state_lock = room::lock_state(&room_id).await;
     let room_version = match body.room_version.clone() {
         Some(room_version) => {
             if config::supports_room_version(&room_version) {
@@ -582,7 +580,7 @@ pub(super) async fn create_room(
         }
         None => conf.default_room_version.clone(),
     };
-    room::ensure_room(&room_id, &room_version)?;
+    let room_rules = crate::room::get_rules(&room_version)?;
 
     if !conf.allow_room_creation && authed.appservice.is_none() && !authed.is_admin() {
         return Err(MatrixError::forbidden("Room creation has been disabled.", None).into());
@@ -602,69 +600,21 @@ pub(super) async fn create_room(
         None
     };
 
-    let room_rules = crate::room::get_rules(&room_version)?;
+    // Figure out preset. We need it for preset specific events
+    let preset = body.preset.clone().unwrap_or(match &body.visibility {
+        Visibility::Private => RoomPreset::PrivateChat,
+        Visibility::Public => RoomPreset::PublicChat,
+        _ => RoomPreset::PrivateChat, // Room visibility should not be custom
+    });
 
-    let content = match &body.creation_content {
-        Some(content) => {
-            let mut content = content
-                .deserialize_as::<CanonicalJsonObject>()
-                .expect("Invalid creation content");
-            content.insert(
-                "creator".into(),
-                json!(sender_id)
-                    .try_into()
-                    .map_err(|_| MatrixError::bad_json("Invalid creation content"))?,
-            );
-            content.insert(
-                "room_version".into(),
-                json!(room_version.as_str())
-                    .try_into()
-                    .map_err(|_| MatrixError::bad_json("Invalid creation content"))?,
-            );
-            content
+    let (room_id, state_lock) = match room_rules.room_id_format {
+        RoomIdFormatVersion::V1 => {
+            create_create_event_legacy(sender_id, &body, &room_version, &room_rules).await?
         }
-        None => {
-            // TODO: Add correct value for v11
-            let mut content = serde_json::from_str::<CanonicalJsonObject>(
-                to_raw_value(&RoomCreateEventContent::new_v1(sender_id.to_owned()))
-                    .map_err(|_| MatrixError::bad_json("Invalid creation content"))?
-                    .get(),
-            )
-            .unwrap();
-            content.insert(
-                "room_version".into(),
-                json!(room_version.as_str())
-                    .try_into()
-                    .map_err(|_| MatrixError::bad_json("Invalid creation content"))?,
-            );
-            content
+        RoomIdFormatVersion::V2 => {
+            create_create_event(sender_id, &body, &preset, &room_version, &room_rules).await?
         }
     };
-
-    // Validate creation content
-    let de_result = serde_json::from_str::<CanonicalJsonObject>(
-        to_raw_value(&content)
-            .expect("Invalid creation content")
-            .get(),
-    );
-
-    if de_result.is_err() {
-        return Err(MatrixError::bad_json("Invalid creation content").into());
-    }
-
-    // 1. The room create event
-    timeline::build_and_append_pdu(
-        PduBuilder {
-            event_type: TimelineEventType::RoomCreate,
-            content: to_raw_value(&content).expect("event is valid, we just created it"),
-            state_key: Some("".to_owned()),
-            ..Default::default()
-        },
-        sender_id,
-        &room_id,
-        &state_lock,
-    )
-    .await?;
 
     // 2. Let the room creator join
     timeline::build_and_append_pdu(
@@ -692,12 +642,6 @@ pub(super) async fn create_room(
     .await?;
 
     // 3. Power levels
-    // Figure out preset. We need it for preset specific events
-    let preset = body.preset.clone().unwrap_or(match &body.visibility {
-        Visibility::Private => RoomPreset::PrivateChat,
-        Visibility::Public => RoomPreset::PublicChat,
-        _ => RoomPreset::PrivateChat, // Room visibility should not be custom
-    });
 
     let mut users = BTreeMap::new();
     if !room_rules.authorization.explicitly_privilege_room_creators {
@@ -896,6 +840,208 @@ pub(super) async fn create_room(
     info!("{} created a room", sender_id);
     json_ok(CreateRoomResBody { room_id })
 }
+
+async fn create_create_event_legacy(
+    sender_id: &UserId,
+    body: &CreateRoomReqBody,
+    room_version: &RoomVersionId,
+    _room_rules: &RoomVersionRules,
+) -> AppResult<(OwnedRoomId, RoomMutexGuard)> {
+    // let room_id: OwnedRoomId = match &body.room_id {
+    //     None => RoomId::new_v1(&config::get().server_name),
+    //     Some(custom_id) => custom_room_id_check(custom_id).await?,
+    // };
+    let room_id = RoomId::new_v1(&config::get().server_name);
+    let state_lock = room::lock_state(&room_id).await;
+    room::ensure_room(&room_id, &room_version)?;
+
+    let content = match &body.creation_content {
+        Some(content) => {
+            let mut content = content
+                .deserialize_as::<CanonicalJsonObject>()
+                .expect("Invalid creation content");
+            content.insert(
+                "creator".into(),
+                json!(sender_id)
+                    .try_into()
+                    .map_err(|_| MatrixError::bad_json("Invalid creation content"))?,
+            );
+            content.insert(
+                "room_version".into(),
+                json!(room_version.as_str())
+                    .try_into()
+                    .map_err(|_| MatrixError::bad_json("Invalid creation content"))?,
+            );
+            content
+        }
+        None => {
+            // TODO: Add correct value for v11
+            let mut content = serde_json::from_str::<CanonicalJsonObject>(
+                to_raw_value(&RoomCreateEventContent::new_v1(sender_id.to_owned()))
+                    .map_err(|_| MatrixError::bad_json("Invalid creation content"))?
+                    .get(),
+            )?;
+            content.insert(
+                "room_version".into(),
+                json!(room_version.as_str())
+                    .try_into()
+                    .map_err(|_| MatrixError::bad_json("Invalid creation content"))?,
+            );
+            content
+        }
+    };
+
+    // Validate creation content
+    let de_result = serde_json::from_str::<CanonicalJsonObject>(
+        to_raw_value(&content)
+            .expect("Invalid creation content")
+            .get(),
+    );
+
+    if de_result.is_err() {
+        return Err(MatrixError::bad_json("Invalid creation content").into());
+    }
+
+    // 1. The room create event
+    timeline::build_and_append_pdu(
+        PduBuilder {
+            event_type: TimelineEventType::RoomCreate,
+            content: to_raw_value(&ontent)?,
+            state_key: Some("".to_owned()),
+            ..Default::default()
+        },
+        sender_id,
+        &room_id,
+        &state_lock,
+    )
+    .await?;
+
+    Ok((room_id, state_lock))
+}
+
+async fn create_create_event(
+    sender_id: &UserId,
+    body: &CreateRoomReqBody,
+    preset: &RoomPreset,
+    room_version: &RoomVersionId,
+    room_rules: &RoomVersionRules,
+) -> AppResult<(OwnedRoomId, RoomMutexGuard)> {
+    let mut create_content = match &body.creation_content {
+        Some(content) => {
+            let mut content = content.deserialize_as::<CanonicalJsonObject>()?;
+
+            content.insert(
+                "room_version".into(),
+                json!(room_version.as_str())
+                    .try_into()
+                    .map_err(|e| MatrixError::bad_json("Invalid creation content: {e}"))?,
+            );
+
+            content
+        }
+        None => {
+            let content = RoomCreateEventContent::new_v11();
+
+            let mut content =
+                serde_json::from_str::<CanonicalJsonObject>(to_raw_value(&content)?.get())?;
+
+            content.insert(
+                "room_version".into(),
+                json!(room_version.as_str()).try_into()?,
+            );
+            content
+        }
+    };
+
+    if room_rules.authorization.additional_room_creators {
+        let mut additional_creators = body
+            .creation_content
+            .as_ref()
+            .and_then(|c| c.deserialize_as::<CreationContent>().ok())
+            .unwrap_or_default()
+            .additional_creators;
+
+        if *preset == RoomPreset::TrustedPrivateChat {
+            additional_creators.extend(body.invite.clone());
+        }
+
+        additional_creators.sort();
+        additional_creators.dedup();
+        if !additional_creators.is_empty() {
+            create_content.insert(
+                "additional_creators".into(),
+                json!(additional_creators).try_into()?,
+            );
+        }
+    }
+
+    // 1. The room create event, using a placeholder room_id
+    let room_id = room_id!("!thiswillbereplaced").to_owned();
+    let state_lock = room::lock_state(&room_id).await;
+    let create_event_id = timeline::build_and_append_pdu(
+        PduBuilder {
+            event_type: TimelineEventType::RoomCreate,
+            content: to_raw_value(&create_content)?,
+            state_key: Some("".to_owned()),
+            ..Default::default()
+        },
+        sender_id,
+        &room_id,
+        &state_lock,
+    )
+    .await?;
+
+    drop(state_lock);
+
+    // The real room_id is now the event_id.
+    let room_id = OwnedRoomId::from_parts('!', create_event_id.localpart(), None)?;
+    let state_lock = room::lock_state(&room_id).await;
+
+    Ok((room_id, state_lock))
+}
+
+// /// if a room is being created with a custom room ID, run our checks against it
+// async fn custom_room_id_check(custom_room_id: &str) -> AppResult<OwnedRoomId> {
+//     let conf = crate::config::get();
+//     // apply forbidden room alias checks to custom room IDs too
+//     if conf.forbidden_alias_names.is_match(custom_room_id) {
+//         return Err(MatrixError::unknown("Custom room ID is forbidden.").into());
+//     }
+
+//     if custom_room_id.contains(':') {
+//         return Err(MatrixError::invalid_param(
+//             "Custom room ID contained `:` which is not allowed. Please note that this expects a \
+// 			 localpart, not the full room ID.",
+//         )
+//         .into());
+//     } else if custom_room_id.contains(char::is_whitespace) {
+//         return Err(MatrixError::invalid_param(
+//             "Custom room ID contained spaces which is not valid.",
+//         )
+//         .into());
+//     }
+
+//     let full_room_id = format!("!{custom_room_id}:{}", conf.server_name);
+
+//     let room_id = OwnedRoomId::parse(full_room_id)
+//         .inspect(|full_room_id| debug!(?full_room_id, "Full custom room ID"))
+//         .inspect_err(|e| {
+//             warn!(
+//                 ?e,
+//                 ?custom_room_id,
+//                 "Failed to create room with custom room ID"
+//             );
+//         })?;
+
+//     // check if room ID doesn't already exist instead of erroring on auth check
+//     if room::room_exists(&room_id)? {
+//         return Err(
+//             MatrixError::room_in_use("Room with that custom room ID already exists").into(),
+//         );
+//     }
+
+//     Ok(room_id)
+// }
 
 /// creates the power_levels_content for the PDU builder
 fn default_power_levels_content(

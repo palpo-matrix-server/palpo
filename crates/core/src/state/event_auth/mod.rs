@@ -61,10 +61,12 @@ pub fn auth_types_for_event(
         (StateEventType::RoomMember, sender.to_string()),
     ];
 
-    // v1-v11, the `m.room.create` event.
-    if !rules.room_create_event_id_as_room_id {
-        auth_types.push((StateEventType::RoomCreate, "".to_owned()));
-    }
+    // TODO: do we need `m.room.create` event for room version 12?
+    // // v1-v11, the `m.room.create` event.
+    // if !rules.room_create_event_id_as_room_id {
+    //     auth_types.push((StateEventType::RoomCreate, "".to_owned()));
+    // }
+    auth_types.push((StateEventType::RoomCreate, "".to_owned()));
 
     // If type is `m.room.member`:
     if event_type == &TimelineEventType::RoomMember {
@@ -151,8 +153,10 @@ where
     StateFut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event + Clone + Sync + Send,
 {
+    println!("=============check_state_dependent_auth_rules  0");
     check_state_dependent_auth_rules(rules, incoming_event, fetch_state).await?;
 
+    println!("=============check_state_independent_auth_rules  1");
     check_state_independent_auth_rules(rules, incoming_event, fetch_event).await
 }
 /// Check whether the incoming event passes the state-independent [authorization rules] for the
@@ -183,12 +187,16 @@ where
     debug!("starting state-independent auth check");
 
     // Since v1, if type is m.room.create:
+    println!("==========event type: {}", incoming_event.event_type());
     if *incoming_event.event_type() == TimelineEventType::RoomCreate {
+        println!("=====CCCCCCCCCC  0");
         let room_create_event = RoomCreateEvent::new(incoming_event);
 
+        println!("=====CCCCCCCCCC  1");
         return check_room_create(room_create_event, rules);
     }
 
+    println!("=====CCCCCCCCCC  2");
     let expected_auth_types = auth_types_for_event(
         incoming_event.event_type(),
         incoming_event.sender(),
@@ -199,6 +207,7 @@ where
     .into_iter()
     .map(|(event_type, state_key)| (TimelineEventType::from(event_type), state_key))
     .collect::<HashSet<_>>();
+    println!("=====CCCCCCCCCC  3");
 
     // let Some(room_id) = incoming_event.room_id() else {
     //     return Err(StateError::other("missing `room_id` field for event"));
@@ -208,8 +217,10 @@ where
     let mut seen_auth_types: HashSet<(TimelineEventType, String)> =
         HashSet::with_capacity(expected_auth_types.len());
 
+    println!("=====CCCCCCCCCC  3");
     // Since v1, considering auth_events:
     for auth_event_id in incoming_event.auth_events() {
+    println!("=====CCCCCCCCCC  4");
         let event_id = auth_event_id.borrow();
 
         let Ok(auth_event) = fetch_event(event_id.to_owned()).await else {
@@ -218,6 +229,7 @@ where
             )));
         };
 
+        // TODO: Room Version 12
         // The auth event must be in the same room as the incoming event.
         // if auth_event
         //     .room_id()
@@ -263,6 +275,7 @@ where
         seen_auth_types.insert(key);
     }
 
+    println!("=====CCCCCCCCCC  5");
     // v1-v11, if there is no m.room.create event among the entries, reject.
     if !rules.room_create_event_id_as_room_id
         && !seen_auth_types
@@ -274,6 +287,7 @@ where
         ));
     }
 
+    println!("=====CCCCCCCCCC  6");
     // Since v12, the room_id must be the reference hash of an accepted m.room.create event.
     if rules.room_create_event_id_as_room_id {
         let room_create_event_id = room_id.room_create_event_id().map_err(|error| {
@@ -281,6 +295,7 @@ where
                 "could not construct `m.room.create` event ID from room ID: {error}"
             ))
         })?;
+        println!("=====CCCCCCCCCC  6.1 room_create_event_id: {room_create_event_id}");
 
         let room_create_event = fetch_event(room_create_event_id.to_owned()).await?;
 
@@ -291,6 +306,7 @@ where
         }
     }
 
+    println!("=====CCCCCCCCCC  7");
     Ok(())
 }
 
@@ -329,13 +345,22 @@ where
     debug!("starting state-dependent auth check");
 
     // There are no state-dependent auth rules for create events.
+    println!(
+        "=========cccheck_state_dependent_auth_rules  {}  ",
+        incoming_event.event_type()
+    );
     if *incoming_event.event_type() == TimelineEventType::RoomCreate {
+        println!("OOOOOOOOOOO");
         debug!("allowing `m.room.create` event");
         return Ok(());
     }
+    println!("OOOOOOOOOOO1");
 
     let room_create_event = fetch_state.room_create_event().await?;
+
+    println!("OOOOOOOOOOO1 ========= 1");
     let room_create_event = RoomCreateEvent::new(&room_create_event);
+    println!("OOOOOOOOOOO1 ========= 2");
 
     // Since v1, if the create event content has the field m.federate set to false and the sender
     // domain of the event does not match the sender domain of the create event, reject.
@@ -348,6 +373,7 @@ where
             does not match `m.room.create` event's sender domain",
         ));
     }
+    println!("OOOOOOOOOOO1 ========= 3");
 
     let sender = incoming_event.sender();
 
@@ -370,13 +396,21 @@ where
         info!("`m.room.aliases` event was allowed");
         return Ok(());
     }
+    println!("OOOOOOOOOOO1 ========= 4");
 
     // Since v1, if type is m.room.member:
     if *incoming_event.event_type() == TimelineEventType::RoomMember {
         let room_member_event = RoomMemberEvent::new(incoming_event);
-        return check_room_member(room_member_event, auth_rules, room_create_event, fetch_state).await;
+        return check_room_member(
+            room_member_event,
+            auth_rules,
+            room_create_event,
+            fetch_state,
+        )
+        .await;
     }
 
+    println!("OOOOOOOOOOO1 ========= 5");
     // Since v1, if the sender's current membership state is not join, reject.
     let sender_membership = fetch_state.user_membership(sender).await?;
 
@@ -390,6 +424,7 @@ where
     let sender_power_level =
         current_room_power_levels_event.user_power_level(sender, &creators, auth_rules)?;
 
+    println!("OOOOOOOOOOO1 ========= 6");
     // Since v1, if type is m.room.third_party_invite:
     if *incoming_event.event_type() == TimelineEventType::RoomThirdPartyInvite {
         // Since v1, allow if and only if sender's current power level is greater than
@@ -407,6 +442,7 @@ where
         return Ok(());
     }
 
+    println!("OOOOOOOOOOO1 =========7");
     // Since v1, if the event type's required power level is greater than the sender's power level,
     // reject.
     let event_type_power_level = current_room_power_levels_event.event_power_level(

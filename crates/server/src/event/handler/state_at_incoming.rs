@@ -124,7 +124,7 @@ pub(super) async fn state_at_incoming_resolved(
         &async |event_id| {
             timeline::get_pdu(&event_id)
                 .map(|s| s.pdu)
-                .map_err(|_| StateError::other("missing PDU"))
+                .map_err(|_| StateError::other("missing PDU 5"))
         },
         |_| None, //TODO
     )

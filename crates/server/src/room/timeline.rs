@@ -618,14 +618,16 @@ pub async fn create_hash_and_sign_event(
     let fetch_event = async |event_id: OwnedEventId| {
         timeline::get_pdu(&event_id)
             .map(|s| s.pdu)
-            .map_err(|_| StateError::other("missing PDU"))
+            .map_err(|_| StateError::other("missing PDU 6"))
     };
     let fetch_state = async |k: StateEventType, s: String| {
+        println!("=========auth_events: {auth_events:?}, k: {k}, s: {s}"); // --- IGNORE ---
         auth_events
             .get(&(k, s.to_owned()))
             .map(|s| s.pdu.clone())
             .ok_or_else(|| StateError::other("missing auth events"))
     };
+    println!("ZZZZZZZZZZZZZZZZZZZZzz");
     crate::core::state::event_auth::auth_check(
         &room_rules.authorization,
         &pdu,
@@ -634,6 +636,7 @@ pub async fn create_hash_and_sign_event(
     )
     .await?;
 
+    println!("ZZZZZZZZZZZZZZZZZZZZzz === done");
     // Hash and sign
     let mut pdu_json =
         utils::to_canonical_object(&pdu).expect("event is valid, we just created it");
@@ -782,6 +785,7 @@ fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
     }
     Ok(())
 }
+
 /// Creates a new persisted data unit and adds it to a room.
 #[tracing::instrument(skip_all)]
 pub async fn build_and_append_pdu(
