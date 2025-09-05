@@ -213,6 +213,7 @@ pub(super) async fn send_state_for_key(
     let event_id = crate::state::send_state_event_for_key(
         authed.user_id(),
         &args.room_id,
+        &crate::room::get_version(&args.room_id)?,
         &args.event_type,
         body.0,
         args.state_key.to_owned(),
@@ -241,6 +242,7 @@ pub(super) async fn send_state_for_empty_key(
     let event_id = crate::state::send_state_event_for_key(
         authed.user_id(),
         &args.room_id,
+        &crate::room::get_version(&args.room_id)?,
         &args.event_type.to_string().into(),
         body.0,
         "".into(),

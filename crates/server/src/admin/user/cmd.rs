@@ -614,6 +614,7 @@ pub(super) async fn force_demote(
         PduBuilder::state(String::new(), &power_levels_content),
         &user_id,
         &room_id,
+        &room_version,
         &state_lock,
     )
     .await?;
@@ -746,6 +747,7 @@ pub(super) async fn redact_event(ctx: &Context<'_>, event_id: OwnedEventId) -> A
             },
             &event.sender,
             &event.room_id,
+            &crate::room::get_version(&event.room_id)?,
             &state_lock,
         )
         .await?

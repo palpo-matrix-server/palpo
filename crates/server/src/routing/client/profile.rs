@@ -205,6 +205,7 @@ async fn set_avatar_url(
             pdu_builder,
             &user_id,
             &room_id,
+            &room::get_version(&room_id)?,
             &room::lock_state(&room_id).await,
         )
         .await?;
@@ -296,6 +297,7 @@ async fn set_display_name(
             pdu_builder,
             &user_id,
             &room_id,
+            &crate::room::get_version(&room_id)?,
             &room::lock_state(&room_id).await,
         )
         .await?;

@@ -104,6 +104,7 @@ pub async fn join_room(
             },
             sender_id,
             room_id,
+            &crate::room::get_version(room_id)?,
             &room::lock_state(room_id).await,
         )
         .await

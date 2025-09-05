@@ -543,6 +543,7 @@ pub(super) async fn ban_user(
         },
         authed.user_id(),
         &room_id,
+        &crate::room::get_version(&room_id)?,
         &state_lock,
     )
     .await?;
@@ -589,6 +590,7 @@ pub(super) async fn unban_user(
         },
         authed.user_id(),
         &room_id,
+        &crate::room::get_version(&room_id)?,
         &state_lock,
     )
     .await?;
@@ -645,6 +647,7 @@ pub(super) async fn kick_user(
         ),
         authed.user_id(),
         &room_id,
+        &crate::room::get_version(&room_id)?,
         &state_lock,
     )
     .await?;

@@ -28,6 +28,7 @@ pub async fn invite_user(
         );
     }
 
+    let conf = crate::config::get();
     if invitee_id.server_name().is_remote() {
         let (pdu, pdu_json, invite_room_state) = {
             let content = RoomMemberEventContent {
@@ -47,6 +48,7 @@ pub async fn invite_user(
                 PduBuilder::state(invitee_id.to_string(), &content),
                 inviter_id,
                 room_id,
+                crate::room::get_version(room_id).as_ref().unwrap_or(&conf.default_room_version),
                 &state_lock,
             )
             .await?;
@@ -56,8 +58,8 @@ pub async fn invite_user(
 
             (pdu, pdu_json, invite_room_state)
         };
-
         let room_version_id = room::get_version(room_id)?;
+
 
         let invite_request = crate::core::federation::membership::invite_user_request_v2(
             &invitee_id.server_name().origin().await,
@@ -141,6 +143,7 @@ pub async fn invite_user(
         },
         inviter_id,
         room_id,
+        &crate::room::get_version(room_id)?,
         &room::lock_state(room_id).await,
     )
     .await?;

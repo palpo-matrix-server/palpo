@@ -248,6 +248,7 @@ pub(super) async fn send_message(
         },
         authed.user_id(),
         &args.room_id,
+        &crate::room::get_version(&args.room_id)?,
         &state_lock,
     )
     .await?
@@ -307,6 +308,7 @@ pub(super) async fn post_message(
         },
         authed.user_id(),
         &args.room_id,
+        &crate::room::get_version(&args.room_id)?,
         &state_lock,
     )
     .await?

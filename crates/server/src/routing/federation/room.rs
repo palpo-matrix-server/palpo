@@ -317,6 +317,7 @@ async fn make_knock(
         ),
         &args.user_id,
         &args.room_id,
+        &room_version_id,
         &state_lock,
     )
     .await?;

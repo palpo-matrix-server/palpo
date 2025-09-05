@@ -124,6 +124,7 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         },
         &args.user_id,
         &args.room_id,
+        &room_version_id,
         &state_lock,
     )
     .await?;
@@ -269,6 +270,7 @@ async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<Mak
         ),
         &args.user_id,
         &args.room_id,
+        &room_version_id,
         &state_lock,
     )
     .await?;

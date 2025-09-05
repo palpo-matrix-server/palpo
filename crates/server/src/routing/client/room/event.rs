@@ -282,6 +282,7 @@ pub(super) async fn send_redact(
         },
         authed.user_id(),
         &args.room_id,
+        &crate::room::get_version(&args.room_id)?,
         &state_lock,
     )
     .await?

@@ -339,6 +339,7 @@ async fn upgrade(
         },
         authed.user_id(),
         &room_id,
+        &crate::room::get_version(&room_id)?,
         &state_lock,
     )
     .await?
@@ -400,6 +401,7 @@ async fn upgrade(
         },
         authed.user_id(),
         &replacement_room,
+        &crate::room::get_version(&replacement_room)?,
         &state_lock,
     )
     .await?;
@@ -429,6 +431,7 @@ async fn upgrade(
         },
         authed.user_id(),
         &replacement_room,
+        &crate::room::get_version(&replacement_room)?,
         &state_lock,
     )
     .await?;
@@ -462,6 +465,7 @@ async fn upgrade(
             },
             authed.user_id(),
             &replacement_room,
+            &crate::room::get_version(&replacement_room)?,
             &state_lock,
         )
         .await?;
@@ -496,6 +500,7 @@ async fn upgrade(
         },
         authed.user_id(),
         &room_id,
+        &crate::room::get_version(&room_id)?,
         &state_lock,
     )
     .await?;
@@ -643,6 +648,7 @@ pub(super) async fn create_room(
         },
         sender_id,
         &room_id,
+        &room_version,
         &state_lock,
     )
     .await?;
@@ -682,6 +688,7 @@ pub(super) async fn create_room(
         },
         sender_id,
         &room_id,
+        &room_version,
         &state_lock,
     )
     .await?;
@@ -702,6 +709,7 @@ pub(super) async fn create_room(
             },
             sender_id,
             &room_id,
+            &room_version,
             &state_lock,
         )
         .await
@@ -725,6 +733,7 @@ pub(super) async fn create_room(
         },
         sender_id,
         &room_id,
+        &room_version,
         &state_lock,
     )
     .await?;
@@ -742,6 +751,7 @@ pub(super) async fn create_room(
         },
         sender_id,
         &room_id,
+        &room_version,
         &state_lock,
     )
     .await?;
@@ -773,6 +783,7 @@ pub(super) async fn create_room(
             },
             sender_id,
             &room_id,
+            &room_version,
             &state_lock,
         )
         .await?;
@@ -793,7 +804,14 @@ pub(super) async fn create_room(
             continue;
         }
 
-        timeline::build_and_append_pdu(pdu_builder, sender_id, &room_id, &state_lock).await?;
+        timeline::build_and_append_pdu(
+            pdu_builder,
+            sender_id,
+            &room_id,
+            &room_version,
+            &state_lock,
+        )
+        .await?;
     }
 
     // 7. Events implied by name and topic
@@ -808,6 +826,7 @@ pub(super) async fn create_room(
             },
             sender_id,
             &room_id,
+            &room_version,
             &state_lock,
         )
         .await?;
@@ -824,6 +843,7 @@ pub(super) async fn create_room(
             },
             sender_id,
             &room_id,
+            &room_version,
             &state_lock,
         )
         .await?;
@@ -923,6 +943,7 @@ async fn create_create_event_legacy(
         },
         sender_id,
         &room_id,
+        room_version,
         &state_lock,
     )
     .await?;
@@ -999,6 +1020,7 @@ async fn create_create_event(
         },
         sender_id,
         &temp_room_id,
+        room_version,
         &state_lock,
     )
     .await?;

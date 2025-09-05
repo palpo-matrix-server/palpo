@@ -160,6 +160,7 @@ pub async fn full_user_deactivate(
                 PduBuilder::state(String::new(), &power_levels_content),
                 user_id,
                 room_id,
+                &room_version,
                 &state_lock,
             )
             .await

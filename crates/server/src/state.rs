@@ -1,3 +1,5 @@
+use palpo_core::state::room_version;
+
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::history_visibility::{
     HistoryVisibility, RoomHistoryVisibilityEventContent,
@@ -15,6 +17,7 @@ use crate::{AppResult, IsRemoteOrLocal, MatrixError, config, room};
 pub async fn send_state_event_for_key(
     user_id: &UserId,
     room_id: &RoomId,
+    room_version: &RoomVersionId,
     event_type: &StateEventType,
     json: RawJson<AnyStateEventContent>,
     state_key: String,
@@ -29,6 +32,7 @@ pub async fn send_state_event_for_key(
         },
         user_id,
         room_id,
+        room_version,
         &room::lock_state(room_id).await,
     )
     .await?;

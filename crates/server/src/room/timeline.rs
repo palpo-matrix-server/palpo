@@ -526,6 +526,7 @@ pub async fn create_hash_and_sign_event(
     pdu_builder: PduBuilder,
     sender_id: &UserId,
     room_id: &RoomId,
+    room_version: &RoomVersionId,
     _state_lock: &RoomMutexGuard,
 ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
     let PduBuilder {
@@ -547,17 +548,17 @@ pub async fn create_hash_and_sign_event(
     let conf = crate::config::get();
     // If there was no create event yet, assume we are creating a room with the default
     // version right now
-    let room_version_id = if let Ok(room_version_id) = super::get_version(room_id) {
-        room_version_id
-    } else if event_type == TimelineEventType::RoomCreate {
-        let content: RoomCreateEventContent = serde_json::from_str(content.get())?;
-        content.room_version
-    } else {
-        return Err(AppError::public(format!(
-            "non-create event for room `{room_id}` of unknown version"
-        )));
-    };
-    let room_rules = crate::room::get_rules(&room_version_id)?;
+    // let room_version = if let Ok(room_version) = super::get_version(room_id) {
+    //     room_version
+    // } else if event_type == TimelineEventType::RoomCreate {
+    //     let content: RoomCreateEventContent = serde_json::from_str(content.get())?;
+    //     content.room_version
+    // } else {
+    //     return Err(AppError::public(format!(
+    //         "non-create event for room `{room_id}` of unknown version"
+    //     )));
+    // };
+    let room_rules = crate::room::get_rules(&room_version)?;
 
     let auth_events = state::get_auth_events(
         room_id,
@@ -656,7 +657,7 @@ pub async fn create_hash_and_sign_event(
         to_canonical_value(&conf.server_name).expect("server name is a valid CanonicalJsonValue"),
     );
 
-    match crate::server_key::hash_and_sign_event(&mut pdu_json, &room_version_id) {
+    match crate::server_key::hash_and_sign_event(&mut pdu_json, &room_version) {
         Ok(_) => {}
         Err(e) => {
             return match e {
@@ -669,7 +670,7 @@ pub async fn create_hash_and_sign_event(
     }
 
     // Generate event id
-    pdu.event_id = crate::event::gen_event_id(&pdu_json, &room_version_id)?;
+    pdu.event_id = crate::event::gen_event_id(&pdu_json, &room_version)?;
     if room_rules.room_id_format == RoomIdFormatVersion::V2 {
         pdu.room_id = RoomId::new_v2(pdu.event_id.localpart())?;
     }
@@ -809,6 +810,7 @@ pub async fn build_and_append_pdu(
     pdu_builder: PduBuilder,
     sender: &UserId,
     room_id: &RoomId,
+    room_version: &RoomVersionId,
     state_lock: &RoomMutexGuard,
 ) -> AppResult<SnPduEvent> {
     println!("=====build_and_append_pdu  0");
@@ -825,9 +827,9 @@ pub async fn build_and_append_pdu(
     }
 
     let (pdu, pdu_json, _event_guard) =
-        create_hash_and_sign_event(pdu_builder, sender, room_id, state_lock).await?;
+        create_hash_and_sign_event(pdu_builder, sender, room_id, room_version, state_lock).await?;
     let room_id = &pdu.room_id;
-    ensure_room(room_id, )?;
+    crate::room::ensure_room(room_id, room_version)?;
 
     println!("=====build_and_append_pdu  2");
     let conf = crate::config::get();
