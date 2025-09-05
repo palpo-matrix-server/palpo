@@ -61,8 +61,15 @@ pub enum RoomVersionId {
     /// A version 11 room.
     V11,
 
-    // /// A version 12 room.
-    // V12,
+    /// A version 12 room.
+    V12,
+
+    /// `org.matrix.msc2870` ([MSC2870]).
+    ///
+    /// [MSC2870]: https://github.com/matrix-org/matrix-spec-proposals/pull/2870
+    #[cfg(feature = "unstable-msc2870")]
+    MSC2870,
+
     #[doc(hidden)]
     _Custom(CustomRoomVersion),
 }
@@ -84,7 +91,9 @@ impl RoomVersionId {
             Self::V9 => "9",
             Self::V10 => "10",
             Self::V11 => "11",
-            // Self::V12 => "12",
+            Self::V12 => "12",
+            #[cfg(feature = "unstable-msc2870")]
+            Self::MSC2870 => "org.matrix.msc2870",
             Self::_Custom(version) => version.as_str(),
         }
     }
@@ -113,9 +122,9 @@ impl RoomVersionId {
             Self::V11 => RoomVersionRules::V11,
             // #[cfg(feature = "unstable-hydra")]
             // Self::HydraV11 => RoomVersionRules::HYDRA_V11,
-            // Self::V12 => RoomVersionRules::V12,
-            // #[cfg(feature = "unstable-msc2870")]
-            // Self::MSC2870 => RoomVersionRules::MSC2870,
+            Self::V12 => RoomVersionRules::V12,
+            #[cfg(feature = "unstable-msc2870")]
+            Self::MSC2870 => RoomVersionRules::MSC2870,
             Self::_Custom(_) => return None,
         })
     }
@@ -210,7 +219,7 @@ where
         "9" => RoomVersionId::V9,
         "10" => RoomVersionId::V10,
         "11" => RoomVersionId::V11,
-        // "12" => RoomVersionId::V12,
+        "12" => RoomVersionId::V12,
         custom => {
             palpo_identifiers_validation::room_version_id::validate(custom)?;
             RoomVersionId::_Custom(CustomRoomVersion(room_version_id.into()))

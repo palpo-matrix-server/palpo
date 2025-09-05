@@ -569,7 +569,20 @@ pub(super) async fn create_room(
 
     let conf = config::get();
     let state_lock = room::lock_state(&room_id).await;
-    room::ensure_room(&room_id, &conf.default_room_version)?;
+    let room_version = match body.room_version.clone() {
+        Some(room_version) => {
+            if config::supports_room_version(&room_version) {
+                room_version
+            } else {
+                return Err(MatrixError::unsupported_room_version(
+                    "This server does not support that room version.",
+                )
+                .into());
+            }
+        }
+        None => conf.default_room_version.clone(),
+    };
+    room::ensure_room(&room_id, &room_version)?;
 
     if !conf.allow_room_creation && authed.appservice.is_none() && !authed.is_admin() {
         return Err(MatrixError::forbidden("Room creation has been disabled.", None).into());
@@ -589,19 +602,6 @@ pub(super) async fn create_room(
         None
     };
 
-    let room_version = match body.room_version.clone() {
-        Some(room_version) => {
-            if config::supported_room_versions().contains(&room_version) {
-                room_version
-            } else {
-                return Err(MatrixError::unsupported_room_version(
-                    "This server does not support that room version.",
-                )
-                .into());
-            }
-        }
-        None => conf.default_room_version.clone(),
-    };
     let room_rules = crate::room::get_rules(&room_version)?;
 
     let content = match &body.creation_content {
@@ -700,7 +700,9 @@ pub(super) async fn create_room(
     });
 
     let mut users = BTreeMap::new();
-    users.insert(sender_id.to_owned(), 100);
+    if !room_rules.authorization.explicitly_privilege_room_creators {
+        users.insert(sender_id.to_owned(), 100);
+    }
 
     if preset == RoomPreset::TrustedPrivateChat {
         for invitee_id in &body.invite {
@@ -914,8 +916,13 @@ fn default_power_levels_content(
         serde_json::to_value(100).expect("100 is valid Value");
     power_levels_content["events"]["m.room.server_acl"] =
         serde_json::to_value(100).expect("100 is valid Value");
-    power_levels_content["events"]["m.room.tombstone"] =
+    if auth_rules.explicitly_privilege_room_creators {
+        power_levels_content["events"]["m.room.tombstone"] =
+            serde_json::to_value(150).expect("150 is valid Value");
+    } else {
         serde_json::to_value(100).expect("100 is valid Value");
+    }
+
     power_levels_content["events"]["m.room.encryption"] =
         serde_json::to_value(100).expect("100 is valid Value");
     power_levels_content["events"]["m.room.history_visibility"] =
