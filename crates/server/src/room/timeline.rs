@@ -116,16 +116,6 @@ pub fn has_non_outlier_pdu(event_id: &EventId) -> AppResult<bool> {
 }
 
 pub fn get_pdu(event_id: &EventId) -> AppResult<SnPduEvent> {
-    println!(
-        "ONNNNNNNNNNN pdu: {:#?}",
-        event_datas::table
-            .select((
-                event_datas::event_sn,
-                event_datas::event_id,
-                event_datas::json_data
-            ))
-            .load::<(Seqnum, OwnedEventId, JsonValue)>(&mut connect()?)
-    );
     let (event_sn, room_id, json) = event_datas::table
         .filter(event_datas::event_id.eq(event_id))
         .select((
@@ -606,7 +596,6 @@ pub async fn create_hash_and_sign_event(
         OwnedEventId::try_from(format!("$backfill_{}", Ulid::new().to_string())).unwrap();
     let content_value: JsonValue = serde_json::from_str(content.get())?;
 
-    println!("======ppp==prev_events: {prev_events:#?}");
     let mut pdu = PduEvent {
         event_id: temp_event_id.clone(),
         event_ty: event_type,
@@ -637,6 +626,7 @@ pub async fn create_hash_and_sign_event(
             .map_err(|_| StateError::other("missing PDU 6"))
     };
     let fetch_state = async |k: StateEventType, s: String| {
+        println!("=============auth_events:{auth_events:#?}====k: {k}   s: {s}");
         auth_events
             .get(&(k, s.to_owned()))
             .map(|s| s.pdu.clone())
@@ -683,18 +673,25 @@ pub async fn create_hash_and_sign_event(
     if room_rules.room_id_format == RoomIdFormatVersion::V2 {
         pdu.room_id = RoomId::new_v2(pdu.event_id.localpart())?;
     }
+    let room_id = &pdu.room_id;
 
     pdu_json.insert(
         "event_id".to_owned(),
         CanonicalJsonValue::String(pdu.event_id.as_str().to_owned()),
     );
+    if room_rules.room_id_format == RoomIdFormatVersion::V2 {
+        pdu_json.insert(
+            "room_id".to_owned(),
+            CanonicalJsonValue::String(room_id.as_str().to_owned()),
+        );
+    }
 
-    let (event_sn, event_guard) = crate::event::ensure_event_sn(&pdu.room_id, &pdu.event_id)?;
+    let (event_sn, event_guard) = crate::event::ensure_event_sn(room_id, &pdu.event_id)?;
     NewDbEvent {
         id: pdu.event_id.to_owned(),
         sn: event_sn,
         ty: pdu.event_ty.to_string(),
-        room_id: pdu.room_id.to_owned(),
+        room_id: room_id.to_owned(),
         unrecognized_keys: None,
         depth: depth as i64,
         topological_ordering: depth as i64,
@@ -713,7 +710,7 @@ pub async fn create_hash_and_sign_event(
     DbEventData {
         event_id: pdu.event_id.clone(),
         event_sn,
-        room_id: pdu.room_id.clone(),
+        room_id: room_id.to_owned(),
         internal_metadata: None,
         json_data: serde_json::to_value(&pdu_json)?,
         format_version: None,
@@ -814,6 +811,7 @@ pub async fn build_and_append_pdu(
     room_id: &RoomId,
     state_lock: &RoomMutexGuard,
 ) -> AppResult<SnPduEvent> {
+    println!("=====build_and_append_pdu  0");
     if let Some(state_key) = &pdu_builder.state_key
         && let Ok(curr_state) = super::get_state(
             room_id,
@@ -828,6 +826,8 @@ pub async fn build_and_append_pdu(
 
     let (pdu, pdu_json, _event_guard) =
         create_hash_and_sign_event(pdu_builder, sender, room_id, state_lock).await?;
+    let room_id = &pdu.room_id;
+    ensure_room(room_id, )?;
 
     println!("=====build_and_append_pdu  2");
     let conf = crate::config::get();

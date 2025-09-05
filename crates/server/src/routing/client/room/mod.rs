@@ -685,6 +685,7 @@ pub(super) async fn create_room(
         &state_lock,
     )
     .await?;
+    println!("||||||||||||||================== ============ 5");
 
     // 4. Canonical room alias
     if let Some(room_alias_id) = &alias {
@@ -707,6 +708,7 @@ pub(super) async fn create_room(
         .unwrap();
     }
 
+    println!("||||||||||||||================== ============ 6");
     // 5. Events set by preset
     // 5.1 Join Rules
     timeline::build_and_append_pdu(
@@ -1004,7 +1006,6 @@ async fn create_create_event(
     drop(state_lock);
 
     let state_lock = room::lock_state(&create_event.room_id).await;
-    data::room::rename_room(&temp_room_id, &create_event.room_id)?;
     println!("=====================room id: {}", create_event.room_id);
 
     Ok((create_event.room_id.clone(), state_lock))
