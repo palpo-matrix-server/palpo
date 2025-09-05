@@ -365,3 +365,44 @@ pub fn is_banned(room_id: &RoomId) -> DataResult<bool> {
     let query = banned_rooms::table.filter(banned_rooms::room_id.eq(room_id));
     Ok(diesel_exists!(query, &mut connect()?)?)
 }
+
+pub fn rename_room(old_room_id: &RoomId, new_room_id: &RoomId) -> DataResult<()> {
+    println!("==================renaming room {} to {}", old_room_id, new_room_id);
+    let conn = &mut connect()?;
+    diesel::update(rooms::table.filter(rooms::id.eq(old_room_id)))
+        .set(rooms::id.eq(new_room_id))
+        .execute(conn)?;
+    diesel::update(room_aliases::table.filter(room_aliases::room_id.eq(old_room_id)))
+        .set(room_aliases::room_id.eq(new_room_id))
+        .execute(conn)?;
+    diesel::update(event_datas::table.filter(event_datas::room_id.eq(old_room_id)))
+        .set(event_datas::room_id.eq(new_room_id))
+        .execute(conn)?;
+    diesel::update(events::table.filter(events::room_id.eq(old_room_id)))
+        .set(events::room_id.eq(new_room_id))
+        .execute(conn)?;
+    diesel::update(event_relations::table.filter(event_relations::room_id.eq(old_room_id)))
+        .set(event_relations::room_id.eq(new_room_id))
+        .execute(conn)?;
+    diesel::update(room_users::table.filter(room_users::room_id.eq(old_room_id)))
+        .set(room_users::room_id.eq(new_room_id))
+        .execute(conn)?;
+    diesel::update(stats_room_currents::table.filter(stats_room_currents::room_id.eq(old_room_id)))
+        .set(stats_room_currents::room_id.eq(new_room_id))
+        .execute(conn)?;
+    diesel::update(event_receipts::table.filter(event_receipts::room_id.eq(old_room_id)))
+        .set(event_receipts::room_id.eq(new_room_id))
+        .execute(conn)?;
+    diesel::update(
+        event_push_summaries::table.filter(event_push_summaries::room_id.eq(old_room_id)),
+    )
+    .set(event_push_summaries::room_id.eq(new_room_id))
+    .execute(conn)?;
+    diesel::update(threads::table.filter(threads::room_id.eq(old_room_id)))
+        .set(threads::room_id.eq(new_room_id))
+        .execute(conn)?;
+    diesel::update(room_joined_servers::table.filter(room_joined_servers::room_id.eq(old_room_id)))
+        .set(room_joined_servers::room_id.eq(new_room_id))
+        .execute(conn)?;
+    Ok(())
+}

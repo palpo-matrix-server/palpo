@@ -350,17 +350,13 @@ where
         incoming_event.event_type()
     );
     if *incoming_event.event_type() == TimelineEventType::RoomCreate {
-        println!("OOOOOOOOOOO");
         debug!("allowing `m.room.create` event");
         return Ok(());
     }
-    println!("OOOOOOOOOOO1");
 
     let room_create_event = fetch_state.room_create_event().await?;
 
-    println!("OOOOOOOOOOO1 ========= 1");
     let room_create_event = RoomCreateEvent::new(&room_create_event);
-    println!("OOOOOOOOOOO1 ========= 2");
 
     // Since v1, if the create event content has the field m.federate set to false and the sender
     // domain of the event does not match the sender domain of the create event, reject.

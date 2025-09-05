@@ -16,8 +16,8 @@ use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::json;
 use serde_json::value::to_raw_value;
+use ulid::Ulid;
 
-use crate::core::{room_id, UnixMillis};
 use crate::core::client::directory::{PublicRoomsFilteredReqBody, PublicRoomsReqArgs};
 use crate::core::client::room::{
     AliasesResBody, CreateRoomReqBody, CreateRoomResBody, CreationContent, InitialSyncReqArgs,
@@ -44,8 +44,9 @@ use crate::core::events::room::topic::RoomTopicEventContent;
 use crate::core::events::{RoomAccountDataEventType, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
 use crate::core::room::{JoinRule, Visibility};
-use crate::core::room_version_rules::{AuthorizationRules, RoomIdFormatVersion,RoomVersionRules};
+use crate::core::room_version_rules::{AuthorizationRules, RoomIdFormatVersion, RoomVersionRules};
 use crate::core::serde::{CanonicalJsonObject, JsonValue, RawJson};
+use crate::core::{UnixMillis, room_id};
 use crate::event::PduBuilder;
 use crate::room::{push_action, timeline};
 use crate::user::user_is_ignored;
@@ -615,6 +616,7 @@ pub(super) async fn create_room(
             create_create_event(sender_id, &body, &preset, &room_version, &room_rules).await?
         }
     };
+    println!("==================room_id: {}  ============ 0", room_id);
 
     // 2. Let the room creator join
     timeline::build_and_append_pdu(
@@ -640,14 +642,15 @@ pub(super) async fn create_room(
         &state_lock,
     )
     .await?;
+    println!("================= ============ 1");
 
     // 3. Power levels
-
     let mut users = BTreeMap::new();
     if !room_rules.authorization.explicitly_privilege_room_creators {
         users.insert(sender_id.to_owned(), 100);
     }
 
+    println!("================= ============ 2");
     if preset == RoomPreset::TrustedPrivateChat {
         for invitee_id in &body.invite {
             if user_is_ignored(sender_id, invitee_id) || user_is_ignored(invitee_id, sender_id) {
@@ -657,6 +660,7 @@ pub(super) async fn create_room(
         }
     }
 
+    println!("================= ============ 3");
     let power_levels_content = default_power_levels_content(
         &room_rules.authorization,
         body.power_level_content_override.as_ref(),
@@ -664,6 +668,7 @@ pub(super) async fn create_room(
         users,
     )?;
 
+    println!("================= ============ 4");
     timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomPowerLevels,
@@ -906,7 +911,7 @@ async fn create_create_event_legacy(
     timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomCreate,
-            content: to_raw_value(&ontent)?,
+            content: to_raw_value(&content)?,
             state_key: Some("".to_owned()),
             ..Default::default()
         },
@@ -976,9 +981,11 @@ async fn create_create_event(
     }
 
     // 1. The room create event, using a placeholder room_id
-    let room_id = room_id!("!thiswillbereplaced").to_owned();
-    let state_lock = room::lock_state(&room_id).await;
-    let create_event_id = timeline::build_and_append_pdu(
+    let temp_room_id = OwnedRoomId::try_from(format!("!placehold_{}", Ulid::new().to_string()))
+        .expect("Invalid room ID");
+    let state_lock = room::lock_state(&temp_room_id).await;
+    room::ensure_room(&temp_room_id, &room_version)?;
+    let create_event = timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomCreate,
             content: to_raw_value(&create_content)?,
@@ -986,7 +993,7 @@ async fn create_create_event(
             ..Default::default()
         },
         sender_id,
-        &room_id,
+        &temp_room_id,
         &state_lock,
     )
     .await?;
@@ -994,8 +1001,11 @@ async fn create_create_event(
     drop(state_lock);
 
     // The real room_id is now the event_id.
-    let room_id = OwnedRoomId::from_parts('!', create_event_id.localpart(), None)?;
+    let room_id = RoomId::new_v2(create_event.pdu.event_id.localpart())?;
+    println!("==================rrrrrrrrrrrrom_id: {}", room_id);
+
     let state_lock = room::lock_state(&room_id).await;
+    data::room::rename_room(&temp_room_id, &room_id)?;
 
     Ok((room_id, state_lock))
 }

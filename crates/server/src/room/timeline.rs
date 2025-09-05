@@ -563,6 +563,7 @@ pub async fn create_hash_and_sign_event(
         &room_rules.authorization,
         true,
     )?;
+    println!("aaaaaaaaaaaaaaAuth events: {auth_events:?}");
 
     // Our depth is the maximum depth of prev_events + 1
     let depth = prev_events
