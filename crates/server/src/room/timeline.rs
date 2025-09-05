@@ -524,6 +524,7 @@ pub async fn create_hash_and_sign_event(
     room_id: &RoomId,
     _state_lock: &RoomMutexGuard,
 ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
+    println!("===================create_hash_and_sign_event");
     let PduBuilder {
         event_type,
         content,

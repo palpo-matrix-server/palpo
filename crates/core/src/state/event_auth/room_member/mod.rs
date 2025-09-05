@@ -29,7 +29,7 @@ use crate::{
 /// rules depend on the signatures being valid on the event.
 pub(super) async fn check_room_member<Pdu, Fetch, Fut>(
     room_member_event: RoomMemberEvent<&Pdu>,
-    rules: &AuthorizationRules,
+    auth_rules: &AuthorizationRules,
     room_create_event: RoomCreateEvent<&Pdu>,
     fetch_state: &Fetch,
 ) -> StateResult<()>
@@ -40,6 +40,7 @@ where
 {
     debug!("starting m.room.member check");
 
+    println!("OOOOOOOOOOOcheck_room_member1 ========= 1");
     // Since v1, if there is no state_key property, or no membership property in content,
     // reject.
     let Some(state_key) = room_member_event.state_key() else {
@@ -68,7 +69,7 @@ where
             check_room_member_join(
                 room_member_event,
                 target_user,
-                rules,
+                auth_rules,
                 room_create_event,
                 fetch_state,
             )
@@ -79,7 +80,7 @@ where
             check_room_member_invite(
                 room_member_event,
                 target_user,
-                rules,
+                auth_rules,
                 room_create_event,
                 fetch_state,
             )
@@ -90,7 +91,7 @@ where
             check_room_member_leave(
                 room_member_event,
                 target_user,
-                rules,
+                auth_rules,
                 room_create_event,
                 fetch_state,
             )
@@ -101,15 +102,15 @@ where
             check_room_member_ban(
                 room_member_event,
                 target_user,
-                rules,
+                auth_rules,
                 room_create_event,
                 fetch_state,
             )
             .await
         }
         // Since v7, if membership is knock:
-        MembershipState::Knock if rules.knocking => {
-            check_room_member_knock(room_member_event, target_user, rules, fetch_state).await
+        MembershipState::Knock if auth_rules.knocking => {
+            check_room_member_knock(room_member_event, target_user, auth_rules, fetch_state).await
         }
         // Since v1, otherwise, the membership is unknown. Reject.
         _ => Err(StateError::forbidden("unknown membership")),

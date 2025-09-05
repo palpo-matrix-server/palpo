@@ -220,7 +220,7 @@ where
     println!("=====CCCCCCCCCC  3");
     // Since v1, considering auth_events:
     for auth_event_id in incoming_event.auth_events() {
-    println!("=====CCCCCCCCCC  4");
+        println!("=====CCCCCCCCCC  4");
         let event_id = auth_event_id.borrow();
 
         let Ok(auth_event) = fetch_event(event_id.to_owned()).await else {
@@ -395,8 +395,14 @@ where
     println!("OOOOOOOOOOO1 ========= 4");
 
     // Since v1, if type is m.room.member:
+    println!(
+        "OOOOOOOOOOO1 ========= 5  {}  {}",
+        incoming_event.event_type(),
+        *incoming_event.event_type() == TimelineEventType::RoomMember
+    );
     if *incoming_event.event_type() == TimelineEventType::RoomMember {
         let room_member_event = RoomMemberEvent::new(incoming_event);
+        println!("OOOOOOOOOOO1 ========= 4.1");
         return check_room_member(
             room_member_event,
             auth_rules,
@@ -405,8 +411,7 @@ where
         )
         .await;
     }
-
-    println!("OOOOOOOOOOO1 ========= 5");
+    println!("OOOOOOOOOOO1 ========= 5.1");
     // Since v1, if the sender's current membership state is not join, reject.
     let sender_membership = fetch_state.user_membership(sender).await?;
 

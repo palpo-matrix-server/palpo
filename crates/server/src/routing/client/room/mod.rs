@@ -568,6 +568,7 @@ pub(super) async fn create_room(
     let sender_id = authed.user_id();
 
     let conf = config::get();
+    // let room_version =   conf.default_room_version.clone();
     let room_version = match body.room_version.clone() {
         Some(room_version) => {
             if config::supports_room_version(&room_version) {
