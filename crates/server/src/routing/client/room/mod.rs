@@ -617,7 +617,10 @@ pub(super) async fn create_room(
             create_create_event(sender_id, &body, &preset, &room_version, &room_rules).await?
         }
     };
-    println!("==================room_id: {}  ============ 0", room_id);
+    println!(
+        "||||||||||||||==================room_id: {}  ============ 0",
+        room_id
+    );
 
     // 2. Let the room creator join
     timeline::build_and_append_pdu(
@@ -643,7 +646,7 @@ pub(super) async fn create_room(
         &state_lock,
     )
     .await?;
-    println!("================= ============ 1");
+    println!("\n\n\n\n\nn\n\n\n||||||||||||||================== ============ 1");
 
     // 3. Power levels
     let mut users = BTreeMap::new();
@@ -651,7 +654,7 @@ pub(super) async fn create_room(
         users.insert(sender_id.to_owned(), 100);
     }
 
-    println!("================= ============ 2");
+    println!("||||||||||||||================== ============ 2");
     if preset == RoomPreset::TrustedPrivateChat {
         for invitee_id in &body.invite {
             if user_is_ignored(sender_id, invitee_id) || user_is_ignored(invitee_id, sender_id) {
@@ -661,7 +664,7 @@ pub(super) async fn create_room(
         }
     }
 
-    println!("================= ============ 3");
+    println!("||||||||||||||================== ============ 3");
     let power_levels_content = default_power_levels_content(
         &room_rules.authorization,
         body.power_level_content_override.as_ref(),
@@ -669,7 +672,7 @@ pub(super) async fn create_room(
         users,
     )?;
 
-    println!("================= ============ 4");
+    println!("||||||||||||||================== ============ 4");
     timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomPowerLevels,
@@ -940,7 +943,7 @@ async fn create_create_event(
                 "room_version".into(),
                 json!(room_version.as_str())
                     .try_into()
-                    .map_err(|e| MatrixError::bad_json("Invalid creation content: {e}"))?,
+                    .map_err(|e| MatrixError::bad_json(format!("Invalid creation content: {e}")))?,
             );
 
             content
@@ -982,8 +985,7 @@ async fn create_create_event(
     }
 
     // 1. The room create event, using a placeholder room_id
-    let temp_room_id = OwnedRoomId::try_from(format!("!placehold_{}", Ulid::new().to_string()))
-        .expect("Invalid room ID");
+    let temp_room_id = OwnedRoomId::try_from("!placehold").expect("Invalid room ID");
     let state_lock = room::lock_state(&temp_room_id).await;
     room::ensure_room(&temp_room_id, &room_version)?;
     let create_event = timeline::build_and_append_pdu(
@@ -1001,14 +1003,11 @@ async fn create_create_event(
 
     drop(state_lock);
 
-    // The real room_id is now the event_id.
-    let room_id = RoomId::new_v2(create_event.pdu.event_id.localpart())?;
-    println!("==================rrrrrrrrrrrrom_id: {}", room_id);
+    let state_lock = room::lock_state(&create_event.room_id).await;
+    data::room::rename_room(&temp_room_id, &create_event.room_id)?;
+    println!("=====================room id: {}", create_event.room_id);
 
-    let state_lock = room::lock_state(&room_id).await;
-    data::room::rename_room(&temp_room_id, &room_id)?;
-
-    Ok((room_id, state_lock))
+    Ok((create_event.room_id.clone(), state_lock))
 }
 
 // /// if a room is being created with a custom room ID, run our checks against it

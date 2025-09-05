@@ -240,6 +240,10 @@ where
         //     )));
         // }
         if auth_event.room_id() != room_id {
+            tracing::error!(
+                "auth_event.room_id(): {} != {room_id}",
+                auth_event.room_id()
+            );
             return Err(StateError::other(format!(
                 "auth event {event_id} not in the same room"
             )));
@@ -403,13 +407,15 @@ where
     if *incoming_event.event_type() == TimelineEventType::RoomMember {
         let room_member_event = RoomMemberEvent::new(incoming_event);
         println!("OOOOOOOOOOO1 ========= 4.1");
-        return check_room_member(
+        let x = check_room_member(
             room_member_event,
             auth_rules,
             room_create_event,
             fetch_state,
         )
         .await;
+        println!("XXXXXXXXXXXXXXXXXXX0 check_room_membered  {x:?}");
+        return x;
     }
     println!("OOOOOOOOOOO1 ========= 5.1");
     // Since v1, if the sender's current membership state is not join, reject.

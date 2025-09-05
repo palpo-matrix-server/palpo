@@ -556,7 +556,7 @@ diesel::table! {
         event_id -> Text,
         event_sn -> Int8,
         room_id -> Text,
-        room_server_id -> Text,
+        room_server_id -> Nullable<Text>,
         user_id -> Text,
         user_server_id -> Text,
         sender_id -> Text,

@@ -55,6 +55,7 @@ where
     })?;
 
     let target_membership = room_member_event.membership()?;
+    println!("OOOOOOOOOOOchecktarget_membership: {target_membership:?}");
 
     // These checks are done `in palpo_core::signatures::verify_event()`:
     //
@@ -135,9 +136,11 @@ where
     let creators = room_create_event.creators(rules)?;
 
     let prev_events = room_member_event.prev_events();
+    println!("=======prev_events: {prev_events:?}");
     let prev_event_is_room_create_event = prev_events
         .first()
         .is_some_and(|event_id| event_id.borrow() == room_create_event.event_id().borrow());
+    println!("ddddprev_event_is_room_create_event: {prev_event_is_room_create_event}");
     let prev_event_is_only_room_create_event =
         prev_event_is_room_create_event && prev_events.len() == 1;
 
@@ -145,7 +148,10 @@ where
     // creator, allow.
     // Since v11, if the only previous event is an m.room.create and the state_key is the
     // sender of the m.room.create, allow.
+    println!("check_room_member_join ========= prev_event_is_only_room_create_event:{prev_event_is_only_room_create_event},
+      target_user:{target_user:?}, creator:{creator:?}");
     if prev_event_is_only_room_create_event && *target_user == *creator {
+        println!("==check_room_member_join 2");
         return Ok(());
     }
 
@@ -163,6 +169,7 @@ where
         return Err(StateError::forbidden("banned user cannot join room"));
     }
 
+    println!("==check_room_member_join 3");
     let join_rule = fetch_state.join_rule().await?;
 
     // v1-v6, if the join_rule is invite then allow if membership state is invite or
@@ -175,6 +182,7 @@ where
             MembershipState::Invite | MembershipState::Join
         )
     {
+        println!("==check_room_member_join 4");
         return Ok(());
     }
 
@@ -183,11 +191,13 @@ where
     if rules.restricted_join_rule && matches!(join_rule, JoinRuleKind::Restricted)
         || rules.knock_restricted_join_rule && matches!(join_rule, JoinRuleKind::KnockRestricted)
     {
+        println!("==check_room_member_join 5");
         // Since v8, if membership state is join or invite, allow.
         if matches!(
             current_membership,
             MembershipState::Join | MembershipState::Invite
         ) {
+            println!("==check_room_member_join 6");
             return Ok(());
         }
 
@@ -229,6 +239,7 @@ where
         };
     }
 
+    println!("==check_room_member_join 7");
     // Since v1, if the join_rule is public, allow.
     // Otherwise, reject.
     if join_rule == JoinRuleKind::Public {

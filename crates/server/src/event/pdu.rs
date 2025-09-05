@@ -152,11 +152,12 @@ impl SnPduEvent {
     }
 
     pub fn from_json_value(
+        room_id: &RoomId,
         event_id: &EventId,
         event_sn: Seqnum,
         json: JsonValue,
     ) -> AppResult<Self> {
-        let pdu = PduEvent::from_json_value(event_id, json)?;
+        let pdu = PduEvent::from_json_value(room_id, event_id, json)?;
         Ok(Self::new(pdu, event_sn))
     }
 }
@@ -546,9 +547,14 @@ impl PduEvent {
         serde_json::from_value(serde_json::to_value(json).expect("valid JSON"))
     }
 
-    pub fn from_json_value(event_id: &EventId, json: JsonValue) -> AppResult<Self> {
+    pub fn from_json_value(
+        room_id: &RoomId,
+        event_id: &EventId,
+        json: JsonValue,
+    ) -> AppResult<Self> {
         if let JsonValue::Object(mut obj) = json {
             obj.insert("event_id".to_owned(), event_id.as_str().into());
+            obj.insert("room_id".to_owned(), room_id.as_str().into());
 
             serde_json::from_value(serde_json::Value::Object(obj)).map_err(Into::into)
         } else {

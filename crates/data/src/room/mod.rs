@@ -151,7 +151,7 @@ pub struct DbRoomUser {
     pub event_id: OwnedEventId,
     pub event_sn: i64,
     pub room_id: OwnedRoomId,
-    pub room_server_id: OwnedServerName,
+    pub room_server_id: Option<OwnedServerName>,
     pub user_id: OwnedUserId,
     pub user_server_id: OwnedServerName,
     pub sender_id: OwnedUserId,
@@ -168,7 +168,7 @@ pub struct NewDbRoomUser {
     pub event_id: OwnedEventId,
     pub event_sn: i64,
     pub room_id: OwnedRoomId,
-    pub room_server_id: OwnedServerName,
+    pub room_server_id: Option<OwnedServerName>,
     pub user_id: OwnedUserId,
     pub user_server_id: OwnedServerName,
     pub sender_id: OwnedUserId,
@@ -367,42 +367,101 @@ pub fn is_banned(room_id: &RoomId) -> DataResult<bool> {
 }
 
 pub fn rename_room(old_room_id: &RoomId, new_room_id: &RoomId) -> DataResult<()> {
-    println!("==================renaming room {} to {}", old_room_id, new_room_id);
+    println!(
+        "==================renaming room {} to {}",
+        old_room_id, new_room_id
+    );
     let conn = &mut connect()?;
     diesel::update(rooms::table.filter(rooms::id.eq(old_room_id)))
         .set(rooms::id.eq(new_room_id))
         .execute(conn)?;
+
+    diesel::update(user_datas::table.filter(user_datas::room_id.eq(old_room_id)))
+        .set(user_datas::room_id.eq(new_room_id))
+        .execute(conn)?;
+    diesel::update(user_profiles::table.filter(user_profiles::room_id.eq(old_room_id)))
+        .set(user_profiles::room_id.eq(new_room_id))
+        .execute(conn)?;
     diesel::update(room_aliases::table.filter(room_aliases::room_id.eq(old_room_id)))
         .set(room_aliases::room_id.eq(new_room_id))
         .execute(conn)?;
-    diesel::update(event_datas::table.filter(event_datas::room_id.eq(old_room_id)))
-        .set(event_datas::room_id.eq(new_room_id))
-        .execute(conn)?;
-    diesel::update(events::table.filter(events::room_id.eq(old_room_id)))
-        .set(events::room_id.eq(new_room_id))
-        .execute(conn)?;
-    diesel::update(event_relations::table.filter(event_relations::room_id.eq(old_room_id)))
-        .set(event_relations::room_id.eq(new_room_id))
-        .execute(conn)?;
-    diesel::update(room_users::table.filter(room_users::room_id.eq(old_room_id)))
-        .set(room_users::room_id.eq(new_room_id))
+    diesel::update(room_tags::table.filter(room_tags::room_id.eq(old_room_id)))
+        .set(room_tags::room_id.eq(new_room_id))
         .execute(conn)?;
     diesel::update(stats_room_currents::table.filter(stats_room_currents::room_id.eq(old_room_id)))
         .set(stats_room_currents::room_id.eq(new_room_id))
         .execute(conn)?;
+    diesel::update(events::table.filter(events::room_id.eq(old_room_id)))
+        .set(events::room_id.eq(new_room_id))
+        .execute(conn)?;
+    diesel::update(event_datas::table.filter(event_datas::room_id.eq(old_room_id)))
+        .set(event_datas::room_id.eq(new_room_id))
+        .execute(conn)?;
+    diesel::update(event_points::table.filter(event_points::room_id.eq(old_room_id)))
+        .set(event_points::room_id.eq(new_room_id))
+        .execute(conn)?;
+    diesel::update(threads::table.filter(threads::room_id.eq(old_room_id)))
+        .set(threads::room_id.eq(new_room_id))
+        .execute(conn)?;
+    diesel::update(room_state_frames::table.filter(room_state_frames::room_id.eq(old_room_id)))
+        .set(room_state_frames::room_id.eq(new_room_id))
+        .execute(conn)?;
+    diesel::update(room_state_deltas::table.filter(room_state_deltas::room_id.eq(old_room_id)))
+        .set(room_state_deltas::room_id.eq(new_room_id))
+        .execute(conn)?;
+    diesel::update(
+        event_backward_extremities::table
+            .filter(event_backward_extremities::room_id.eq(old_room_id)),
+    )
+    .set(event_backward_extremities::room_id.eq(new_room_id))
+    .execute(conn)?;
+    diesel::update(
+        event_forward_extremities::table.filter(event_forward_extremities::room_id.eq(old_room_id)),
+    )
+    .set(event_forward_extremities::room_id.eq(new_room_id))
+    .execute(conn)?;
+    diesel::update(room_users::table.filter(room_users::room_id.eq(old_room_id)))
+        .set(room_users::room_id.eq(new_room_id))
+        .execute(conn)?;
+    diesel::update(e2e_room_keys::table.filter(e2e_room_keys::room_id.eq(old_room_id)))
+        .set(e2e_room_keys::room_id.eq(new_room_id))
+        .execute(conn)?;
+    diesel::update(e2e_key_changes::table.filter(e2e_key_changes::room_id.eq(old_room_id)))
+        .set(e2e_key_changes::room_id.eq(new_room_id))
+        .execute(conn)?;
+    diesel::update(event_relations::table.filter(event_relations::room_id.eq(old_room_id)))
+        .set(event_relations::room_id.eq(new_room_id))
+        .execute(conn)?;
     diesel::update(event_receipts::table.filter(event_receipts::room_id.eq(old_room_id)))
         .set(event_receipts::room_id.eq(new_room_id))
+        .execute(conn)?;
+    diesel::update(event_searches::table.filter(event_searches::room_id.eq(old_room_id)))
+        .set(event_searches::room_id.eq(new_room_id))
         .execute(conn)?;
     diesel::update(
         event_push_summaries::table.filter(event_push_summaries::room_id.eq(old_room_id)),
     )
     .set(event_push_summaries::room_id.eq(new_room_id))
     .execute(conn)?;
-    diesel::update(threads::table.filter(threads::room_id.eq(old_room_id)))
-        .set(threads::room_id.eq(new_room_id))
+    diesel::update(event_edges::table.filter(event_edges::room_id.eq(old_room_id)))
+        .set(event_edges::room_id.eq(new_room_id))
         .execute(conn)?;
-    diesel::update(room_joined_servers::table.filter(room_joined_servers::room_id.eq(old_room_id)))
-        .set(room_joined_servers::room_id.eq(new_room_id))
+    diesel::update(event_idempotents::table.filter(event_idempotents::room_id.eq(old_room_id)))
+        .set(event_idempotents::room_id.eq(new_room_id))
+        .execute(conn)?;
+    diesel::update(
+        lazy_load_deliveries::table.filter(lazy_load_deliveries::room_id.eq(old_room_id)),
+    )
+    .set(lazy_load_deliveries::room_id.eq(new_room_id))
+    .execute(conn)?;
+    diesel::update(room_lookup_servers::table.filter(room_lookup_servers::room_id.eq(old_room_id)))
+        .set(room_lookup_servers::room_id.eq(new_room_id))
+        .execute(conn)?;
+    diesel::update(event_push_actions::table.filter(event_push_actions::room_id.eq(old_room_id)))
+        .set(event_push_actions::room_id.eq(new_room_id))
+        .execute(conn)?;
+    diesel::update(banned_rooms::table.filter(banned_rooms::room_id.eq(old_room_id)))
+        .set(banned_rooms::room_id.eq(new_room_id))
         .execute(conn)?;
     Ok(())
 }

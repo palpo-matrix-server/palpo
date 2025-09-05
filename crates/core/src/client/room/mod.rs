@@ -93,7 +93,6 @@ pub struct CreateRoomReqBody {
     // /// The desired custom room ID, local part or fully qualified.
     // #[serde(alias = "fi.mau.room_id", skip_serializing_if = "Option::is_none")]
     // pub room_id: Option<String>,
-
     /// Room version to set for the room.
     ///
     /// Defaults to homeserver's default if not specified.

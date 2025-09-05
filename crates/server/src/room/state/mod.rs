@@ -339,7 +339,6 @@ pub fn get_auth_events(
                 .map(|field_id| (field_id, (event_type, state_key)))
         })
         .collect::<HashMap<_, _>>();
-    println!("========== : {sauth_events:?}");
 
     let full_state = load_frame_info(frame_id)?
         .pop()

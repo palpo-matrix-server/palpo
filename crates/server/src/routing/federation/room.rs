@@ -230,7 +230,7 @@ async fn send_knock(
 
     event.insert("event_id".to_owned(), "$placeholder".into());
 
-    let pdu: PduEvent = PduEvent::from_json_value(&event_id, event.into())
+    let pdu: PduEvent = PduEvent::from_json_value(&args.room_id, &event_id, event.into())
         .map_err(|e| MatrixError::invalid_param(format!("Invalid knock event PDU: {e}")))?;
 
     handler::process_incoming_pdu(

@@ -239,16 +239,20 @@ fn process_to_outlier_pdu<'a>(
     >,
 > {
     Box::pin(async move {
-        if let Some((event_sn, event_data)) = event_datas::table
+        if let Some((room_id, event_sn, event_data)) = event_datas::table
             .filter(event_datas::event_id.eq(event_id))
-            .select((event_datas::event_sn, event_datas::json_data))
-            .first::<(Seqnum, JsonValue)>(&mut connect()?)
+            .select((
+                event_datas::room_id,
+                event_datas::event_sn,
+                event_datas::json_data,
+            ))
+            .first::<(OwnedRoomId, Seqnum, JsonValue)>(&mut connect()?)
             .optional()?
             && let Ok(val) =
                 serde_json::from_value::<BTreeMap<String, CanonicalJsonValue>>(event_data.clone())
         {
             return Ok((
-                SnPduEvent::from_json_value(event_id, event_sn, event_data)?,
+                SnPduEvent::from_json_value(&room_id, event_id, event_sn, event_data)?,
                 val,
                 None,
             ));
@@ -307,6 +311,7 @@ fn process_to_outlier_pdu<'a>(
             CanonicalJsonValue::String(event_id.as_str().to_owned()),
         );
         let incoming_pdu = PduEvent::from_json_value(
+            room_id,
             event_id,
             serde_json::to_value(&val).expect("CanonicalJson is a valid JsonValue"),
         )

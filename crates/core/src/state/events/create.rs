@@ -108,13 +108,13 @@ impl<E: Event> RoomCreateEvent<E> {
     }
 
     /// The creators of the room.
-	///
-	/// If the `use_room_create_sender` field of `AuthorizationRules` is set,
-	/// the creator is the sender of this `m.room.create` event, otherwise it
-	/// is deserialized from the `creator` field of this event's content.
-	/// Additionally if the `explicitly_privilege_room_creators`
-	/// field of `AuthorizationRules` is set, any additional user IDs in
-	/// `additional_creators`, if present, will also be considered creators.
+    ///
+    /// If the `use_room_create_sender` field of `AuthorizationRules` is set,
+    /// the creator is the sender of this `m.room.create` event, otherwise it
+    /// is deserialized from the `creator` field of this event's content.
+    /// Additionally if the `explicitly_privilege_room_creators`
+    /// field of `AuthorizationRules` is set, any additional user IDs in
+    /// `additional_creators`, if present, will also be considered creators.
     pub fn creators(&self, rules: &AuthorizationRules) -> StateResult<HashSet<OwnedUserId>> {
         let mut creators = self.additional_creators(rules)?;
 
