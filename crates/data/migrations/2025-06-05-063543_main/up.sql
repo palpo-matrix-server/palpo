@@ -27,7 +27,7 @@ CREATE TABLE media_thumbnails (
     id bigserial not null PRIMARY KEY,
     media_id text NOT NULL,
     origin_server text NOT NULL,
-    content_type text NOT NULL,
+    content_type text,
     disposition_type text,
     file_size bigint NOT NULL,
     width integer NOT NULL,
@@ -521,23 +521,6 @@ CREATE INDEX event_backward_extremities_room_id
     (room_id ASC NULLS LAST);
 
 
-DROP TABLE IF EXISTS event_backward_extremities CASCADE;
-CREATE TABLE event_backward_extremities
-(
-    id bigserial NOT NULL PRIMARY KEY,
-    event_id text NOT NULL,
-    room_id text NOT NULL,
-    CONSTRAINT event_backward_extremities_udx UNIQUE (event_id, room_id)
-);
-CREATE INDEX event_backward_extremities_event_id
-    ON event_backward_extremities USING btree
-    (event_id ASC NULLS LAST);
-
-CREATE INDEX event_backward_extremities_room_id
-    ON event_backward_extremities USING btree
-    (room_id ASC NULLS LAST);
-
-
 DROP TABLE IF EXISTS event_forward_extremities CASCADE;
 CREATE TABLE event_forward_extremities
 (
@@ -546,7 +529,6 @@ CREATE TABLE event_forward_extremities
     room_id text NOT NULL,
     CONSTRAINT event_forward_extremities_udx UNIQUE (event_id, room_id)
 );
-
 CREATE INDEX event_forward_extremities_event_id
     ON event_forward_extremities USING btree
     (event_id ASC NULLS LAST);
@@ -561,7 +543,7 @@ CREATE TABLE room_users
     event_id text NOT NULL,
     event_sn bigint NOT NULL,
     room_id text NOT NULL,
-    room_server_id text NOT NULL,
+    room_server_id text,
     user_id text NOT NULL,
     user_server_id text NOT NULL,
     sender_id text NOT NULL,
@@ -576,15 +558,12 @@ CREATE TABLE room_users
 CREATE INDEX IF NOT EXISTS room_users_user_room_idx
     ON room_users USING btree
     (user_id ASC NULLS LAST, room_id ASC NULLS LAST);
-
 CREATE INDEX IF NOT EXISTS room_users_room_id_idx
     ON room_users USING btree
     (room_id ASC NULLS LAST);
-
 CREATE INDEX IF NOT EXISTS room_users_user_id_idx
     ON room_users USING btree
     (user_id ASC NULLS LAST);
-
 CREATE INDEX IF NOT EXISTS room_users_user_room_forgotten_idx
     ON room_users USING btree
     (user_id ASC NULLS LAST, room_id ASC NULLS LAST)
@@ -631,7 +610,6 @@ CREATE TABLE e2e_room_keys (
     session_data json NOT NULL,
     created_at bigint NOT NULL
 );
-
 CREATE UNIQUE INDEX  IF NOT EXISTS e2e_room_keys_udx
     ON e2e_room_keys USING btree
     (user_id ASC NULLS LAST, room_id ASC NULLS LAST, session_id ASC NULLS LAST, version ASC NULLS LAST);

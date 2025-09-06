@@ -29,7 +29,7 @@ use crate::{
 /// rules depend on the signatures being valid on the event.
 pub(super) async fn check_room_member<Pdu, Fetch, Fut>(
     room_member_event: RoomMemberEvent<&Pdu>,
-    rules: &AuthorizationRules,
+    auth_rules: &AuthorizationRules,
     room_create_event: RoomCreateEvent<&Pdu>,
     fetch_state: &Fetch,
 ) -> StateResult<()>
@@ -68,7 +68,7 @@ where
             check_room_member_join(
                 room_member_event,
                 target_user,
-                rules,
+                auth_rules,
                 room_create_event,
                 fetch_state,
             )
@@ -79,7 +79,7 @@ where
             check_room_member_invite(
                 room_member_event,
                 target_user,
-                rules,
+                auth_rules,
                 room_create_event,
                 fetch_state,
             )
@@ -90,7 +90,7 @@ where
             check_room_member_leave(
                 room_member_event,
                 target_user,
-                rules,
+                auth_rules,
                 room_create_event,
                 fetch_state,
             )
@@ -101,15 +101,15 @@ where
             check_room_member_ban(
                 room_member_event,
                 target_user,
-                rules,
+                auth_rules,
                 room_create_event,
                 fetch_state,
             )
             .await
         }
         // Since v7, if membership is knock:
-        MembershipState::Knock if rules.knocking => {
-            check_room_member_knock(room_member_event, target_user, rules, fetch_state).await
+        MembershipState::Knock if auth_rules.knocking => {
+            check_room_member_knock(room_member_event, target_user, auth_rules, fetch_state).await
         }
         // Since v1, otherwise, the membership is unknown. Reject.
         _ => Err(StateError::forbidden("unknown membership")),
@@ -548,7 +548,7 @@ where
 async fn check_room_member_knock<Pdu, Fetch, Fut>(
     room_member_event: RoomMemberEvent<&Pdu>,
     target_user: &UserId,
-    rules: &AuthorizationRules,
+    auth_rules: &AuthorizationRules,
     fetch_state: &Fetch,
 ) -> StateResult<()>
 where
@@ -558,11 +558,13 @@ where
 {
     let join_rule = fetch_state.join_rule().await?;
 
+    // TODO: Not same with ruma for testing?
     // v7-v9, if the join_rule is anything other than knock, reject.
     // Since v10, if the join_rule is anything other than knock or knock_restricted,
     // reject.
-    if join_rule != JoinRuleKind::Knock
-        && (rules.knock_restricted_join_rule && !matches!(join_rule, JoinRuleKind::KnockRestricted))
+    if (!auth_rules.knock_restricted_join_rule && join_rule != JoinRuleKind::Knock)
+        || (auth_rules.knock_restricted_join_rule
+            && !matches!(join_rule, JoinRuleKind::KnockRestricted))
     {
         return Err(StateError::forbidden(
             "join rule is not set to knock or knock_restricted, knocking is not allowed",

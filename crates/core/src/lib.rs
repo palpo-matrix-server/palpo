@@ -41,8 +41,6 @@ pub mod utils;
 
 pub use palpo_core_macros as macros;
 
-pub use crate::state::RoomVersion;
-
 // https://github.com/bkchr/proc-macro-crate/issues/10
 extern crate self as palpo_core;
 

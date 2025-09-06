@@ -1,6 +1,7 @@
 use std::{
     borrow::Borrow,
     collections::{BTreeMap, BTreeSet, HashSet},
+    fmt::Debug,
 };
 
 use serde_json::value::RawValue as RawJsonValue;
@@ -60,10 +61,12 @@ pub fn auth_types_for_event(
         (StateEventType::RoomMember, sender.to_string()),
     ];
 
-    // v1-v11, the `m.room.create` event.
-    if !rules.room_create_event_id_as_room_id {
-        auth_types.push((StateEventType::RoomCreate, "".to_owned()));
-    }
+    // TODO: do we need `m.room.create` event for room version 12?
+    // // v1-v11, the `m.room.create` event.
+    // if !rules.room_create_event_id_as_room_id {
+    //     auth_types.push((StateEventType::RoomCreate, "".to_owned()));
+    // }
+    auth_types.push((StateEventType::RoomCreate, "".to_owned()));
 
     // If type is `m.room.member`:
     if event_type == &TimelineEventType::RoomMember {
@@ -151,7 +154,6 @@ where
     Pdu: Event + Clone + Sync + Send,
 {
     check_state_dependent_auth_rules(rules, incoming_event, fetch_state).await?;
-
     check_state_independent_auth_rules(rules, incoming_event, fetch_event).await
 }
 /// Check whether the incoming event passes the state-independent [authorization rules] for the
@@ -184,7 +186,6 @@ where
     // Since v1, if type is m.room.create:
     if *incoming_event.event_type() == TimelineEventType::RoomCreate {
         let room_create_event = RoomCreateEvent::new(incoming_event);
-
         return check_room_create(room_create_event, rules);
     }
 
@@ -217,6 +218,7 @@ where
             )));
         };
 
+        // TODO: Room Version 12
         // The auth event must be in the same room as the incoming event.
         // if auth_event
         //     .room_id()
@@ -227,6 +229,10 @@ where
         //     )));
         // }
         if auth_event.room_id() != room_id {
+            tracing::error!(
+                "auth_event.room_id(): {} != {room_id}",
+                auth_event.room_id()
+            );
             return Err(StateError::other(format!(
                 "auth event {event_id} not in the same room"
             )));
@@ -316,7 +322,7 @@ where
 /// [checks on receipt of a PDU]: https://spec.matrix.org/latest/server-server-api/#checks-performed-on-receipt-of-a-pdu
 #[instrument(skip_all, fields(event_id = incoming_event.event_id().borrow().as_str()))]
 pub async fn check_state_dependent_auth_rules<Pdu, Fetch, Fut>(
-    rules: &AuthorizationRules,
+    auth_rules: &AuthorizationRules,
     incoming_event: &Pdu,
     fetch_state: &Fetch,
 ) -> StateResult<()>
@@ -334,6 +340,7 @@ where
     }
 
     let room_create_event = fetch_state.room_create_event().await?;
+
     let room_create_event = RoomCreateEvent::new(&room_create_event);
 
     // Since v1, if the create event content has the field m.federate set to false and the sender
@@ -351,7 +358,7 @@ where
     let sender = incoming_event.sender();
 
     // v1-v5, if type is m.room.aliases:
-    if rules.special_case_room_aliases
+    if auth_rules.special_case_room_aliases
         && *incoming_event.event_type() == TimelineEventType::RoomAliases
     {
         debug!("starting m.room.aliases check");
@@ -373,9 +380,14 @@ where
     // Since v1, if type is m.room.member:
     if *incoming_event.event_type() == TimelineEventType::RoomMember {
         let room_member_event = RoomMemberEvent::new(incoming_event);
-        return check_room_member(room_member_event, rules, room_create_event, fetch_state).await;
+        return check_room_member(
+            room_member_event,
+            auth_rules,
+            room_create_event,
+            fetch_state,
+        )
+        .await;
     }
-
     // Since v1, if the sender's current membership state is not join, reject.
     let sender_membership = fetch_state.user_membership(sender).await?;
 
@@ -383,18 +395,18 @@ where
         return Err(StateError::forbidden("sender's membership is not `join`"));
     }
 
-    let creators = room_create_event.creators(rules)?;
+    let creators = room_create_event.creators(auth_rules)?;
     let current_room_power_levels_event = fetch_state.room_power_levels_event().await;
 
     let sender_power_level =
-        current_room_power_levels_event.user_power_level(sender, &creators, rules)?;
+        current_room_power_levels_event.user_power_level(sender, &creators, auth_rules)?;
 
     // Since v1, if type is m.room.third_party_invite:
     if *incoming_event.event_type() == TimelineEventType::RoomThirdPartyInvite {
         // Since v1, allow if and only if sender's current power level is greater than
         // or equal to the invite level.
         let invite_power_level = current_room_power_levels_event
-            .get_as_int_or_default(RoomPowerLevelsIntField::Invite, rules)?;
+            .get_as_int_or_default(RoomPowerLevelsIntField::Invite, auth_rules)?;
 
         if sender_power_level < invite_power_level {
             return Err(StateError::forbidden(
@@ -411,7 +423,7 @@ where
     let event_type_power_level = current_room_power_levels_event.event_power_level(
         incoming_event.event_type(),
         incoming_event.state_key(),
-        rules,
+        auth_rules,
     )?;
     if sender_power_level < event_type_power_level {
         return Err(StateError::forbidden(format!(
@@ -438,20 +450,20 @@ where
         return check_room_power_levels(
             room_power_levels_event,
             current_room_power_levels_event,
-            rules,
+            auth_rules,
             sender_power_level,
             &creators,
         );
     }
 
     // v1-v2, if type is m.room.redaction:
-    if rules.special_case_room_redaction
+    if auth_rules.special_case_room_redaction
         && *incoming_event.event_type() == TimelineEventType::RoomRedaction
     {
         return check_room_redaction(
             incoming_event,
             current_room_power_levels_event,
-            rules,
+            auth_rules,
             sender_power_level,
         );
     }
@@ -549,19 +561,19 @@ fn check_room_power_levels(
     // IDs with values that are integers, reject.
     let new_users = room_power_levels_event.users(rules)?;
 
-    // Since v12, if the `users` property in `content` contains the `sender` of the `m.room.create`
-    // event or any of the user IDs in the create event's `content.additional_creators`, reject.
-    if rules.explicitly_privilege_room_creators
-        && new_users.is_some_and(|new_users| {
-            room_creators
-                .iter()
-                .any(|creator| new_users.contains_key(creator))
-        })
-    {
-        return Err(StateError::other(
-            "creator user IDs are not allowed in the `users` field",
-        ));
-    }
+    // // Since v12, if the `users` property in `content` contains the `sender` of the `m.room.create`
+    // // event or any of the user IDs in the create event's `content.additional_creators`, reject.
+    // if rules.explicitly_privilege_room_creators
+    //     && new_users.is_some_and(|new_users| {
+    //         room_creators
+    //             .iter()
+    //             .any(|creator| new_users.contains_key(creator))
+    //     })
+    // {
+    //     return Err(StateError::other(
+    //         "creator user IDs are not allowed in the `users` field",
+    //     ));
+    // }
 
     debug!("validation of power event finished");
 

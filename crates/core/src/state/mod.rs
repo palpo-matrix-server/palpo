@@ -20,7 +20,6 @@ pub mod room_version;
 
 pub use event_auth::{auth_check, auth_types_for_event, check_state_dependent_auth_rules};
 pub use events::Event;
-pub use room_version::RoomVersion;
 
 use crate::events::room::member::MembershipState;
 use crate::events::room::power_levels::UserPowerLevel;

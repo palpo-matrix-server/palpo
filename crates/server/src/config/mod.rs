@@ -64,6 +64,7 @@ pub static STABLE_ROOM_VERSIONS: LazyLock<Vec<RoomVersionId>> = LazyLock::new(||
         RoomVersionId::V9,
         RoomVersionId::V10,
         RoomVersionId::V11,
+        RoomVersionId::V12,
     ]
 });
 pub static UNSTABLE_ROOM_VERSIONS: LazyLock<Vec<RoomVersionId>> = LazyLock::new(|| {

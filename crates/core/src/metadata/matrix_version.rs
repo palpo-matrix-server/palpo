@@ -342,7 +342,7 @@ impl MatrixVersion {
             // <https://spec.matrix.org/v1.8/rooms/#complete-list-of-room-versions>
             | MatrixVersion::V1_8
             // <https://spec.matrix.org/v1.9/rooms/#complete-list-of-room-versions>
-            | MatrixVersion::V1_9 
+            | MatrixVersion::V1_9
              // <https://spec.matrix.org/v1.10/rooms/#complete-list-of-room-versions>
             | MatrixVersion::V1_10
             // <https://spec.matrix.org/v1.11/rooms/#complete-list-of-room-versions>

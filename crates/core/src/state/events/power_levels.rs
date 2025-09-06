@@ -82,7 +82,7 @@ impl<E: Event> RoomPowerLevelsEvent<E> {
     pub fn get_as_int(
         &self,
         field: RoomPowerLevelsIntField,
-        rules: &AuthorizationRules,
+        auth_rules: &AuthorizationRules,
     ) -> StateResult<Option<i64>> {
         let mut int_fields = self
             .inner
@@ -101,7 +101,7 @@ impl<E: Event> RoomPowerLevelsEvent<E> {
             return Ok(None);
         };
 
-        let res = if rules.integer_power_levels {
+        let res = if auth_rules.integer_power_levels {
             from_json_value(value.clone())
         } else {
             deserialize_v1_power_level(value)
@@ -123,10 +123,10 @@ impl<E: Event> RoomPowerLevelsEvent<E> {
     pub fn get_as_int_or_default(
         &self,
         field: RoomPowerLevelsIntField,
-        rules: &AuthorizationRules,
+        auth_rules: &AuthorizationRules,
     ) -> StateResult<i64> {
         Ok(self
-            .get_as_int(field, rules)?
+            .get_as_int(field, auth_rules)?
             .unwrap_or_else(|| field.default_value()))
     }
 
@@ -134,7 +134,7 @@ impl<E: Event> RoomPowerLevelsEvent<E> {
     fn get_as_int_map<T: Ord + DeserializeOwned>(
         &self,
         field: &str,
-        rules: &AuthorizationRules,
+        auth_rules: &AuthorizationRules,
     ) -> StateResult<Option<BTreeMap<T, i64>>> {
         let content = self.deserialized_content()?;
 
@@ -142,7 +142,7 @@ impl<E: Event> RoomPowerLevelsEvent<E> {
             return Ok(None);
         };
 
-        let res = if rules.integer_power_levels {
+        let res = if auth_rules.integer_power_levels {
             from_json_value(value.clone())
         } else {
             btreemap_deserialize_v1_power_level_values(value)
@@ -159,17 +159,17 @@ impl<E: Event> RoomPowerLevelsEvent<E> {
     /// Get the power levels required to send events, if any.
     pub fn events(
         &self,
-        rules: &AuthorizationRules,
+        auth_rules: &AuthorizationRules,
     ) -> StateResult<Option<BTreeMap<TimelineEventType, i64>>> {
-        self.get_as_int_map("events", rules)
+        self.get_as_int_map("events", auth_rules)
     }
 
     /// Get the power levels required to trigger notifications, if any.
     pub fn notifications(
         &self,
-        rules: &AuthorizationRules,
+        auth_rules: &AuthorizationRules,
     ) -> StateResult<Option<BTreeMap<String, i64>>> {
-        self.get_as_int_map("notifications", rules)
+        self.get_as_int_map("notifications", auth_rules)
     }
 
     /// Get the power levels of the users, if any.
@@ -177,13 +177,13 @@ impl<E: Event> RoomPowerLevelsEvent<E> {
     /// The deserialization of this field is cached in memory.
     pub fn users(
         &self,
-        rules: &AuthorizationRules,
+        auth_rules: &AuthorizationRules,
     ) -> StateResult<Option<&BTreeMap<OwnedUserId, i64>>> {
         // TODO: Use OnceLock::get_or_try_init when it is stabilized.
         if let Some(users) = self.inner.users.get() {
             Ok(users.as_ref())
         } else {
-            let users = self.get_as_int_map("users", rules)?;
+            let users = self.get_as_int_map("users", auth_rules)?;
             Ok(self.inner.users.get_or_init(|| users).as_ref())
         }
     }
@@ -195,17 +195,17 @@ impl<E: Event> RoomPowerLevelsEvent<E> {
     pub fn user_power_level(
         &self,
         user_id: &UserId,
-        rules: &AuthorizationRules,
+        auth_rules: &AuthorizationRules,
     ) -> StateResult<i64> {
         if let Some(power_level) = self
-            .users(rules)?
+            .users(auth_rules)?
             .as_ref()
             .and_then(|users| users.get(user_id))
         {
             return Ok(*power_level);
         }
 
-        self.get_as_int_or_default(RoomPowerLevelsIntField::UsersDefault, rules)
+        self.get_as_int_or_default(RoomPowerLevelsIntField::UsersDefault, auth_rules)
     }
 
     /// Get the power level required to send an event of the given type.
@@ -213,9 +213,9 @@ impl<E: Event> RoomPowerLevelsEvent<E> {
         &self,
         event_type: &TimelineEventType,
         state_key: Option<&str>,
-        rules: &AuthorizationRules,
+        auth_rules: &AuthorizationRules,
     ) -> StateResult<i64> {
-        let events = self.events(rules)?;
+        let events = self.events(auth_rules)?;
 
         if let Some(power_level) = events.as_ref().and_then(|events| events.get(event_type)) {
             return Ok(*power_level);
@@ -227,19 +227,19 @@ impl<E: Event> RoomPowerLevelsEvent<E> {
             RoomPowerLevelsIntField::EventsDefault
         };
 
-        self.get_as_int_or_default(default_field, rules)
+        self.get_as_int_or_default(default_field, auth_rules)
     }
 
     /// Get a map of all the fields with an integer value in the `content` of an
     /// `m.room.power_levels` event.
     pub(crate) fn int_fields_map(
         &self,
-        rules: &AuthorizationRules,
+        auth_rules: &AuthorizationRules,
     ) -> StateResult<BTreeMap<RoomPowerLevelsIntField, i64>> {
         RoomPowerLevelsIntField::ALL
             .iter()
             .copied()
-            .filter_map(|field| match self.get_as_int(field, rules) {
+            .filter_map(|field| match self.get_as_int(field, auth_rules) {
                 Ok(value) => value.map(|value| Ok((field, value))),
                 Err(error) => Some(Err(error)),
             })
@@ -262,7 +262,7 @@ pub(crate) trait RoomPowerLevelsEventOptionExt {
         &self,
         user_id: &UserId,
         creators: &HashSet<OwnedUserId>,
-        rules: &AuthorizationRules,
+        auth_rules: &AuthorizationRules,
     ) -> StateResult<UserPowerLevel>;
 
     /// Get the value of a field that should contain an integer, or its default value if it is
@@ -270,7 +270,7 @@ pub(crate) trait RoomPowerLevelsEventOptionExt {
     fn get_as_int_or_default(
         &self,
         field: RoomPowerLevelsIntField,
-        rules: &AuthorizationRules,
+        auth_rules: &AuthorizationRules,
     ) -> StateResult<i64>;
 
     /// Get the power level required to send an event of the given type.
@@ -278,7 +278,7 @@ pub(crate) trait RoomPowerLevelsEventOptionExt {
         &self,
         event_type: &TimelineEventType,
         state_key: Option<&str>,
-        rules: &AuthorizationRules,
+        auth_rules: &AuthorizationRules,
     ) -> StateResult<i64>;
 }
 
@@ -287,13 +287,13 @@ impl<E: Event> RoomPowerLevelsEventOptionExt for Option<RoomPowerLevelsEvent<E>>
         &self,
         user_id: &UserId,
         creators: &HashSet<OwnedUserId>,
-        rules: &AuthorizationRules,
+        auth_rules: &AuthorizationRules,
     ) -> StateResult<UserPowerLevel> {
-        if rules.explicitly_privilege_room_creators && creators.contains(user_id) {
+        if auth_rules.explicitly_privilege_room_creators && creators.contains(user_id) {
             Ok(UserPowerLevel::Infinite)
         } else if let Some(room_power_levels_event) = self {
             room_power_levels_event
-                .user_power_level(user_id, rules)
+                .user_power_level(user_id, auth_rules)
                 .map(Into::into)
         } else {
             let power_level = if creators.contains(user_id) {
@@ -308,10 +308,10 @@ impl<E: Event> RoomPowerLevelsEventOptionExt for Option<RoomPowerLevelsEvent<E>>
     fn get_as_int_or_default(
         &self,
         field: RoomPowerLevelsIntField,
-        rules: &AuthorizationRules,
+        auth_rules: &AuthorizationRules,
     ) -> StateResult<i64> {
         if let Some(room_power_levels_event) = self {
-            room_power_levels_event.get_as_int_or_default(field, rules)
+            room_power_levels_event.get_as_int_or_default(field, auth_rules)
         } else {
             Ok(field.default_value())
         }
@@ -321,10 +321,10 @@ impl<E: Event> RoomPowerLevelsEventOptionExt for Option<RoomPowerLevelsEvent<E>>
         &self,
         event_type: &TimelineEventType,
         state_key: Option<&str>,
-        rules: &AuthorizationRules,
+        auth_rules: &AuthorizationRules,
     ) -> StateResult<i64> {
         if let Some(room_power_levels_event) = self {
-            room_power_levels_event.event_power_level(event_type, state_key, rules)
+            room_power_levels_event.event_power_level(event_type, state_key, auth_rules)
         } else {
             let default_field = if state_key.is_some() {
                 RoomPowerLevelsIntField::StateDefault

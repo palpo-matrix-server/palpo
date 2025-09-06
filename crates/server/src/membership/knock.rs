@@ -68,8 +68,8 @@ pub async fn knock_room(
     if room::is_server_joined(&config::get().server_name, room_id).unwrap_or(false) {
         use RoomVersionId::*;
         info!("We can knock locally");
-        let room_version_id = room::get_version(room_id)?;
-        if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6) {
+        let room_version = room::get_version(room_id)?;
+        if matches!(room_version, V1 | V2 | V3 | V4 | V5 | V6) {
             return Err(MatrixError::forbidden(
                 "This room version does not support knocking.",
                 None,
@@ -100,6 +100,7 @@ pub async fn knock_room(
             PduBuilder::state(sender_id.to_string(), &content),
             sender_id,
             room_id,
+            &crate::room::get_version(room_id)?,
             &room::lock_state(room_id).await,
         )
         .await
@@ -122,14 +123,14 @@ pub async fn knock_room(
 
     info!("make_knock finished");
 
-    let room_version_id = make_knock_response.room_version;
+    let room_version = make_knock_response.room_version;
 
-    if !config::supports_room_version(&room_version_id) {
+    if !config::supports_room_version(&room_version) {
         return Err(StatusError::internal_server_error()
-            .brief("Remote room version {room_version_id} is not supported by palpo")
+            .brief("Remote room version {room_version} is not supported by palpo")
             .into());
     }
-    crate::room::ensure_room(room_id, &room_version_id)?;
+    crate::room::ensure_room(room_id, &room_version)?;
 
     let mut knock_event_stub: CanonicalJsonObject =
         serde_json::from_str(make_knock_response.event.get()).map_err(|e| {
@@ -160,10 +161,10 @@ pub async fn knock_room(
 
     // In order to create a compatible ref hash (EventID) the `hashes` field needs
     // to be present
-    crate::server_key::hash_and_sign_event(&mut knock_event_stub, &room_version_id)?;
+    crate::server_key::hash_and_sign_event(&mut knock_event_stub, &room_version)?;
 
     // Generate event id
-    let event_id = gen_event_id(&knock_event_stub, &room_version_id)?;
+    let event_id = gen_event_id(&knock_event_stub, &room_version)?;
 
     // Add event_id
     knock_event_stub.insert(
@@ -246,7 +247,7 @@ pub async fn knock_room(
                 &remote_server,
                 &event_id,
                 room_id,
-                &room_version_id,
+                &room_version,
                 serde_json::from_str(res_body.pdu.get())?,
                 true,
             )

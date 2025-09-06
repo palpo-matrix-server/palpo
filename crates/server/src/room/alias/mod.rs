@@ -1,4 +1,5 @@
 use diesel::prelude::*;
+use palpo_core::state::room_version;
 use rand::seq::SliceRandom;
 use serde_json::value::to_raw_value;
 
@@ -213,6 +214,7 @@ pub async fn get_alias_response(room_alias: OwnedRoomAliasId) -> AppResult<Alias
 #[tracing::instrument]
 pub async fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()> {
     let room_id = resolve_local_alias(alias_id)?;
+    let room_version = crate::room::get_version(&room_id)?;
     if user_can_remove_alias(alias_id, user).await? {
         let state_alias = super::get_canonical_alias(&room_id);
 
@@ -230,6 +232,7 @@ pub async fn remove_alias(alias_id: &RoomAliasId, user: &DbUser) -> AppResult<()
                 },
                 &user.id,
                 &room_id,
+                &room_version,
                 &super::lock_state(&room_id).await,
             )
             .await

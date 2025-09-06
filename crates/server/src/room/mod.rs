@@ -540,11 +540,11 @@ pub fn get_join_rule(room_id: &RoomId) -> AppResult<JoinRule> {
 pub async fn get_power_levels(room_id: &RoomId) -> AppResult<RoomPowerLevels> {
     let create = get_create(room_id)?;
     let room_version = create.room_version()?;
-    let rules = crate::room::get_rules(&room_version)?;
-    let creators = create.creators(&rules.authorization)?;
+    let version_rules = crate::room::get_version_rules(&room_version)?;
+    let creators = create.creators(&version_rules.authorization)?;
 
     let content = get_power_levels_event_content(room_id)?;
-    let power_levels = RoomPowerLevels::new(content.into(), &rules.authorization, creators);
+    let power_levels = RoomPowerLevels::new(content.into(), &version_rules.authorization, creators);
     Ok(power_levels)
 }
 pub fn get_power_levels_event_content(room_id: &RoomId) -> AppResult<RoomPowerLevelsEventContent> {
@@ -711,7 +711,7 @@ pub fn ban_room(room_id: &RoomId, banned: bool) -> AppResult<()> {
     }
 }
 
-pub fn get_rules(room_version: &RoomVersionId) -> AppResult<RoomVersionRules> {
+pub fn get_version_rules(room_version: &RoomVersionId) -> AppResult<RoomVersionRules> {
     room_version.rules().ok_or_else(|| {
         AppError::public(format!(
             "Cannot verify event for unknown room version {room_version:?}."

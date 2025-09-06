@@ -238,6 +238,7 @@ async fn respond_to_room(
         PduBuilder::timeline(&content),
         user_id,
         room_id,
+        &crate::room::get_version(room_id)?,
         &state_lock,
     )
     .await
@@ -260,8 +261,14 @@ async fn handle_response_error(
 			 may have finished successfully, but we could not return the output."
     ));
 
-    timeline::build_and_append_pdu(PduBuilder::timeline(&content), user_id, room_id, state_lock)
-        .await?;
+    timeline::build_and_append_pdu(
+        PduBuilder::timeline(&content),
+        user_id,
+        room_id,
+        &crate::room::get_version(room_id)?,
+        state_lock,
+    )
+    .await?;
 
     Ok(())
 }

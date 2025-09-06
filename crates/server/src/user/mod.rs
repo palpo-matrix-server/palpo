@@ -138,7 +138,7 @@ pub async fn full_user_deactivate(
         let state_lock = room::lock_state(room_id).await;
 
         let room_version = room::get_version(room_id)?;
-        let room_rules = room::get_rules(&room_version)?;
+        let version_rules = room::get_version_rules(&room_version)?;
         let room_power_levels = room::get_power_levels(room_id).await.ok();
 
         let user_can_change_self = room_power_levels.as_ref().is_some_and(|power_levels| {
@@ -152,7 +152,7 @@ pub async fn full_user_deactivate(
             let mut power_levels_content: RoomPowerLevelsEventContent = room_power_levels
                 .map(TryInto::try_into)
                 .transpose()?
-                .unwrap_or_else(|| RoomPowerLevelsEventContent::new(&room_rules.authorization));
+                .unwrap_or_else(|| RoomPowerLevelsEventContent::new(&version_rules.authorization));
             power_levels_content.users.remove(user_id);
 
             // ignore errors so deactivation doesn't fail
@@ -160,6 +160,7 @@ pub async fn full_user_deactivate(
                 PduBuilder::state(String::new(), &power_levels_content),
                 user_id,
                 room_id,
+                &room_version,
                 &state_lock,
             )
             .await

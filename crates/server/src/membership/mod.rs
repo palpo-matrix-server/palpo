@@ -219,10 +219,7 @@ pub fn update_membership(
                 diesel::insert_into(room_users::table)
                     .values(&NewDbRoomUser {
                         room_id: room_id.to_owned(),
-                        room_server_id: room_id
-                            .server_name()
-                            .map_err(|s| AppError::public(format!("bad room server name: {s}")))?
-                            .to_owned(),
+                        room_server_id: room_id.server_name().ok().map(|v| v.to_owned()),
                         user_id: user_id.to_owned(),
                         user_server_id: user_id.server_name().to_owned(),
                         event_id: event_id.to_owned(),
@@ -261,10 +258,7 @@ pub fn update_membership(
                 diesel::insert_into(room_users::table)
                     .values(&NewDbRoomUser {
                         room_id: room_id.to_owned(),
-                        room_server_id: room_id
-                            .server_name()
-                            .map_err(|s| AppError::public(format!("bad room server name: {s}")))?
-                            .to_owned(),
+                        room_server_id: room_id.server_name().ok().map(|v| v.to_owned()),
                         user_id: user_id.to_owned(),
                         user_server_id: user_id.server_name().to_owned(),
                         event_id: event_id.to_owned(),
@@ -299,10 +293,7 @@ pub fn update_membership(
                 diesel::insert_into(room_users::table)
                     .values(&NewDbRoomUser {
                         room_id: room_id.to_owned(),
-                        room_server_id: room_id
-                            .server_name()
-                            .map_err(|s| AppError::public(format!("bad room server name: {s}")))?
-                            .to_owned(),
+                        room_server_id: room_id.server_name().ok().map(|v| v.to_owned()),
                         user_id: user_id.to_owned(),
                         user_server_id: user_id.server_name().to_owned(),
                         event_id: event_id.to_owned(),

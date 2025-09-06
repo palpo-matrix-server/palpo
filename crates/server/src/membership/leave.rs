@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use diesel::prelude::*;
+use palpo_core::state::room_version;
 
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
@@ -116,6 +117,7 @@ pub async fn leave_room(
             },
             user_id,
             room_id,
+            &crate::room::get_version(room_id)?,
             &room::lock_state(room_id).await,
         )
         .await?;

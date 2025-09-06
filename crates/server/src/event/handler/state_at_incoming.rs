@@ -109,10 +109,10 @@ pub(super) async fn state_at_incoming_resolved(
     }
 
     let state_lock = room::lock_state(room_id).await;
-    let room_rules = crate::room::get_rules(room_version_id)?;
+    let version_rules = crate::room::get_version_rules(room_version_id)?;
     let result = resolve(
-        &room_rules.authorization,
-        room_rules
+        &version_rules.authorization,
+        version_rules
             .state_resolution
             .v2_rules()
             .unwrap_or(StateResolutionV2Rules::V2_0),
@@ -124,7 +124,7 @@ pub(super) async fn state_at_incoming_resolved(
         &async |event_id| {
             timeline::get_pdu(&event_id)
                 .map(|s| s.pdu)
-                .map_err(|_| StateError::other("missing PDU"))
+                .map_err(|_| StateError::other("missing PDU 5"))
         },
         |_| None, //TODO
     )

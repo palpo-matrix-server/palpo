@@ -124,6 +124,7 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         },
         &args.user_id,
         &args.room_id,
+        &room_version_id,
         &state_lock,
     )
     .await?;
@@ -214,10 +215,11 @@ async fn invite_user(
     event.insert("event_id".to_owned(), event_id.to_string().into());
 
     let (event_sn, event_guard) = crate::event::ensure_event_sn(&args.room_id, &event_id)?;
-    let pdu = SnPduEvent::from_json_value(&event_id, event_sn, event.into()).map_err(|e| {
-        warn!("Invalid invite event: {}", e);
-        MatrixError::invalid_param("Invalid invite event.")
-    })?;
+    let pdu = SnPduEvent::from_json_value(&args.room_id, &event_id, event_sn, event.into())
+        .map_err(|e| {
+            warn!("Invalid invite event: {}", e);
+            MatrixError::invalid_param("Invalid invite event.")
+        })?;
     invite_state.push(pdu.to_stripped_state_event());
 
     // If we are active in the room, the remote server will notify us about the join via /send.
@@ -268,6 +270,7 @@ async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<Mak
         ),
         &args.user_id,
         &args.room_id,
+        &room_version_id,
         &state_lock,
     )
     .await?;

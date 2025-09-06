@@ -583,7 +583,7 @@ pub(super) async fn force_demote(
     let user_id = parse_local_user_id(&user_id)?;
     let room_id = crate::room::alias::resolve(&room_id).await?;
     let room_version = crate::room::get_version(&room_id)?;
-    let room_rule = crate::room::get_rules(&room_version)?;
+    let version_rule = crate::room::get_version_rules(&room_version)?;
 
     assert!(user_id.is_local(), "parsed user_id must be a local user");
     let state_lock = crate::room::lock_state(&room_id).await;
@@ -607,13 +607,14 @@ pub(super) async fn force_demote(
     let mut power_levels_content: RoomPowerLevelsEventContent = room_power_levels
         .map(TryInto::try_into)
         .transpose()?
-        .unwrap_or_else(|| RoomPowerLevelsEventContent::new(&room_rule.authorization));
+        .unwrap_or_else(|| RoomPowerLevelsEventContent::new(&version_rule.authorization));
     power_levels_content.users.remove(&user_id);
 
     let event = timeline::build_and_append_pdu(
         PduBuilder::state(String::new(), &power_levels_content),
         &user_id,
         &room_id,
+        &room_version,
         &state_lock,
     )
     .await?;
@@ -746,6 +747,7 @@ pub(super) async fn redact_event(ctx: &Context<'_>, event_id: OwnedEventId) -> A
             },
             &event.sender,
             &event.room_id,
+            &crate::room::get_version(&event.room_id)?,
             &state_lock,
         )
         .await?

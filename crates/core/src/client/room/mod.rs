@@ -90,6 +90,9 @@ pub struct CreateRoomReqBody {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub room_alias_name: Option<String>,
 
+    // /// The desired custom room ID, local part or fully qualified.
+    // #[serde(alias = "fi.mau.room_id", skip_serializing_if = "Option::is_none")]
+    // pub room_id: Option<String>,
     /// Room version to set for the room.
     ///
     /// Defaults to homeserver's default if not specified.
@@ -123,6 +126,11 @@ pub struct CreateRoomResBody {
 /// without some fields that servers are supposed to ignore.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct CreationContent {
+    /// A list of user IDs to consider as additional creators, and hence grant an "infinite"
+    /// immutable power level, from room version 12 onwards.
+    #[serde(default, skip_serializing_if = "<[_]>::is_empty")]
+    pub additional_creators: Vec<OwnedUserId>,
+
     /// Whether users on other servers can join this room.
     ///
     /// Defaults to `true` if key does not exist.
@@ -149,6 +157,7 @@ impl CreationContent {
     /// Creates a new `CreationContent` with all fields defaulted.
     pub fn new() -> Self {
         Self {
+            additional_creators: Vec::new(),
             federate: true,
             predecessor: None,
             room_type: None,
