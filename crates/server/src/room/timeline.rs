@@ -543,7 +543,6 @@ pub async fn create_hash_and_sign_event(
         .into_iter()
         .take(20)
         .collect();
-    println!("=============event_type:{event_type:?}======prev_events0: {prev_events:#?}");
 
     let conf = crate::config::get();
     // If there was no create event yet, assume we are creating a room with the default
@@ -627,7 +626,6 @@ pub async fn create_hash_and_sign_event(
             .map_err(|_| StateError::other("missing PDU 6"))
     };
     let fetch_state = async |k: StateEventType, s: String| {
-        println!("=============auth_events:{auth_events:#?}====k: {k}   s: {s}");
         auth_events
             .get(&(k, s.to_owned()))
             .map(|s| s.pdu.clone())
@@ -820,7 +818,6 @@ pub async fn build_and_append_pdu(
     room_version: &RoomVersionId,
     state_lock: &RoomMutexGuard,
 ) -> AppResult<SnPduEvent> {
-    println!("=====build_and_append_pdu  0");
     if let Some(state_key) = &pdu_builder.state_key
         && let Ok(curr_state) = super::get_state(
             room_id,
@@ -838,7 +835,6 @@ pub async fn build_and_append_pdu(
     let room_id = &pdu.room_id;
     crate::room::ensure_room(room_id, room_version)?;
 
-    println!("=====build_and_append_pdu  2");
     let conf = crate::config::get();
     // let admin_room = super::resolve_local_alias(
     //     <&RoomAliasId>::try_from(format!("#admins:{}", &conf.server_name).as_str())
@@ -847,7 +843,6 @@ pub async fn build_and_append_pdu(
     if crate::room::is_admin_room(room_id)? {
         check_pdu_for_admin_room(&pdu, sender)?;
     }
-    println!("=====build_and_append_pdu  3");
 
     let event_id = pdu.event_id.clone();
     append_pdu(
@@ -858,19 +853,16 @@ pub async fn build_and_append_pdu(
         state_lock,
     )
     .await?;
-    println!("=====build_and_append_pdu  4");
     let frame_id = state::append_to_state(&pdu)?;
 
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
 
     state::set_room_state(room_id, frame_id)?;
-    println!("=====build_and_append_pdu  5");
 
     let mut servers: HashSet<OwnedServerName> =
         super::participating_servers(room_id)?.into_iter().collect();
 
-    println!("=====build_and_append_pdu  6");
     // In case we are kicking or banning a user, we need to inform their server of the change
     if pdu.event_ty == TimelineEventType::RoomMember
         && let Some(state_key_uid) = &pdu
@@ -881,7 +873,6 @@ pub async fn build_and_append_pdu(
         servers.insert(state_key_uid.server_name().to_owned());
     }
 
-    println!("=====build_and_append_pdu  7");
     // Remove our server from the server list since it will be added to it by room_servers() and/or the if statement above
     servers.remove(&conf.server_name);
     crate::sending::send_pdu_servers(servers.into_iter(), &pdu.event_id)?;

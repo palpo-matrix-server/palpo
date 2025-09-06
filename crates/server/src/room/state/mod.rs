@@ -154,7 +154,6 @@ pub fn set_event_state(
     let prev_frame_id = get_room_frame_id(room_id, None)?;
     let hash_data = utils::hash_keys(state_ids_compressed.iter().map(|s| &s[..]));
     if let Ok(frame_id) = get_frame_id(room_id, &hash_data) {
-        println!("=======just update   event_id: {event_id}  frame_id: {frame_id}");
         update_frame_id(event_id, frame_id)?;
         Ok(frame_id)
     } else {
@@ -179,7 +178,6 @@ pub fn set_event_state(
         };
 
         update_frame_id(event_id, frame_id)?;
-        println!("=====set_event_state   event_id:{event_id}  frame_id: {frame_id}  appended:{appended:?}  disposed:{disposed:?}");
         calc_and_save_state_delta(
             room_id,
             frame_id,
@@ -332,7 +330,6 @@ pub fn get_auth_events(
 
     let auth_types =
         crate::core::state::auth_types_for_event(kind, sender, state_key, content, auth_rules)?;
-    println!("======auth types: {auth_types:?}");
     let mut sauth_events = auth_types
         .into_iter()
         .filter_map(|(event_type, state_key)| {
@@ -341,24 +338,18 @@ pub fn get_auth_events(
                 .map(|field_id| (field_id, (event_type, state_key)))
         })
         .collect::<HashMap<_, _>>();
-    println!("======= auth events: {sauth_events:?}");
 
     let full_state = load_frame_info(frame_id)?
         .pop()
         .expect("there is always one layer")
         .full_state;
     let mut state_map = StateMap::new();
-    println!("============frame_id: {frame_id}  =full state: {full_state:?}");
     for state in full_state.iter() {
         let (state_key_id, event_id) = state.split()?;
-        println!("======= state_key_id: {state_key_id}   event_id: {event_id}");
         if let Some(key) = sauth_events.remove(&state_key_id) {
-            println!("LLLLLLLLLLLLLoad pdu:       {key:?}");
             if let Ok(pdu) = timeline::get_pdu(&event_id) {
-                println!("FFFFoudn pdu");
                 state_map.insert(key, pdu);
             } else {
-                println!(" pdu not found");
                 tracing::warn!("pdu is not found: {}", event_id);
             }
         }

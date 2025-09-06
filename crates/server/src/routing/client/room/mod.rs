@@ -622,10 +622,6 @@ pub(super) async fn create_room(
             create_create_event(sender_id, &body, &preset, &room_version, &room_rules).await?
         }
     };
-    println!(
-        "||||||||||||||==================room_id: {}  ============ 0",
-        room_id
-    );
 
     // 2. Let the room creator join
     timeline::build_and_append_pdu(
@@ -652,7 +648,6 @@ pub(super) async fn create_room(
         &state_lock,
     )
     .await?;
-    println!("\n\n\n\n\nn\n\n\n||||||||||||||================== ============ 1");
 
     // 3. Power levels
     let mut users = BTreeMap::new();
@@ -660,7 +655,6 @@ pub(super) async fn create_room(
         users.insert(sender_id.to_owned(), 100);
     }
 
-    println!("||||||||||||||================== ============ 2");
     if preset == RoomPreset::TrustedPrivateChat {
         for invitee_id in &body.invite {
             if user_is_ignored(sender_id, invitee_id) || user_is_ignored(invitee_id, sender_id) {
@@ -670,7 +664,6 @@ pub(super) async fn create_room(
         }
     }
 
-    println!("||||||||||||||================== ============ 3");
     let power_levels_content = default_power_levels_content(
         &room_rules.authorization,
         body.power_level_content_override.as_ref(),
@@ -678,7 +671,6 @@ pub(super) async fn create_room(
         users,
     )?;
 
-    println!("||||||||||||||================== ============ 4");
     timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomPowerLevels,
@@ -692,7 +684,6 @@ pub(super) async fn create_room(
         &state_lock,
     )
     .await?;
-    println!("||||||||||||||================== ============ 5");
 
     // 4. Canonical room alias
     if let Some(room_alias_id) = &alias {
@@ -716,7 +707,6 @@ pub(super) async fn create_room(
         .unwrap();
     }
 
-    println!("||||||||||||||================== ============ 6");
     // 5. Events set by preset
     // 5.1 Join Rules
     timeline::build_and_append_pdu(
@@ -1028,7 +1018,6 @@ async fn create_create_event(
     drop(state_lock);
 
     let state_lock = room::lock_state(&create_event.room_id).await;
-    println!("=====================room id: {}", create_event.room_id);
 
     Ok((create_event.room_id.clone(), state_lock))
 }

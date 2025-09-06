@@ -160,10 +160,6 @@ pub fn calc_and_save_state_delta(
     mut parent_states: Vec<FrameInfo>,
 ) -> AppResult<()> {
     let diff_sum = appended.len() + disposed.len();
-    println!(
-        "=====calc_and_save_state_delta   frame_id: {frame_id}  appended:{appended:?}  disposed:{disposed:?}  diff_sum:{diff_sum}  diff_to_sibling:{diff_to_sibling}  parent_states.len():{}",
-        parent_states.len()
-    );
 
     if parent_states.len() > 3 {
         // Number of layers
