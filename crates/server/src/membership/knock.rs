@@ -31,6 +31,7 @@ pub async fn knock_room(
     reason: Option<String>,
     servers: &[OwnedServerName],
 ) -> AppResult<()> {
+    println!("===============================xxx  0");
     if room::user::is_invited(sender_id, room_id)? {
         warn!("{sender_id} is already invited in {room_id} but attempted to knock");
         return Err(MatrixError::forbidden(
@@ -40,6 +41,7 @@ pub async fn knock_room(
         .into());
     }
 
+    println!("===============================xxx  1");
     if room::user::is_joined(sender_id, room_id)? {
         warn!("{sender_id} is already joined in {room_id} but attempted to knock");
         return Err(MatrixError::forbidden(
@@ -49,11 +51,13 @@ pub async fn knock_room(
         .into());
     }
 
+    println!("===============================xxx  2");
     if room::user::is_knocked(sender_id, room_id)? {
         warn!("{sender_id} is already knocked in {room_id}");
         return Ok(());
     }
 
+    println!("===============================xxx  3");
     if let Ok(memeber) = room::get_member(room_id, sender_id)
         && memeber.membership == MembershipState::Ban
     {
@@ -65,6 +69,7 @@ pub async fn knock_room(
         .into());
     }
 
+    println!("===============================xxx  4");
     if room::is_server_joined(&config::get().server_name, room_id).unwrap_or(false) {
         use RoomVersionId::*;
         info!("We can knock locally");
@@ -116,6 +121,7 @@ pub async fn knock_room(
             }
         }
     }
+    println!("===============================xxx  5");
     info!("Knocking {room_id} over federation.");
 
     let (make_knock_response, remote_server) =
@@ -123,6 +129,7 @@ pub async fn knock_room(
 
     info!("make_knock finished");
 
+    println!("===============================xxx  6");
     let room_version = make_knock_response.room_version;
 
     if !config::supports_room_version(&room_version) {
@@ -132,6 +139,7 @@ pub async fn knock_room(
     }
     crate::room::ensure_room(room_id, &room_version)?;
 
+    println!("===============================xxx  7");
     let mut knock_event_stub: CanonicalJsonObject =
         serde_json::from_str(make_knock_response.event.get()).map_err(|e| {
             StatusError::internal_server_error().brief(format!(
@@ -159,6 +167,7 @@ pub async fn knock_room(
         .expect("event is valid, we just created it"),
     );
 
+    println!("===============================xxx  8");
     // In order to create a compatible ref hash (EventID) the `hashes` field needs
     // to be present
     crate::server_key::hash_and_sign_event(&mut knock_event_stub, &room_version)?;
@@ -204,6 +213,7 @@ pub async fn knock_room(
 
     info!("going through send_knock response knock state events");
 
+    println!("===============================xxx  9");
     // TODO: how to handle this? snpase save this state to unsigned field.
     let knock_state = send_knock_body
         .knock_room_state
@@ -261,9 +271,11 @@ pub async fn knock_room(
         }
     }
 
+    println!("===============================xxx  11");
     info!("Appending room knock event locally");
     let event_id = parsed_knock_pdu.event_id.clone();
     let (event_sn, event_guard) = ensure_event_sn(room_id, &event_id)?;
+    println!("===============================xxx  12");
     NewDbEvent {
         id: event_id.to_owned(),
         sn: event_sn,
@@ -293,6 +305,7 @@ pub async fn knock_room(
     )
     .await?;
 
+    println!("===============================xxx  13");
     info!("Compressing state from send_knock");
     let compressed = state_map
         .into_iter()
@@ -311,6 +324,7 @@ pub async fn knock_room(
 
     let frame_id = state::append_to_state(&knock_pdu)?;
 
+    println!("===============================xxx  14");
     info!("Updating membership locally to knock state with provided stripped state events");
     crate::membership::update_membership(
         &event_id,
@@ -327,6 +341,7 @@ pub async fn knock_room(
     // in time where events in the current room state do not exist
     let _ = state::set_room_state(room_id, frame_id);
 
+    println!("===============================xxx  15");
     drop(event_guard);
     Ok(())
 }
