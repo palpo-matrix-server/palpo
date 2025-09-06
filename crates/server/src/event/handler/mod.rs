@@ -261,7 +261,7 @@ fn process_to_outlier_pdu<'a>(
         // 1.1. Remove unsigned field
         value.remove("unsigned");
 
-        let room_rules = crate::room::get_rules(room_version_id)?;
+        let version_rules = crate::room::get_version_rules(room_version_id)?;
         let origin_server_ts = value.get("origin_server_ts").ok_or_else(|| {
             error!("invalid PDU, no origin_server_ts field");
             MatrixError::missing_param("invalid PDU, no origin_server_ts field")
@@ -281,8 +281,7 @@ fn process_to_outlier_pdu<'a>(
             Ok(crate::core::signatures::Verified::Signatures) => {
                 // Redact
                 warn!("Calculated hash does not match: {}", event_id);
-                let rules = crate::room::get_rules(room_version_id)?;
-                let obj = match canonical_json::redact(value, &rules.redaction, None) {
+                let obj = match canonical_json::redact(value, &version_rules.redaction, None) {
                     Ok(obj) => obj,
                     Err(_) => return Err(MatrixError::invalid_param("redaction failed").into()),
                 };
@@ -400,7 +399,7 @@ fn process_to_outlier_pdu<'a>(
         }
 
         if let Err(e) = event_auth::auth_check(
-            &room_rules.authorization,
+            &version_rules.authorization,
             &incoming_pdu,
             &async |event_id| {
                 timeline::get_pdu(&event_id)
@@ -462,7 +461,7 @@ pub async fn process_to_timeline_pdu(
     }
     info!("Upgrading {} to timeline pdu", incoming_pdu.event_id);
     let room_version_id = &room::get_version(room_id)?;
-    let room_rules = crate::room::get_rules(room_version_id)?;
+    let version_rules = crate::room::get_version_rules(room_version_id)?;
 
     // 10. Fetch missing state and auth chain events by calling /state_ids at backwards extremities
     //     doing all the checks in this list starting at 1. These are not timeline events.
@@ -484,7 +483,7 @@ pub async fn process_to_timeline_pdu(
     debug!("Performing auth check");
     // 11. Check the auth of the event passes based on the state of the event
     event_auth::auth_check(
-        &room_rules.authorization,
+        &version_rules.authorization,
         &incoming_pdu,
         &async |event_id| {
             timeline::get_pdu(&event_id).map_err(|_| StateError::other("missing PDU 2"))
@@ -502,19 +501,19 @@ pub async fn process_to_timeline_pdu(
     debug!("Auth check succeeded");
 
     debug!("Gathering auth events");
-    let room_rules = crate::room::get_rules(room_version_id)?;
+    let version_rules = crate::room::get_version_rules(room_version_id)?;
     let auth_events = state::get_auth_events(
         room_id,
         &incoming_pdu.event_ty,
         &incoming_pdu.sender,
         incoming_pdu.state_key.as_deref(),
         &incoming_pdu.content,
-        &room_rules.authorization,
+        &version_rules.authorization,
         true,
     )?;
 
     event_auth::auth_check(
-        &room_rules.authorization,
+        &version_rules.authorization,
         &incoming_pdu,
         &async |event_id| {
             timeline::get_pdu(&event_id).map_err(|_| StateError::other("missing PDU 3"))
@@ -682,10 +681,10 @@ async fn resolve_state(
         .collect();
     debug!("Resolving state");
 
-    let room_rules = crate::room::get_rules(room_version_id)?;
+    let version_rules = crate::room::get_version_rules(room_version_id)?;
     let state = match crate::core::state::resolve(
-        &room_rules.authorization,
-        room_rules
+        &version_rules.authorization,
+        version_rules
             .state_resolution
             .v2_rules()
             .unwrap_or(StateResolutionV2Rules::V2_0),

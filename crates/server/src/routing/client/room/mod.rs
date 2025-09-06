@@ -587,7 +587,7 @@ pub(super) async fn create_room(
         }
         None => conf.default_room_version.clone(),
     };
-    let room_rules = crate::room::get_rules(&room_version)?;
+    let version_rules = crate::room::get_version_rules(&room_version)?;
 
     if !conf.allow_room_creation && authed.appservice.is_none() && !authed.is_admin() {
         return Err(MatrixError::forbidden("Room creation has been disabled.", None).into());
@@ -614,12 +614,12 @@ pub(super) async fn create_room(
         _ => RoomPreset::PrivateChat, // Room visibility should not be custom
     });
 
-    let (room_id, state_lock) = match room_rules.room_id_format {
+    let (room_id, state_lock) = match version_rules.room_id_format {
         RoomIdFormatVersion::V1 => {
-            create_create_event_legacy(sender_id, &body, &room_version, &room_rules).await?
+            create_create_event_legacy(sender_id, &body, &room_version, &version_rules).await?
         }
         RoomIdFormatVersion::V2 => {
-            create_create_event(sender_id, &body, &preset, &room_version, &room_rules).await?
+            create_create_event(sender_id, &body, &preset, &room_version, &version_rules).await?
         }
     };
 
@@ -651,7 +651,7 @@ pub(super) async fn create_room(
 
     // 3. Power levels
     let mut users = BTreeMap::new();
-    if !room_rules.authorization.explicitly_privilege_room_creators {
+    if !version_rules.authorization.explicitly_privilege_room_creators {
         users.insert(sender_id.to_owned(), 100);
     }
 
@@ -665,7 +665,7 @@ pub(super) async fn create_room(
     }
 
     let power_levels_content = default_power_levels_content(
-        &room_rules.authorization,
+        &version_rules.authorization,
         body.power_level_content_override.as_ref(),
         &body.visibility,
         users,
@@ -866,7 +866,7 @@ async fn create_create_event_legacy(
     sender_id: &UserId,
     body: &CreateRoomReqBody,
     room_version: &RoomVersionId,
-    _room_rules: &RoomVersionRules,
+    _version_rules: &RoomVersionRules,
 ) -> AppResult<(OwnedRoomId, RoomMutexGuard)> {
     // let room_id: OwnedRoomId = match &body.room_id {
     //     None => RoomId::new_v1(&config::get().server_name),
@@ -946,7 +946,7 @@ async fn create_create_event(
     body: &CreateRoomReqBody,
     preset: &RoomPreset,
     room_version: &RoomVersionId,
-    room_rules: &RoomVersionRules,
+    version_rules: &RoomVersionRules,
 ) -> AppResult<(OwnedRoomId, RoomMutexGuard)> {
     let mut create_content = match &body.creation_content {
         Some(content) => {
@@ -975,7 +975,7 @@ async fn create_create_event(
         }
     };
 
-    if room_rules.authorization.additional_room_creators {
+    if version_rules.authorization.additional_room_creators {
         let mut additional_creators = body
             .creation_content
             .as_ref()

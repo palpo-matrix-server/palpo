@@ -33,8 +33,8 @@ pub fn gen_event_id(
     value: &CanonicalJsonObject,
     room_version_id: &RoomVersionId,
 ) -> AppResult<OwnedEventId> {
-    let room_rules = crate::room::get_rules(room_version_id)?;
-    let reference_hash = signatures::reference_hash(value, &room_rules)?;
+    let version_rules = crate::room::get_version_rules(room_version_id)?;
+    let reference_hash = signatures::reference_hash(value, &version_rules)?;
     let event_id: OwnedEventId = format!("${reference_hash}").try_into()?;
     Ok(event_id)
 }

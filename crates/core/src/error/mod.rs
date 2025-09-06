@@ -207,6 +207,7 @@ impl Scribe for MatrixError {
                     _ => StatusCode::BAD_REQUEST,
                 }
             });
+            println!("==fffffffffffff========code  :{code:?}");
             res.status_code(code);
         }
 

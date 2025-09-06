@@ -73,14 +73,15 @@ pub async fn knock_room(
     if room::is_server_joined(&config::get().server_name, room_id).unwrap_or(false) {
         use RoomVersionId::*;
         info!("We can knock locally");
-        let room_version_id = room::get_version(room_id)?;
-        if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6) {
+        let room_version = room::get_version(room_id)?;
+        if matches!(room_version, V1 | V2 | V3 | V4 | V5 | V6) {
             return Err(MatrixError::forbidden(
                 "This room version does not support knocking.",
                 None,
             )
             .into());
         }
+        println!("======================room version: {room_version}");
 
         let join_rule = room::get_join_rule(room_id)?;
         if !matches!(
@@ -114,8 +115,10 @@ pub async fn knock_room(
                 return Ok(());
             }
             Err(e) => {
+        println!("============bb===knock room    5.6  servers: {servers:?}  error: {}", servers.iter().all(|s| s.is_local()));
                 tracing::error!("Failed to knock room {room_id} with conflict error: {e}");
                 if servers.is_empty() || servers.iter().all(|s| s.is_local()) {
+                    println!("ddddddddd");
                     return Err(e);
                 }
             }

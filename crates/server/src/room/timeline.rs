@@ -557,7 +557,7 @@ pub async fn create_hash_and_sign_event(
     //         "non-create event for room `{room_id}` of unknown version"
     //     )));
     // };
-    let room_rules = crate::room::get_rules(&room_version)?;
+    let version_rules = crate::room::get_version_rules(&room_version)?;
 
     let auth_events = state::get_auth_events(
         room_id,
@@ -565,7 +565,7 @@ pub async fn create_hash_and_sign_event(
         sender_id,
         state_key.as_deref(),
         &content,
-        &room_rules.authorization,
+        &version_rules.authorization,
         true,
     )?;
 
@@ -632,7 +632,7 @@ pub async fn create_hash_and_sign_event(
             .ok_or_else(|| StateError::other("missing auth events"))
     };
     crate::core::state::event_auth::auth_check(
-        &room_rules.authorization,
+        &version_rules.authorization,
         &pdu,
         &fetch_event,
         &fetch_state,
@@ -645,7 +645,7 @@ pub async fn create_hash_and_sign_event(
 
     pdu_json.remove("event_id");
 
-    if room_rules.room_id_format == RoomIdFormatVersion::V2 {
+    if version_rules.room_id_format == RoomIdFormatVersion::V2 {
         pdu_json.remove("room_id");
     }
 
@@ -669,7 +669,7 @@ pub async fn create_hash_and_sign_event(
 
     // Generate event id
     pdu.event_id = crate::event::gen_event_id(&pdu_json, &room_version)?;
-    if room_rules.room_id_format == RoomIdFormatVersion::V2
+    if version_rules.room_id_format == RoomIdFormatVersion::V2
         && pdu.event_ty == TimelineEventType::RoomCreate
     {
         pdu.room_id = RoomId::new_v2(pdu.event_id.localpart())?;
@@ -685,7 +685,7 @@ pub async fn create_hash_and_sign_event(
         "event_id".to_owned(),
         CanonicalJsonValue::String(pdu.event_id.as_str().to_owned()),
     );
-    if room_rules.room_id_format == RoomIdFormatVersion::V2 {
+    if version_rules.room_id_format == RoomIdFormatVersion::V2 {
         pdu_json.insert(
             "room_id".to_owned(),
             CanonicalJsonValue::String(room_id.as_str().to_owned()),
