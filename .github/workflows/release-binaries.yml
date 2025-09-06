@@ -102,7 +102,7 @@ jobs:
       - uses: taiki-e/upload-rust-binary-action@v1
         with:
           bin: palpo
-          include: palpo-example.toml,LICENSE,README.md
+          include: palpo-example.toml,palpo-required.toml,LICENSE,README.md
           target: ${{ matrix.target }}
           tar: unix
           zip: windows

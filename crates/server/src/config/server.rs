@@ -701,7 +701,7 @@ pub struct ServerConfig {
     pub well_known: WellKnownConfig,
 
     // external structure; separate section
-    pub federation: Option<FederationConfig>,
+    pub federation: FederationConfig,
 
     /// Enables configuration reload when the server receives SIGUSR1 on
     /// supporting platforms.
@@ -774,12 +774,8 @@ impl ServerConfig {
     }
 
     pub fn enabled_federation(&self) -> Option<&FederationConfig> {
-        if let Some(federation) = self.federation.as_ref() {
-            if federation.enable {
-                Some(federation)
-            } else {
-                None
-            }
+        if self.federation.enable {
+            Some(&self.federation)
         } else {
             None
         }
