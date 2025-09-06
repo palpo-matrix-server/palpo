@@ -186,7 +186,6 @@ impl Writer for AppError {
                 MatrixError::unknown("Unknown error happened.")
             }
         };
-        println!("============mmmmmmmmmmmmmmmmmmmmmmatrix error: {matrix:?}");
         matrix.write(req, depot, res).await;
     }
 }

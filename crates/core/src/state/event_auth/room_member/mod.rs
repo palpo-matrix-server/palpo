@@ -558,13 +558,6 @@ where
 {
     let join_rule = fetch_state.join_rule().await?;
 
-    println!(
-        "=============join rule: {:?}   {:?}  {:?}",
-        join_rule,
-        auth_rules.knock_restricted_join_rule,
-        !matches!(join_rule, JoinRuleKind::KnockRestricted)
-    );
-
     // TODO: Not same with ruma for testing?
     // v7-v9, if the join_rule is anything other than knock, reject.
     // Since v10, if the join_rule is anything other than knock or knock_restricted,
@@ -573,12 +566,10 @@ where
         || (auth_rules.knock_restricted_join_rule
             && !matches!(join_rule, JoinRuleKind::KnockRestricted))
     {
-        println!("zzzzzzzzzzzz 0");
         return Err(StateError::forbidden(
             "join rule is not set to knock or knock_restricted, knocking is not allowed",
         ));
     }
-    println!("zzzzzzzzzzzz 1");
 
     // Since v7, if sender does not match state_key, reject.
     if room_member_event.sender() != target_user {
