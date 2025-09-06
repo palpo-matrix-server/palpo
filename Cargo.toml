@@ -3,7 +3,7 @@ members = ["crates/*"]
 resolver = "2"
 
 [workspace.package]
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Chrislearn Young <chris@acroidea.com>"]
 edition = "2024"
 rust-version = "1.89"
@@ -39,8 +39,8 @@ byteorder = "1.5.0"
 cargo_toml = "0.22.3"
 chksum = "0.4.0"
 chrono = { version = "0.4.19", features = ["serde"] }
-clap = { version = "4.5.45", default-features = false }
-config = "0.15.14"
+clap = { version = "4.5.47", default-features = false }
+config = "0.15.15"
 cookie = "0.18.0"
 core_affinity = "0.8.3"
 cyborgtime = "2.1.1"
@@ -64,7 +64,7 @@ hyper-util = "0.1.16"
 hmac = "0.12"
 html5ever = "0.29.0"
 http = "1"
-image = "0.25"
+image = "0.25.0"
 indexmap = "2.10.0"
 itertools = "0.14"
 jsonwebtoken = { version = "9.1", default-features = false, features = ["use_pem"] }
@@ -107,11 +107,11 @@ sha1 = "0.10.6"
 strum = "0.27.2"
 strum_macros = "0.27.2"
 subslice = "0.2.3"
-syn = "2.0.105"
+syn = "2.0.106"
 tempfile = "3.6.0"
-termimad = {version = "0.33.0", default-features  = false}
+termimad = {version = "0.34.0", default-features  = false}
 textnonce = "1.0.0"
-thiserror = "2.0.14"
+thiserror = "2.0.16"
 tokio = { version = "1.46.1", features = ["macros", "parking_lot", "process"] }
 tokio-stream = { version = "0.1.9", features = ["sync"] }
 tokio-util = { version = "0.7.16", features = ["io"] }
@@ -120,9 +120,9 @@ tower-service = "0.3"
 tracing = { version = "0.1.41", features = ["release_max_level_debug", "attributes", "max_level_debug"] }
 tracing-core = { version = "0.1.33" }
 tracing-futures = "0.2.5"
-tracing-subscriber = { version = "0.3.15", features = ["env-filter", "json"] }
+tracing-subscriber = { version = "0.3.20", features = ["env-filter", "json"] }
 url = { version = "2.5.4", default-features = false, features = ["serde"] }
-uuid = { version = "1.18.0", features = ["v4"] }
+uuid = { version = "1.18.1", features = ["v4"] }
 ulid = "1.1.0"
 web-time = "1.1.0"
 webpage = { version = "2.0.1", default-features = false }
