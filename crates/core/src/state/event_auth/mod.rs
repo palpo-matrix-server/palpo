@@ -380,13 +380,15 @@ where
     // Since v1, if type is m.room.member:
     if *incoming_event.event_type() == TimelineEventType::RoomMember {
         let room_member_event = RoomMemberEvent::new(incoming_event);
-        return check_room_member(
+        let x = check_room_member(
             room_member_event,
             auth_rules,
             room_create_event,
             fetch_state,
         )
         .await;
+        println!("=======x  {x:?}");
+        return x;
     }
     // Since v1, if the sender's current membership state is not join, reject.
     let sender_membership = fetch_state.user_membership(sender).await?;
