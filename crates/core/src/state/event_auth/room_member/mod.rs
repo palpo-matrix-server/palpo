@@ -548,7 +548,7 @@ where
 async fn check_room_member_knock<Pdu, Fetch, Fut>(
     room_member_event: RoomMemberEvent<&Pdu>,
     target_user: &UserId,
-    rules: &AuthorizationRules,
+    auth_rules: &AuthorizationRules,
     fetch_state: &Fetch,
 ) -> StateResult<()>
 where
@@ -561,14 +561,15 @@ where
     println!(
         "=============join rule: {:?}   {:?}  {:?}",
         join_rule,
-        rules.knock_restricted_join_rule,
+        auth_rules.knock_restricted_join_rule,
         !matches!(join_rule, JoinRuleKind::KnockRestricted)
     );
+
+    // TODO: Not same with ruma for testing?
     // v7-v9, if the join_rule is anything other than knock, reject.
     // Since v10, if the join_rule is anything other than knock or knock_restricted,
     // reject.
-    if join_rule != JoinRuleKind::Knock
-        && (rules.knock_restricted_join_rule && !matches!(join_rule, JoinRuleKind::KnockRestricted))
+    if join_rule != JoinRuleKind::Knock || (auth_rules.knock_restricted_join_rule && !matches!(join_rule, JoinRuleKind::KnockRestricted))
     {
         println!("zzzzzzzzzzzz 0");
         return Err(StateError::forbidden(
