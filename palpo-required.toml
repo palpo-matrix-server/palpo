@@ -1,11 +1,11 @@
-server_name = "127.0.0.1:6006"
+server_name = "0.0.0.0:6006"
 
 # Enables registration. If set to false, no users can register on this server.
 allow_registration = true
 
 # The local address that the server listens on.
 [[listeners]]
-address = "127.0.0.1:6006"
+address = "0.0.0.0:6006"
 
 [db]
-url = "postgres://postgres:root@localhost:5432/palpo_local"
+url = "postgres://postgres:root@localhost:5432/palpo_local" # Update with your database URL
