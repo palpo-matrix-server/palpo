@@ -558,6 +558,7 @@ where
 {
     let join_rule = fetch_state.join_rule().await?;
 
+    println!("=============join rule: {:?}", join_rule);
     // v7-v9, if the join_rule is anything other than knock, reject.
     // Since v10, if the join_rule is anything other than knock or knock_restricted,
     // reject.
