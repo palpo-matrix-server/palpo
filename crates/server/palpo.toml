@@ -1,24 +1,13 @@
-server_name = "127.0.0.1:6006"
-
-# Max size for uploads
-max_upload_size = 128_000_000 # in bytes
+server_name = "0.0.0.0:6006"
 
 # Enables registration. If set to false, no users can register on this server.
 allow_registration = true
-
-allow_check_for_updates = true
-
-# Servers listed here will be used to gather public keys of other servers.
-# Generally, copying this exactly should be enough. (Currently, Palpo doesn't
-# support batched key requests, so this list should only contain Synapse
-# servers.)
-trusted_servers = ["matrix.org"]
 
 enable_admin_room = true
 
 # The local address that the server listens on.
 [[listeners]]
-address = "127.0.0.1:6006"
+address = "0.0.0.0:6006"
 
 [logger]
 format = "pretty" # pretty, json, compact
