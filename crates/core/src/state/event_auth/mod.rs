@@ -407,15 +407,13 @@ where
     if *incoming_event.event_type() == TimelineEventType::RoomMember {
         let room_member_event = RoomMemberEvent::new(incoming_event);
         println!("OOOOOOOOOOO1 ========= 4.1");
-        let x = check_room_member(
+        return check_room_member(
             room_member_event,
             auth_rules,
             room_create_event,
             fetch_state,
         )
         .await;
-        println!("XXXXXXXXXXXXXXXXXXX0 check_room_membered  {x:?}");
-        return x;
     }
     println!("OOOOOOOOOOO1 ========= 5.1");
     // Since v1, if the sender's current membership state is not join, reject.
@@ -593,19 +591,19 @@ fn check_room_power_levels(
     // IDs with values that are integers, reject.
     let new_users = room_power_levels_event.users(rules)?;
 
-    // Since v12, if the `users` property in `content` contains the `sender` of the `m.room.create`
-    // event or any of the user IDs in the create event's `content.additional_creators`, reject.
-    if rules.explicitly_privilege_room_creators
-        && new_users.is_some_and(|new_users| {
-            room_creators
-                .iter()
-                .any(|creator| new_users.contains_key(creator))
-        })
-    {
-        return Err(StateError::other(
-            "creator user IDs are not allowed in the `users` field",
-        ));
-    }
+    // // Since v12, if the `users` property in `content` contains the `sender` of the `m.room.create`
+    // // event or any of the user IDs in the create event's `content.additional_creators`, reject.
+    // if rules.explicitly_privilege_room_creators
+    //     && new_users.is_some_and(|new_users| {
+    //         room_creators
+    //             .iter()
+    //             .any(|creator| new_users.contains_key(creator))
+    //     })
+    // {
+    //     return Err(StateError::other(
+    //         "creator user IDs are not allowed in the `users` field",
+    //     ));
+    // }
 
     debug!("validation of power event finished");
 

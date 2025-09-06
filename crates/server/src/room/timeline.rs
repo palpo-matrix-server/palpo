@@ -671,8 +671,15 @@ pub async fn create_hash_and_sign_event(
 
     // Generate event id
     pdu.event_id = crate::event::gen_event_id(&pdu_json, &room_version)?;
-    if room_rules.room_id_format == RoomIdFormatVersion::V2 {
+    if room_rules.room_id_format == RoomIdFormatVersion::V2
+        && pdu.event_ty == TimelineEventType::RoomCreate
+    {
         pdu.room_id = RoomId::new_v2(pdu.event_id.localpart())?;
+        diesel::update(
+            event_forward_extremities::table.filter(event_forward_extremities::room_id.eq(room_id)),
+        )
+        .set(event_forward_extremities::room_id.eq(&pdu.room_id))
+        .execute(&mut connect()?)?;
     }
     let room_id = &pdu.room_id;
 

@@ -154,6 +154,7 @@ pub fn set_event_state(
     let prev_frame_id = get_room_frame_id(room_id, None)?;
     let hash_data = utils::hash_keys(state_ids_compressed.iter().map(|s| &s[..]));
     if let Ok(frame_id) = get_frame_id(room_id, &hash_data) {
+        println!("=======just update   event_id: {event_id}  frame_id: {frame_id}");
         update_frame_id(event_id, frame_id)?;
         Ok(frame_id)
     } else {
@@ -178,6 +179,7 @@ pub fn set_event_state(
         };
 
         update_frame_id(event_id, frame_id)?;
+        println!("=====set_event_state   event_id:{event_id}  frame_id: {frame_id}  appended:{appended:?}  disposed:{disposed:?}");
         calc_and_save_state_delta(
             room_id,
             frame_id,
@@ -346,7 +348,7 @@ pub fn get_auth_events(
         .expect("there is always one layer")
         .full_state;
     let mut state_map = StateMap::new();
-    println!("==============full state: {full_state:?}");
+    println!("============frame_id: {frame_id}  =full state: {full_state:?}");
     for state in full_state.iter() {
         let (state_key_id, event_id) = state.split()?;
         println!("======= state_key_id: {state_key_id}   event_id: {event_id}");
