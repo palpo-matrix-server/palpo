@@ -45,7 +45,6 @@ pub(super) async fn sync_events_v5(
     let watcher = crate::watcher::watch(sender_id, authed.device_id());
 
     let next_batch = data::curr_sn()? + 1;
-
     let _conn_id = body.conn_id.clone();
 
     let global_since_sn: i64 = args
@@ -72,13 +71,13 @@ pub(super) async fn sync_events_v5(
     );
 
     let all_joined_rooms = data::user::joined_rooms(sender_id)?;
-
+  
     let all_invited_rooms = data::user::invited_rooms(sender_id, 0)?;
     let all_invited_rooms: Vec<&RoomId> = all_invited_rooms.iter().map(|r| r.0.as_ref()).collect();
 
     let all_knocked_rooms = data::user::knocked_rooms(sender_id, 0)?;
     let all_knocked_rooms: Vec<&RoomId> = all_knocked_rooms.iter().map(|r| r.0.as_ref()).collect();
-
+ 
     let all_rooms: Vec<&RoomId> = all_joined_rooms
         .iter()
         .map(AsRef::as_ref)
@@ -88,7 +87,7 @@ pub(super) async fn sync_events_v5(
 
     let all_joined_rooms = all_joined_rooms.iter().map(AsRef::as_ref).collect();
     let all_invited_rooms = all_invited_rooms.iter().map(AsRef::as_ref).collect();
-
+  
     let pos = next_batch.clone().to_string();
 
     let mut todo_rooms: TodoRooms = BTreeMap::new();
@@ -338,7 +337,8 @@ async fn process_rooms(
         }
 
         let last_private_read_update =
-            data::room::receipt::last_private_read_update_sn(sender_id, room_id)? > *room_since_sn;
+            data::room::receipt::last_private_read_update_sn(sender_id, room_id).unwrap_or_default()
+                > *room_since_sn;
 
         let private_read_event = if last_private_read_update {
             crate::room::receipt::last_private_read(sender_id, room_id).ok()

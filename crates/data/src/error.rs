@@ -104,14 +104,14 @@ impl Writer for DataError {
                 return;
             }
             Self::Diesel(e) => {
-                tracing::error!(error = ?e, "Diesel db error.");
+                tracing::error!(error = ?e, "diesel db error");
                 if let diesel::result::Error::NotFound = e {
-                    MatrixError::not_found("Resource not found.")
+                    MatrixError::not_found("resource not found")
                 } else {
-                    MatrixError::unknown("Unknown db error.")
+                    MatrixError::unknown("unknown db error")
                 }
             }
-            _ => MatrixError::unknown("Unknown data error happened."),
+            _ => MatrixError::unknown("unknown data error happened"),
         };
         matrix.write(req, depot, res).await;
     }
