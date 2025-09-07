@@ -168,7 +168,7 @@ pub struct AddKeysForSessionReqBody(
 #[derive(ToSchema, Deserialize, Debug)]
 pub struct CreateVersionReqBody(
     /// The algorithm used for storing backups.
-    pub BackupAlgorithm,
+    pub RawJson<BackupAlgorithm>,
 );
 
 /// Response type for the `create_backup_version` endpoint.

@@ -5,7 +5,7 @@ use diesel::prelude::*;
 use crate::core::UnixMillis;
 use crate::core::client::backup::{BackupAlgorithm, KeyBackupData};
 use crate::core::identifiers::*;
-use crate::core::serde::JsonValue;
+use crate::core::serde::{RawJson, JsonValue};
 use crate::schema::*;
 use crate::{DataResult, connect};
 
@@ -77,13 +77,13 @@ pub struct NewDbRoomKeysVersion {
 
 pub fn create_backup(
     user_id: &UserId,
-    algorithm: &BackupAlgorithm,
+    algorithm: &RawJson<BackupAlgorithm>,
 ) -> DataResult<DbRoomKeysVersion> {
     let version = UnixMillis::now().get() as i64;
     let new_keys_version = NewDbRoomKeysVersion {
         user_id: user_id.to_owned(),
         version,
-        algorithm: serde_json::to_value(algorithm)?,
+        algorithm: serde_json::to_value(&algorithm)?,
         auth_data: serde_json::to_value(BTreeMap::<String, JsonValue>::new())?,
         created_at: UnixMillis::now(),
     };
