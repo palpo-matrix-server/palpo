@@ -25,3 +25,8 @@ Palpo is a cutting-edge chat server written in Rust and supporting Matrix protoc
 
 We use [Complement](https://github.com/matrix-org/complement) for end-to-end testing.
 All Complement test reslts: [test_all.result.jsonl](tests/results/test_all.result.jsonl)
+
+
+## Acknowledge
+
+This project has ported the code of the following open source projects: [ruma](https://github.com/ruma/ruma), [tuwunel](github.com/matrix-construct/tuwunel), Thank you!
