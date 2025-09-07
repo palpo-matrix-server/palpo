@@ -77,7 +77,7 @@ pub struct NewDbRoomKeysVersion {
 
 pub fn create_backup(
     user_id: &UserId,
-    algorithm: &RawJson<BackupAlgorithm>,
+    algorithm: &BackupAlgorithm,
 ) -> DataResult<DbRoomKeysVersion> {
     let version = UnixMillis::now().get() as i64;
     let new_keys_version = NewDbRoomKeysVersion {

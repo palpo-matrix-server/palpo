@@ -33,7 +33,9 @@ use salvo::prelude::*;
 use crate::config;
 use crate::core::client::discovery::{
     capabilities::{
-        Capabilities, CapabilitiesResBody, RoomVersionStability, RoomVersionsCapability,
+        Capabilities, CapabilitiesResBody, ChangePasswordCapability, RoomVersionStability,
+        RoomVersionsCapability, SetAvatarUrlCapability, SetDisplayNameCapability,
+        ThirdPartyIdChangesCapability,
     },
     versions::VersionsResBody,
 };
@@ -162,6 +164,11 @@ fn get_capabilities(_aa: AuthArgs) -> JsonResult<CapabilitiesResBody> {
                 default: conf.default_room_version.clone(),
                 available,
             },
+            // TODO: use config values
+            change_password: ChangePasswordCapability { enabled: true },
+            set_display_name: SetDisplayNameCapability { enabled: true },
+            set_avatar_url: SetAvatarUrlCapability { enabled: true },
+            thirdparty_id_changes: ThirdPartyIdChangesCapability { enabled: true },
             ..Default::default()
         },
     })
