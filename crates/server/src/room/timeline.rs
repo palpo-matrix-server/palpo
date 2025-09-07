@@ -11,7 +11,6 @@ use ulid::Ulid;
 use crate::core::client::filter::{RoomEventFilter, UrlFilter};
 use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
-use crate::core::events::room::create::RoomCreateEventContent;
 use crate::core::events::room::encrypted::Relation;
 use crate::core::events::room::member::MembershipState;
 use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;

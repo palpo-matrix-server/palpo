@@ -93,10 +93,7 @@ fn figment_from_path<P: AsRef<Path>>(path: P) -> Figment {
 pub fn init(config_path: impl AsRef<Path>) {
     let config_path = config_path.as_ref();
     if !config_path.exists() {
-        panic!(
-            "Config file not found: `{}`",
-            config_path.display()
-        );
+        panic!("Config file not found: `{}`", config_path.display());
     }
 
     let raw_conf = figment_from_path(config_path).merge(Env::prefixed("PALPO_").global());

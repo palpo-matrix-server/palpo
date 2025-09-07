@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use diesel::prelude::*;
-use palpo_core::state::room_version;
 
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};

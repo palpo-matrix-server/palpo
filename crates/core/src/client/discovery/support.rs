@@ -3,18 +3,10 @@
 //! [spec]: https://spec.matrix.org/latest/client-server-api/#getwell-knownmatrixsupport
 //!
 //! Get server admin contact and support page of a homeserver's domain.
-
-use std::{
-    borrow::Cow,
-    collections::{BTreeMap, btree_map},
-};
-
-use maplit::btreemap;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
-use serde_json::{Value as JsonValue, from_value as from_json_value, to_value as to_json_value};
 
-use crate::{MatrixVersion, OwnedUserId, PrivOwnedStr, RoomVersionId, serde::StringEnum};
+use crate::{OwnedUserId, PrivOwnedStr,  serde::StringEnum};
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,

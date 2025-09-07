@@ -16,8 +16,8 @@ use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::json;
 use serde_json::value::to_raw_value;
-use ulid::Ulid;
 
+use crate::core::UnixMillis;
 use crate::core::client::directory::{PublicRoomsFilteredReqBody, PublicRoomsReqArgs};
 use crate::core::client::room::{
     AliasesResBody, CreateRoomReqBody, CreateRoomResBody, CreationContent, InitialSyncReqArgs,
@@ -46,7 +46,6 @@ use crate::core::identifiers::*;
 use crate::core::room::{JoinRule, Visibility};
 use crate::core::room_version_rules::{AuthorizationRules, RoomIdFormatVersion, RoomVersionRules};
 use crate::core::serde::{CanonicalJsonObject, JsonValue, RawJson};
-use crate::core::{UnixMillis, room_id};
 use crate::event::PduBuilder;
 use crate::room::{push_action, timeline};
 use crate::user::user_is_ignored;
@@ -651,7 +650,10 @@ pub(super) async fn create_room(
 
     // 3. Power levels
     let mut users = BTreeMap::new();
-    if !version_rules.authorization.explicitly_privilege_room_creators {
+    if !version_rules
+        .authorization
+        .explicitly_privilege_room_creators
+    {
         users.insert(sender_id.to_owned(), 100);
     }
 
