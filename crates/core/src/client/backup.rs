@@ -5,8 +5,9 @@ use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    OwnedDeviceKeyId, OwnedRoomId, OwnedSessionId, OwnedUserId,
-    serde::{Base64, RawJson, RawJsonValue},identifiers::CrossSigningOrDeviceSignatures
+    OwnedRoomId, OwnedSessionId,
+    identifiers::CrossSigningOrDeviceSignatures,
+    serde::{Base64, RawJson, RawJsonValue},
 };
 
 /// A wrapper around a mapping of session IDs to key data.
@@ -324,12 +325,7 @@ pub struct VersionResBody {
 impl VersionResBody {
     /// Creates a new `Response` with the given algorithm, key count, etag and
     /// version.
-    pub fn new(
-        algorithm: BackupAlgorithm,
-        count: u64,
-        etag: String,
-        version: String,
-    ) -> Self {
+    pub fn new(algorithm: BackupAlgorithm, count: u64, etag: String, version: String) -> Self {
         Self {
             algorithm,
             count,

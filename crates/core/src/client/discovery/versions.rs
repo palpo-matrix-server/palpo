@@ -5,17 +5,12 @@
 //!
 //! [spec]: https://spec.matrix.org/latest/client-server-api/#capabilities-negotiation
 
-use std::{
-    borrow::Cow,
-    collections::{BTreeMap, btree_map},
-};
+use std::collections::BTreeMap;
 
-use maplit::btreemap;
 use salvo::prelude::*;
-use serde::{Deserialize, Serialize};
-use serde_json::{Value as JsonValue, from_value as from_json_value, to_value as to_json_value};
+use serde::Serialize;
 
-use crate::{MatrixVersion, PrivOwnedStr, RoomVersionId, SupportedVersions, serde::StringEnum};
+use crate::SupportedVersions;
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,

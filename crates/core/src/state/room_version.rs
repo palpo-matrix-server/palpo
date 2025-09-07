@@ -1,5 +1,3 @@
-use crate::{MatrixError, MatrixResult, RoomVersionId};
-
 #[derive(Debug)]
 #[allow(clippy::exhaustive_enums)]
 pub enum RoomDisposition {

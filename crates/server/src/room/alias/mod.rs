@@ -1,5 +1,4 @@
 use diesel::prelude::*;
-use palpo_core::state::room_version;
 use rand::seq::SliceRandom;
 use serde_json::value::to_raw_value;
 
