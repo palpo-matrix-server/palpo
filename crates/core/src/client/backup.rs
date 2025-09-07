@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     OwnedDeviceKeyId, OwnedRoomId, OwnedSessionId, OwnedUserId,
-    serde::{Base64, RawJson, RawJsonValue},
+    serde::{Base64, RawJson, RawJsonValue},identifiers::CrossSigningOrDeviceSignatures
 };
 
 /// A wrapper around a mapping of session IDs to key data.
@@ -36,7 +36,8 @@ pub enum BackupAlgorithm {
         public_key: Base64,
 
         /// Signatures of the auth_data as Signed JSON.
-        signatures: BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceKeyId, String>>,
+        #[salvo(schema(value_type = Object, additional_properties = true))]
+        signatures: CrossSigningOrDeviceSignatures,
     },
 }
 
@@ -305,7 +306,8 @@ pub struct KeysForRoomReqArgs {
 #[derive(ToSchema, Serialize, Debug)]
 pub struct VersionResBody {
     /// The algorithm used for storing backups.
-    pub algorithm: RawJson<BackupAlgorithm>,
+    #[serde(flatten)]
+    pub algorithm: BackupAlgorithm,
 
     /// The number of keys stored in the backup.
     pub count: u64,
@@ -323,7 +325,7 @@ impl VersionResBody {
     /// Creates a new `Response` with the given algorithm, key count, etag and
     /// version.
     pub fn new(
-        algorithm: RawJson<BackupAlgorithm>,
+        algorithm: BackupAlgorithm,
         count: u64,
         etag: String,
         version: String,

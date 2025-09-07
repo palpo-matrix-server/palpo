@@ -255,7 +255,7 @@ fn get_version(
         .algorithm;
 
     json_ok(VersionResBody {
-        algorithm: RawJson::from_value(&algorithm)?,
+        algorithm: serde_json::from_value(algorithm)?,
         count: (key_backup::count_keys(authed.user_id(), version)? as u32).into(),
         etag: key_backup::get_etag(authed.user_id(), version)?,
         version: version.to_string(),
@@ -306,7 +306,7 @@ fn latest_version(_aa: AuthArgs, depot: &mut Depot) -> JsonResult<VersionResBody
         .ok_or(MatrixError::not_found("Key backup does not exist."))?;
 
     json_ok(VersionResBody {
-        algorithm: RawJson::from_value(&algorithm)?,
+        algorithm: serde_json::from_value(algorithm)?,
         count: (key_backup::count_keys(authed.user_id(), version)? as u32).into(),
         etag: key_backup::get_etag(authed.user_id(), version)?,
         version: version.to_string(),

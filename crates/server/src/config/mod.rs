@@ -94,7 +94,7 @@ pub fn init(config_path: impl AsRef<Path>) {
     let config_path = config_path.as_ref();
     if !config_path.exists() {
         panic!(
-            "Config file not found: `{}`, new default file will be created",
+            "Config file not found: `{}`",
             config_path.display()
         );
     }
