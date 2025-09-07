@@ -701,6 +701,7 @@ pub struct ServerConfig {
     pub well_known: WellKnownConfig,
 
     // external structure; separate section
+    #[serde(default)]
     pub federation: FederationConfig,
 
     /// Enables configuration reload when the server receives SIGUSR1 on
