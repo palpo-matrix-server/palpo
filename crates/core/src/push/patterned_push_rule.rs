@@ -30,8 +30,7 @@ use crate::push::{
 ///
 /// Only applicable to content rules.
 ///
-/// To create an instance of this type, first create a `PatternedPushRuleInit`
-/// and convert it via `PatternedPushRule::from` / `.into()`.
+/// To create an instance of this type.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct PatternedPushRule {
     /// Actions to determine if and how a notification is delivered for events
@@ -83,53 +82,8 @@ impl PatternedPushRule {
     }
 }
 
-/// Initial set of fields of `PatterenedPushRule`.
-///
-/// This struct will not be updated even if additional fields are added to
-/// `PatterenedPushRule` in a new (non-breaking) release of the Matrix
-/// specification.
-#[derive(Debug)]
-#[allow(clippy::exhaustive_structs)]
-pub struct PatternedPushRuleInit {
-    /// Actions to determine if and how a notification is delivered for events
-    /// matching this rule.
-    pub actions: Vec<Action>,
-
-    /// Whether this is a default rule, or has been set explicitly.
-    pub default: bool,
-
-    /// Whether the push rule is enabled or not.
-    pub enabled: bool,
-
-    /// The ID of this rule.
-    pub rule_id: String,
-
-    /// The glob-style pattern to match against.
-    pub pattern: String,
-}
-
-impl From<PatternedPushRuleInit> for PatternedPushRule {
-    fn from(init: PatternedPushRuleInit) -> Self {
-        let PatternedPushRuleInit {
-            actions,
-            default,
-            enabled,
-            rule_id,
-            pattern,
-        } = init;
-        Self {
-            actions,
-            default,
-            enabled,
-            rule_id,
-            pattern,
-        }
-    }
-}
-
 // The following trait are needed to be able to make
 // an IndexSet of the type
-
 impl Hash for PatternedPushRule {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.rule_id.hash(state);
@@ -213,26 +167,6 @@ impl From<PatternedPushRule> for PushRule {
     }
 }
 
-impl From<PatternedPushRuleInit> for PushRule {
-    fn from(init: PatternedPushRuleInit) -> Self {
-        let PatternedPushRuleInit {
-            actions,
-            default,
-            enabled,
-            rule_id,
-            pattern,
-        } = init;
-        Self {
-            actions,
-            default,
-            enabled,
-            rule_id,
-            pattern: Some(pattern),
-            conditions: None,
-        }
-    }
-}
-
 impl TryFrom<PushRule> for PatternedPushRule {
     type Error = MissingPatternError;
 
@@ -246,7 +180,7 @@ impl TryFrom<PushRule> for PatternedPushRule {
             ..
         } = push_rule
         {
-            Ok(PatternedPushRuleInit {
+            Ok(PatternedPushRule {
                 actions,
                 default,
                 enabled,

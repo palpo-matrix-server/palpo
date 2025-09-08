@@ -44,8 +44,7 @@ pub enum BackupAlgorithm {
 
 /// Information about the backup key.
 ///
-/// To create an instance of this type, first create a [`KeyBackupDataInit`] and
-/// convert it via `KeyBackupData::from` / `.into()`.
+/// To create an instance of this type.
 #[derive(ToSchema, Clone, Debug, Serialize, Deserialize)]
 pub struct KeyBackupData {
     /// The index of the first message in the session that the key can decrypt.
@@ -237,7 +236,7 @@ pub struct KeysForRoomReqArgs {
     pub room_id: OwnedRoomId,
 }
 
-// /// `DELETE /_matrix/client/*/room_keys/keys/{room_id}/{sessionId}`
+// /// `DELETE /_matrix/client/*/room_keys/keys/{room_id}/{session_id}`
 // ///
 // /// Delete keys from a backup for a given session.
 // /// `/v3/` ([spec])

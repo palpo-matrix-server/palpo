@@ -31,8 +31,7 @@ use crate::push::{Action, push_rule::PushRule};
 /// configured by the user, who can create and view them via the Client/Server
 /// API.
 ///
-/// To create an instance of this type, first create a `SimplePushRuleInit` and
-/// convert it via `SimplePushRule::from` / `.into()`.
+/// To create an instance of this type.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct SimplePushRule<T>
 where
@@ -54,50 +53,8 @@ where
     pub rule_id: T,
 }
 
-/// Initial set of fields of `SimplePushRule`.
-///
-/// This struct will not be updated even if additional fields are added to
-/// `SimplePushRule` in a new (non-breaking) release of the Matrix
-/// specification.
-#[derive(Debug)]
-#[allow(clippy::exhaustive_structs)]
-pub struct SimplePushRuleInit<T> {
-    /// Actions to determine if and how a notification is delivered for events
-    /// matching this rule.
-    pub actions: Vec<Action>,
-
-    /// Whether this is a default rule, or has been set explicitly.
-    pub default: bool,
-
-    /// Whether the push rule is enabled or not.
-    pub enabled: bool,
-
-    /// The ID of this rule.
-    ///
-    /// This is generally the Matrix ID of the entity that it applies to.
-    pub rule_id: T,
-}
-
-impl<T> From<SimplePushRuleInit<T>> for SimplePushRule<T> {
-    fn from(init: SimplePushRuleInit<T>) -> Self {
-        let SimplePushRuleInit {
-            actions,
-            default,
-            enabled,
-            rule_id,
-        } = init;
-        Self {
-            actions,
-            default,
-            enabled,
-            rule_id,
-        }
-    }
-}
-
 // The following trait are needed to be able to make
 // an IndexSet of the type
-
 impl<T> Hash for SimplePushRule<T>
 where
     T: Hash,
@@ -190,28 +147,6 @@ where
         }
     }
 }
-impl<T> From<SimplePushRuleInit<T>> for PushRule
-where
-    T: Into<String>,
-{
-    fn from(init: SimplePushRuleInit<T>) -> Self {
-        let SimplePushRuleInit {
-            actions,
-            default,
-            enabled,
-            rule_id,
-        } = init;
-        let rule_id = rule_id.into();
-        Self {
-            actions,
-            default,
-            enabled,
-            rule_id,
-            pattern: None,
-            conditions: None,
-        }
-    }
-}
 impl<T> TryFrom<PushRule> for SimplePushRule<T>
 where
     T: TryFrom<String>,
@@ -227,12 +162,11 @@ where
             ..
         } = push_rule;
         let rule_id = T::try_from(rule_id)?;
-        Ok(SimplePushRuleInit {
+        Ok(SimplePushRule {
             actions,
             default,
             enabled,
             rule_id,
-        }
-        .into())
+        })
     }
 }

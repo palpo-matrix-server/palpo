@@ -1,4 +1,4 @@
-server_name = "0.0.0.0:8008"
+server_name = "127.0.0.1:8008"
 
 # Enables registration. If set to false, no users can register on this server.
 allow_registration = true
@@ -13,5 +13,5 @@ url = "postgres://postgres:root@localhost:5432/palpo_local" # Update with your d
 [well_known]
 # Palpo handles the /.well-known/matrix/* endpoints, making both clients and servers try to access palpo with the host
 # server_name and port 443 by default.
-server = "0.0.0.0:8008"
-client = "http://0.0.0.0:8008"
+server = "127.0.0.1:8008"
+client = "http://127.0.0.1:8008"

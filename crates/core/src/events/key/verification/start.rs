@@ -144,8 +144,7 @@ impl fmt::Debug for ReciprocateV1Content {
 /// The payload of an `m.key.verification.start` event using the `m.sas.v1`
 /// method.
 ///
-/// To create an instance of this type, first create a `SasV1ContentInit` and
-/// convert it via `SasV1Content::from` / `.into()`.
+/// To create an instance of this type.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 #[serde(rename = "m.sas.v1", tag = "method")]
 pub struct SasV1Content {
@@ -172,50 +171,6 @@ pub struct SasV1Content {
     ///
     /// Must include at least `decimal`. Optionally can include `emoji`.
     pub short_authentication_string: Vec<ShortAuthenticationString>,
-}
-
-/// Mandatory initial set of fields for creating an `SasV1Content`.
-///
-/// This struct will not be updated even if additional fields are added to
-/// `SasV1Content` in a new (non-breaking) release of the Matrix specification.
-#[derive(Debug)]
-#[allow(clippy::exhaustive_structs)]
-pub struct SasV1ContentInit {
-    /// The key agreement protocols the sending device understands.
-    ///
-    /// Should include at least `curve25519`.
-    pub key_agreement_protocols: Vec<KeyAgreementProtocol>,
-
-    /// The hash methods the sending device understands.
-    ///
-    /// Should include at least `sha256`.
-    pub hashes: Vec<HashAlgorithm>,
-
-    /// The message authentication codes that the sending device understands.
-    ///
-    /// Must include at least `hkdf-hmac-sha256.v2`. Should also include
-    /// `hkdf-hmac-sha256` for compatibility with older clients, though this
-    /// MAC is deprecated and will be removed in a future version of the
-    /// spec.
-    pub message_authentication_codes: Vec<MessageAuthenticationCode>,
-
-    /// The SAS methods the sending device (and the sending device's user)
-    /// understands.
-    ///
-    /// Should include at least `decimal`.
-    pub short_authentication_string: Vec<ShortAuthenticationString>,
-}
-
-impl From<SasV1ContentInit> for SasV1Content {
-    /// Creates a new `SasV1Content` from the given init struct.
-    fn from(init: SasV1ContentInit) -> Self {
-        Self {
-            key_agreement_protocols: init.key_agreement_protocols,
-            hashes: init.hashes,
-            message_authentication_codes: init.message_authentication_codes,
-            short_authentication_string: init.short_authentication_string,
-        }
-    }
 }
 
 // #[cfg(test)]

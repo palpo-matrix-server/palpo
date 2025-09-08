@@ -11,8 +11,7 @@ use crate::{
 
 /// A chunk of a room list response, describing one room.
 ///
-/// To create an instance of this type, first create a `PublicRoomsChunkInit`
-/// and convert it via `PublicRoomsChunk::from` / `.into()`.
+/// To create an instance of this type.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct PublicRoomsChunk {
     /// The canonical alias of the room, if any.
@@ -61,54 +60,6 @@ pub struct PublicRoomsChunk {
     /// The type of room from `m.room.create`, if any.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub room_type: Option<RoomType>,
-}
-
-/// Initial set of mandatory fields of `PublicRoomsChunk`.
-///
-/// This struct will not be updated even if additional fields are added to
-/// `PublicRoomsChunk` in a new (non-breaking) release of the Matrix
-/// specification.
-#[derive(Debug)]
-#[allow(clippy::exhaustive_structs)]
-pub struct PublicRoomsChunkInit {
-    /// The number of members joined to the room.
-    pub num_joined_members: u64,
-
-    /// The ID of the room.
-    pub room_id: OwnedRoomId,
-
-    /// Whether the room may be viewed by guest users without joining.
-    pub world_readable: bool,
-
-    /// Whether guest users may join the room and participate in it.
-    ///
-    /// If they can, they will be subject to ordinary power level rules like any
-    /// other user.
-    pub guest_can_join: bool,
-}
-
-impl From<PublicRoomsChunkInit> for PublicRoomsChunk {
-    fn from(init: PublicRoomsChunkInit) -> Self {
-        let PublicRoomsChunkInit {
-            num_joined_members,
-            room_id,
-            world_readable,
-            guest_can_join,
-        } = init;
-
-        Self {
-            canonical_alias: None,
-            name: None,
-            num_joined_members,
-            room_id,
-            topic: None,
-            world_readable,
-            guest_can_join,
-            avatar_url: None,
-            join_rule: PublicRoomJoinRule::default(),
-            room_type: None,
-        }
-    }
 }
 
 /// A filter for public rooms lists.

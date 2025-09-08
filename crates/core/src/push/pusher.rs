@@ -146,8 +146,7 @@ impl<'de> Deserialize<'de> for PusherKind {
 
 /// Defines a pusher.
 ///
-/// To create an instance of this type, first create a `PusherInit` and convert
-/// it via `Pusher::from` / `.into()`.
+/// To create an instance of this type.
 #[derive(ToSchema, Serialize, Clone, Debug)]
 pub struct Pusher {
     /// Identifiers for this pusher.
@@ -209,56 +208,6 @@ impl<'de> Deserialize<'de> for Pusher {
             profile_tag,
             lang,
         })
-    }
-}
-
-/// Initial set of fields of `Pusher`.
-///
-/// This struct will not be updated even if additional fields are added to
-/// `Pusher` in a new (non-breaking) release of the Matrix specification.
-#[derive(Debug)]
-#[allow(clippy::exhaustive_structs)]
-pub struct PusherInit {
-    /// Identifiers for this pusher.
-    pub ids: PusherIds,
-
-    /// The kind of the pusher.
-    pub kind: PusherKind,
-
-    /// A string that will allow the user to identify what application owns this
-    /// pusher.
-    pub app_display_name: String,
-
-    /// A string that will allow the user to identify what device owns this
-    /// pusher.
-    pub device_display_name: String,
-
-    /// Determines which set of device-specific rules this pusher executes.
-    pub profile_tag: Option<String>,
-
-    /// The preferred language for receiving notifications (e.g. 'en' or
-    /// 'en-US').
-    pub lang: String,
-}
-
-impl From<PusherInit> for Pusher {
-    fn from(init: PusherInit) -> Self {
-        let PusherInit {
-            ids,
-            kind,
-            app_display_name,
-            device_display_name,
-            profile_tag,
-            lang,
-        } = init;
-        Self {
-            ids,
-            kind,
-            app_display_name,
-            device_display_name,
-            profile_tag,
-            lang,
-        }
     }
 }
 

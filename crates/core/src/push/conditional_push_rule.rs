@@ -31,8 +31,7 @@ use crate::push::{
 ///
 /// Only applicable to underride and override rules.
 ///
-/// To create an instance of this type, first create a `ConditionalPushRuleInit`
-/// and convert it via `ConditionalPushRule::from` / `.into()`.
+/// To create an instance of this type.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct ConditionalPushRule {
     /// Actions to determine if and how a notification is delivered for events
@@ -104,53 +103,6 @@ impl ConditionalPushRule {
         self.conditions
             .iter()
             .all(|cond| cond.applies(event, context))
-    }
-}
-
-/// Initial set of fields of `ConditionalPushRule`.
-///
-/// This struct will not be updated even if additional fields are added to
-/// `ConditionalPushRule` in a new (non-breaking) release of the Matrix
-/// specification.
-#[derive(Debug)]
-#[allow(clippy::exhaustive_structs)]
-pub struct ConditionalPushRuleInit {
-    /// Actions to determine if and how a notification is delivered for events
-    /// matching this rule.
-    pub actions: Vec<Action>,
-
-    /// Whether this is a default rule, or has been set explicitly.
-    pub default: bool,
-
-    /// Whether the push rule is enabled or not.
-    pub enabled: bool,
-
-    /// The ID of this rule.
-    pub rule_id: String,
-
-    /// The conditions that must hold true for an event in order for a rule to
-    /// be applied to an event.
-    ///
-    /// A rule with no conditions always matches.
-    pub conditions: Vec<PushCondition>,
-}
-
-impl From<ConditionalPushRuleInit> for ConditionalPushRule {
-    fn from(init: ConditionalPushRuleInit) -> Self {
-        let ConditionalPushRuleInit {
-            actions,
-            default,
-            enabled,
-            rule_id,
-            conditions,
-        } = init;
-        Self {
-            actions,
-            default,
-            enabled,
-            rule_id,
-            conditions,
-        }
     }
 }
 
@@ -245,25 +197,6 @@ impl From<NewConditionalPushRule> for ConditionalPushRule {
     }
 }
 
-impl From<ConditionalPushRuleInit> for PushRule {
-    fn from(init: ConditionalPushRuleInit) -> Self {
-        let ConditionalPushRuleInit {
-            actions,
-            default,
-            enabled,
-            rule_id,
-            conditions,
-        } = init;
-        Self {
-            actions,
-            default,
-            enabled,
-            rule_id,
-            pattern: None,
-            conditions: Some(conditions),
-        }
-    }
-}
 impl From<PushRule> for ConditionalPushRule {
     fn from(push_rule: PushRule) -> Self {
         let PushRule {
@@ -275,7 +208,7 @@ impl From<PushRule> for ConditionalPushRule {
             ..
         } = push_rule;
 
-        ConditionalPushRuleInit {
+        ConditionalPushRule {
             actions,
             default,
             enabled,

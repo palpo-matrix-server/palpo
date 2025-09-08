@@ -155,8 +155,7 @@ impl ThumbnailInfo {
 
 /// A file sent to a room with end-to-end encryption enabled.
 ///
-/// To create an instance of this type, first create a `EncryptedFileInit` and
-/// convert it via `EncryptedFile::from` / `.into()`.
+/// To create an instance of this type.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct EncryptedFile {
     /// The URL to the file.
@@ -183,8 +182,7 @@ pub struct EncryptedFile {
 
 /// A [JSON Web Key](https://tools.ietf.org/html/rfc7517#appendix-A.3) object.
 ///
-/// To create an instance of this type, first create a `JsonWebKeyInit` and
-/// convert it via `JsonWebKey::from` / `.into()`.
+/// To create an instance of this type.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct JsonWebKey {
     /// Key type.

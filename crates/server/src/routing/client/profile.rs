@@ -40,6 +40,7 @@ pub fn authed_router() -> Router {
 #[endpoint]
 async fn get_profile(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonResult<ProfileResBody> {
     let user_id = user_id.into_inner();
+    println!("==============user_id: {:?}   is remote:{}", user_id, user_id.is_remote());
     if user_id.is_remote() {
         let server_name = user_id.server_name().to_owned();
         let request = profile_request(
