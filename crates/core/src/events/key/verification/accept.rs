@@ -105,6 +105,35 @@ pub struct SasV1Content {
     /// `m.key.verification.start` message.
     pub hash: HashAlgorithm,
 
+// #[cfg(test)]
+// mod tests {
+//     use std::collections::BTreeMap;
+
+//     use crate::{event_id, serde::Base64};
+//     use assert_matches2::assert_matches;
+//     use serde_json::{from_value as from_json_value, json, to_value as
+// to_json_value, Value as JsonValue};
+
+//     use super::{
+//         AcceptMethod, HashAlgorithm, KeyAgreementProtocol,
+// KeyVerificationAcceptEventContent,         MessageAuthenticationCode,
+// SasV1Content, ShortAuthenticationString,
+// ToDeviceKeyVerificationAcceptEventContent,         _CustomContent,
+//     };
+//     use crate::events::{relation::Reference, ToDeviceEvent};
+
+//     #[test]
+//     fn serialization() {
+//         let key_verification_accept_content =
+// ToDeviceKeyVerificationAcceptEventContent {             transaction_id:
+// "456".into(),             method: AcceptMethod::SasV1(SasV1Content {
+//                 hash: HashAlgorithm::Sha256,
+//                 key_agreement_protocol: KeyAgreementProtocol::Curve25519,
+//                 message_authentication_code:
+// MessageAuthenticationCode::HkdfHmacSha256V2,
+// short_authentication_string: vec![ShortAuthenticationString::Decimal],
+//                 commitment: Base64::new(b"hello".to_vec()),
+
     /// The message authentication code the device is choosing to use, out of
     /// the options in the `m.key.verification.start` message.
     pub message_authentication_code: MessageAuthenticationCode,
@@ -120,47 +149,6 @@ pub struct SasV1Content {
     /// device's ephemeral public key (encoded as unpadded base64) and the
     /// canonical JSON representation of the `m.key.verification.start` message.
     pub commitment: Base64,
-}
-
-/// Mandatory initial set of fields for creating an accept `SasV1Content`.
-#[derive(Debug)]
-#[allow(clippy::exhaustive_structs)]
-pub struct SasV1ContentInit {
-    /// The key agreement protocol the device is choosing to use, out of the
-    /// options in the `m.key.verification.start` message.
-    pub key_agreement_protocol: KeyAgreementProtocol,
-
-    /// The hash method the device is choosing to use, out of the options in the
-    /// `m.key.verification.start` message.
-    pub hash: HashAlgorithm,
-
-    /// The message authentication codes that the accepting device understands.
-    pub message_authentication_code: MessageAuthenticationCode,
-
-    /// The SAS methods both devices involved in the verification process
-    /// understand.
-    ///
-    /// Must be a subset of the options in the `m.key.verification.start`
-    /// message.
-    pub short_authentication_string: Vec<ShortAuthenticationString>,
-
-    /// The hash (encoded as unpadded base64) of the concatenation of the
-    /// device's ephemeral public key (encoded as unpadded base64) and the
-    /// canonical JSON representation of the `m.key.verification.start` message.
-    pub commitment: Base64,
-}
-
-impl From<SasV1ContentInit> for SasV1Content {
-    /// Creates a new `SasV1Content` from the given init struct.
-    fn from(init: SasV1ContentInit) -> Self {
-        SasV1Content {
-            hash: init.hash,
-            key_agreement_protocol: init.key_agreement_protocol,
-            message_authentication_code: init.message_authentication_code,
-            short_authentication_string: init.short_authentication_string,
-            commitment: init.commitment,
-        }
-    }
 }
 
 // #[cfg(test)]

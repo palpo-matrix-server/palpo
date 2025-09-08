@@ -233,9 +233,7 @@ impl CiphertextInfo {
 /// The content of an `m.room.encrypted` event using the `m.megolm.v1.aes-sha2`
 /// algorithm.
 ///
-/// To create an instance of this type, first create a
-/// `MegolmV1AesSha2ContentInit` and convert it
-/// via `MegolmV1AesSha2Content::from` / `.into()`.
+/// To create an instance of this type.
 #[derive(ToSchema, Clone, Debug, Serialize, Deserialize)]
 pub struct MegolmV1AesSha2Content {
     /// The encrypted content of the event.
@@ -243,43 +241,6 @@ pub struct MegolmV1AesSha2Content {
 
     /// The ID of the session used to encrypt the message.
     pub session_id: String,
-}
-
-/// Mandatory initial set of fields of `MegolmV1AesSha2Content`.
-///
-/// This struct will not be updated even if additional fields are added to
-/// `MegolmV1AesSha2Content` in a new (non-breaking) release of the Matrix
-/// specification.
-#[derive(Debug)]
-#[allow(clippy::exhaustive_structs)]
-pub struct MegolmV1AesSha2ContentInit {
-    /// The encrypted content of the event.
-    pub ciphertext: String,
-
-    /// The Curve25519 key of the sender.
-    pub sender_key: String,
-
-    /// The ID of the sending device.
-    pub device_id: OwnedDeviceId,
-
-    /// The ID of the session used to encrypt the message.
-    pub session_id: String,
-}
-
-impl From<MegolmV1AesSha2ContentInit> for MegolmV1AesSha2Content {
-    /// Creates a new `MegolmV1AesSha2Content` from the given init struct.
-    fn from(init: MegolmV1AesSha2ContentInit) -> Self {
-        let MegolmV1AesSha2ContentInit {
-            ciphertext,
-            sender_key: _,
-            device_id: _,
-            session_id,
-        } = init;
-        Self {
-            ciphertext,
-            session_id,
-        }
-    }
 }
 
 // #[cfg(test)]

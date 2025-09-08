@@ -329,57 +329,6 @@ impl Membership {
     }
 }
 
-/// Initial set of fields of [`Membership`].
-#[derive(Debug)]
-#[allow(clippy::exhaustive_structs)]
-pub struct MembershipInit {
-    /// The type of the matrixRTC session the membership belongs to.
-    ///
-    /// e.g. call, spacial, document...
-    pub application: Application,
-
-    /// The device id of this membership.
-    ///
-    /// The same user can join with their phone/computer.
-    pub device_id: String,
-
-    /// The duration in milliseconds relative to the time this membership joined
-    /// during which the membership is valid.
-    ///
-    /// The time a member has joined is defined as:
-    /// `MIN(content.created_ts, event.origin_server_ts)`
-    pub expires: Duration,
-
-    /// A list of the focuses (foci) in use for this membership.
-    pub foci_active: Vec<Focus>,
-
-    /// The id of the membership.
-    ///
-    /// This is required to guarantee uniqueness of the event.
-    /// Sending the same state event twice to synapse makes the HS drop the
-    /// second one and return 200.
-    pub membership_id: String,
-}
-
-impl From<MembershipInit> for Membership {
-    fn from(init: MembershipInit) -> Self {
-        let MembershipInit {
-            application,
-            device_id,
-            expires,
-            foci_active,
-            membership_id,
-        } = init;
-        Self {
-            application,
-            device_id,
-            expires,
-            created_ts: None,
-            foci_active,
-            membership_id,
-        }
-    }
-}
 
 // #[cfg(test)]
 // mod tests {

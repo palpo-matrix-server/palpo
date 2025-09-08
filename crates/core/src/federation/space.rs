@@ -92,9 +92,7 @@ pub struct SpaceHierarchyParentSummary {
 
 /// The summary of a space's child.
 ///
-/// To create an instance of this type, first create a
-/// `SpaceHierarchyChildSummaryInit` and convert
-/// it via `SpaceHierarchyChildSummary::from` / `.into()`.
+/// To create an instance of this type.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct SpaceHierarchyChildSummary {
     /// The canonical alias of the room, if any.

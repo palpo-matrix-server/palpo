@@ -14,9 +14,7 @@ use crate::{
 /// [spec]: https://spec.matrix.org/latest/client-server-api/#spaces
 /// A chunk of a space hierarchy response, describing one room.
 ///
-/// To create an instance of this type, first create a
-/// `SpaceHierarchyRoomsChunkInit` and convert it
-/// via `SpaceHierarchyRoomsChunk::from` / `.into()`.
+/// To create an instance of this type.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct SpaceHierarchyRoomsChunk {
     /// The canonical alias of the room, if any.

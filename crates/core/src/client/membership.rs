@@ -48,8 +48,7 @@ impl ThirdPartySigned {
 
 /// Represents third party IDs to invite to the room.
 ///
-/// To create an instance of this type, first create a `InviteThreepidInit` and
-/// convert it via `InviteThreepid::from` / `.into()`.
+/// To create an instance of this type.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
 pub struct InviteThreepid {
     /// Hostname and port of identity server to be used for account lookups.
@@ -63,44 +62,6 @@ pub struct InviteThreepid {
 
     /// Third party identifier.
     pub address: String,
-}
-
-/// Initial set of fields of `InviteThreepid`.
-///
-/// This struct will not be updated even if additional fields are added to
-/// `InviteThreepid` in a new (non-breaking) release of the Matrix
-/// specification.
-#[derive(Debug)]
-#[allow(clippy::exhaustive_structs)]
-pub struct InviteThreepidInit {
-    /// Hostname and port of identity server to be used for account lookups.
-    pub id_server: String,
-
-    /// An access token registered with the identity server.
-    pub id_access_token: String,
-
-    /// Type of third party ID.
-    pub medium: Medium,
-
-    /// Third party identifier.
-    pub address: String,
-}
-
-impl From<InviteThreepidInit> for InviteThreepid {
-    fn from(init: InviteThreepidInit) -> Self {
-        let InviteThreepidInit {
-            id_server,
-            id_access_token,
-            medium,
-            address,
-        } = init;
-        Self {
-            id_server,
-            id_access_token,
-            medium,
-            address,
-        }
-    }
 }
 
 // const METADATA: Metadata = metadata! {

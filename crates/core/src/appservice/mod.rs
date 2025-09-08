@@ -60,8 +60,7 @@ impl Namespaces {
 
 /// Information required in the registration yaml file that a homeserver needs.
 ///
-/// To create an instance of this type, first create a `RegistrationInit` and
-/// convert it via `Registration::from` / `.into()`.
+/// To create an instance of this type.
 ///
 /// Used for [appservice registration](https://spec.matrix.org/latest/application-service-api/#registration).
 #[derive(Serialize, Deserialize, Clone, Debug)]
