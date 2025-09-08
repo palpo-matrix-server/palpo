@@ -33,7 +33,7 @@ pub fn authed_router() -> Router {
         .push(Router::with_path("displayname").put(set_display_name))
 }
 
-/// #GET /_matrix/client/r0/profile/{user_d}
+/// #GET /_matrix/client/r0/profile/{user_id}
 /// Returns the display_name, avatar_url and blurhash of the user.
 ///
 /// - If user is on another server: Fetches profile over federation
