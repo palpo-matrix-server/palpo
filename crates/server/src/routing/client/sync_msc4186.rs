@@ -103,7 +103,7 @@ pub(super) async fn sync_events_v5(
             e2ee: collect_e2ee(sync_info, &all_joined_rooms)?,
             to_device: collect_to_device(sync_info, next_batch),
             receipts: collect_receipts(),
-            typing: Typing::default(),
+            typing: collect_typing(sync_info, next_batch, all_rooms.iter().cloned()).await?,
         },
     };
 
@@ -686,15 +686,14 @@ fn collect_to_device(
 
     data::user::device::remove_to_device_events(sender_id, sender_device, global_since_sn).ok()?;
 
+    let events =
+        data::user::device::get_to_device_events(sender_id, sender_device, None, Some(next_batch))
+            .ok()?;
+
+    println!("====================to device events: {events:#?}");
     Some(sync_events::v5::ToDevice {
         next_batch: next_batch.to_string(),
-        events: data::user::device::get_to_device_events(
-            sender_id,
-            sender_device,
-            None,
-            Some(next_batch),
-        )
-        .ok()?,
+        events,
     })
 }
 
@@ -703,4 +702,29 @@ fn collect_receipts() -> sync_events::v5::Receipts {
         rooms: BTreeMap::new(),
     }
     // TODO: get explicitly requested read receipts
+}
+
+async fn collect_typing<'a, Rooms>(
+    (sender_user, _, _, body): SyncInfo<'_>,
+    _next_batch: Seqnum,
+    rooms: Rooms,
+) -> AppResult<sync_events::v5::Typing>
+where
+    Rooms: Iterator<Item = &'a RoomId> + Send + 'a,
+{
+    use sync_events::v5::Typing;
+
+    if !body.extensions.typing.enabled.unwrap_or(false) {
+        return Ok(Typing::default());
+    }
+
+    let mut typing = Typing::new();
+    for room_id in rooms {
+        typing.rooms.insert(
+            room_id.to_owned(),
+            room::typing::all_typings(room_id).await?,
+        );
+    }
+
+    Ok(typing)
 }

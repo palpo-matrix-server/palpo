@@ -764,6 +764,10 @@ pub struct Typing {
 }
 
 impl Typing {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    
     /// Whether all fields are empty or `None`.
     pub fn is_empty(&self) -> bool {
         self.rooms.is_empty()
