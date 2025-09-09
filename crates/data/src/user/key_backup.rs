@@ -16,7 +16,7 @@ pub struct DbRoomKey {
 
     pub user_id: OwnedUserId,
     pub room_id: OwnedRoomId,
-    pub session_id: OwnedSessionId,
+    pub session_id: String,
 
     pub version: i64,
 
@@ -31,7 +31,7 @@ pub struct DbRoomKey {
 pub struct NewDbRoomKey {
     pub user_id: OwnedUserId,
     pub room_id: OwnedRoomId,
-    pub session_id: OwnedSessionId,
+    pub session_id: String,
 
     pub version: i64,
 
@@ -158,7 +158,7 @@ pub fn add_key(
     user_id: &UserId,
     version: i64,
     room_id: &RoomId,
-    session_id: &SessionId,
+    session_id: &String,
     key_data: &KeyBackupData,
 ) -> DataResult<()> {
     let new_key = NewDbRoomKey {
@@ -226,7 +226,7 @@ pub fn get_key_for_session(
     user_id: &UserId,
     version: i64,
     room_id: &RoomId,
-    session_id: &SessionId,
+    session_id: &String,
 ) -> DataResult<Option<DbRoomKey>> {
     e2e_room_keys::table
         .filter(e2e_room_keys::user_id.eq(user_id))
@@ -275,7 +275,7 @@ pub fn delete_room_key(
     user_id: &UserId,
     version: i64,
     room_id: &RoomId,
-    session_id: &SessionId,
+    session_id: &String,
 ) -> DataResult<()> {
     diesel::delete(
         e2e_room_keys::table
