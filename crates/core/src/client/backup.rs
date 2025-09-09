@@ -14,12 +14,12 @@ use crate::{
 #[derive(ToSchema, Clone, Debug, Serialize, Deserialize)]
 pub struct RoomKeyBackup {
     /// A map of session IDs to key data.
-    pub sessions: BTreeMap<OwnedSessionId, KeyBackupData>,
+    pub sessions: BTreeMap<String, KeyBackupData>,
 }
 
 impl RoomKeyBackup {
     /// Creates a new `RoomKeyBackup` with the given sessions.
-    pub fn new(sessions: BTreeMap<OwnedSessionId, KeyBackupData>) -> Self {
+    pub fn new(sessions: BTreeMap<String, KeyBackupData>) -> Self {
         Self { sessions }
     }
 }
@@ -433,17 +433,17 @@ pub(crate) struct AlgorithmWithData {
 pub struct AddKeysForRoomReqBody {
     /// A map of session IDs to key data.
     #[salvo(schema(value_type = Object, additional_properties = true))]
-    pub sessions: BTreeMap<OwnedSessionId, KeyBackupData>,
+    pub sessions: BTreeMap<String, KeyBackupData>,
 }
 
 impl AddKeysForRoomReqBody {
     /// Creates a new `Response` with the given sessions.
-    pub fn new(sessions: BTreeMap<OwnedSessionId, KeyBackupData>) -> Self {
+    pub fn new(sessions: BTreeMap<String, KeyBackupData>) -> Self {
         Self { sessions }
     }
 }
 
-// /// `GET /_matrix/client/*/room_keys/keys/{room_id}/{sessionId}`
+// /// `GET /_matrix/client/*/room_keys/keys/{room_id}/{session_id}`
 // ///
 // /// Retrieve a key from the backup for a given session.
 // /// `/v3/` ([spec])
@@ -475,7 +475,7 @@ pub struct KeysForSessionReqArgs {
 
     /// The ID of the megolm session whose key is requested.
     #[salvo(parameter(parameter_in = Path))]
-    pub session_id: OwnedSessionId,
+    pub session_id: String,
 }
 
 // /// Response type for the `get_backup_keys_for_session` endpoint.
