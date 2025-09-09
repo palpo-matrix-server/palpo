@@ -137,7 +137,7 @@ pub fn federation_client() -> ClientWithMiddleware {
 
             let client = reqwest_client_builder(conf)
                 .expect("build reqwest client failed")
-                .dns_resolver(Arc::new(Resolver::new(tls_name_override.clone())))
+                // .dns_resolver(Arc::new(Resolver::new(tls_name_override.clone())))
                 .timeout(Duration::from_secs(2 * 60))
                 .build()
                 .expect("build reqwest client failed");
@@ -456,7 +456,7 @@ async fn send_events(
             )
             .map_err(|e| (kind.clone(), e.into()))?
             .into_inner();
-            let response = crate::sending::send_federation_request(server, request)
+            let response = crate::sending::send_federation_request(server, request, None)
                 .await
                 .map_err(|e| (kind.clone(), e))?
                 .json::<SendMessageResBody>()
@@ -482,6 +482,7 @@ async fn send_events(
 pub async fn send_federation_request(
     destination: &ServerName,
     request: reqwest::Request,
+    timeout_secs: Option<u64>,
 ) -> AppResult<reqwest::Response> {
     debug!("Waiting for permit");
     let max_request = max_request();
@@ -489,7 +490,7 @@ pub async fn send_federation_request(
     debug!("Got permit");
     let url = request.url().clone();
     let response = tokio::time::timeout(
-        Duration::from_secs(2 * 60),
+        Duration::from_secs(timeout_secs.unwrap_or(2 * 60)),
         crate::federation::send_request(destination, request),
     )
     .await

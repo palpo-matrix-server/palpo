@@ -40,9 +40,11 @@ pub fn authed_router() -> Router {
 #[endpoint]
 async fn get_profile(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonResult<ProfileResBody> {
     let user_id = user_id.into_inner();
-    println!("==============user_id: {:?}   is remote:{}", user_id, user_id.is_remote());
+    let server_name = user_id.server_name().to_owned();
+    if server_name.is_valid() {
+        return Err(MatrixError::not_found("profile not found").into());
+    }
     if user_id.is_remote() {
-        let server_name = user_id.server_name().to_owned();
         let request = profile_request(
             &server_name.origin().await,
             ProfileReqArgs {
@@ -52,7 +54,7 @@ async fn get_profile(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonResu
         )?
         .into_inner();
 
-        let profile = crate::sending::send_federation_request(&server_name, request)
+        let profile = crate::sending::send_federation_request(&server_name, request, Some(5))
             .await?
             .json::<ProfileResBody>()
             .await?;
@@ -96,7 +98,7 @@ async fn get_avatar_url(
         )?
         .into_inner();
 
-        let body: AvatarUrlResBody = crate::sending::send_federation_request(&server_name, request)
+        let body: AvatarUrlResBody = crate::sending::send_federation_request(&server_name, request, None)
             .await?
             .json::<AvatarUrlResBody>()
             .await?;
@@ -236,7 +238,7 @@ async fn get_display_name(
         )?
         .into_inner();
 
-        let body = crate::sending::send_federation_request(&server_name, request)
+        let body = crate::sending::send_federation_request(&server_name, request, None)
             .await?
             .json::<DisplayNameResBody>()
             .await?;

@@ -150,7 +150,7 @@ async fn remote_room_summary_hierarchy(
         };
         requests.push(sending::send_federation_request(
             server,
-            request.into_inner(),
+            request.into_inner(), None,
         ));
     }
 

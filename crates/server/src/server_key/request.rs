@@ -62,7 +62,7 @@ where
             "notary request"
         );
 
-        let response = crate::sending::send_federation_request(notary, request)
+        let response = crate::sending::send_federation_request(notary, request, None)
             .await?
             .json::<RemoteServerKeysBatchResBody>()
             .await?
@@ -87,7 +87,7 @@ pub async fn notary_request(
     )?
     .into_inner();
 
-    let response = crate::sending::send_federation_request(notary, request)
+    let response = crate::sending::send_federation_request(notary, request, None)
         .await?
         .json::<RemoteServerKeysResBody>()
         .await?
@@ -98,7 +98,7 @@ pub async fn notary_request(
 
 pub async fn server_request(target: &ServerName) -> AppResult<ServerSigningKeys> {
     let request = server_keys_request(&target.origin().await)?.into_inner();
-    let server_signing_key = crate::sending::send_federation_request(target, request)
+    let server_signing_key = crate::sending::send_federation_request(target, request, None)
         .await?
         .json::<ServerKeysResBody>()
         .await?

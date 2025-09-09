@@ -496,7 +496,7 @@ pub(super) async fn ban_user(
             avatar_url,
             display_name,
             blurhash,
-        } = send_federation_request(body.user_id.server_name(), profile_request)
+        } = send_federation_request(body.user_id.server_name(), profile_request, None)
             .await?
             .json()
             .await

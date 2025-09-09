@@ -109,7 +109,7 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
             )?
             .into_inner();
 
-            let response_body = crate::sending::send_federation_request(server, request)
+            let response_body = crate::sending::send_federation_request(server, request, None)
                 .await?
                 .json::<QueryKeysResBody>()
                 .await
@@ -204,7 +204,7 @@ pub async fn claim_one_time_keys(
         futures.push(async move {
             (
                 server,
-                crate::sending::send_federation_request(server, request).await,
+                crate::sending::send_federation_request(server, request, None).await,
             )
         });
     }

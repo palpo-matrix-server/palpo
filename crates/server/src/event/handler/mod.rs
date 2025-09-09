@@ -794,7 +794,7 @@ pub(crate) async fn fetch_and_process_outliers(
                 event_request(&origin.origin().await, EventReqArgs::new(next_id.clone()))?
                     .into_inner();
 
-            match crate::sending::send_federation_request(origin, request)
+            match crate::sending::send_federation_request(origin, request, None)
                 .await?
                 .json::<EventResBody>()
                 .await
@@ -942,7 +942,7 @@ pub async fn fetch_and_process_missing_prev_events(
         .into_inner();
 
         known_events.insert(event_id.clone());
-        let res_body = crate::sending::send_federation_request(origin, request)
+        let res_body = crate::sending::send_federation_request(origin, request, None)
             .await?
             .json::<MissingEventsResBody>()
             .await?;
@@ -1036,7 +1036,7 @@ pub async fn fetch_and_process_auth_chain(
 ) -> AppResult<()> {
     let request =
         event_authorization_request(&origin.origin().await, room_id, event_id)?.into_inner();
-    let res_body = crate::sending::send_federation_request(origin, request)
+    let res_body = crate::sending::send_federation_request(origin, request, None)
         .await?
         .json::<EventAuthorizationResBody>()
         .await?;

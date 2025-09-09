@@ -28,7 +28,7 @@ pub(super) async fn fetch_state(
         },
     )?
     .into_inner();
-    let res = crate::sending::send_federation_request(origin, request)
+    let res = crate::sending::send_federation_request(origin, request, None)
         .await?
         .json::<RoomStateIdsResBody>()
         .await?;

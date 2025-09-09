@@ -189,7 +189,7 @@ pub async fn knock_room(
     .into_inner();
 
     let send_knock_body =
-        crate::sending::send_federation_request(&remote_server, send_knock_request)
+        crate::sending::send_federation_request(&remote_server, send_knock_request, None)
             .await?
             .json::<SendKnockResBody>()
             .await?;
@@ -239,7 +239,7 @@ pub async fn knock_room(
             let request =
                 event_request(&remote_server.origin().await, EventReqArgs::new(&event_id))?
                     .into_inner();
-            let res_body = crate::sending::send_federation_request(&remote_server, request)
+            let res_body = crate::sending::send_federation_request(&remote_server, request, None)
                 .await?
                 .json::<EventResBody>()
                 .await?;
@@ -359,7 +359,7 @@ async fn make_knock_request(
         )?
         .into_inner();
 
-        let make_knock_response = crate::sending::send_federation_request(remote_server, request)
+        let make_knock_response = crate::sending::send_federation_request(remote_server, request, None)
             .await?
             .json::<MakeKnockResBody>()
             .await
