@@ -124,7 +124,6 @@ pub async fn invite_user(
         return sending::send_pdu_room(room_id, &event_id);
     }
 
-    println!("============================================invite_user");
     timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,

@@ -198,7 +198,6 @@ pub async fn append_pdu<'a, L>(
 where
     L: Iterator<Item = &'a EventId> + Send + 'a,
 {
-    println!("=================append pdu pdu:{pdu:#?} pdu_json: {pdu_json:#?}"); // DEBUG
     let conf = crate::config::get();
 
     // Make unsigned fields correct. This is not properly documented in the spec, but state
@@ -383,7 +382,6 @@ where
                 }
                 //  Update our membership info, we do this here incase a user is invited
                 // and immediately leaves we need the DB to record the invite event for auth
-                println!("Uuuuuuuuuuuuupdating membership: {pdu:#?}  stripped_state:{stripped_state:#?}"); // DEBUG
                 membership::update_membership(
                     &pdu.event_id,
                     pdu.event_sn,
@@ -833,7 +831,6 @@ pub async fn build_and_append_pdu(
 
     let (pdu, pdu_json, _event_guard) =
         create_hash_and_sign_event(pdu_builder, sender, room_id, room_version, state_lock).await?;
-        println!("Bbbbbbbbbbbbuilt PDU: {pdu:#?}\nJSON: {pdu_json:#?}"); // DEBUG
     let room_id = &pdu.room_id;
     crate::room::ensure_room(room_id, room_version)?;
 

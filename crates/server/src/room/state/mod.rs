@@ -104,7 +104,6 @@ pub fn force_state(
                     Err(_) => continue,
                 };
 
-                println!("MMMMMMMMMMMMMMMMMMMMMMMmembership: {pdu:#?}");
                 membership::update_membership(
                     &pdu.event_id,
                     pdu.event_sn,
