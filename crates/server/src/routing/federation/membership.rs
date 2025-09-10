@@ -210,6 +210,8 @@ async fn invite_user(
 
     let mut event: JsonObject = serde_json::from_str(body.event.get())
         .map_err(|_| MatrixError::invalid_param("Invalid invite event bytes."))?;
+    println!("Invite body: {}", body.event.get());
+    println!("Invite event: {event:#?}");
 
     let event_id: OwnedEventId = format!("$dummy_{}", Ulid::new().to_string()).try_into()?;
     event.insert("event_id".to_owned(), event_id.to_string().into());
@@ -220,13 +222,16 @@ async fn invite_user(
             warn!("Invalid invite event: {}", e);
             MatrixError::invalid_param("Invalid invite event.")
         })?;
+    println!("===============pdu: {pdu:#?}");
     invite_state.push(pdu.to_stripped_state_event());
+    println!("===============invite_state: {invite_state:#?}");
 
     // If we are active in the room, the remote server will notify us about the join via /send.
     // If we are not in the room, we need to manually
     // record the invited state for client /sync through update_membership(), and
     // send the invite PDU to the relevant appservices.
     if !room::is_server_joined(&config::get().server_name, &args.room_id)? {
+                println!("Uuuuuuuuuuuuupdating membership2: {pdu:#?}  stripped_state:{invite_state:#?}"); // DEBUG
         crate::membership::update_membership(
             &pdu.event_id,
             pdu.event_sn,

@@ -1,3 +1,4 @@
+use core::panic;
 use std::collections::BTreeMap;
 use std::time::Duration;
 
@@ -119,6 +120,7 @@ pub fn update_membership(
     } else {
         None
     };
+    println!("membership          state_data: {state_data:#?}");
 
     match &membership {
         MembershipState::Join => {

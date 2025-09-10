@@ -622,6 +622,7 @@ pub(super) async fn create_room(
         }
     };
 
+    println!("============================================2");
     // 2. Let the room creator join
     timeline::build_and_append_pdu(
         PduBuilder {
@@ -648,6 +649,7 @@ pub(super) async fn create_room(
     )
     .await?;
 
+    println!("============================================3");
     // 3. Power levels
     let mut users = BTreeMap::new();
     if !version_rules
@@ -673,6 +675,7 @@ pub(super) async fn create_room(
         users,
     )?;
 
+    println!("============================================4");
     timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomPowerLevels,
@@ -687,6 +690,7 @@ pub(super) async fn create_room(
     )
     .await?;
 
+    println!("============================================5");
     // 4. Canonical room alias
     if let Some(room_alias_id) = &alias {
         timeline::build_and_append_pdu(
@@ -709,6 +713,7 @@ pub(super) async fn create_room(
         .unwrap();
     }
 
+    println!("============================================6");
     // 5. Events set by preset
     // 5.1 Join Rules
     timeline::build_and_append_pdu(
@@ -730,6 +735,7 @@ pub(super) async fn create_room(
     )
     .await?;
 
+    println!("============================================7");
     // 5.2 History Visibility
     timeline::build_and_append_pdu(
         PduBuilder {
@@ -781,6 +787,7 @@ pub(super) async fn create_room(
         .await?;
     }
 
+    println!("============================================8");
     // 6. Events listed in initial_state
     for event in &body.initial_state {
         let mut pdu_builder = event.deserialize_as::<PduBuilder>().map_err(|e| {
@@ -806,6 +813,7 @@ pub(super) async fn create_room(
         .await?;
     }
 
+    println!("============================================9");
     // 7. Events implied by name and topic
     if let Some(name) = &body.name {
         timeline::build_and_append_pdu(
@@ -842,14 +850,17 @@ pub(super) async fn create_room(
     }
     drop(state_lock);
 
+    println!("============================================10");
     // 8. Events implied by invite (and TODO: invite_3pid)
     for user_id in &body.invite {
+    println!("============================================11");
         if let Err(e) =
             crate::membership::invite_user(sender_id, user_id, &room_id, None, body.is_direct).await
         {
             tracing::error!("Failed to invite user {}: {:?}", user_id, e);
         }
     }
+    println!("============================================12");
 
     // Homeserver specific stuff
     if let Some(alias) = alias {
