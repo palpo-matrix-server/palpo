@@ -55,7 +55,7 @@ impl ServerName {
     }
 
     pub fn is_valid(&self) -> bool {
-        if (self.0.starts_with('[') && !self.0.ends_with(']')) || self.0.ends_with('.') {
+        if (self.0.starts_with('[') && !self.0.contains(']')) || self.0.ends_with('.') {
             false
         } else {
             true
