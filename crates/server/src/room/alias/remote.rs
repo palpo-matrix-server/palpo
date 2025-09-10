@@ -43,7 +43,7 @@ async fn remote_request(
     server: &ServerName,
 ) -> AppResult<RoomInfoResBody> {
     let request = directory_request(&server.origin().await, room_alias)?.into_inner();
-    crate::sending::send_federation_request(server, request)
+    crate::sending::send_federation_request(server, request,None)
         .await?
         .json::<RoomInfoResBody>()
         .await

@@ -157,7 +157,7 @@ async fn leave_room_remote(
         .into_inner();
         let make_leave_response = crate::sending::send_federation_request(
             room_id.server_name().map_err(AppError::internal)?,
-            request,
+            request,None
         )
         .await?
         .json::<MakeLeaveResBody>()
@@ -255,6 +255,6 @@ async fn leave_room_remote(
         )),
     )?
     .into_inner();
-    crate::sending::send_federation_request(&remote_server, request).await?;
+    crate::sending::send_federation_request(&remote_server, request,None).await?;
     Ok((event_id, event_sn))
 }

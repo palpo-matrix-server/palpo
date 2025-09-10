@@ -43,8 +43,7 @@ fn search(
         .filter(user_profiles::user_id.ne(authed.user_id()))
         .select(user_profiles::user_id)
         .load::<OwnedUserId>(&mut connect()?)?;
-    
-    println!("==============user_ids: {:?}", user_ids);
+
     let mut users = user_ids.into_iter().filter_map(|user_id| {
         let user = SearchedUser {
             user_id: user_id.clone(),

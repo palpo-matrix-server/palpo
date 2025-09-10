@@ -213,7 +213,7 @@ pub async fn join_room(
     )?
     .into_inner();
 
-    let send_join_body = crate::sending::send_federation_request(&remote_server, send_join_request)
+    let send_join_body = crate::sending::send_federation_request(&remote_server, send_join_request, None)
         .await?
         .json::<SendJoinResBodyV2>()
         .await?;
@@ -546,7 +546,7 @@ async fn make_join_request(
         )?
         .into_inner();
         let make_join_response =
-            crate::sending::send_federation_request(remote_server, make_join_request).await;
+            crate::sending::send_federation_request(remote_server, make_join_request, None).await;
         match make_join_response {
             Ok(make_join_response) => {
                 let res_body = make_join_response.json::<MakeJoinResBody>().await;

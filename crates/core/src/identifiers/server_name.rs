@@ -53,6 +53,14 @@ impl ServerName {
     pub fn is_ip_literal(&self) -> bool {
         self.host().parse::<Ipv4Addr>().is_ok() || self.0.starts_with('[')
     }
+
+    pub fn is_valid(&self) -> bool {
+        if (self.0.starts_with('[') && !self.0.contains(']')) || self.0.ends_with('.') {
+            false
+        } else {
+            true
+        }
+    }
 }
 
 #[cfg(test)]

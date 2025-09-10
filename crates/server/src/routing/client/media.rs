@@ -360,7 +360,7 @@ pub async fn get_thumbnail(
             query.append_pair("timeout_ms", &args.timeout_ms.as_millis().to_string());
         }
         let request = crate::sending::get(url).into_inner();
-        let response = crate::sending::send_federation_request(&args.server_name, request).await?;
+        let response = crate::sending::send_federation_request(&args.server_name, request,None).await?;
         *res.headers_mut() = response.headers().clone();
         let bytes = response.bytes().await?;
 

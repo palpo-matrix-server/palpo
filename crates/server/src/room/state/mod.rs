@@ -263,8 +263,8 @@ pub fn summary_stripped(event: &PduEvent) -> AppResult<Vec<RawJson<AnyStrippedSt
 
     let mut state = Vec::new();
     // Add recommended events
-    for (_event_type, _state_key) in cells {
-        if let Ok(e) = super::get_state(&event.room_id, &StateEventType::RoomCreate, "", None) {
+    for (event_type, state_key) in cells {
+        if let Ok(e) = super::get_state(&event.room_id, event_type, state_key, None) {
             state.push(e.to_stripped_state_event());
         }
     }

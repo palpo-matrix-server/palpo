@@ -158,12 +158,10 @@ async fn register(
 
     // Default to pretty display_name
     let display_name = user_id.localpart().to_owned();
-
     // // If enabled append lightning bolt to display name (default true)
     // if config::enable_lightning_bolt() {
     //     display_name.push_str(" ⚡️");
     // }
-
     diesel::insert_into(user_profiles::table)
         .values(NewDbProfile {
             user_id: user_id.clone(),

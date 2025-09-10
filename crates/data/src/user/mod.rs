@@ -195,13 +195,24 @@ pub fn display_name(user_id: &UserId) -> DataResult<Option<String>> {
         .map(Option::flatten)
         .map_err(Into::into)
 }
-pub fn set_display_name(user_id: &UserId, display_name: Option<&str>) -> DataResult<()> {
+pub fn set_display_name(user_id: &UserId, display_name: &str) -> DataResult<()> {
     diesel::update(
         user_profiles::table
             .filter(user_profiles::user_id.eq(user_id.as_str()))
             .filter(user_profiles::room_id.is_null()),
     )
     .set(user_profiles::display_name.eq(display_name))
+    .execute(&mut connect()?)
+    .map(|_| ())
+    .map_err(Into::into)
+}
+pub fn remove_display_name(user_id: &UserId) -> DataResult<()> {
+    diesel::update(
+        user_profiles::table
+            .filter(user_profiles::user_id.eq(user_id.as_str()))
+            .filter(user_profiles::room_id.is_null()),
+    )
+    .set(user_profiles::display_name.eq::<Option<String>>(None))
     .execute(&mut connect()?)
     .map(|_| ())
     .map_err(Into::into)
@@ -218,13 +229,23 @@ pub fn avatar_url(user_id: &UserId) -> DataResult<Option<OwnedMxcUri>> {
         .map(Option::flatten)
         .map_err(Into::into)
 }
-pub fn set_avatar_url(user_id: &UserId, avatar_url: Option<&MxcUri>) -> DataResult<()> {
+pub fn set_avatar_url(user_id: &UserId, avatar_url: &MxcUri) -> DataResult<()> {
     diesel::update(
         user_profiles::table
             .filter(user_profiles::user_id.eq(user_id.as_str()))
             .filter(user_profiles::room_id.is_null()),
     )
-    .set(user_profiles::avatar_url.eq(avatar_url.map(|url| url.as_str())))
+    .set(user_profiles::avatar_url.eq(avatar_url.as_str()))
+    .execute(&mut connect()?)?;
+    Ok(())
+}
+
+pub fn delete_profile(user_id: &UserId) -> DataResult<()> {
+    diesel::delete(
+        user_profiles::table
+            .filter(user_profiles::user_id.eq(user_id.as_str()))
+            .filter(user_profiles::room_id.is_null()),
+    )
     .execute(&mut connect()?)?;
     Ok(())
 }

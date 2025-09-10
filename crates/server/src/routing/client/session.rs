@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use diesel::prelude::*;
+use palpo_data::user::set_display_name;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
@@ -194,12 +195,17 @@ async fn login(
                     appservice_id: None,
                     created_at: UnixMillis::now(),
                 };
-                let _user = diesel::insert_into(users::table)
+                let user = diesel::insert_into(users::table)
                     .values(&new_user)
                     .on_conflict(users::id)
                     .do_update()
                     .set(&new_user)
                     .get_result::<DbUser>(&mut connect()?)?;
+
+                // Set initial user profile
+                if let Err(e) = set_display_name(&user.id, &user.id.localpart()) {
+                    tracing::warn!("failed to set profile for new user (non-fatal): {}", e);
+                }
             }
             user_id
         }

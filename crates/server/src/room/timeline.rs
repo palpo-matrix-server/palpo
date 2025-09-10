@@ -1112,7 +1112,7 @@ pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<(
             },
         )?
         .into_inner();
-        match crate::sending::send_federation_request(backfill_server, request)
+        match crate::sending::send_federation_request(backfill_server, request, None)
             .await?
             .json::<BackfillResBody>()
             .await

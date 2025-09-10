@@ -294,7 +294,7 @@ pub struct ServerConfig {
 
     /// Set this to true to require authentication on the normally
     /// unauthenticated profile retrieval endpoints (GET)
-    /// "/_matrix/client/v3/profile/{userId}".
+    /// "/_matrix/client/v3/profile/{user_id}".
     ///
     /// This can prevent profile scraping.
     #[serde(default)]

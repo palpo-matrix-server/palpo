@@ -77,7 +77,7 @@ pub async fn invite_user(
         )?
         .into_inner();
         let send_join_response =
-            sending::send_federation_request(invitee_id.server_name(), invite_request)
+            sending::send_federation_request(invitee_id.server_name(), invite_request, None)
                 .await?
                 .json::<InviteUserResBodyV2>()
                 .await?;

@@ -690,7 +690,6 @@ fn collect_to_device(
         data::user::device::get_to_device_events(sender_id, sender_device, None, Some(next_batch))
             .ok()?;
 
-    println!("====================to device events: {events:#?}");
     Some(sync_events::v5::ToDevice {
         next_batch: next_batch.to_string(),
         events,

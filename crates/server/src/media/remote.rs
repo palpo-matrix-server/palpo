@@ -30,7 +30,7 @@ pub async fn fetch_remote_content(
     )?
     .into_inner();
     let content_response = if let Ok(content_response) =
-        crate::sending::send_federation_request(server_name, content_req).await
+        crate::sending::send_federation_request(server_name, content_req, None).await
     {
         content_response
     } else {
@@ -42,7 +42,7 @@ pub async fn fetch_remote_content(
             },
         )?
         .into_inner();
-        crate::sending::send_federation_request(server_name, content_req).await?
+        crate::sending::send_federation_request(server_name, content_req, None).await?
     };
 
     *res.headers_mut() = content_response.headers().to_owned();

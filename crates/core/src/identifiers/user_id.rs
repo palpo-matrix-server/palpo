@@ -344,6 +344,12 @@ mod tests {
                 .as_str(),
             "@carl:example.com:443"
         );
+        assert_eq!(
+            <&UserId>::try_from("@carl:127.0.0.1:443")
+                .expect("Failed to create UserId.")
+                .as_str(),
+            "@carl:127.0.0.1:443"
+        );
     }
 
     #[test]

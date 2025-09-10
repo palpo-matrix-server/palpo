@@ -108,7 +108,7 @@ async fn get_summary_and_children_federation(
         )?
         .into_inner();
 
-        if let Ok(respone) = crate::sending::send_federation_request(server, request).await
+        if let Ok(respone) = crate::sending::send_federation_request(server, request,None).await
             && let Ok(body) = respone.json::<HierarchyResBody>().await
         {
             ROOM_ID_SPACE_CHUNK_CACHE.lock().unwrap().insert(
