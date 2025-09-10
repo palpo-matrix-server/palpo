@@ -120,6 +120,7 @@ use crate::{
     AppResult, JsonResult,
     config::{self, OidcProviderConfig},
     core::{MatrixError, OwnedDeviceId, OwnedUserId, UnixMillis},
+    data,
     data::user::DbUser,
     json_ok,
 };
@@ -1154,45 +1155,17 @@ async fn create_or_get_user(
         .map_err(|e| MatrixError::unknown(format!("Failed to create user account: {}", e)))?;
 
     // Set initial user profile
-    if let Err(e) = set_user_profile(&user.id, display_name, user_info.picture.as_deref()).await {
-        tracing::warn!("Failed to set profile for new user (non-fatal): {}", e);
+    if let Err(e) = data::user::set_display_name(&user.id, display_name) {
+        tracing::warn!("failed to set profile for new user (non-fatal): {}", e);
+    }
+    if let Some(picture) = user_info.picture.as_deref() {
+        if let Err(e) = data::user::set_avatar_url(&user.id, picture.into()) {
+            tracing::warn!("failed to set profile for new user (non-fatal): {}", e);
+        }
     }
 
     tracing::info!("Successfully created new Matrix user: {}", user_id);
     Ok(user)
-}
-
-/// **User Profile Management**
-///
-/// Sets or updates the user's Matrix profile (display name and avatar URL)
-/// based on information from the OIDC provider.
-async fn set_user_profile(
-    user_id: &OwnedUserId,
-    display_name: &str,
-    avatar_url: Option<&str>,
-) -> Result<(), MatrixError> {
-    use crate::data::connect;
-    use crate::data::schema::*;
-    use diesel::prelude::*;
-
-    let mut conn = connect().map_err(|_| MatrixError::unknown("Database connection failed"))?;
-
-    diesel::insert_into(user_profiles::table)
-        .values((
-            user_profiles::user_id.eq(user_id),
-            user_profiles::display_name.eq(Some(display_name)),
-            user_profiles::avatar_url.eq(avatar_url),
-        ))
-        .on_conflict(user_profiles::user_id)
-        .do_update()
-        .set((
-            user_profiles::display_name.eq(Some(display_name)),
-            user_profiles::avatar_url.eq(avatar_url),
-        ))
-        .execute(&mut conn)
-        .map_err(|e| MatrixError::unknown(format!("Failed to set user profile: {}", e)))?;
-
-    Ok(())
 }
 
 /// **Matrix Device and Access Token Creation**

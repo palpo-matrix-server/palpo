@@ -71,7 +71,7 @@ pub(super) async fn create_user(
     //     )?;
     // }
 
-    crate::data::user::set_display_name(&user_id, Some(&*display_name))?;
+    crate::data::user::set_display_name(&user_id, &display_name)?;
 
     // Initial account data
     crate::user::set_data(
@@ -181,8 +181,6 @@ pub(super) async fn deactivate(
 
         full_user_deactivate(&user_id, &all_joined_rooms).await?;
 
-        data::user::set_display_name(&user_id, None)?;
-        data::user::set_avatar_url(&user_id, None)?;
         membership::leave_all_rooms(&user_id).await?;
     }
 
@@ -293,8 +291,6 @@ pub(super) async fn deactivate_all(
 
                     full_user_deactivate(&user_id, &all_joined_rooms).await?;
 
-                    data::user::set_display_name(&user_id, None)?;
-                    data::user::set_avatar_url(&user_id, None)?;
                     membership::leave_all_rooms(&user_id).await?;
                 }
             }

@@ -1,4 +1,5 @@
 mod password;
+use palpo_data::user::set_display_name;
 pub use password::*;
 pub mod key;
 pub mod pusher;
@@ -34,7 +35,10 @@ pub struct SlidingSyncCache {
     extensions: sync_events::v5::ExtensionsConfig,
 }
 
-pub fn create_user(user_id: impl Into<OwnedUserId>, password: Option<&str>) -> AppResult<DbUser> {
+pub  fn create_user(
+    user_id: impl Into<OwnedUserId>,
+    password: Option<&str>,
+) -> AppResult<DbUser> {
     let user_id = user_id.into();
     let new_user = NewDbUser {
         id: user_id.clone(),
@@ -50,6 +54,7 @@ pub fn create_user(user_id: impl Into<OwnedUserId>, password: Option<&str>) -> A
         .do_update()
         .set(&new_user)
         .get_result::<DbUser>(&mut connect()?)?;
+    let display_name = user_id.localpart().to_owned();
     if let Some(password) = password {
         let hash = crate::utils::hash_password(password)?;
         diesel::insert_into(user_passwords::table)
@@ -59,6 +64,9 @@ pub fn create_user(user_id: impl Into<OwnedUserId>, password: Option<&str>) -> A
                 created_at: UnixMillis::now(),
             })
             .execute(&mut connect()?)?;
+    }
+    if let Err(e) = set_display_name(&user.id, &display_name) {
+        tracing::warn!("failed to set profile for new user (non-fatal): {}", e);
     }
     Ok(user)
 }
@@ -126,8 +134,7 @@ pub async fn full_user_deactivate(
     all_joined_rooms: &[OwnedRoomId],
 ) -> AppResult<()> {
     data::user::deactivate(user_id).ok();
-    data::user::set_display_name(user_id, None).ok();
-    data::user::set_avatar_url(user_id, None).ok();
+    data::user::delete_profile(user_id).ok();
 
     // TODO: remove all user data
     // for profile_key in data::user::all_profile_keys(user_id) {

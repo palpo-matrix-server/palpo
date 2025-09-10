@@ -41,7 +41,7 @@ pub fn authed_router() -> Router {
 async fn get_profile(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonResult<ProfileResBody> {
     let user_id = user_id.into_inner();
     let server_name = user_id.server_name().to_owned();
-    if server_name.is_valid() {
+    if !server_name.is_valid() {
         return Err(MatrixError::not_found("profile not found").into());
     }
     if user_id.is_remote() {
@@ -60,15 +60,22 @@ async fn get_profile(_aa: AuthArgs, user_id: PathParam<OwnedUserId>) -> JsonResu
             .await?;
         return json_ok(profile);
     }
-    let DbProfile {
+    let Ok(DbProfile {
         blurhash,
         avatar_url,
         display_name,
         ..
-    } = user_profiles::table
+    }) = user_profiles::table
         .filter(user_profiles::user_id.eq(&user_id))
         .filter(user_profiles::room_id.is_null())
-        .first::<DbProfile>(&mut connect()?)?;
+        .first::<DbProfile>(&mut connect()?)
+    else {
+        return json_ok(ProfileResBody {
+            avatar_url: None,
+            blurhash: None,
+            display_name: Some(user_id.localpart().to_owned()),
+        });
+    };
 
     json_ok(ProfileResBody {
         avatar_url,
@@ -98,10 +105,11 @@ async fn get_avatar_url(
         )?
         .into_inner();
 
-        let body: AvatarUrlResBody = crate::sending::send_federation_request(&server_name, request, None)
-            .await?
-            .json::<AvatarUrlResBody>()
-            .await?;
+        let body: AvatarUrlResBody =
+            crate::sending::send_federation_request(&server_name, request, None)
+                .await?
+                .json::<AvatarUrlResBody>()
+                .await?;
         return json_ok(body);
     }
 
@@ -267,7 +275,9 @@ async fn set_display_name(
     }
     let SetDisplayNameReqBody { display_name } = body.into_inner();
 
-    data::user::set_display_name(&user_id, display_name.as_deref())?;
+    if let Some(display_name) = display_name.as_deref() {
+        data::user::set_display_name(&user_id, display_name)?;
+    }
 
     // Send a new membership event and presence update into all joined rooms
     let all_joined_rooms: Vec<_> = data::user::joined_rooms(&user_id)?
