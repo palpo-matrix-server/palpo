@@ -44,9 +44,6 @@ pub(super) async fn sync_events_v5(
         .unwrap_or_default();
 
     let mut req_body = req_body.into_inner();
-    println!(
-        "========================================|||||||||||||||||||sync events v5  req_body:{req_body:?}"
-    );
 
     let _conn_id = req_body.conn_id.clone();
 
@@ -66,10 +63,6 @@ pub(super) async fn sync_events_v5(
         device_id.to_owned(),
         &mut req_body,
     );
-    println!(
-        "======================================  req_body2:{req_body:?}"
-    );
-
 
     let mut res_body =
         crate::sync_v5::sync_events(sender_id, device_id, since_sn, &req_body, &known_rooms).await?;
@@ -88,11 +81,9 @@ pub(super) async fn sync_events_v5(
         // Stop hanging if new info arrives
         let default = Duration::from_secs(30);
         let duration = cmp::min(args.timeout.unwrap_or(default), default);
-        println!("=================sync: hanging for {duration:?}");
         // Setup watchers, so if there's no response, we can wait for them
         let watcher = crate::watcher::watch(sender_id, device_id);
         _ = tokio::time::timeout(duration, watcher).await;
-        println!("=================sync end");
         res_body = crate::sync_v5::sync_events(sender_id, device_id, since_sn, &req_body, &known_rooms)
             .await?;
     }
@@ -103,6 +94,5 @@ pub(super) async fn sync_events_v5(
         receipts=?res_body.extensions.receipts.rooms.len(),
         "responding to request with"
     );
-    println!("=================sync body: {res_body:#?}");
     json_ok(res_body)
 }

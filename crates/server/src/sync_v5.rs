@@ -37,13 +37,11 @@ pub async fn sync_events(
     req_body: &SyncEventsReqBody,
     known_rooms: &KnownRooms,
 ) -> AppResult<SyncEventsResBody> {
-    println!("reqrrrrrrrrrrrrr SyncEventsReqBody: {req_body:#?}"); // --- IGNORE --- --- IGNORE ---
     let next_batch = data::curr_sn()? + 1;
 
     let all_joined_rooms = data::user::joined_rooms(sender_id)?;
 
     let all_invited_rooms = data::user::invited_rooms(sender_id, 0)?;
-    println!("AAAAAAAAAAAAAAAAAall_invited_rooms  {all_invited_rooms:#?}");
     let all_invited_rooms: Vec<&RoomId> = all_invited_rooms.iter().map(|r| r.0.as_ref()).collect();
 
     let all_knocked_rooms = data::user::knocked_rooms(sender_id, 0)?;
@@ -254,7 +252,6 @@ async fn process_rooms(
     req_body: &SyncEventsReqBody,
 ) -> AppResult<BTreeMap<OwnedRoomId, sync_events::v5::SyncRoom>> {
     let mut rooms = BTreeMap::new();
-    println!("TTTTTTTTTTTTTTTTTodo rooms: {todo_rooms:#?}"); // --- IGNORE --- --- IGNORE ---
     for (room_id, (required_state_request, timeline_limit, room_since_sn)) in todo_rooms {
         let mut timestamp: Option<_> = None;
         let mut invite_state = None;

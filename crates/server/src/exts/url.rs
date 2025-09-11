@@ -35,7 +35,6 @@ impl GetUrlOrigin for ServerName {
             dest_type,
         }) = cached_result
         {
-            println!("===============cached_result:  {actual_destination:?}, {dest_type:?}");
             match dest_type {
                 DestType::IsIpOrHasPort => actual_destination,
                 DestType::LookupFailed {
@@ -87,11 +86,9 @@ impl GetUrlOrigin for ServerName {
                 }
             }
         } else {
-            println!("===============no cached_result  {self:?}");
             find_actual_destination(self, None, false, None).await
         };
 
-        println!("===============actual_destination:  {actual_destination:?}");
         actual_destination.clone().into_https_string()
     }
 }

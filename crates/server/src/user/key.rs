@@ -37,16 +37,7 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
     let mut get_over_federation = HashMap::new();
 
     for (user_id, device_ids) in device_keys_input {
-        println!(
-            "========================user_id {user_id}    server_name {}",
-            user_id.server_name()
-        );
-        println!(
-            "========================config::get().server_name {}",
-            config::get().server_name
-        );
         if user_id.server_name() != config::get().server_name {
-            println!("========================get_over_federation insert");
             get_over_federation
                 .entry(user_id.server_name())
                 .or_insert_with(Vec::new)
@@ -102,11 +93,9 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
         hash_map::Entry::Occupied(mut e) => *e.get_mut() = (Instant::now(), e.get().1 + 1),
     };
 
-    println!("========================get_over_federation {get_over_federation:#?}");
     let mut futures: FuturesUnordered<_> = get_over_federation
         .into_iter()
         .map(|(server, vec)| async move {
-            println!("========================ssssssssssssssssserver {server}");
             let mut device_keys_input_fed = BTreeMap::new();
             for (user_id, keys) in vec {
                 device_keys_input_fed.insert(user_id.to_owned(), keys.clone());

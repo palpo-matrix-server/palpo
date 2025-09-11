@@ -68,7 +68,6 @@ pub async fn watch(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
                     .first::<i64>(&mut connect()?)
                     .unwrap_or_default()
             {
-                println!("==================inbox_id: {inbox_id}"); // --- IGNORE ---
                 return Ok(());
             }
             if key_change_id
@@ -79,7 +78,6 @@ pub async fn watch(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
                     .first::<i64>(&mut connect()?)
                     .unwrap_or_default()
             {
-                println!("==================key_change_id: {key_change_id}"); // --- IGNORE ---
                 return Ok(());
             }
             if room_user_id
@@ -90,7 +88,6 @@ pub async fn watch(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
                     .first::<i64>(&mut connect()?)
                     .unwrap_or_default()
             {
-                println!("==================room_user_id: {room_user_id}"); // --- IGNORE ---
                 return Ok(());
             }
             if last_event_sn
@@ -102,7 +99,6 @@ pub async fn watch(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
                     .first::<Seqnum>(&mut connect()?)
                     .unwrap_or_default()
             {
-                println!("==================last_event_sn: {last_event_sn}"); // --- IGNORE ---
                 return Ok(());
             }
             if push_rule_sn
@@ -114,7 +110,6 @@ pub async fn watch(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
                     .first::<i64>(&mut connect()?)
                     .unwrap_or_default()
             {
-                println!("==================push_rule_sn: {push_rule_sn}"); // --- IGNORE ---
                 return Ok(());
             }
             tokio::time::sleep(Duration::from_secs(1)).await;
