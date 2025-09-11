@@ -130,11 +130,10 @@ async fn process_lists<'a>(
         }
 
         for mut range in ranges {
-            range.0 = 0;
-            if range.1 == 0 {
-                range.1 = range.1.clamp(range.0 + 19, active_rooms.len());
+            if range == (0, 0) {
+                range.1 = active_rooms.len().min(range.0 + 19);
             } else {
-                range.1 = range.1.clamp(range.0, active_rooms.len());
+                range.1 = range.1.clamp(range.0, active_rooms.len().max(range.0));
             }
 
             let room_ids = active_rooms[range.0..range.1].to_vec();
