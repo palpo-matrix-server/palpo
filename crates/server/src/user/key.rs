@@ -37,7 +37,10 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
     let mut get_over_federation = HashMap::new();
 
     for (user_id, device_ids) in device_keys_input {
-        println!("========================user_id {user_id}    server_name {}", user_id.server_name());
+        println!(
+            "========================user_id {user_id}    server_name {}",
+            user_id.server_name()
+        );
         println!(
             "========================config::get().server_name {}",
             config::get().server_name

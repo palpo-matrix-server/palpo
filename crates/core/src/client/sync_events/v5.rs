@@ -248,6 +248,7 @@ pub struct ReqListFilters {
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ReqList {
     /// The ranges of rooms we're interested in.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub ranges: Vec<(usize, usize)>,
 
     /// The details to be included per room

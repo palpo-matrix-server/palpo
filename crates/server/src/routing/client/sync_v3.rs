@@ -49,8 +49,6 @@ pub(super) async fn sync_events_v3(
     let device_id = authed.device_id();
 
     crate::user::ping_presence(sender_id, &args.set_presence)?;
-    // Setup watchers, so if there's no response, we can wait for them
-    let watcher = crate::watcher::watch(sender_id, device_id);
     let mut body = crate::sync_v3::sync_events(sender_id, device_id, &args).await?;
 
     if !args.full_state
@@ -64,6 +62,8 @@ pub(super) async fn sync_events_v3(
         // Stop hanging if new info arrives
         let default = Duration::from_secs(30);
         let duration = std::cmp::min(args.timeout.unwrap_or(default), default);
+        // Setup watchers, so if there's no response, we can wait for them
+        let watcher = crate::watcher::watch(sender_id, device_id);
         _ = tokio::time::timeout(duration, watcher).await;
 
         // Retry returning data
