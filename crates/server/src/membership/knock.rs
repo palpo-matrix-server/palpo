@@ -359,11 +359,12 @@ async fn make_knock_request(
         )?
         .into_inner();
 
-        let make_knock_response = crate::sending::send_federation_request(remote_server, request, None)
-            .await?
-            .json::<MakeKnockResBody>()
-            .await
-            .map_err(Into::into);
+        let make_knock_response =
+            crate::sending::send_federation_request(remote_server, request, None)
+                .await?
+                .json::<MakeKnockResBody>()
+                .await
+                .map_err(Into::into);
 
         trace!("make_knock response: {make_knock_response:?}");
         make_knock_counter = make_knock_counter.saturating_add(1);

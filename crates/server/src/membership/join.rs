@@ -213,10 +213,11 @@ pub async fn join_room(
     )?
     .into_inner();
 
-    let send_join_body = crate::sending::send_federation_request(&remote_server, send_join_request, None)
-        .await?
-        .json::<SendJoinResBodyV2>()
-        .await?;
+    let send_join_body =
+        crate::sending::send_federation_request(&remote_server, send_join_request, None)
+            .await?
+            .json::<SendJoinResBodyV2>()
+            .await?;
 
     info!("send_join finished");
 

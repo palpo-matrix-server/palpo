@@ -15,7 +15,7 @@ use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value as JsonValue, from_value as from_json_value, to_value as to_json_value};
 
-use crate::{MatrixVersion, PrivOwnedStr, RoomVersionId, serde::StringEnum};
+use crate::{PrivOwnedStr, RoomVersionId, serde::StringEnum};
 
 // /// `/v3/` ([spec])
 // ///

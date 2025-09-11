@@ -166,10 +166,11 @@ pub async fn get_alias_response(room_alias: OwnedRoomAliasId) -> AppResult<Alias
     if room_alias.server_name() != config::get().server_name {
         let request =
             directory_request(&room_alias.server_name().origin().await, &room_alias)?.into_inner();
-        let mut body = crate::sending::send_federation_request(room_alias.server_name(), request,None)
-            .await?
-            .json::<AliasResBody>()
-            .await?;
+        let mut body =
+            crate::sending::send_federation_request(room_alias.server_name(), request, None)
+                .await?
+                .json::<AliasResBody>()
+                .await?;
 
         body.servers.shuffle(&mut rand::rng());
 

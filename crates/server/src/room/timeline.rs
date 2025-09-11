@@ -380,7 +380,7 @@ where
                 if content.membership == MembershipState::Join {
                     let _ = crate::user::ping_presence(&pdu.sender, &PresenceState::Online);
                 }
-                //  Update our membership info, we do this here incase a user is invited
+                // Update our membership info, we do this here incase a user is invited
                 // and immediately leaves we need the DB to record the invite event for auth
                 membership::update_membership(
                     &pdu.event_id,
