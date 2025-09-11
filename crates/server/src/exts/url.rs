@@ -88,7 +88,6 @@ impl GetUrlOrigin for ServerName {
         } else {
             find_actual_destination(self, None, false, None).await
         };
-
         actual_destination.clone().into_https_string()
     }
 }
