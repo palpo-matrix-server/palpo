@@ -40,12 +40,14 @@ pub async fn sync_events(
 ) -> AppResult<SyncEventsResBody> {
     let curr_sn = data::curr_sn()?;
     crate::seqnum_reach(curr_sn).await;
-    let since_sn = if let Some(since) = args.since.as_ref() {
-        Some(
-            since
-                .parse()
-                .map_err(|_| AppError::public("Invalid `since` parameter, must be a number."))?,
-        )
+    let since_sn = if let Some(since_str) = args.since.as_ref() {
+        let since = since_str
+            .parse()
+            .map_err(|_| AppError::public("Invalid `since` parameter, must be a number."))?;
+        if since > curr_sn {
+            return Ok(SyncEventsResBody::new(since_str.to_owned()));
+        }
+        Some(since)
     } else {
         None
     };

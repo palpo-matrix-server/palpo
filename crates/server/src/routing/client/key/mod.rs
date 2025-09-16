@@ -69,6 +69,7 @@ async fn upload_keys(
     body: JsonBody<UploadKeysReqBody>,
     depot: &mut Depot,
 ) -> JsonResult<UploadKeysResBody> {
+    println!("========================upload_keys {body:?}"); // --- IGNORE ---
     let authed = depot.authed_info()?;
 
     for (key_id, one_time_key) in &body.one_time_keys {

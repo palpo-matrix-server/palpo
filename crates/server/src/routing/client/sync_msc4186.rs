@@ -65,17 +65,19 @@ pub(super) async fn sync_events_v5(
     );
 
     let mut res_body =
-        crate::sync_v5::sync_events(sender_id, device_id, since_sn, &req_body, &known_rooms).await?;
+        crate::sync_v5::sync_events(sender_id, device_id, since_sn, &req_body, &known_rooms)
+            .await?;
 
-    if res_body.rooms.iter().all(|(id, r)| {
-        r.timeline.is_empty()
-            && r.required_state.is_empty()
-            && !res_body.extensions.receipts.rooms.contains_key(id)
-    }) && res_body
-        .extensions
-        .to_device
-        .clone()
-        .is_none_or(|to| to.events.is_empty())
+    if since_sn > data::curr_sn()?
+        || (args.pos.is_some()
+            && res_body.rooms.iter().all(|(_id, r)| {
+                r.timeline.is_empty() && r.required_state.is_empty() && r.invite_state.is_none()
+            })
+            && res_body
+                .extensions
+                .to_device
+                .clone()
+                .is_none_or(|to| to.events.is_empty()))
     {
         // Hang a few seconds so requests are not spammed
         // Stop hanging if new info arrives
@@ -84,8 +86,9 @@ pub(super) async fn sync_events_v5(
         // Setup watchers, so if there's no response, we can wait for them
         let watcher = crate::watcher::watch(sender_id, device_id);
         _ = tokio::time::timeout(duration, watcher).await;
-        res_body = crate::sync_v5::sync_events(sender_id, device_id, since_sn, &req_body, &known_rooms)
-            .await?;
+        res_body =
+            crate::sync_v5::sync_events(sender_id, device_id, since_sn, &req_body, &known_rooms)
+                .await?;
     }
 
     trace!(

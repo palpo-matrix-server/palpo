@@ -109,7 +109,9 @@ async fn process_lists<'a>(
     known_rooms: &'a KnownRooms,
     res_body: &'_ mut SyncEventsResBody,
 ) -> KnownRooms {
+    println!("========================process_lists req_body {req_body:?}"); // --- IGNORE ---
     for (list_id, list) in &req_body.lists {
+        println!("Processing list {list_id} {list:?}"); // --- IGNORE ---
         let active_rooms = match list.filters.clone().and_then(|f| f.is_invite) {
             Some(true) => all_invited_rooms,
             Some(false) => all_joined_rooms,
@@ -854,14 +856,14 @@ pub fn update_sync_known_rooms(
     let cached = &mut cached.lock().unwrap();
     drop(cache);
 
-    for (roomid, lastsince) in cached
+    for (roomid, last_since) in cached
         .known_rooms
         .entry(list_id.clone())
         .or_default()
         .iter_mut()
     {
         if !new_cached_rooms.contains(roomid) {
-            *lastsince = 0;
+            *last_since = 0;
         }
     }
     let list = cached.known_rooms.entry(list_id).or_default();

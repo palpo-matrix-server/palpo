@@ -227,7 +227,7 @@ pub async fn create_content(
     })
 }
 
-/// #PUT /_matrix/media/*/upload/{serverName}/{mediaId}
+/// #PUT /_matrix/media/*/upload/{server_name}/{media_id}
 /// Upload media to an MXC URI that was created with create_mxc_uri.
 #[endpoint]
 pub async fn upload_content(
