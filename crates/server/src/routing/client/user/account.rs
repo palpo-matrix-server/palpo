@@ -45,8 +45,6 @@ pub(super) async fn set_global_data(
     let event_type = args.event_type.to_string();
     let body = body.into_inner();
 
-    println!(">>>>>>>>>>>>>........set global data {event_type} {body:?}"); // --- IGNORE ---
-
     if event_type == "m.ignored_user_list" {
         let ignored_ids: Vec<OwnedUserId> = body
             .get("ignored_users")

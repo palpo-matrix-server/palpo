@@ -14,7 +14,6 @@ pub(super) async fn upload(_aa: AuthArgs, req: &mut Request, depot: &mut Depot) 
     let authed = depot.authed_info()?;
 
     let payload = req.payload().await?;
-    println!("========================device_signing/upload"); // --- IGNORE ---
     // UIAA
     let mut uiaa_info = UiaaInfo {
         flows: vec![AuthFlow {

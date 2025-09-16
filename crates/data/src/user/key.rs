@@ -326,9 +326,7 @@ pub fn keys_changed_users(
     until_sn: Option<Seqnum>,
 ) -> DataResult<Vec<OwnedUserId>> {
     let room_ids = crate::user::joined_rooms(user_id)?;
-    println!("==============user_id {user_id}, since_sn {since_sn}     room_ids:{room_ids:?}"); // --- IGNORE ---
     if let Some(until_sn) = until_sn {
-        println!("============0==user_id {user_id}, since_sn {since_sn}  until_sn {until_sn}"); // --- IGNORE ---
         e2e_key_changes::table
             .filter(
                 e2e_key_changes::room_id
@@ -341,7 +339,6 @@ pub fn keys_changed_users(
             .load::<OwnedUserId>(&mut connect()?)
             .map_err(Into::into)
     } else {
-        println!("============1==user_id {user_id}, since_sn {since_sn}"); // --- IGNORE ---
         e2e_key_changes::table
             .filter(
                 e2e_key_changes::room_id

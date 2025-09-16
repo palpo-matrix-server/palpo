@@ -16,7 +16,6 @@ pub(super) async fn upload(
 ) -> JsonResult<UploadSignaturesResBody> {
     let authed = depot.authed_info()?;
     let body = body.into_inner();
-    println!("========================UploadSignaturesReqBody {body:?}"); // --- IGNORE ---
 
     for (user_id, keys) in &body.0 {
         for (key_id, key) in keys {

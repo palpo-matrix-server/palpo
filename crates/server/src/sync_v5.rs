@@ -94,7 +94,6 @@ pub async fn sync_events(
     )
     .await;
 
-    println!("============known_rooms: {known_rooms:#?}");
     fetch_subscriptions(sync_info, &known_rooms, &mut todo_rooms)?;
 
     res_body.rooms =
@@ -521,7 +520,6 @@ fn collect_e2ee<'a>(
     let mut device_list_left = HashSet::new();
     // Look for device list updates of this account
     device_list_changes.extend(data::user::keys_changed_users(sender_id, since_sn, None)?);
-    println!("==============sender_id {sender_id}, since_sn {since_sn}     device_list_changes:{device_list_changes:?}"); // --- IGNORE ---
 
     for room_id in all_joined_rooms {
         let Ok(current_frame_id) = crate::room::get_frame_id(room_id, None) else {
