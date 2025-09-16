@@ -27,10 +27,35 @@ use crate::{
     state::TypeStateKey,
 };
 
-pub type SyncInfo<'a> = (&'a UserId, &'a DeviceId, Seqnum, &'a SyncEventsReqBody);
+#[derive(Copy, Clone, Debug)]
+pub struct SyncInfo<'a> {
+    pub sender_id: &'a UserId,
+    pub device_id: &'a DeviceId,
+    pub since_sn: Seqnum,
+    pub req_body: &'a SyncEventsReqBody,
+}
 
 pub type KnownRooms = BTreeMap<String, BTreeMap<OwnedRoomId, Seqnum>>;
-pub type TodoRooms = BTreeMap<OwnedRoomId, (BTreeSet<TypeStateKey>, usize, Seqnum)>;
+
+pub struct TodoRoom {
+    pub required_state: BTreeSet<TypeStateKey>,
+    pub timeline_limit: usize,
+    pub room_since_sn: Seqnum,
+}
+impl TodoRoom {
+    pub fn new(
+        required_state: BTreeSet<TypeStateKey>,
+        timeline_limit: usize,
+        room_since_sn: Seqnum,
+    ) -> Self {
+        Self {
+            required_state,
+            timeline_limit,
+            room_since_sn,
+        }
+    }
+}
+pub type TodoRooms = BTreeMap<OwnedRoomId, TodoRoom>;
 
 // const METADATA: Metadata = metadata! {
 //     method: POST,
@@ -127,6 +152,15 @@ impl SyncEventsResBody {
             pos,
             ..Default::default()
         }
+    }
+    pub fn is_empty(&self) -> bool {
+        self.lists.is_empty()
+            && (self.rooms.is_empty()
+                || self.rooms.iter().all(|(_id, r)| {
+                    r.timeline.is_empty() && r.required_state.is_empty() && r.invite_state.is_none()
+                }))
+            && self.extensions.is_empty()
+            && self.txn_id.is_none()
     }
 }
 /// A sliding sync response updates to joiend rooms (see
@@ -446,7 +480,9 @@ impl Extensions {
     ///
     /// True if neither to-device, e2ee nor account data are to be found.
     pub fn is_empty(&self) -> bool {
-        self.to_device.is_none()
+        self.to_device
+            .as_ref()
+            .is_none_or(|to| to.events.is_empty())
             && self.e2ee.is_empty()
             && self.account_data.is_empty()
             && self.receipts.is_empty()
@@ -768,7 +804,7 @@ impl Typing {
     pub fn new() -> Self {
         Self::default()
     }
-    
+
     /// Whether all fields are empty or `None`.
     pub fn is_empty(&self) -> bool {
         self.rooms.is_empty()

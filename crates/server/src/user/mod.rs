@@ -35,10 +35,7 @@ pub struct SlidingSyncCache {
     extensions: sync_events::v5::ExtensionsConfig,
 }
 
-pub  fn create_user(
-    user_id: impl Into<OwnedUserId>,
-    password: Option<&str>,
-) -> AppResult<DbUser> {
+pub fn create_user(user_id: impl Into<OwnedUserId>, password: Option<&str>) -> AppResult<DbUser> {
     let user_id = user_id.into();
     let new_user = NewDbUser {
         id: user_id.clone(),
