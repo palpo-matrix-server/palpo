@@ -153,6 +153,15 @@ impl SyncEventsResBody {
             ..Default::default()
         }
     }
+    pub fn is_empty(&self) -> bool {
+        self.lists.is_empty()
+            && (self.rooms.is_empty()
+                || self.rooms.iter().all(|(_id, r)| {
+                    r.timeline.is_empty() && r.required_state.is_empty() && r.invite_state.is_none()
+                }))
+            && self.extensions.is_empty()
+            && self.txn_id.is_none()
+    }
 }
 /// A sliding sync response updates to joiend rooms (see
 /// [`super::Response::lists`]).
@@ -471,7 +480,9 @@ impl Extensions {
     ///
     /// True if neither to-device, e2ee nor account data are to be found.
     pub fn is_empty(&self) -> bool {
-        self.to_device.is_none()
+        self.to_device
+            .as_ref()
+            .is_none_or(|to| to.events.is_empty())
             && self.e2ee.is_empty()
             && self.account_data.is_empty()
             && self.receipts.is_empty()

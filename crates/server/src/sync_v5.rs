@@ -117,9 +117,7 @@ async fn process_lists<'a>(
     known_rooms: &'a KnownRooms,
     res_body: &'_ mut SyncEventsResBody,
 ) -> KnownRooms {
-    println!("========================process_lists req_body {req_body:?}"); // --- IGNORE ---
     for (list_id, list) in &req_body.lists {
-        println!("Processing list {list_id} {list:?}"); // --- IGNORE ---
         let active_rooms = match list.filters.clone().and_then(|f| f.is_invite) {
             Some(true) => all_invited_rooms,
             Some(false) => all_joined_rooms,
@@ -523,6 +521,7 @@ fn collect_e2ee<'a>(
     let mut device_list_left = HashSet::new();
     // Look for device list updates of this account
     device_list_changes.extend(data::user::keys_changed_users(sender_id, since_sn, None)?);
+    println!("==============sender_id {sender_id}, since_sn {since_sn}     device_list_changes:{device_list_changes:?}"); // --- IGNORE ---
 
     for room_id in all_joined_rooms {
         let Ok(current_frame_id) = crate::room::get_frame_id(room_id, None) else {
