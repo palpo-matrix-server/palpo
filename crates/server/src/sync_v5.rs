@@ -18,6 +18,7 @@ use crate::room::{self, filter_rooms, state, timeline};
 use crate::sync_v3::{DEFAULT_BUMP_TYPES, share_encrypted_room};
 use crate::{AppResult, data, extract_variant};
 
+#[derive(Debug, Default)]
 pub struct SlidingSyncCache {
     lists: BTreeMap<String, sync_events::v5::ReqList>,
     subscriptions: BTreeMap<OwnedRoomId, sync_events::v5::RoomSubscription>,
@@ -38,6 +39,9 @@ pub async fn sync_events(
     known_rooms: &KnownRooms,
 ) -> AppResult<SyncEventsResBody> {
     let next_batch = data::curr_sn()? + 1;
+    if since_sn >= next_batch {
+        return Ok(SyncEventsResBody::new(next_batch.to_string()));
+    }
 
     let all_joined_rooms = data::user::joined_rooms(sender_id)?;
 
@@ -59,7 +63,12 @@ pub async fn sync_events(
 
     let mut todo_rooms: TodoRooms = BTreeMap::new();
 
-    let sync_info: SyncInfo<'_> = (sender_id, device_id, since_sn, &req_body);
+    let sync_info = SyncInfo {
+        sender_id,
+        device_id,
+        since_sn,
+        req_body: &req_body,
+    };
     let mut res_body = SyncEventsResBody {
         txn_id: req_body.txn_id.clone(),
         pos: next_batch.to_string(),
@@ -85,23 +94,22 @@ pub async fn sync_events(
     )
     .await;
 
+    println!("============known_rooms: {known_rooms:#?}");
     fetch_subscriptions(sync_info, &known_rooms, &mut todo_rooms)?;
 
-    res_body.rooms = process_rooms(
-        sender_id,
-        next_batch,
-        &all_invited_rooms,
-        &todo_rooms,
-        &mut res_body,
-        &req_body,
-    )
-    .await?;
+    res_body.rooms =
+        process_rooms(sync_info, &all_invited_rooms, &todo_rooms, &mut res_body).await?;
     Ok(res_body)
 }
 
 #[allow(clippy::too_many_arguments)]
 async fn process_lists<'a>(
-    (sender_id, sender_device, since_sn, req_body): SyncInfo<'_>,
+    SyncInfo {
+        sender_id,
+        device_id,
+        since_sn,
+        req_body,
+    }: SyncInfo<'_>,
     all_invited_rooms: &Vec<&'a RoomId>,
     all_joined_rooms: &Vec<&'a RoomId>,
     all_rooms: &Vec<&'a RoomId>,
@@ -145,29 +153,28 @@ async fn process_lists<'a>(
             new_known_rooms.extend(new_rooms);
             //new_known_rooms.extend(room_ids..cloned());
             for room_id in room_ids {
-                let todo_room = todo_rooms.entry(room_id.to_owned()).or_insert((
-                    BTreeSet::new(),
-                    0_usize,
-                    i64::MAX,
-                ));
+                let todo_room = todo_rooms.entry(room_id.to_owned()).or_insert(TodoRoom {
+                    required_state: BTreeSet::new(),
+                    timeline_limit: 0_usize,
+                    room_since_sn: i64::MAX,
+                });
 
                 let limit = list.room_details.timeline_limit.min(100);
 
-                todo_room.0.extend(
+                todo_room.required_state.extend(
                     list.room_details
                         .required_state
                         .iter()
                         .map(|(ty, sk)| (ty.clone(), sk.as_str().into())),
                 );
 
-                todo_room.1 = todo_room.1.max(limit);
-                // 0 means unknown because it got out of date
-                todo_room.2 = todo_room.2.min(
+                todo_room.timeline_limit = todo_room.timeline_limit.max(limit);
+                todo_room.room_since_sn = todo_room.room_since_sn.min(
                     known_rooms
                         .get(list_id.as_str())
                         .and_then(|k| k.get(room_id))
                         .copied()
-                        .unwrap_or(0),
+                        .unwrap_or(since_sn),
                 );
             }
         }
@@ -181,7 +188,7 @@ async fn process_lists<'a>(
         if let Some(conn_id) = &req_body.conn_id {
             crate::sync_v5::update_sync_known_rooms(
                 sender_id.to_owned(),
-                sender_device.to_owned(),
+                device_id.to_owned(),
                 conn_id.clone(),
                 list_id.clone(),
                 new_known_rooms,
@@ -193,7 +200,12 @@ async fn process_lists<'a>(
 }
 
 fn fetch_subscriptions(
-    (sender_user, sender_device, since_sn, req_body): SyncInfo<'_>,
+    SyncInfo {
+        sender_id,
+        device_id,
+        since_sn,
+        req_body,
+    }: SyncInfo<'_>,
     known_rooms: &KnownRooms,
     todo_rooms: &mut TodoRooms,
 ) -> AppResult<()> {
@@ -202,26 +214,26 @@ fn fetch_subscriptions(
         if !crate::room::room_exists(room_id)? {
             continue;
         }
-        let todo_room =
-            todo_rooms
-                .entry(room_id.clone())
-                .or_insert((BTreeSet::new(), 0_usize, i64::MAX));
+        let todo_room = todo_rooms.entry(room_id.clone()).or_insert(TodoRoom::new(
+            BTreeSet::new(),
+            0_usize,
+            i64::MAX,
+        ));
 
         let limit = room.timeline_limit;
 
-        todo_room.0.extend(
+        todo_room.required_state.extend(
             room.required_state
                 .iter()
                 .map(|(ty, sk)| (ty.clone(), sk.as_str().into())),
         );
-        todo_room.1 = todo_room.1.max(limit as usize);
-        // 0 means unknown because it got out of date
-        todo_room.2 = todo_room.2.min(
+        todo_room.timeline_limit = todo_room.timeline_limit.max(limit as usize);
+        todo_room.room_since_sn = todo_room.room_since_sn.min(
             known_rooms
                 .get("subscriptions")
                 .and_then(|k| k.get(room_id))
                 .copied()
-                .unwrap_or(0),
+                .unwrap_or(since_sn),
         );
         known_subscription_rooms.insert(room_id.clone());
     }
@@ -233,8 +245,8 @@ fn fetch_subscriptions(
 
     if let Some(conn_id) = &req_body.conn_id {
         crate::sync_v5::update_sync_known_rooms(
-            sender_user.to_owned(),
-            sender_device.to_owned(),
+            sender_id.to_owned(),
+            device_id.to_owned(),
             conn_id.clone(),
             "subscriptions".to_owned(),
             known_subscription_rooms,
@@ -245,15 +257,26 @@ fn fetch_subscriptions(
 }
 
 async fn process_rooms(
-    sender_id: &UserId,
-    next_batch: Seqnum,
+    SyncInfo {
+        sender_id,
+        device_id,
+        since_sn,
+        req_body,
+    }: SyncInfo<'_>,
     all_invited_rooms: &[&RoomId],
     todo_rooms: &TodoRooms,
     response: &mut SyncEventsResBody,
-    req_body: &SyncEventsReqBody,
 ) -> AppResult<BTreeMap<OwnedRoomId, sync_events::v5::SyncRoom>> {
     let mut rooms = BTreeMap::new();
-    for (room_id, (required_state_request, timeline_limit, room_since_sn)) in todo_rooms {
+    for (
+        room_id,
+        TodoRoom {
+            required_state,
+            timeline_limit,
+            room_since_sn,
+        },
+    ) in todo_rooms
+    {
         let mut timestamp: Option<_> = None;
         let mut invite_state = None;
         let new_room_id: &RoomId = (*room_id).as_ref();
@@ -275,15 +298,10 @@ async fn process_rooms(
         if req_body.extensions.account_data.enabled == Some(true) {
             response.extensions.account_data.rooms.insert(
                 room_id.to_owned(),
-                data::user::data_changes(
-                    Some(room_id),
-                    sender_id,
-                    *room_since_sn,
-                    Some(next_batch),
-                )?
-                .into_iter()
-                .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Room))
-                .collect::<Vec<_>>(),
+                data::user::data_changes(Some(room_id), sender_id, *room_since_sn, None)?
+                    .into_iter()
+                    .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Room))
+                    .collect::<Vec<_>>(),
             );
         }
 
@@ -356,7 +374,7 @@ async fn process_rooms(
             }
         }
 
-        let required_state = required_state_request
+        let required_state = required_state
             .iter()
             .filter_map(|state| {
                 room::get_state(room_id, &state.0, &state.1, None)
@@ -452,7 +470,12 @@ async fn process_rooms(
     Ok(rooms)
 }
 fn collect_account_data(
-    (sender_id, _, since_sn, req_body): (&UserId, &DeviceId, Seqnum, &SyncEventsReqBody),
+    SyncInfo {
+        sender_id,
+        device_id,
+        since_sn,
+        req_body,
+    }: SyncInfo<'_>,
 ) -> AppResult<sync_events::v5::AccountData> {
     let mut account_data = sync_events::v5::AccountData {
         global: Vec::new(),
@@ -484,12 +507,12 @@ fn collect_account_data(
 }
 
 fn collect_e2ee<'a>(
-    (sender_id, sender_device, since_sn, req_body): (
-        &UserId,
-        &DeviceId,
-        Seqnum,
-        &SyncEventsReqBody,
-    ),
+    SyncInfo {
+        sender_id,
+        device_id,
+        since_sn,
+        req_body,
+    }: SyncInfo<'_>,
     all_joined_rooms: &'a Vec<&'a RoomId>,
 ) -> AppResult<sync_events::v5::E2ee> {
     if !req_body.extensions.e2ee.enabled.unwrap_or(false) {
@@ -614,23 +637,28 @@ fn collect_e2ee<'a>(
             changed: device_list_changes.into_iter().collect(),
             left: device_list_left.into_iter().collect(),
         },
-        device_one_time_keys_count: data::user::count_one_time_keys(sender_id, sender_device)?,
+        device_one_time_keys_count: data::user::count_one_time_keys(sender_id, device_id)?,
         device_unused_fallback_key_types: None,
     })
 }
 
 fn collect_to_device(
-    (sender_id, sender_device, since_sn, req_body): SyncInfo<'_>,
+    SyncInfo {
+        sender_id,
+        device_id,
+        since_sn,
+        req_body,
+    }: SyncInfo<'_>,
     next_batch: Seqnum,
 ) -> Option<sync_events::v5::ToDevice> {
     if !req_body.extensions.to_device.enabled.unwrap_or(false) {
         return None;
     }
 
-    data::user::device::remove_to_device_events(sender_id, sender_device, since_sn).ok()?;
+    data::user::device::remove_to_device_events(sender_id, device_id, since_sn).ok()?;
 
     let events =
-        data::user::device::get_to_device_events(sender_id, sender_device, None, Some(next_batch))
+        data::user::device::get_to_device_events(sender_id, device_id, None, Some(next_batch))
             .ok()?;
 
     Some(sync_events::v5::ToDevice {
@@ -647,7 +675,12 @@ fn collect_receipts() -> sync_events::v5::Receipts {
 }
 
 async fn collect_typing<'a, Rooms>(
-    (sender_user, _, _, req_body): SyncInfo<'_>,
+    SyncInfo {
+        sender_id,
+        device_id,
+        since_sn,
+        req_body,
+    }: SyncInfo<'_>,
     _next_batch: Seqnum,
     rooms: Rooms,
 ) -> AppResult<sync_events::v5::Typing>
@@ -706,14 +739,7 @@ pub fn update_sync_request_with_cache(
     let cached = Arc::clone(
         cache
             .entry((user_id, device_id, conn_id))
-            .or_insert_with(|| {
-                Arc::new(Mutex::new(SlidingSyncCache {
-                    lists: BTreeMap::new(),
-                    subscriptions: BTreeMap::new(),
-                    known_rooms: BTreeMap::new(),
-                    extensions: sync_events::v5::ExtensionsConfig::default(),
-                }))
-            }),
+            .or_insert_with(|| Arc::new(Mutex::new(SlidingSyncCache::default()))),
     );
     let cached = &mut cached.lock().unwrap();
     drop(cache);
@@ -724,7 +750,7 @@ pub fn update_sync_request_with_cache(
                 &mut list.room_details.required_state,
                 &cached_list.room_details.required_state,
             );
-            some_or_sticky(&mut list.include_heroes, cached_list.include_heroes);
+            // some_or_sticky(&mut list.include_heroes, cached_list.include_heroes);
 
             match (&mut list.filters, cached_list.filters.clone()) {
                 (Some(filters), Some(cached_filters)) => {
