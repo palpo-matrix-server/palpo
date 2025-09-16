@@ -472,9 +472,9 @@ async fn process_rooms(
 fn collect_account_data(
     SyncInfo {
         sender_id,
-        device_id,
         since_sn,
         req_body,
+        ..
     }: SyncInfo<'_>,
 ) -> AppResult<sync_events::v5::AccountData> {
     let mut account_data = sync_events::v5::AccountData {
