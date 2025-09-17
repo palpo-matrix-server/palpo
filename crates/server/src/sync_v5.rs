@@ -536,31 +536,22 @@ fn collect_e2ee<'a>(
             error!("Room {room_id} has no state");
             continue;
         };
+        let since_frame_id = crate::event::get_last_frame_id(room_id, Some(since_sn)).ok();
 
-        let since_frame_id = crate::event::get_frame_id(room_id, since_sn).ok();
 
         let encrypted_room =
             state::get_state(current_frame_id, &StateEventType::RoomEncryption, "").is_ok();
 
         if let Some(since_frame_id) = since_frame_id {
-            // Skip if there are only timeline changes
-            if since_frame_id == current_frame_id {
-                continue;
-            }
+            // // Skip if there are only timeline changes
+            // if since_frame_id == current_frame_id {
+            //     continue;
+            // }
 
             let since_encryption =
                 state::get_state(since_frame_id, &StateEventType::RoomEncryption, "").ok();
 
-            let since_sender_member = state::get_state_content::<RoomMemberEventContent>(
-                since_frame_id,
-                &StateEventType::RoomMember,
-                sender_id.as_str(),
-            )
-            .ok();
-
-            let joined_since_last_sync = since_sender_member
-                .as_ref()
-                .is_none_or(|member| member.membership != MembershipState::Join);
+            let joined_since_last_sync = room::user::join_sn(sender_id, room_id)? >= since_sn;
 
             let new_encrypted_room = encrypted_room && since_encryption.is_none();
 
@@ -610,8 +601,8 @@ fn collect_e2ee<'a>(
                             // Only send keys if the sender doesn't share an encrypted room with the target
                             // already
                             .filter_map(|user_id| {
-                                if let Ok(true) =
-                                    share_encrypted_room(sender_id, &user_id, Some(room_id))
+                                if !share_encrypted_room(sender_id, &user_id, Some(room_id))
+                                    .unwrap_or(false)
                                 {
                                     Some(user_id.to_owned())
                                 } else {
