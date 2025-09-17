@@ -69,7 +69,7 @@ pub fn set_data(
         room_id: room_id.clone(),
         data_type: event_type.to_owned(),
         json_data,
-        occur_sn: None,
+        occur_sn: Some(crate::next_sn()?),
         created_at: UnixMillis::now(),
     };
     diesel::insert_into(user_datas::table)

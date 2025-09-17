@@ -43,7 +43,6 @@ pub async fn watch(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
 
     let push_rule_sn = user_datas::table
         .filter(user_datas::user_id.eq(user_id))
-        .filter(user_datas::data_type.eq("m.push_rules"))
         .order_by(user_datas::occur_sn.desc())
         .select(user_datas::occur_sn)
         .first::<i64>(&mut connect()?)
@@ -104,7 +103,6 @@ pub async fn watch(user_id: &UserId, device_id: &DeviceId) -> AppResult<()> {
             if push_rule_sn
                 < user_datas::table
                     .filter(user_datas::user_id.eq(user_id))
-                    .filter(user_datas::data_type.eq("m.push_rules"))
                     .order_by(user_datas::occur_sn.desc())
                     .select(user_datas::occur_sn)
                     .first::<i64>(&mut connect()?)
