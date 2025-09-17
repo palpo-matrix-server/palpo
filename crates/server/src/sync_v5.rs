@@ -370,7 +370,13 @@ async fn process_rooms(
         let required_state = required_state
             .iter()
             .filter_map(|state| {
-                room::get_state(room_id, &state.0, &state.1, None)
+                let state_key = match state.1.as_str() {
+                    "$LAZY" => return None,
+                    "$ME" => sender_id.as_str(),
+                    _ => state.1.as_str(),
+                };
+
+                room::get_state(room_id, &state.0, state_key, None)
                     .map(|s| s.to_sync_state_event())
                     .ok()
             })
