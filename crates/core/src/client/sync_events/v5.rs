@@ -37,6 +37,7 @@ pub struct SyncInfo<'a> {
 
 pub type KnownRooms = BTreeMap<String, BTreeMap<OwnedRoomId, Seqnum>>;
 
+#[derive(Clone, Debug)]
 pub struct TodoRoom {
     pub required_state: BTreeSet<TypeStateKey>,
     pub timeline_limit: usize,

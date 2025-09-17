@@ -12,6 +12,7 @@ pub fn increment_notification_counts(
     notifies: Vec<OwnedUserId>,
     highlights: Vec<OwnedUserId>,
 ) -> AppResult<()> {
+    println!("============increment_notification_counts  event_id: {event_id} notifies:{notifies:?} highlights:{highlights:?}");
     let (room_id, thread_id) = event_points::table
         .find(event_id)
         .select((event_points::room_id, event_points::thread_id))
@@ -171,6 +172,7 @@ pub fn remove_actions_for_room(user_id: &UserId, room_id: &RoomId) -> AppResult<
 }
 
 pub fn refresh_notify_summary(user_id: &UserId, room_id: &RoomId) -> AppResult<()> {
+    println!("============refresh_notify_summary  user_id: {user_id} room_id: {room_id}");
     let thread_ids = event_push_actions::table
         .filter(event_push_actions::user_id.eq(user_id))
         .filter(event_push_actions::room_id.eq(room_id))
