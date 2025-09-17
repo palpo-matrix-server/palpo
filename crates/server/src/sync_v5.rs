@@ -5,6 +5,8 @@ use std::{
     sync::{Arc, LazyLock, Mutex},
 };
 
+use hmac::digest::crypto_common::rand_core::le;
+
 use crate::core::Seqnum;
 use crate::core::client::filter::RoomEventFilter;
 use crate::core::client::sync_events::{self, v5::*};
@@ -19,14 +21,14 @@ use crate::sync_v3::{DEFAULT_BUMP_TYPES, share_encrypted_room};
 use crate::{AppResult, data, extract_variant};
 
 #[derive(Debug, Default)]
-pub struct SlidingSyncCache {
+struct SlidingSyncCache {
     lists: BTreeMap<String, sync_events::v5::ReqList>,
     subscriptions: BTreeMap<OwnedRoomId, sync_events::v5::RoomSubscription>,
     known_rooms: BTreeMap<String, BTreeMap<OwnedRoomId, i64>>, // For every room, the room_since_sn number
     extensions: sync_events::v5::ExtensionsConfig,
 }
 
-pub static CONNECTIONS: LazyLock<
+static CONNECTIONS: LazyLock<
     Mutex<BTreeMap<(OwnedUserId, OwnedDeviceId, String), Arc<Mutex<SlidingSyncCache>>>>,
 > = LazyLock::new(Default::default);
 
@@ -38,8 +40,10 @@ pub async fn sync_events(
     req_body: &SyncEventsReqBody,
     known_rooms: &KnownRooms,
 ) -> AppResult<SyncEventsResBody> {
-    let next_batch = data::curr_sn()? + 1;
-    if since_sn >= next_batch {
+    let curr_sn = data::curr_sn()?;
+    crate::seqnum_reach(curr_sn).await;
+    let next_batch = curr_sn + 1;
+    if since_sn > curr_sn {
         return Ok(SyncEventsResBody::new(next_batch.to_string()));
     }
 
@@ -122,7 +126,6 @@ async fn process_lists<'a>(
             Some(false) => all_joined_rooms,
             None => all_rooms,
         };
-
         let active_rooms = match list.filters.clone().map(|f| f.not_room_types) {
             Some(filter) if filter.is_empty() => active_rooms,
             Some(value) => &filter_rooms(active_rooms, &value, true),
@@ -130,7 +133,6 @@ async fn process_lists<'a>(
         };
 
         let mut new_known_rooms: BTreeSet<OwnedRoomId> = BTreeSet::new();
-
         let mut ranges = list.ranges.clone();
         if ranges.is_empty() {
             ranges.push((0, 50));
@@ -153,7 +155,7 @@ async fn process_lists<'a>(
                 let todo_room = todo_rooms.entry(room_id.to_owned()).or_insert(TodoRoom {
                     required_state: BTreeSet::new(),
                     timeline_limit: 0_usize,
-                    room_since_sn: i64::MAX,
+                    room_since_sn: since_sn,
                 });
 
                 let limit = list.room_details.timeline_limit.min(100);
@@ -256,9 +258,9 @@ fn fetch_subscriptions(
 async fn process_rooms(
     SyncInfo {
         sender_id,
-        device_id,
-        since_sn,
         req_body,
+        device_id,
+        ..
     }: SyncInfo<'_>,
     all_invited_rooms: &[&RoomId],
     todo_rooms: &TodoRooms,
@@ -280,7 +282,6 @@ async fn process_rooms(
         let (timeline_pdus, limited) = if all_invited_rooms.contains(&new_room_id) {
             // TODO: figure out a timestamp we can use for remote invites
             invite_state = crate::room::user::invite_state(sender_id, room_id).ok();
-
             (Vec::new(), true)
         } else {
             crate::sync_v3::load_timeline(
@@ -341,12 +342,7 @@ async fn process_rooms(
 
         if room_since_sn != &0
             && timeline_pdus.is_empty()
-            && response
-                .extensions
-                .account_data
-                .rooms
-                .get(room_id)
-                .is_none_or(Vec::is_empty)
+            && invite_state.is_none()
             && receipt_size == 0
         {
             continue;
@@ -435,7 +431,15 @@ async fn process_rooms(
                     Some(heroes_avatar) => Some(heroes_avatar),
                     _ => room::get_avatar_url(room_id).ok().flatten(),
                 },
-                initial: Some(room_since_sn == &0),
+                initial: Some(
+                    room_since_sn == &0
+                        || is_room_initial_send(
+                            sender_id.to_owned(),
+                            device_id.to_owned(),
+                            req_body.conn_id.clone(),
+                            room_id,
+                        ),
+                ),
                 is_dm: None,
                 invite_state,
                 unread_notifications: sync_events::UnreadNotificationsCount {
@@ -890,7 +894,28 @@ pub fn update_sync_known_rooms(
         }
     }
     let list = cached.known_rooms.entry(list_id).or_default();
-    for roomid in new_cached_rooms {
-        list.insert(roomid, since_sn);
+    for room_id in new_cached_rooms {
+        list.insert(room_id, since_sn);
     }
+}
+
+pub fn is_room_initial_send(
+    user_id: OwnedUserId,
+    device_id: OwnedDeviceId,
+    conn_id: Option<String>,
+    room_id: &RoomId,
+) -> bool {
+    let Some(conn_id) = conn_id else {
+        return true;
+    };
+    let cache = CONNECTIONS.lock().unwrap();
+    let Some(cached) = cache.get(&(user_id, device_id, conn_id)) else {
+        return true;
+    };
+    cached
+        .lock()
+        .unwrap()
+        .known_rooms
+        .values()
+        .any(|rooms| rooms.contains_key(room_id))
 }

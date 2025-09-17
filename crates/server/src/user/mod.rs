@@ -16,7 +16,6 @@ use diesel::prelude::*;
 pub use presence::*;
 
 use crate::core::UnixMillis;
-use crate::core::client::sync_events;
 use crate::core::events::GlobalAccountDataEventType;
 use crate::core::events::ignored_user_list::IgnoredUserListEvent;
 use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
@@ -27,13 +26,6 @@ use crate::data::user::{DbUser, DbUserData, NewDbPassword, NewDbUser};
 use crate::data::{DataResult, connect};
 use crate::room::timeline;
 use crate::{AppError, AppResult, MatrixError, PduBuilder, data, room};
-
-pub struct SlidingSyncCache {
-    lists: BTreeMap<String, sync_events::v5::ReqList>,
-    subscriptions: BTreeMap<OwnedRoomId, sync_events::v5::RoomSubscription>,
-    known_rooms: BTreeMap<String, BTreeMap<OwnedRoomId, i64>>, // For every room, the room_since_sn number
-    extensions: sync_events::v5::ExtensionsConfig,
-}
 
 pub fn create_user(user_id: impl Into<OwnedUserId>, password: Option<&str>) -> AppResult<DbUser> {
     let user_id = user_id.into();

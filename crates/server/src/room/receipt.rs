@@ -54,7 +54,6 @@ pub fn update_read(user_id: &UserId, room_id: &RoomId, event: &ReceiptEvent) -> 
         )])),
     )]);
     let edu = Edu::Receipt(ReceiptContent::new(receipts));
-    print!("uppppppppppdate read");
     sending::send_edu_room(room_id, &edu)?;
     Ok(())
 }
