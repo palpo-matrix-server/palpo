@@ -87,7 +87,6 @@ pub async fn sync_events(
         },
     };
 
-    println!("==================all all_invited_rooms: {all_invited_rooms:?}");
     process_lists(
         sync_info,
         &all_invited_rooms,
@@ -153,7 +152,6 @@ async fn process_lists<'a>(
             new_known_rooms.extend(new_rooms);
             //new_known_rooms.extend(room_ids..cloned());
             for room_id in room_ids {
-                println!("============room_id: {room_id}");
                 let todo_room = todo_rooms.entry(room_id.to_owned()).or_insert(TodoRoom {
                     required_state: BTreeSet::new(),
                     timeline_limit: 0_usize,
