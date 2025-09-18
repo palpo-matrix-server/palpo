@@ -9,7 +9,6 @@ use as_variant::as_variant;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::Value as JsonValue;
-use tracing::warn;
 
 #[cfg(feature = "html")]
 use self::sanitize::remove_plain_reply_fallback;

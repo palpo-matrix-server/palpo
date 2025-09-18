@@ -27,34 +27,34 @@ pub(super) async fn upload(_aa: AuthArgs, req: &mut Request, depot: &mut Depot) 
     };
     let body = serde_json::from_slice::<UploadSigningKeysReqBody>(payload);
     let none_auth = body.as_ref().map(|b| b.auth.is_none()).unwrap_or(true);
-    if body.is_err() || {
-        if none_auth {
-            let exist_master_key = crate::user::key::get_master_key(sender_id)?;
-            let exist_self_signing_key = crate::user::key::get_self_signing_key(sender_id)?;
-            let exist_user_signing_key = crate::user::key::get_user_signing_key(sender_id)?;
-            if exist_master_key.is_none()
-                && exist_self_signing_key.is_none()
-                && exist_user_signing_key.is_none()
-            {
-                false
-            } else {
-                exist_master_key.as_ref()
-                    != body.as_ref().map(|b| b.master_key.as_ref()).unwrap_or(None)
-                    || exist_self_signing_key.as_ref()
-                        != body
-                            .as_ref()
-                            .map(|b| b.self_signing_key.as_ref())
-                            .unwrap_or(None)
-                    || exist_user_signing_key.as_ref()
-                        != body
-                            .as_ref()
-                            .map(|b| b.user_signing_key.as_ref())
-                            .unwrap_or(None)
-            }
-        } else {
+    let uia_required = if none_auth {
+        let exist_master_key = crate::user::key::get_master_key(sender_id)?;
+        let exist_self_signing_key = crate::user::key::get_self_signing_key(sender_id)?;
+        let exist_user_signing_key = crate::user::key::get_user_signing_key(sender_id)?;
+        if exist_master_key.is_none()
+            && exist_self_signing_key.is_none()
+            && exist_user_signing_key.is_none()
+        {
             false
+        } else {
+            exist_master_key.as_ref()
+                != body.as_ref().map(|b| b.master_key.as_ref()).unwrap_or(None)
+                || exist_self_signing_key.as_ref()
+                    != body
+                        .as_ref()
+                        .map(|b| b.self_signing_key.as_ref())
+                        .unwrap_or(None)
+                || exist_user_signing_key.as_ref()
+                    != body
+                        .as_ref()
+                        .map(|b| b.user_signing_key.as_ref())
+                        .unwrap_or(None)
         }
-    } {
+    } else {
+        false
+    };
+
+    if body.is_err() || uia_required {
         if let Ok(json) = serde_json::from_slice::<CanonicalJsonValue>(payload) {
             uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
             crate::uiaa::create_session(sender_id, authed.device_id(), &uiaa_info, json)?;
@@ -64,11 +64,13 @@ pub(super) async fn upload(_aa: AuthArgs, req: &mut Request, depot: &mut Depot) 
         }
     };
     let body = body.expect("body should be ok");
-    let Some(auth) = &body.auth else {
-        return Err(MatrixError::not_json("auth is none should not happend").into());
-    };
+    if uia_required {
+        let Some(auth) = &body.auth else {
+            return Err(MatrixError::not_json("auth is none should not happend").into());
+        };
 
-    crate::uiaa::try_auth(sender_id, authed.device_id(), auth, &uiaa_info)?;
+        crate::uiaa::try_auth(sender_id, authed.device_id(), auth, &uiaa_info)?;
+    }
 
     if let Some(master_key) = &body.master_key {
         crate::user::add_cross_signing_keys(

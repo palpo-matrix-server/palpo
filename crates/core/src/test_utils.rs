@@ -8,7 +8,6 @@ use std::{
 };
 
 use serde_json::{json, value::to_raw_value as to_raw_json_value};
-use tracing::info;
 
 pub(crate) use self::event::PduEvent;
 use crate::serde::RawJsonValue;

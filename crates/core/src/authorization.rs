@@ -5,7 +5,6 @@ use std::{fmt, str::FromStr};
 use http_auth::ChallengeParser;
 use salvo::http::{HeaderValue, headers::authorization::Credentials};
 use thiserror::Error;
-use tracing::debug;
 
 use crate::{
     IdParseError, OwnedServerName, OwnedServerSigningKeyId,

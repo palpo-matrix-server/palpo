@@ -6,7 +6,6 @@ use crate::macros::{Event, EventContent};
 use as_variant::as_variant;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
-use tracing::error;
 
 use crate::room_version_rules::RedactionRules;
 use crate::{

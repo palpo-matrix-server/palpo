@@ -128,7 +128,7 @@ impl Scribe for ThumbnailResBody {
                 body_writer.extend_from_slice(&bytes);
             }
             Err(e) => {
-                tracing::error!("Failed to serialize metadata: {}", e);
+                error!("Failed to serialize metadata: {}", e);
                 res.render(
                     StatusError::internal_server_error().brief("Failed to serialize metadata"),
                 );
@@ -185,7 +185,7 @@ impl Scribe for ThumbnailResBody {
         let _ = res.add_header(http::header::CONTENT_TYPE, content_type, true);
         if let Err(e) = res.write_body(body_writer) {
             res.render(StatusError::internal_server_error().brief("Failed to set response body"));
-            tracing::error!("Failed to set response body: {}", e);
+            error!("Failed to set response body: {}", e);
         }
     }
 }

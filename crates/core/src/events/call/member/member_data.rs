@@ -7,7 +7,6 @@ use std::time::Duration;
 use as_variant::as_variant;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
-use tracing::warn;
 
 use super::focus::{ActiveFocus, ActiveLivekitFocus, Focus};
 use crate::PrivOwnedStr;
