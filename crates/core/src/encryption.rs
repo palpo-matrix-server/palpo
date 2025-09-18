@@ -135,7 +135,7 @@ pub enum OneTimeKey {
 pub type CrossSigningKeySignatures = BTreeMap<OwnedUserId, BTreeMap<OwnedDeviceKeyId, String>>;
 
 /// A cross signing key.
-#[derive(ToSchema, Deserialize, Serialize, Clone, Debug)]
+#[derive(ToSchema, Deserialize, Serialize, PartialEq, Eq, Clone, Debug)]
 pub struct CrossSigningKey {
     /// The ID of the user the key belongs to.
     pub user_id: OwnedUserId,

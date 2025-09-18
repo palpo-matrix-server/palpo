@@ -95,12 +95,14 @@ fn get_devices(
     json_ok(DevicesResBody {
         stream_id: stream_id as u64,
         devices,
-        master_key: crate::user::get_master_key(Some(&user_id), &user_id, &|u| {
+        master_key: crate::user::get_allowed_master_key(Some(&user_id), &user_id, &|u| {
             u.server_name() == origin
         })?,
-        self_signing_key: crate::user::get_self_signing_key(Some(&user_id), &user_id, &|u| {
-            u.server_name() == origin
-        })?,
+        self_signing_key: crate::user::get_allowed_self_signing_key(
+            Some(&user_id),
+            &user_id,
+            &|u| u.server_name() == origin,
+        )?,
         user_id: user_id.to_owned(),
     })
 }
