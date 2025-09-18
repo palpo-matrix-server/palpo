@@ -68,12 +68,12 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
         }
 
         if let Some(master_key) =
-            crate::user::get_master_key(sender_id, user_id, &allowed_signatures)?
+            crate::user::get_allowed_master_key(sender_id, user_id, &allowed_signatures)?
         {
             master_keys.insert(user_id.to_owned(), master_key);
         }
         if let Some(self_signing_key) =
-            crate::user::get_self_signing_key(sender_id, user_id, &allowed_signatures)?
+            crate::user::get_allowed_self_signing_key(sender_id, user_id, &allowed_signatures)?
         {
             self_signing_keys.insert(user_id.to_owned(), self_signing_key);
         }
@@ -123,7 +123,7 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
             Ok(response) => {
                 for (user_id, mut master_key) in response.master_keys {
                     if let Some(our_master_key) =
-                        crate::user::get_master_key(sender_id, &user_id, &allowed_signatures)?
+                        crate::user::get_allowed_master_key(sender_id, &user_id, &allowed_signatures)?
                     {
                         master_key.signatures.extend(our_master_key.signatures);
                     }
@@ -230,6 +230,22 @@ pub async fn claim_one_time_keys(
 }
 
 pub fn get_master_key(
+    user_id: &UserId,
+) -> AppResult<Option<CrossSigningKey>> {
+    let key_data = e2e_cross_signing_keys::table
+        .filter(e2e_cross_signing_keys::user_id.eq(user_id))
+        .filter(e2e_cross_signing_keys::key_type.eq("master"))
+        .select(e2e_cross_signing_keys::key_data)
+        .first::<JsonValue>(&mut connect()?)
+        .optional()?;
+    if let Some(mut key_data) = key_data {
+        Ok(serde_json::from_value(key_data).ok())
+    } else {
+        Ok(None)
+    }
+}
+
+pub fn get_allowed_master_key(
     sender_id: Option<&UserId>,
     user_id: &UserId,
     allowed_signatures: &dyn Fn(&UserId) -> bool,
@@ -249,6 +265,21 @@ pub fn get_master_key(
 }
 
 pub fn get_self_signing_key(
+    user_id: &UserId,
+) -> AppResult<Option<CrossSigningKey>> {
+    let key_data = e2e_cross_signing_keys::table
+        .filter(e2e_cross_signing_keys::user_id.eq(user_id))
+        .filter(e2e_cross_signing_keys::key_type.eq("self_signing"))
+        .select(e2e_cross_signing_keys::key_data)
+        .first::<JsonValue>(&mut connect()?)
+        .optional()?;
+    if let Some(mut key_data) = key_data {
+        Ok(serde_json::from_value(key_data).ok())
+    } else {
+        Ok(None)
+    }
+}
+pub fn get_allowed_self_signing_key(
     sender_id: Option<&UserId>,
     user_id: &UserId,
     allowed_signatures: &dyn Fn(&UserId) -> bool,
@@ -266,6 +297,7 @@ pub fn get_self_signing_key(
         Ok(None)
     }
 }
+
 pub fn get_user_signing_key(user_id: &UserId) -> AppResult<Option<CrossSigningKey>> {
     e2e_cross_signing_keys::table
         .filter(e2e_cross_signing_keys::user_id.eq(user_id))
