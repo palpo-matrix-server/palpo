@@ -876,7 +876,7 @@ async fn create_create_event_legacy(
     // };
     let room_id = RoomId::new_v1(&config::get().server_name);
     let state_lock = room::lock_state(&room_id).await;
-    room::ensure_room(&room_id, &room_version)?;
+    room::ensure_room(&room_id, room_version)?;
 
     let content = match &body.creation_content {
         Some(content) => {
@@ -1002,7 +1002,7 @@ async fn create_create_event(
     // 1. The room create event, using a placeholder room_id
     let temp_room_id = OwnedRoomId::try_from("!placehold").expect("Invalid room ID");
     let state_lock = room::lock_state(&temp_room_id).await;
-    room::ensure_room(&temp_room_id, &room_version)?;
+    room::ensure_room(&temp_room_id, room_version)?;
     let create_event = timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomCreate,

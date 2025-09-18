@@ -9,7 +9,6 @@ pub mod presence;
 // pub use ldap::*;
 pub mod session;
 
-use std::collections::BTreeMap;
 use std::mem;
 
 use diesel::prelude::*;

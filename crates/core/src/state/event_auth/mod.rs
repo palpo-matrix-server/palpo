@@ -1,7 +1,6 @@
 use std::{
     borrow::Borrow,
     collections::{BTreeMap, BTreeSet, HashSet},
-    fmt::Debug,
 };
 
 use serde_json::value::RawValue as RawJsonValue;

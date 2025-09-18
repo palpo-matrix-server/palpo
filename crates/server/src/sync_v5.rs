@@ -1,11 +1,8 @@
-use std::cmp::{self, Ordering};
-use std::time::Duration;
+use std::cmp::Ordering;
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     sync::{Arc, LazyLock, Mutex},
 };
-
-use hmac::digest::crypto_common::rand_core::le;
 
 use crate::core::Seqnum;
 use crate::core::client::filter::RoomEventFilter;
@@ -71,7 +68,7 @@ pub async fn sync_events(
         sender_id,
         device_id,
         since_sn,
-        req_body: &req_body,
+        req_body,
     };
     let mut res_body = SyncEventsResBody {
         txn_id: req_body.txn_id.clone(),
@@ -93,12 +90,12 @@ pub async fn sync_events(
         &all_joined_rooms,
         &all_rooms,
         &mut todo_rooms,
-        &known_rooms,
+        known_rooms,
         &mut res_body,
     )
     .await;
 
-    fetch_subscriptions(sync_info, &known_rooms, &mut todo_rooms)?;
+    fetch_subscriptions(sync_info, known_rooms, &mut todo_rooms)?;
 
     res_body.rooms =
         process_rooms(sync_info, &all_invited_rooms, &todo_rooms, &mut res_body).await?;
@@ -538,7 +535,6 @@ fn collect_e2ee<'a>(
         };
         let since_frame_id = crate::event::get_last_frame_id(room_id, Some(since_sn)).ok();
 
-
         let encrypted_room =
             state::get_state(current_frame_id, &StateEventType::RoomEncryption, "").is_ok();
 
@@ -653,7 +649,7 @@ fn collect_to_device(
         return None;
     }
 
-    data::user::device::remove_to_device_events(sender_id, device_id, since_sn).ok()?;
+    data::user::device::remove_to_device_events(sender_id, device_id, since_sn - 1).ok()?;
 
     let events =
         data::user::device::get_to_device_events(sender_id, device_id, None, Some(next_batch))
@@ -673,12 +669,7 @@ fn collect_receipts() -> sync_events::v5::Receipts {
 }
 
 async fn collect_typing<'a, Rooms>(
-    SyncInfo {
-        sender_id,
-        device_id,
-        since_sn,
-        req_body,
-    }: SyncInfo<'_>,
+    SyncInfo { req_body, .. }: SyncInfo<'_>,
     _next_batch: Seqnum,
     rooms: Rooms,
 ) -> AppResult<sync_events::v5::Typing>

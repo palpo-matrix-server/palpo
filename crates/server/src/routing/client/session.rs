@@ -203,7 +203,7 @@ async fn login(
                     .get_result::<DbUser>(&mut connect()?)?;
 
                 // Set initial user profile
-                if let Err(e) = set_display_name(&user.id, &user.id.localpart()) {
+                if let Err(e) = set_display_name(&user.id, user.id.localpart()) {
                     tracing::warn!("failed to set profile for new user (non-fatal): {}", e);
                 }
             }

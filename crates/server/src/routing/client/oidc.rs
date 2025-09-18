@@ -119,7 +119,7 @@ use url::Url;
 use crate::{
     AppResult, JsonResult,
     config::{self, OidcProviderConfig},
-    core::{MatrixError, OwnedDeviceId, OwnedUserId, UnixMillis},
+    core::{MatrixError, OwnedDeviceId, UnixMillis},
     data,
     data::user::DbUser,
     json_ok,
@@ -1158,10 +1158,10 @@ async fn create_or_get_user(
     if let Err(e) = data::user::set_display_name(&user.id, display_name) {
         tracing::warn!("failed to set profile for new user (non-fatal): {}", e);
     }
-    if let Some(picture) = user_info.picture.as_deref() {
-        if let Err(e) = data::user::set_avatar_url(&user.id, picture.into()) {
-            tracing::warn!("failed to set profile for new user (non-fatal): {}", e);
-        }
+    if let Some(picture) = user_info.picture.as_deref()
+        && let Err(e) = data::user::set_avatar_url(&user.id, picture.into())
+    {
+        tracing::warn!("failed to set profile for new user (non-fatal): {}", e);
     }
 
     tracing::info!("Successfully created new Matrix user: {}", user_id);

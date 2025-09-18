@@ -556,7 +556,7 @@ pub async fn create_hash_and_sign_event(
     //         "non-create event for room `{room_id}` of unknown version"
     //     )));
     // };
-    let version_rules = crate::room::get_version_rules(&room_version)?;
+    let version_rules = crate::room::get_version_rules(room_version)?;
 
     let auth_events = state::get_auth_events(
         room_id,
@@ -654,7 +654,7 @@ pub async fn create_hash_and_sign_event(
         to_canonical_value(&conf.server_name).expect("server name is a valid CanonicalJsonValue"),
     );
 
-    match crate::server_key::hash_and_sign_event(&mut pdu_json, &room_version) {
+    match crate::server_key::hash_and_sign_event(&mut pdu_json, room_version) {
         Ok(_) => {}
         Err(e) => {
             return match e {
@@ -667,7 +667,7 @@ pub async fn create_hash_and_sign_event(
     }
 
     // Generate event id
-    pdu.event_id = crate::event::gen_event_id(&pdu_json, &room_version)?;
+    pdu.event_id = crate::event::gen_event_id(&pdu_json, room_version)?;
     if version_rules.room_id_format == RoomIdFormatVersion::V2
         && pdu.event_ty == TimelineEventType::RoomCreate
     {

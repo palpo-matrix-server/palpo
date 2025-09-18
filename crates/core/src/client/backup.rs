@@ -5,7 +5,7 @@ use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    OwnedRoomId, OwnedSessionId,
+    OwnedRoomId,
     identifiers::CrossSigningOrDeviceSignatures,
     serde::{Base64, RawJson, RawJsonValue},
 };
