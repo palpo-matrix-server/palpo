@@ -83,7 +83,7 @@ pub fn create_backup(
     let new_keys_version = NewDbRoomKeysVersion {
         user_id: user_id.to_owned(),
         version,
-        algorithm: serde_json::to_value(&algorithm)?,
+        algorithm: serde_json::to_value(algorithm)?,
         auth_data: serde_json::to_value(BTreeMap::<String, JsonValue>::new())?,
         created_at: UnixMillis::now(),
     };

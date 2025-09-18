@@ -215,6 +215,5 @@ impl From<PushRule> for ConditionalPushRule {
             rule_id,
             conditions: conditions.unwrap_or_default(),
         }
-        .into()
     }
 }

@@ -186,8 +186,7 @@ impl TryFrom<PushRule> for PatternedPushRule {
                 enabled,
                 rule_id,
                 pattern,
-            }
-            .into())
+            })
         } else {
             Err(MissingPatternError)
         }

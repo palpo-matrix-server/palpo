@@ -464,21 +464,21 @@ pub async fn join_room(
     state::set_room_state(room_id, frame_id_after_join)?;
     drop(state_lock);
 
-    if let Some(device_id) = device_id {
-        if let Ok(room_server_id) = room_id.server_name() {
-            let query = room_users::table
-                .filter(room_users::room_id.ne(room_id))
-                .filter(room_users::user_id.eq(sender_id))
-                .filter(room_users::room_server_id.eq(room_server_id));
-            if !diesel_exists!(query, &mut connect()?)? {
-                let content = DeviceListUpdateContent::new(
-                    sender_id.to_owned(),
-                    device_id.to_owned(),
-                    data::next_sn()? as u64,
-                );
-                let edu = Edu::DeviceListUpdate(content);
-                send_edu_server(room_server_id, &edu)?;
-            }
+    if let Some(device_id) = device_id
+        && let Ok(room_server_id) = room_id.server_name()
+    {
+        let query = room_users::table
+            .filter(room_users::room_id.ne(room_id))
+            .filter(room_users::user_id.eq(sender_id))
+            .filter(room_users::room_server_id.eq(room_server_id));
+        if !diesel_exists!(query, &mut connect()?)? {
+            let content = DeviceListUpdateContent::new(
+                sender_id.to_owned(),
+                device_id.to_owned(),
+                data::next_sn()? as u64,
+            );
+            let edu = Edu::DeviceListUpdate(content);
+            send_edu_server(room_server_id, &edu)?;
         }
     }
     Ok(JoinRoomResBody::new(room_id.to_owned()))

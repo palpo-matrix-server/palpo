@@ -1,20 +1,12 @@
-use std::cmp::{self, Ordering};
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::cmp;
 use std::time::Duration;
 
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
-use crate::core::client::sync_events::{self, v5::*};
-use crate::core::events::receipt::{SyncReceiptEvent, combine_receipt_event_contents};
-use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::core::events::{AnyRawAccountDataEvent, StateEventType, TimelineEventType};
+use crate::core::client::sync_events::v5::*;
 use crate::data;
-use crate::event::ignored_filter;
-use crate::room::filter_rooms;
-use crate::room::{self, state, timeline};
 use crate::routing::prelude::*;
-use crate::sync_v3::{DEFAULT_BUMP_TYPES, share_encrypted_room};
 
 /// `POST /_matrix/client/unstable/org.matrix.simplified_msc3575/sync`
 /// ([MSC4186])
