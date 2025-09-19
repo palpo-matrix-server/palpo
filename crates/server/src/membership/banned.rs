@@ -4,11 +4,9 @@ use crate::core::events::room::message::RoomMessageEventContent;
 use crate::core::identifiers::*;
 use crate::{AppResult, MatrixError, data};
 
-/// Checks if the room is banned in any way possible and the sender user is not
-/// an admin.
+/// Checks if the room is banned in any way possible and the sender user is not an admin.
 ///
-/// Performs automatic deactivation if `auto_deactivate_banned_room_attempts` is
-/// enabled
+/// Performs automatic deactivation if `auto_deactivate_banned_room_attempts` is enabled.
 #[tracing::instrument]
 pub async fn banned_room_check(
     user_id: &UserId,
@@ -23,9 +21,13 @@ pub async fn banned_room_check(
     let conf = crate::config::get();
     if let Some(room_id) = room_id {
         if data::room::is_disabled(room_id)?
-            || conf
-                .forbidden_remote_server_names
-                .is_match(room_id.server_name().unwrap().host())
+            || (room_id.server_name().is_ok()
+                && conf.forbidden_remote_server_names.is_match(
+                    room_id
+                        .server_name()
+                        .expect("room server name checked exists")
+                        .host(),
+                ))
         {
             warn!(
                 "User {user_id} who is not an admin attempted to send an invite for or \

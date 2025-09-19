@@ -122,9 +122,11 @@ pub async fn query_keys<F: Fn(&UserId) -> bool>(
         match response {
             Ok(response) => {
                 for (user_id, mut master_key) in response.master_keys {
-                    if let Some(our_master_key) =
-                        crate::user::get_allowed_master_key(sender_id, &user_id, &allowed_signatures)?
-                    {
+                    if let Some(our_master_key) = crate::user::get_allowed_master_key(
+                        sender_id,
+                        &user_id,
+                        &allowed_signatures,
+                    )? {
                         master_key.signatures.extend(our_master_key.signatures);
                     }
                     let json = serde_json::to_value(master_key).expect("to_value always works");
@@ -229,9 +231,7 @@ pub async fn claim_one_time_keys(
     })
 }
 
-pub fn get_master_key(
-    user_id: &UserId,
-) -> AppResult<Option<CrossSigningKey>> {
+pub fn get_master_key(user_id: &UserId) -> AppResult<Option<CrossSigningKey>> {
     let key_data = e2e_cross_signing_keys::table
         .filter(e2e_cross_signing_keys::user_id.eq(user_id))
         .filter(e2e_cross_signing_keys::key_type.eq("master"))
@@ -264,9 +264,7 @@ pub fn get_allowed_master_key(
     }
 }
 
-pub fn get_self_signing_key(
-    user_id: &UserId,
-) -> AppResult<Option<CrossSigningKey>> {
+pub fn get_self_signing_key(user_id: &UserId) -> AppResult<Option<CrossSigningKey>> {
     let key_data = e2e_cross_signing_keys::table
         .filter(e2e_cross_signing_keys::user_id.eq(user_id))
         .filter(e2e_cross_signing_keys::key_type.eq("self_signing"))

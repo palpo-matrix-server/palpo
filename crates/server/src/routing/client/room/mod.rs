@@ -308,6 +308,8 @@ async fn upgrade(
     body: JsonBody<UpgradeRoomReqBody>,
     depot: &mut Depot,
 ) -> JsonResult<UpgradeRoomResBody> {
+    use RoomVersionId::*;
+
     let authed = depot.authed_info()?;
     let room_id = room_id.into_inner();
 
@@ -319,9 +321,15 @@ async fn upgrade(
     }
 
     let conf = config::get();
+    let version_rules = crate::room::get_version_rules(&body.new_version)?;
+    
     // Create a replacement room
-    let replacement_room = RoomId::new_v1(&conf.server_name);
-    room::ensure_room(&replacement_room, &conf.default_room_version)?;
+    let new_room_id = if version_rules.authorization.room_create_event_id_as_room_id {
+
+    } else {
+        RoomId::new_v1(&conf.server_name)
+    };
+    room::ensure_room(&new_room_id, &conf.default_room_version)?;
 
     let state_lock = room::lock_state(&room_id).await;
     // Send a m.room.tombstone event to the old room to indicate that it is not intended to be used any further
@@ -331,7 +339,7 @@ async fn upgrade(
             event_type: TimelineEventType::RoomTombstone,
             content: to_raw_value(&RoomTombstoneEventContent {
                 body: "This room has been replaced".to_owned(),
-                replacement_room: replacement_room.clone(),
+                replacement_room: new_room_id.clone(),
             })?,
             state_key: Some("".to_owned()),
             ..Default::default()
@@ -360,12 +368,28 @@ async fn upgrade(
     ));
 
     // Send a m.room.create event containing a predecessor field and the applicable room_version
-    create_event_content.insert(
-        "creator".into(),
-        json!(&authed.user_id())
-            .try_into()
-            .map_err(|_| MatrixError::bad_json("Error forming creation event"))?,
-    );
+
+    if !version_rules.authorization.use_room_create_sender {
+        create_event_content.insert(
+            "creator".into(),
+            json!(&authed.user_id())
+                .try_into()
+                .map_err(|_| MatrixError::bad_json("error forming creation event"))?,
+        );
+    } else {
+        // "creator" key no longer exists in V11+ rooms
+        create_event_content.remove("creator");
+    }
+    if version_rules.authorization.additional_room_creators && !body.additional_creators.is_empty()
+    {
+        create_event_content.insert(
+            "additional_creators".into(),
+            json!(&body.additional_creators)
+                .try_into()
+                .map_err(|_| MatrixError::bad_json("error forming additional_creators"))?,
+        );
+    }
+
     create_event_content.insert(
         "room_version".into(),
         json!(&body.new_version)
@@ -399,8 +423,8 @@ async fn upgrade(
             ..Default::default()
         },
         authed.user_id(),
-        &replacement_room,
-        &crate::room::get_version(&replacement_room)?,
+        &new_room_id,
+        &crate::room::get_version(&new_room_id)?,
         &state_lock,
     )
     .await?;
@@ -429,8 +453,8 @@ async fn upgrade(
             ..Default::default()
         },
         authed.user_id(),
-        &replacement_room,
-        &crate::room::get_version(&replacement_room)?,
+        &new_room_id,
+        &crate::room::get_version(&new_room_id)?,
         &state_lock,
     )
     .await?;
@@ -463,8 +487,8 @@ async fn upgrade(
                 ..Default::default()
             },
             authed.user_id(),
-            &replacement_room,
-            &crate::room::get_version(&replacement_room)?,
+            &new_room_id,
+            &crate::room::get_version(&new_room_id)?,
             &state_lock,
         )
         .await?;
@@ -472,7 +496,7 @@ async fn upgrade(
 
     // Moves any local aliases to the new room
     for alias in room::local_aliases_for_room(&room_id)? {
-        room::set_alias(&replacement_room, &alias, authed.user_id())?;
+        room::set_alias(&new_room_id, &alias, authed.user_id())?;
     }
 
     // Get the old room power levels
@@ -487,6 +511,15 @@ async fn upgrade(
     let new_level = max(50, power_levels_event_content.users_default + 1);
     power_levels_event_content.events_default = new_level;
     power_levels_event_content.invite = new_level;
+
+
+    if version_rules.authorization.explicitly_privilege_room_creators {
+        let new_create_event = crate::room::get_create(&room_id)?;
+        let creators = new_create_event.creators(&version_rules.authorization)?;
+        for creator in &creators {
+            power_levels_event_content.users.remove(creator);
+        }
+    }
 
     // Modify the power levels in the old room to prevent sending of events and inviting new users
     let _ = timeline::build_and_append_pdu(
@@ -504,7 +537,7 @@ async fn upgrade(
     )
     .await?;
     // Return the replacement room id
-    json_ok(UpgradeRoomResBody { replacement_room })
+    json_ok(UpgradeRoomResBody { replacement_room: new_room_id })
 }
 
 /// #GET /_matrix/client/r0/publicRooms

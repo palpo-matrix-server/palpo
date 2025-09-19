@@ -96,8 +96,14 @@ pub async fn sync_events(
 
     fetch_subscriptions(sync_info, &mut todo_rooms, known_rooms)?;
 
-    res_body.rooms =
-        process_rooms(sync_info, &all_invited_rooms, &todo_rooms, &known_rooms, &mut res_body).await?;
+    res_body.rooms = process_rooms(
+        sync_info,
+        &all_invited_rooms,
+        &todo_rooms,
+        &known_rooms,
+        &mut res_body,
+    )
+    .await?;
     Ok(res_body)
 }
 

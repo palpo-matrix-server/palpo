@@ -180,6 +180,7 @@ pub(super) async fn state_for_empty_key(
     };
 
     let event = room::get_state(&args.room_id, &args.event_type, "", until_sn)?;
+    println!("=================event: {event:#?}   content:{:#?}", event.get_content::<serde_json::Value>()?);
     let event_format = args
         .format
         .as_ref()
@@ -220,8 +221,9 @@ pub(super) async fn send_state_for_key(
     )
     .await?;
 
-    let event_id = (*event_id).to_owned();
-    json_ok(SendStateEventResBody { event_id })
+    json_ok(SendStateEventResBody {
+        event_id: (*event_id).to_owned(),
+    })
 }
 
 /// #PUT /_matrix/client/r0/rooms/{room_id}/state/{event_type}
@@ -249,8 +251,9 @@ pub(super) async fn send_state_for_empty_key(
     )
     .await?;
 
-    let event_id = (*event_id).to_owned();
-    json_ok(SendStateEventResBody { event_id })
+    json_ok(SendStateEventResBody {
+        event_id: (*event_id).to_owned(),
+    })
 }
 
 /// #PUT /_matrix/client/r0/rooms/{room_id}/typing/{user_id}
