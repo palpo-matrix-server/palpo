@@ -16,6 +16,7 @@ use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::json;
 use serde_json::value::to_raw_value;
+use ulid::Ulid;
 
 use crate::core::UnixMillis;
 use crate::core::client::directory::{PublicRoomsFilteredReqBody, PublicRoomsReqArgs};
@@ -46,6 +47,7 @@ use crate::core::identifiers::*;
 use crate::core::room::{JoinRule, Visibility};
 use crate::core::room_version_rules::{AuthorizationRules, RoomIdFormatVersion, RoomVersionRules};
 use crate::core::serde::{CanonicalJsonObject, JsonValue, RawJson};
+use crate::core::state::events::RoomCreateEvent;
 use crate::event::PduBuilder;
 use crate::room::{push_action, timeline};
 use crate::user::user_is_ignored;
@@ -322,16 +324,18 @@ async fn upgrade(
 
     let conf = config::get();
     let version_rules = crate::room::get_version_rules(&body.new_version)?;
-    
+
     // Create a replacement room
     let new_room_id = if version_rules.authorization.room_create_event_id_as_room_id {
-
+        OwnedRoomId::try_from(format!("!placehold_{}", Ulid::new().to_string()))
+            .expect("Invalid room ID")
     } else {
         RoomId::new_v1(&conf.server_name)
     };
-    room::ensure_room(&new_room_id, &conf.default_room_version)?;
+    room::ensure_room(&new_room_id, &body.new_version)?;
 
     let state_lock = room::lock_state(&room_id).await;
+
     // Send a m.room.tombstone event to the old room to indicate that it is not intended to be used any further
     // Fail if the sender does not have the required permissions
     let tombstone_event_id = timeline::build_and_append_pdu(
@@ -353,14 +357,6 @@ async fn upgrade(
     .pdu
     .event_id;
 
-    // Get the old room creation event
-    let mut create_event_content = room::get_state_content::<CanonicalJsonObject>(
-        &room_id,
-        &StateEventType::RoomCreate,
-        "",
-        None,
-    )?;
-
     // Use the m.room.tombstone event as the predecessor
     let predecessor = Some(crate::core::events::room::create::PreviousRoom::new(
         room_id.clone(),
@@ -369,6 +365,13 @@ async fn upgrade(
 
     // Send a m.room.create event containing a predecessor field and the applicable room_version
 
+    // Get the old room creation event
+    let mut create_event_content = room::get_state_content::<CanonicalJsonObject>(
+        &room_id,
+        &StateEventType::RoomCreate,
+        "",
+        None,
+    )?;
     if !version_rules.authorization.use_room_create_sender {
         create_event_content.insert(
             "creator".into(),
@@ -402,7 +405,6 @@ async fn upgrade(
             .try_into()
             .map_err(|_| MatrixError::bad_json("Error forming creation event"))?,
     );
-
     // Validate creation event content
     let de_result = serde_json::from_str::<CanonicalJsonObject>(
         to_raw_value(&create_event_content)
@@ -414,7 +416,7 @@ async fn upgrade(
         return Err(MatrixError::bad_json("Error forming creation event").into());
     }
 
-    timeline::build_and_append_pdu(
+    let new_create_event = timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomCreate,
             content: to_raw_value(&create_event_content)
@@ -428,6 +430,11 @@ async fn upgrade(
         &state_lock,
     )
     .await?;
+
+    // Room Version 12+ use temp room id before.
+    let new_room_id = new_create_event.room_id.clone();
+
+    let new_create_event = RoomCreateEvent::new(new_create_event.pdu);
 
     // Join the new room
     timeline::build_and_append_pdu(
@@ -512,9 +519,10 @@ async fn upgrade(
     power_levels_event_content.events_default = new_level;
     power_levels_event_content.invite = new_level;
 
-
-    if version_rules.authorization.explicitly_privilege_room_creators {
-        let new_create_event = crate::room::get_create(&room_id)?;
+    if version_rules
+        .authorization
+        .explicitly_privilege_room_creators
+    {
         let creators = new_create_event.creators(&version_rules.authorization)?;
         for creator in &creators {
             power_levels_event_content.users.remove(creator);
@@ -537,7 +545,9 @@ async fn upgrade(
     )
     .await?;
     // Return the replacement room id
-    json_ok(UpgradeRoomResBody { replacement_room: new_room_id })
+    json_ok(UpgradeRoomResBody {
+        replacement_room: new_room_id,
+    })
 }
 
 /// #GET /_matrix/client/r0/publicRooms
