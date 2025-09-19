@@ -1,8 +1,6 @@
 use std::cmp::Ordering;
-use std::{
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
-    sync::{Arc, LazyLock, Mutex},
-};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::sync::{Arc, LazyLock, Mutex};
 
 use crate::core::Seqnum;
 use crate::core::client::filter::RoomEventFilter;
@@ -23,10 +21,11 @@ struct SlidingSyncCache {
     subscriptions: BTreeMap<OwnedRoomId, sync_events::v5::RoomSubscription>,
     known_rooms: BTreeMap<String, BTreeMap<OwnedRoomId, i64>>, // For every room, the room_since_sn number
     extensions: sync_events::v5::ExtensionsConfig,
+    required_state: BTreeSet<Seqnum>,
 }
 
 static CONNECTIONS: LazyLock<
-    Mutex<BTreeMap<(OwnedUserId, OwnedDeviceId, String), Arc<Mutex<SlidingSyncCache>>>>,
+    Mutex<BTreeMap<(OwnedUserId, OwnedDeviceId, Option<String>), Arc<Mutex<SlidingSyncCache>>>>,
 > = LazyLock::new(Default::default);
 
 #[tracing::instrument(skip_all)]
@@ -181,16 +180,14 @@ async fn process_lists<'a>(
             },
         );
 
-        if let Some(conn_id) = &req_body.conn_id {
-            crate::sync_v5::update_sync_known_rooms(
-                sender_id.to_owned(),
-                device_id.to_owned(),
-                conn_id.clone(),
-                list_id.clone(),
-                new_known_rooms,
-                since_sn,
-            );
-        }
+        crate::sync_v5::update_sync_known_rooms(
+            sender_id.to_owned(),
+            device_id.to_owned(),
+            req_body.conn_id.clone(),
+            list_id.clone(),
+            new_known_rooms,
+            since_sn,
+        );
     }
     BTreeMap::default()
 }
@@ -239,16 +236,14 @@ fn fetch_subscriptions(
     //	req_body.room_subscriptions.remove(&r);
     //}
 
-    if let Some(conn_id) = &req_body.conn_id {
-        crate::sync_v5::update_sync_known_rooms(
-            sender_id.to_owned(),
-            device_id.to_owned(),
-            conn_id.clone(),
-            "subscriptions".to_owned(),
-            known_subscription_rooms,
-            since_sn,
-        );
-    }
+    crate::sync_v5::update_sync_known_rooms(
+        sender_id.to_owned(),
+        device_id.to_owned(),
+        req_body.conn_id.clone(),
+        "subscriptions".to_owned(),
+        known_subscription_rooms,
+        since_sn,
+    );
     Ok(())
 }
 
@@ -373,9 +368,27 @@ async fn process_rooms(
                     _ => state.1.as_str(),
                 };
 
-                room::get_state(room_id, &state.0, state_key, None)
-                    .map(|s| s.to_sync_state_event())
-                    .ok()
+                let pdu = room::get_state(room_id, &state.0, state_key, None);
+                if let Ok(pdu) = &pdu {
+                    if is_required_state_send(
+                        sender_id.to_owned(),
+                        device_id.to_owned(),
+                        req_body.conn_id.clone(),
+                        pdu.event_sn,
+                    ) {
+                        None
+                    } else {
+                        mark_required_state_sent(
+                            sender_id.to_owned(),
+                            device_id.to_owned(),
+                            req_body.conn_id.clone(),
+                            pdu.event_sn,
+                        );
+                        Some(pdu.to_sync_state_event())
+                    }
+                } else {
+                    pdu.map(|s| s.to_sync_state_event()).ok()
+                }
             })
             .collect::<Vec<_>>();
 
@@ -510,14 +523,14 @@ fn collect_account_data(
     Ok(account_data)
 }
 
-fn collect_e2ee<'a>(
+fn collect_e2ee(
     SyncInfo {
         sender_id,
         device_id,
         since_sn,
         req_body,
     }: SyncInfo<'_>,
-    all_joined_rooms: &'a Vec<&'a RoomId>,
+    all_joined_rooms: &Vec<&RoomId>,
 ) -> AppResult<sync_events::v5::E2ee> {
     if !req_body.extensions.e2ee.enabled.unwrap_or(false) {
         return Ok(sync_events::v5::E2ee::default());
@@ -696,7 +709,7 @@ where
 pub fn forget_sync_request_connection(
     user_id: OwnedUserId,
     device_id: OwnedDeviceId,
-    conn_id: String,
+    conn_id: Option<String>,
 ) {
     CONNECTIONS
         .lock()
@@ -720,14 +733,10 @@ pub fn update_sync_request_with_cache(
     device_id: OwnedDeviceId,
     req_body: &mut sync_events::v5::SyncEventsReqBody,
 ) -> BTreeMap<String, BTreeMap<OwnedRoomId, i64>> {
-    let Some(conn_id) = req_body.conn_id.clone() else {
-        return BTreeMap::new();
-    };
-
     let mut cache = CONNECTIONS.lock().unwrap();
     let cached = Arc::clone(
         cache
-            .entry((user_id, device_id, conn_id))
+            .entry((user_id, device_id, req_body.conn_id.clone()))
             .or_insert_with(|| Arc::new(Mutex::new(SlidingSyncCache::default()))),
     );
     let cached = &mut cached.lock().unwrap();
@@ -825,21 +834,14 @@ pub fn update_sync_request_with_cache(
 pub fn update_sync_subscriptions(
     user_id: OwnedUserId,
     device_id: OwnedDeviceId,
-    conn_id: String,
+    conn_id: Option<String>,
     subscriptions: BTreeMap<OwnedRoomId, sync_events::v5::RoomSubscription>,
 ) {
     let mut cache = CONNECTIONS.lock().unwrap();
     let cached = Arc::clone(
         cache
             .entry((user_id, device_id, conn_id))
-            .or_insert_with(|| {
-                Arc::new(Mutex::new(SlidingSyncCache {
-                    lists: BTreeMap::new(),
-                    subscriptions: BTreeMap::new(),
-                    known_rooms: BTreeMap::new(),
-                    extensions: sync_events::v5::ExtensionsConfig::default(),
-                }))
-            }),
+            .or_insert_with(Default::default),
     );
     let cached = &mut cached.lock().unwrap();
     drop(cache);
@@ -850,7 +852,7 @@ pub fn update_sync_subscriptions(
 pub fn update_sync_known_rooms(
     user_id: OwnedUserId,
     device_id: OwnedDeviceId,
-    conn_id: String,
+    conn_id: Option<String>,
     list_id: String,
     new_cached_rooms: BTreeSet<OwnedRoomId>,
     since_sn: i64,
@@ -859,14 +861,7 @@ pub fn update_sync_known_rooms(
     let cached = Arc::clone(
         cache
             .entry((user_id, device_id, conn_id))
-            .or_insert_with(|| {
-                Arc::new(Mutex::new(SlidingSyncCache {
-                    lists: BTreeMap::new(),
-                    subscriptions: BTreeMap::new(),
-                    known_rooms: BTreeMap::new(),
-                    extensions: sync_events::v5::ExtensionsConfig::default(),
-                }))
-            }),
+            .or_insert_with(Default::default),
     );
     let cached = &mut cached.lock().unwrap();
     drop(cache);
@@ -893,9 +888,6 @@ pub fn is_room_initial_send(
     conn_id: Option<String>,
     room_id: &RoomId,
 ) -> bool {
-    let Some(conn_id) = conn_id else {
-        return true;
-    };
     let cache = CONNECTIONS.lock().unwrap();
     let Some(cached) = cache.get(&(user_id, device_id, conn_id)) else {
         return true;
@@ -906,4 +898,33 @@ pub fn is_room_initial_send(
         .known_rooms
         .values()
         .any(|rooms| rooms.contains_key(room_id))
+}
+
+pub fn mark_required_state_sent(
+    user_id: OwnedUserId,
+    device_id: OwnedDeviceId,
+    conn_id: Option<String>,
+    event_sn: Seqnum,
+) {
+    let mut cache = CONNECTIONS.lock().unwrap();
+    let cached = Arc::clone(
+        cache
+            .entry((user_id, device_id, conn_id))
+            .or_insert_with(Default::default),
+    );
+    let cached = &mut cached.lock().unwrap();
+    drop(cache);
+    cached.required_state.insert(event_sn);
+}
+pub fn is_required_state_send(
+    user_id: OwnedUserId,
+    device_id: OwnedDeviceId,
+    conn_id: Option<String>,
+    event_sn: Seqnum,
+) -> bool {
+    let cache = CONNECTIONS.lock().unwrap();
+    let Some(cached) = cache.get(&(user_id, device_id, conn_id)) else {
+        return false;
+    };
+    cached.lock().unwrap().required_state.contains(&event_sn)
 }

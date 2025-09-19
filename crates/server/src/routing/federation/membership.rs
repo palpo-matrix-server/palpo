@@ -210,8 +210,6 @@ async fn invite_user(
 
     let mut event: JsonObject = serde_json::from_str(body.event.get())
         .map_err(|_| MatrixError::invalid_param("Invalid invite event bytes."))?;
-    println!("Invite body: {}", body.event.get());
-    println!("Invite event: {event:#?}");
 
     let event_id: OwnedEventId = format!("$dummy_{}", Ulid::new().to_string()).try_into()?;
     event.insert("event_id".to_owned(), event_id.to_string().into());
