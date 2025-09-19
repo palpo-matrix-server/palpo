@@ -268,7 +268,6 @@ where
                     rel_type,
                 )?;
                 relates_added = true;
-                println!("Adding to thread: {:?}", thread.event_id);
                 // thread_id = Some(thread.event_id.clone());
                 super::thread::add_to_thread(&thread.event_id, pdu)?;
             }

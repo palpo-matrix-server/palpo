@@ -986,3 +986,30 @@ CREATE TABLE IF NOT EXISTS banned_rooms
     created_at bigint NOT NULL,
     CONSTRAINT banned_rooms_room_id_ukey UNIQUE (room_id)
 );
+
+-- DROP TABLE IF EXISTS public.sliding_sync_connections;
+-- CREATE TABLE IF NOT EXISTS public.sliding_sync_connections
+-- (
+--     id bigserial NOT NULL PRIMARY KEY,
+--     user_id text NOT NULL,
+--     device_id text NOT NULL,
+--     conn_id text NOT NULL,
+--     created_at bigint NOT NULL
+-- );
+-- CREATE INDEX IF NOT EXISTS sliding_sync_connections_idx
+--     ON public.sliding_sync_connections USING btree
+--     (user_id ASC NULLS LAST, device_id ASC NULLS LAST, conn_id ASC NULLS LAST);
+-- CREATE INDEX IF NOT EXISTS sliding_sync_connections_create_at_idx
+--     ON public.sliding_sync_connections USING btree
+--     (created_at ASC NULLS LAST);
+
+-- DROP TABLE IF EXISTS public.sliding_sync_required_states;
+-- CREATE TABLE IF NOT EXISTS public.sliding_sync_required_states
+-- (
+--     id bigserial NOT NULL PRIMARY KEY,
+--     connection_id bigint NOT NULL,
+--     required_state text NOT NULL
+-- );
+-- CREATE INDEX IF NOT EXISTS sliding_sync_required_state_conn_pos
+--     ON public.sliding_sync_required_states USING btree
+--     (connection_id ASC NULLS LAST);

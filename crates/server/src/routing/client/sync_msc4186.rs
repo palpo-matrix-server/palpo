@@ -39,13 +39,11 @@ pub(super) async fn sync_events_v5(
 
     let _conn_id = req_body.conn_id.clone();
 
-    if since_sn == 0
-        && let Some(conn_id) = &req_body.conn_id
-    {
+    if since_sn == 0 {
         crate::sync_v5::forget_sync_request_connection(
             sender_id.to_owned(),
             device_id.to_owned(),
-            conn_id.to_owned(),
+            req_body.conn_id.to_owned(),
         )
     }
 
