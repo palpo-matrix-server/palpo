@@ -94,27 +94,27 @@ pub async fn sync_events(
     )
     .await;
 
-    fetch_subscriptions(sync_info, known_rooms, &mut todo_rooms)?;
+    fetch_subscriptions(sync_info, &mut todo_rooms, known_rooms)?;
 
     res_body.rooms =
-        process_rooms(sync_info, &all_invited_rooms, &todo_rooms, &mut res_body).await?;
+        process_rooms(sync_info, &all_invited_rooms, &todo_rooms, &known_rooms, &mut res_body).await?;
     Ok(res_body)
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn process_lists<'a>(
+async fn process_lists(
     SyncInfo {
         sender_id,
         device_id,
         since_sn,
         req_body,
     }: SyncInfo<'_>,
-    all_invited_rooms: &Vec<&'a RoomId>,
-    all_joined_rooms: &Vec<&'a RoomId>,
-    all_rooms: &Vec<&'a RoomId>,
-    todo_rooms: &'a mut TodoRooms,
-    known_rooms: &'a KnownRooms,
-    res_body: &'_ mut SyncEventsResBody,
+    all_invited_rooms: &Vec<&RoomId>,
+    all_joined_rooms: &Vec<&RoomId>,
+    all_rooms: &Vec<&RoomId>,
+    todo_rooms: &mut TodoRooms,
+    known_rooms: &KnownRooms,
+    res_body: &mut SyncEventsResBody,
 ) -> KnownRooms {
     for (list_id, list) in &req_body.lists {
         let active_rooms = match list.filters.clone().and_then(|f| f.is_invite) {
@@ -199,8 +199,8 @@ fn fetch_subscriptions(
         since_sn,
         req_body,
     }: SyncInfo<'_>,
-    known_rooms: &KnownRooms,
     todo_rooms: &mut TodoRooms,
+    known_rooms: &KnownRooms,
 ) -> AppResult<()> {
     let mut known_subscription_rooms = BTreeSet::new();
     for (room_id, room) in &req_body.room_subscriptions {
@@ -256,6 +256,7 @@ async fn process_rooms(
     }: SyncInfo<'_>,
     all_invited_rooms: &[&RoomId],
     todo_rooms: &TodoRooms,
+    known_rooms: &KnownRooms,
     response: &mut SyncEventsResBody,
 ) -> AppResult<BTreeMap<OwnedRoomId, sync_events::v5::SyncRoom>> {
     let mut rooms = BTreeMap::new();
@@ -449,12 +450,9 @@ async fn process_rooms(
                 },
                 initial: Some(
                     room_since_sn == &0
-                        || is_room_initial_send(
-                            sender_id.to_owned(),
-                            device_id.to_owned(),
-                            req_body.conn_id.clone(),
-                            room_id,
-                        ),
+                        || !known_rooms
+                            .values()
+                            .any(|rooms| rooms.contains_key(room_id)),
                 ),
                 is_dm: None,
                 invite_state,
@@ -880,24 +878,6 @@ pub fn update_sync_known_rooms(
     for room_id in new_cached_rooms {
         list.insert(room_id, since_sn);
     }
-}
-
-pub fn is_room_initial_send(
-    user_id: OwnedUserId,
-    device_id: OwnedDeviceId,
-    conn_id: Option<String>,
-    room_id: &RoomId,
-) -> bool {
-    let cache = CONNECTIONS.lock().unwrap();
-    let Some(cached) = cache.get(&(user_id, device_id, conn_id)) else {
-        return true;
-    };
-    cached
-        .lock()
-        .unwrap()
-        .known_rooms
-        .values()
-        .any(|rooms| rooms.contains_key(room_id))
 }
 
 pub fn mark_required_state_sent(
