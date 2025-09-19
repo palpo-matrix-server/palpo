@@ -19,7 +19,7 @@ use crate::{AppResult, data, extract_variant};
 struct SlidingSyncCache {
     lists: BTreeMap<String, sync_events::v5::ReqList>,
     subscriptions: BTreeMap<OwnedRoomId, sync_events::v5::RoomSubscription>,
-    known_rooms: BTreeMap<String, BTreeMap<OwnedRoomId, i64>>, // For every room, the room_since_sn number
+    known_rooms: KnownRooms, // For every room, the room_since_sn number
     extensions: sync_events::v5::ExtensionsConfig,
     required_state: BTreeSet<Seqnum>,
 }
@@ -737,7 +737,7 @@ pub fn update_sync_request_with_cache(
     let cached = Arc::clone(
         cache
             .entry((user_id, device_id, req_body.conn_id.clone()))
-            .or_insert_with(|| Arc::new(Mutex::new(SlidingSyncCache::default()))),
+            .or_insert_with(Default::default),
     );
     let cached = &mut cached.lock().unwrap();
     drop(cache);

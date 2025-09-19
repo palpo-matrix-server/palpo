@@ -53,6 +53,7 @@ pub(super) async fn sync_events_v5(
         device_id.to_owned(),
         &mut req_body,
     );
+    println!("\n\n\n\nkkkkkkkkkkkkkkkkKnown rooms: {known_rooms:#?}");
 
     let mut res_body =
         crate::sync_v5::sync_events(sender_id, device_id, since_sn, &req_body, &known_rooms)
