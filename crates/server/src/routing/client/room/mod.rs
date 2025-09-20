@@ -313,6 +313,7 @@ async fn upgrade(
     use RoomVersionId::*;
 
     let authed = depot.authed_info()?;
+    let sender_id = authed.user_id();
     let room_id = room_id.into_inner();
 
     if !config::supported_room_versions().contains(&body.new_version) {
@@ -348,7 +349,7 @@ async fn upgrade(
             state_key: Some("".to_owned()),
             ..Default::default()
         },
-        authed.user_id(),
+        sender_id,
         &room_id,
         &crate::room::get_version(&room_id)?,
         &state_lock,
@@ -375,7 +376,7 @@ async fn upgrade(
     if !version_rules.authorization.use_room_create_sender {
         create_event_content.insert(
             "creator".into(),
-            json!(&authed.user_id())
+            json!(sender_id)
                 .try_into()
                 .map_err(|_| MatrixError::bad_json("error forming creation event"))?,
         );
@@ -424,7 +425,7 @@ async fn upgrade(
             state_key: Some("".to_owned()),
             ..Default::default()
         },
-        authed.user_id(),
+        sender_id,
         &new_room_id,
         &crate::room::get_version(&new_room_id)?,
         &state_lock,
@@ -442,26 +443,22 @@ async fn upgrade(
             event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&RoomMemberEventContent {
                 membership: MembershipState::Join,
-                display_name: crate::data::user::display_name(authed.user_id())
-                    .ok()
-                    .flatten(),
-                avatar_url: crate::data::user::avatar_url(authed.user_id())
-                    .ok()
-                    .flatten(),
+                display_name: crate::data::user::display_name(sender_id).ok().flatten(),
+                avatar_url: crate::data::user::avatar_url(sender_id).ok().flatten(),
                 is_direct: None,
                 third_party_invite: None,
-                blurhash: crate::data::user::blurhash(authed.user_id()).ok().flatten(),
+                blurhash: crate::data::user::blurhash(sender_id).ok().flatten(),
                 reason: None,
                 join_authorized_via_users_server: None,
                 extra_data: Default::default(),
             })
             .expect("event is valid, we just created it"),
-            state_key: Some(authed.user_id().to_string()),
+            state_key: Some(sender_id.to_string()),
             ..Default::default()
         },
-        authed.user_id(),
+        sender_id,
         &new_room_id,
-        &crate::room::get_version(&new_room_id)?,
+        &body.new_version,
         &state_lock,
     )
     .await?;
@@ -493,9 +490,9 @@ async fn upgrade(
                 state_key: Some("".to_owned()),
                 ..Default::default()
             },
-            authed.user_id(),
+            sender_id,
             &new_room_id,
-            &crate::room::get_version(&new_room_id)?,
+            &body.new_version,
             &state_lock,
         )
         .await?;
@@ -503,7 +500,7 @@ async fn upgrade(
 
     // Moves any local aliases to the new room
     for alias in room::local_aliases_for_room(&room_id)? {
-        room::set_alias(&new_room_id, &alias, authed.user_id())?;
+        room::set_alias(&new_room_id, &alias, sender_id)?;
     }
 
     // Get the old room power levels
@@ -515,20 +512,13 @@ async fn upgrade(
     )?;
 
     // Setting events_default and invite to the greater of 50 and users_default + 1
-    let new_level = max(50, power_levels_event_content.users_default + 1);
-    power_levels_event_content.events_default = new_level;
-    power_levels_event_content.invite = new_level;
-
-    if version_rules
-        .authorization
-        .explicitly_privilege_room_creators
-    {
-        let creators = new_create_event.creators(&version_rules.authorization)?;
-        for creator in &creators {
-            power_levels_event_content.users.remove(creator);
-        }
+    let restricted_level = max(50, power_levels_event_content.users_default + 1);
+    if power_levels_event_content.events_default < restricted_level {
+        power_levels_event_content.events_default = restricted_level;
     }
-
+    if power_levels_event_content.invite < restricted_level {
+        power_levels_event_content.invite = restricted_level;
+    }
     // Modify the power levels in the old room to prevent sending of events and inviting new users
     let _ = timeline::build_and_append_pdu(
         PduBuilder {
@@ -538,12 +528,42 @@ async fn upgrade(
             state_key: Some("".to_owned()),
             ..Default::default()
         },
-        authed.user_id(),
+        sender_id,
         &room_id,
         &crate::room::get_version(&room_id)?,
         &state_lock,
     )
     .await?;
+
+    println!("=========sender_id {sender_id}    0");
+    if version_rules
+        .authorization
+        .explicitly_privilege_room_creators
+    {
+        let creators = new_create_event.creators(&version_rules.authorization)?;
+        for creator in &creators {
+            power_levels_event_content.users.remove(creator);
+        }
+        power_levels_event_content.users.remove(sender_id);
+        println!(
+            "=========sender_id {sender_id}    1  power_levels_event_content: {power_levels_event_content:#?}"
+        );
+    }
+    let _ = timeline::build_and_append_pdu(
+        PduBuilder {
+            event_type: TimelineEventType::RoomPowerLevels,
+            content: to_raw_value(&power_levels_event_content)
+                .expect("event is valid, we just created it"),
+            state_key: Some("".to_owned()),
+            ..Default::default()
+        },
+        sender_id,
+        &new_room_id,
+        &body.new_version,
+        &state_lock,
+    )
+    .await?;
+
     // Return the replacement room id
     json_ok(UpgradeRoomResBody {
         replacement_room: new_room_id,
