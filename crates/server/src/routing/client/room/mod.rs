@@ -535,7 +535,6 @@ async fn upgrade(
     )
     .await?;
 
-    println!("=========sender_id {sender_id}    0");
     if version_rules
         .authorization
         .explicitly_privilege_room_creators
@@ -545,9 +544,6 @@ async fn upgrade(
             power_levels_event_content.users.remove(creator);
         }
         power_levels_event_content.users.remove(sender_id);
-        println!(
-            "=========sender_id {sender_id}    1  power_levels_event_content: {power_levels_event_content:#?}"
-        );
     }
     let _ = timeline::build_and_append_pdu(
         PduBuilder {

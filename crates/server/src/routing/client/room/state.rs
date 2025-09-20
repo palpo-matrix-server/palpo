@@ -180,7 +180,6 @@ pub(super) async fn state_for_empty_key(
     };
 
     let event = room::get_state(&args.room_id, &args.event_type, "", until_sn)?;
-    println!("=================event: {event:#?}   content:{:#?}", event.get_content::<serde_json::Value>()?);
     let event_format = args
         .format
         .as_ref()
