@@ -122,7 +122,7 @@ impl RoomPowerLevelsEventContent {
             ban: default_power_level(),
             events: BTreeMap::new(),
             events_default: 0,
-            invite: default_power_level(),
+            invite: 0,
             kick: default_power_level(),
             redact: default_power_level(),
             state_default: default_power_level(),

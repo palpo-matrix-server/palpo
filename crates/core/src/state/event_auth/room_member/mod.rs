@@ -130,8 +130,8 @@ where
     Fut: Future<Output = StateResult<Pdu>> + Send,
     Pdu: Event + Clone + Sync + Send,
 {
-    let creator = room_create_event.creator(rules)?;
-    let creators = room_create_event.creators(rules)?;
+    let creator = room_create_event.creator()?;
+    let creators = room_create_event.creators()?;
 
     let prev_events = room_member_event.prev_events();
     let prev_event_is_room_create_event = prev_events
@@ -289,7 +289,7 @@ where
         ));
     }
 
-    let creators = room_create_event.creators(rules)?;
+    let creators = room_create_event.creators()?;
     let room_power_levels_event = fetch_state.room_power_levels_event().await;
 
     let sender_power_level =
@@ -460,7 +460,7 @@ where
         return Err(StateError::forbidden("cannot kick if sender is not joined"));
     }
 
-    let creators = room_create_event.creators(rules)?;
+    let creators = room_create_event.creators()?;
     let room_power_levels_event = fetch_state.room_power_levels_event().await;
 
     let current_target_user_membership = fetch_state.user_membership(target_user).await?;
@@ -520,7 +520,7 @@ where
         return Err(StateError::forbidden("cannot ban if sender is not joined"));
     }
 
-    let creators = room_create_event.creators(rules)?;
+    let creators = room_create_event.creators()?;
     let room_power_levels_event = fetch_state.room_power_levels_event().await;
 
     let sender_power_level =

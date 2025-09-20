@@ -539,7 +539,7 @@ async fn upgrade(
         .authorization
         .explicitly_privilege_room_creators
     {
-        let creators = new_create_event.creators(&version_rules.authorization)?;
+        let creators = new_create_event.creators()?;
         for creator in &creators {
             power_levels_event_content.users.remove(creator);
         }

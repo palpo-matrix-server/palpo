@@ -17,14 +17,14 @@ pub async fn invite_user(
 ) -> AppResult<()> {
     if !room::user::is_joined(inviter_id, room_id)? {
         return Err(MatrixError::forbidden(
-            "You must be joined in the room you are trying to invite from.",
+            "you must be joined in the room you are trying to invite from",
             None,
         )
         .into());
     }
     if !room::user_can_invite(room_id, inviter_id, invitee_id).await {
         return Err(
-            MatrixError::forbidden("You are not allowed to invite this user.", None).into(),
+            MatrixError::forbidden("you are not allowed to invite this user", None).into(),
         );
     }
 

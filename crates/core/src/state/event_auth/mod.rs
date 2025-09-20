@@ -394,7 +394,7 @@ where
         return Err(StateError::forbidden("sender's membership is not `join`"));
     }
 
-    let creators = room_create_event.creators(auth_rules)?;
+    let creators = room_create_event.creators()?;
     let current_room_power_levels_event = fetch_state.room_power_levels_event().await;
 
     let sender_power_level =
@@ -528,7 +528,7 @@ fn check_room_create(
 
     // Since v12, if the `additional_creators` field is present and is not an array of strings
     // where each string passes the same user ID validation that is applied to the sender, reject.
-    room_create_event.additional_creators(rules)?;
+    room_create_event.additional_creators()?;
 
     // Otherwise, allow.
     info!("`m.room.create` event was allowed");

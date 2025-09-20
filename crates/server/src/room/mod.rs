@@ -541,7 +541,7 @@ pub async fn get_power_levels(room_id: &RoomId) -> AppResult<RoomPowerLevels> {
     let create = get_create(room_id)?;
     let room_version = create.room_version()?;
     let version_rules = crate::room::get_version_rules(&room_version)?;
-    let creators = create.creators(&version_rules.authorization)?;
+    let creators = create.creators()?;
 
     let content = get_power_levels_event_content(room_id)?;
     let power_levels = RoomPowerLevels::new(content.into(), &version_rules.authorization, creators);
@@ -588,30 +588,17 @@ pub fn guest_can_join(room_id: &RoomId) -> bool {
 }
 
 pub async fn user_can_invite(room_id: &RoomId, sender_id: &UserId, _target_user: &UserId) -> bool {
-    // let content = to_raw_json_value(&RoomMemberEventContent::new(MembershipState::Invite))?;
-
-    // let new_event = PduBuilder {
-    //     event_type: TimelineEventType::RoomMember,
-    //     content,
-    //     state_key: Some(target_user.into()),
-    //     ..Default::default()
-    // };
-    // Ok(timeline::create_hash_and_sign_event(new_event, sender, room_id).is_ok())
-
+    if let Ok(create_event) = crate::room::get_create(room_id)
+        && let Ok(creators) = create_event.creators()
+        && creators.contains(sender_id)
+    {
+        return true;
+    }
     if let Ok(power_levels) = get_power_levels(room_id).await {
+        println!(">>>>>>>>>>>>>>>>.power levels: {:?}", power_levels);
         power_levels.user_can_invite(sender_id)
     } else {
-        let create_content = get_state_content::<RoomCreateEventContent>(
-            room_id,
-            &StateEventType::RoomCreate,
-            "",
-            None,
-        );
-        if let Ok(create_content) = create_content {
-            create_content.creator.as_deref() == Some(sender_id)
-        } else {
-            false
-        }
+        false
     }
 }
 
