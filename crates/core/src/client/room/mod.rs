@@ -230,6 +230,11 @@ pub enum RoomPreset {
 /// Request type for the `upgrade_room` endpoint.
 #[derive(ToSchema, Deserialize, Debug)]
 pub struct UpgradeRoomReqBody {
+    /// A list of user IDs to consider as additional creators, and hence grant an "infinite"
+    /// immutable power level, from room version 12 onwards.
+    #[serde(default, skip_serializing_if = "<[_]>::is_empty")]
+    pub additional_creators: Vec<OwnedUserId>,
+
     /// ID of the room to be upgraded.
     // #[salvo(parameter(parameter_in = Path))]
     // pub room_id: OwnedRoomId,

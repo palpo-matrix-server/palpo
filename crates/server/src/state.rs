@@ -4,6 +4,7 @@ use crate::core::events::room::history_visibility::{
 };
 use crate::core::events::room::join_rule::RoomJoinRulesEventContent;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
+use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
 use crate::core::events::{AnyStateEventContent, StateEventType};
 use crate::core::identifiers::*;
 use crate::core::room::JoinRule;
@@ -170,6 +171,34 @@ fn allowed_to_send_state_event(
 						 authorise the join.",
                     )
                     .into());
+                }
+            }
+        }
+        StateEventType::RoomPowerLevels => {
+            let room_version = room::get_version(room_id)?;
+            let version_rules = crate::room::get_version_rules(&room_version)?;
+            if version_rules
+                .authorization
+                .explicitly_privilege_room_creators
+            {
+                let Ok(power_level_content) =
+                    serde_json::from_str::<RoomPowerLevelsEventContent>(json.inner().get())
+                else {
+                    return Err(MatrixError::bad_json(
+                        "Power level content must have a valid JSON body with at least a valid \
+					 power level state.",
+                    )
+                    .into());
+                };
+
+                let create_event = crate::room::get_create(room_id)?;
+                for crator in create_event.creators(&version_rules.authorization)? {
+                    if power_level_content.users.contains_key(&crator) {
+                        return Err(MatrixError::bad_json(
+                            "room creators can not be added to power level",
+                        )
+                        .into());
+                    }
                 }
             }
         }

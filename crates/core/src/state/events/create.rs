@@ -59,7 +59,7 @@ impl<E: Event> RoomCreateEvent<E> {
     ///
     /// This function ignores any `content.additional_creators`, and should only be used in
     /// `check_room_member_join`. Otherwise, you should use `creators` instead.
-    pub(crate) fn creator(&self, rules: &AuthorizationRules) -> StateResult<Cow<'_, UserId>> {
+    pub fn creator(&self, rules: &AuthorizationRules) -> StateResult<Cow<'_, UserId>> {
         #[derive(Deserialize)]
         struct RoomCreateContentCreator {
             creator: OwnedUserId,
@@ -85,7 +85,7 @@ impl<E: Event> RoomCreateEvent<E> {
     ///
     /// This function ignores the primary room creator, and should only be used in
     /// `check_room_member_join`. Otherwise, you should use `creators` instead.
-    pub(crate) fn additional_creators(
+    pub fn additional_creators(
         &self,
         rules: &AuthorizationRules,
     ) -> StateResult<HashSet<OwnedUserId>> {
