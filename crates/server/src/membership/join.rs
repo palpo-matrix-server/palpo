@@ -129,12 +129,10 @@ pub async fn join_room(
     }
 
     info!("joining {room_id} over federation");
-
     let (make_join_response, remote_server) =
         make_join_request(sender_id, room_id, &servers).await?;
 
     info!("make_join finished");
-
     let room_version_id = match make_join_response.room_version {
         Some(room_version) if config::supported_room_versions().contains(&room_version) => {
             room_version
@@ -271,7 +269,6 @@ pub async fn join_room(
     room::ensure_room(room_id, &room_version_id)?;
 
     info!("Parsing join event");
-
     let parsed_join_pdu =
         PduEvent::from_canonical_object(&event_id, join_event.clone()).map_err(|e| {
             warn!("Invalid PDU in send_join response: {}", e);

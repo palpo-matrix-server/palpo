@@ -692,7 +692,6 @@ CREATE TABLE IF NOT EXISTS user_openid_tokens
     CONSTRAINT user_openid_tokens_udx UNIQUE (token)
 );
 
-
 DROP TABLE IF EXISTS room_joined_servers;
 CREATE TABLE IF NOT EXISTS room_joined_servers
 (

@@ -1097,7 +1097,7 @@ async fn create_or_get_user(
     display_name: &str,
     user_info: &OidcUserInfo,
     oidc_config: &crate::config::OidcConfig,
-) -> Result<DbUser, MatrixError> {
+) -> AppResult<DbUser> {
     use crate::core::identifiers::UserId;
     use crate::data::connect;
     use crate::data::schema::*;
@@ -1106,12 +1106,10 @@ async fn create_or_get_user(
     let parsed_user_id = UserId::parse(user_id)
         .map_err(|_| MatrixError::invalid_param("Invalid Matrix user ID format"))?;
 
-    let mut conn = connect().map_err(|_| MatrixError::unknown("Database connection failed"))?;
-
     // Check if user already exists
     if let Ok(existing_user) = users::table
         .filter(users::id.eq(&parsed_user_id))
-        .first::<DbUser>(&mut conn)
+        .first::<DbUser>(&mut connect()?)
     {
         tracing::debug!("Found existing user account: {}", user_id);
 
@@ -1134,7 +1132,7 @@ async fn create_or_get_user(
         return Err(MatrixError::forbidden(
             "New user registration via OIDC is disabled",
             None,
-        ));
+        ).into());
     }
 
     tracing::info!("Creating new Matrix user account: {}", user_id);
@@ -1151,7 +1149,7 @@ async fn create_or_get_user(
 
     let user = diesel::insert_into(users::table)
         .values(&new_user)
-        .get_result::<DbUser>(&mut conn)
+        .get_result::<DbUser>(&mut connect()?)
         .map_err(|e| MatrixError::unknown(format!("Failed to create user account: {}", e)))?;
 
     // Set initial user profile
@@ -1181,14 +1179,12 @@ async fn create_or_get_user(
 async fn create_access_token_for_user(
     user: &DbUser,
     device_id: &str,
-) -> Result<String, MatrixError> {
+) -> AppResult<String> {
     use crate::data::connect;
     use crate::data::schema::*;
     use diesel::prelude::*;
 
     let parsed_device_id: OwnedDeviceId = device_id.into();
-
-    let mut conn = connect().map_err(|_| MatrixError::unknown("Database connection failed"))?;
 
     // Create or update device record
     let new_device = crate::data::user::NewDbUserDevice {
@@ -1207,7 +1203,7 @@ async fn create_access_token_for_user(
         .on_conflict((user_devices::user_id, user_devices::device_id))
         .do_update()
         .set(user_devices::last_seen_at.eq(Some(UnixMillis::now())))
-        .execute(&mut conn)
+        .execute(&mut connect()?)
         .map_err(|e| MatrixError::unknown(format!("Failed to create/update device: {}", e)))?;
 
     // Generate cryptographically secure access token
@@ -1227,7 +1223,7 @@ async fn create_access_token_for_user(
 
     diesel::insert_into(user_access_tokens::table)
         .values(&new_access_token)
-        .execute(&mut conn)
+        .execute(&mut connect()?)
         .map_err(|e| MatrixError::unknown(format!("Failed to create access token: {}", e)))?;
 
     Ok(access_token)

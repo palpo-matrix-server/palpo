@@ -23,9 +23,7 @@ pub async fn invite_user(
         .into());
     }
     if !room::user_can_invite(room_id, inviter_id, invitee_id).await {
-        return Err(
-            MatrixError::forbidden("you are not allowed to invite this user", None).into(),
-        );
+        return Err(MatrixError::forbidden("you are not allowed to invite this user", None).into());
     }
 
     let conf = crate::config::get();
@@ -61,6 +59,7 @@ pub async fn invite_user(
             (pdu, pdu_json, invite_room_state)
         };
         let room_version_id = room::get_version(room_id)?;
+        data::room::add_joined_server(room_id, invitee_id.server_name())?;
 
         let invite_request = crate::core::federation::membership::invite_user_request_v2(
             &invitee_id.server_name().origin().await,
@@ -86,20 +85,20 @@ pub async fn invite_user(
         let (event_id, value) =
             gen_event_id_canonical_json(&send_join_response.event, &room_version_id).map_err(
                 |e| {
-                    tracing::error!("Could not convert event to canonical json: {e}");
-                    MatrixError::invalid_param("Could not convert event to canonical json.")
+                    tracing::error!("could not convert event to canonical json: {e}");
+                    MatrixError::invalid_param("could not convert event to canonical json")
                 },
             )?;
 
         if *pdu.event_id != *event_id {
             warn!(
-                "Server {} changed invite event, that's not allowed in the spec: ours: {:?}, theirs: {:?}",
+                "server {} changed invite event, that's not allowed in the spec: ours: {:?}, theirs: {:?}",
                 invitee_id.server_name(),
                 pdu_json,
                 value
             );
             return Err(MatrixError::bad_json(format!(
-                "Server `{}` sent event with wrong event ID",
+                "server `{}` sent event with wrong event id",
                 invitee_id.server_name()
             ))
             .into());
@@ -109,19 +108,19 @@ pub async fn invite_user(
             serde_json::to_value(
                 value
                     .get("origin")
-                    .ok_or(MatrixError::bad_json("Event needs an origin field."))?,
+                    .ok_or(MatrixError::bad_json("event needs an origin field"))?,
             )
             .expect("CanonicalJson is valid json value"),
         )
         .map_err(|e| {
             MatrixError::bad_json(format!(
-                "Origin field in event is not a valid server name: {e}"
+                "origin field in event is not a valid server name: {e}"
             ))
         })?;
 
         handler::process_incoming_pdu(&origin, &event_id, room_id, &room_version_id, value, true)
             .await?;
-        return sending::send_pdu_room(room_id, &event_id);
+        return sending::send_pdu_room(room_id, &event_id, &[invitee_id.server_name().to_owned()]);
     }
 
     timeline::build_and_append_pdu(

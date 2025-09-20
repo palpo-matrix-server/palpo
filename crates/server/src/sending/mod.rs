@@ -160,10 +160,15 @@ pub fn send_push_pdu(pdu_id: &EventId, user: &UserId, pushkey: String) -> AppRes
 }
 
 #[tracing::instrument(level = "debug")]
-pub fn send_pdu_room(room_id: &RoomId, pdu_id: &EventId) -> AppResult<()> {
+pub fn send_pdu_room(
+    room_id: &RoomId,
+    pdu_id: &EventId,
+    skip_servers: &[OwnedServerName],
+) -> AppResult<()> {
     let servers = room_joined_servers::table
         .filter(room_joined_servers::room_id.eq(room_id))
         .filter(room_joined_servers::server_id.ne(&config::get().server_name))
+        .filter(room_joined_servers::server_id.ne_all(skip_servers))
         .select(room_joined_servers::server_id)
         .load::<OwnedServerName>(&mut connect()?)?;
     send_pdu_servers(servers.into_iter(), pdu_id)

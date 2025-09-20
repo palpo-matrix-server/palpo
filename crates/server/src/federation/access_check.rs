@@ -9,7 +9,7 @@ pub fn access_check(
     event_id: Option<&EventId>,
 ) -> AppResult<()> {
     if !room::is_server_joined(origin, room_id)? {
-        return Err(MatrixError::forbidden("Server is not in room.", None).into());
+        return Err(MatrixError::forbidden("server is not in room", None).into());
     }
 
     handler::acl_check(origin, room_id)?;
@@ -23,7 +23,7 @@ pub fn access_check(
     if let Some(event_id) = event_id
         && !state::server_can_see_event(origin, room_id, event_id)?
     {
-        return Err(MatrixError::forbidden("Server is not allowed to see event.", None).into());
+        return Err(MatrixError::forbidden("server is not allowed to see event", None).into());
     }
 
     Ok(())

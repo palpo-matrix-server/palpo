@@ -190,7 +190,7 @@ pub async fn send_join_v1(
         .filter_map(|id| timeline::get_pdu_json(&id).ok().flatten())
         .map(crate::sending::convert_to_outgoing_federation_event)
         .collect();
-    crate::sending::send_pdu_room(room_id, &event_id)?;
+    crate::sending::send_pdu_room(room_id, &event_id, &[])?;
 
     Ok(RoomStateV1 {
         auth_chain,

@@ -333,9 +333,9 @@ async fn upgrade(
     } else {
         RoomId::new_v1(&conf.server_name)
     };
-    room::ensure_room(&new_room_id, &body.new_version)?;
 
     let state_lock = room::lock_state(&room_id).await;
+    room::ensure_room(&new_room_id, &body.new_version)?;
 
     // Send a m.room.tombstone event to the old room to indicate that it is not intended to be used any further
     // Fail if the sender does not have the required permissions

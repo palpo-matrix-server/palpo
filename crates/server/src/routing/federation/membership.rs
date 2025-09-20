@@ -12,7 +12,7 @@ use crate::core::room::RoomEventReqArgs;
 use crate::core::serde::{CanonicalJsonValue, JsonObject};
 use crate::event::handler;
 use crate::federation::maybe_strip_event_id;
-use crate::room::timeline;
+use crate::room::{ensure_room, timeline};
 use crate::{
     DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, SnPduEvent,
     config, data, empty_ok, json_ok, membership, room, utils,
@@ -152,33 +152,33 @@ async fn invite_user(
 
     if !config::supported_room_versions().contains(&body.room_version) {
         return Err(MatrixError::incompatible_room_version(
-            "Server does not support this room version.",
+            "server does not support this room version",
             body.room_version.clone(),
         )
         .into());
     }
 
     let mut signed_event = utils::to_canonical_object(&body.event)
-        .map_err(|_| MatrixError::invalid_param("Invite event is invalid."))?;
+        .map_err(|_| MatrixError::invalid_param("invite event is invalid"))?;
 
     let invitee_id: OwnedUserId = serde_json::from_value(
         signed_event
             .get("state_key")
-            .ok_or(MatrixError::invalid_param("Event had no state_key field."))?
+            .ok_or(MatrixError::invalid_param("event had no state_key field"))?
             .clone()
             .into(),
     )
-    .map_err(|_| MatrixError::invalid_param("state_key is not a user id."))?;
+    .map_err(|_| MatrixError::invalid_param("state_key is not a user id"))?;
     if invitee_id.server_name().is_remote() {
-        return Err(MatrixError::invalid_param("Cannot invite remote users.").into());
+        return Err(MatrixError::invalid_param("cannot invite remote users").into());
     }
     let invitee = data::user::get_user(&invitee_id)
-        .map_err(|_| MatrixError::not_found("Invitee user not found."))?;
+        .map_err(|_| MatrixError::not_found("invitee user not found"))?;
 
     handler::acl_check(invitee_id.server_name(), &args.room_id)?;
 
     crate::server_key::hash_and_sign_event(&mut signed_event, &body.room_version)
-        .map_err(|e| MatrixError::invalid_param(format!("Failed to sign event: {e}.")))?;
+        .map_err(|e| MatrixError::invalid_param(format!("failed to sign event: {e}")))?;
 
     // Generate event id
     let event_id = crate::event::gen_event_id(&signed_event, &body.room_version)?;
@@ -192,11 +192,15 @@ async fn invite_user(
     let sender_id: OwnedUserId = serde_json::from_value(
         signed_event
             .get("sender")
-            .ok_or(MatrixError::invalid_param("Event had no sender field."))?
+            .ok_or(MatrixError::invalid_param("event had no sender field"))?
             .clone()
             .into(),
     )
-    .map_err(|_| MatrixError::invalid_param("sender is not a user id."))?;
+    .map_err(|_| MatrixError::invalid_param("sender is not a user id"))?;
+
+    let state_lock = room::lock_state(&args.room_id).await;
+    ensure_room(&args.room_id, &body.room_version)?;
+    drop(state_lock);
 
     if data::room::is_banned(&args.room_id)? {
         return Err(MatrixError::forbidden("this room is banned on this homeserver", None).into());
@@ -209,7 +213,7 @@ async fn invite_user(
     let mut invite_state = body.invite_room_state.clone();
 
     let mut event: JsonObject = serde_json::from_str(body.event.get())
-        .map_err(|_| MatrixError::invalid_param("Invalid invite event bytes."))?;
+        .map_err(|_| MatrixError::invalid_param("invalid invite event bytes"))?;
 
     let event_id: OwnedEventId = format!("$dummy_{}", Ulid::new().to_string()).try_into()?;
     event.insert("event_id".to_owned(), event_id.to_string().into());
@@ -217,8 +221,8 @@ async fn invite_user(
     let (event_sn, event_guard) = crate::event::ensure_event_sn(&args.room_id, &event_id)?;
     let pdu = SnPduEvent::from_json_value(&args.room_id, &event_id, event_sn, event.into())
         .map_err(|e| {
-            warn!("Invalid invite event: {}", e);
-            MatrixError::invalid_param("Invalid invite event.")
+            warn!("invalid invite event: {}", e);
+            MatrixError::invalid_param("invalid invite event")
         })?;
     invite_state.push(pdu.to_stripped_state_event());
 
@@ -437,6 +441,6 @@ async fn send_leave(
     )
     .await?;
 
-    crate::sending::send_pdu_room(&args.room_id, &event_id).unwrap();
+    crate::sending::send_pdu_room(&args.room_id, &event_id, &[]).unwrap();
     empty_ok()
 }
