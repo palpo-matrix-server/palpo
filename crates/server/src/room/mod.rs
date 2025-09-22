@@ -189,7 +189,7 @@ pub fn update_currents(room_id: &RoomId) -> AppResult<()> {
 pub fn update_joined_servers(room_id: &RoomId) -> AppResult<()> {
     let joined_servers = room_users::table
         .filter(room_users::room_id.eq(room_id))
-        .filter(room_users::membership.eq_any(["join", "invite"]))
+        .filter(room_users::membership.eq("join"))
         .select(room_users::user_id)
         .distinct()
         .load::<OwnedUserId>(&mut connect()?)?
@@ -208,7 +208,6 @@ pub fn update_joined_servers(room_id: &RoomId) -> AppResult<()> {
     .execute(&mut connect()?)?;
 
     for joined_server in joined_servers {
-        println!("adding joined server {} to room {}", &joined_server, room_id);
         data::room::add_joined_server(room_id, &joined_server)?;
     }
     Ok(())

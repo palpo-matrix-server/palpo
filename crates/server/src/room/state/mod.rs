@@ -151,14 +151,18 @@ pub fn set_event_state(
     room_id: &RoomId,
     state_ids_compressed: Arc<CompressedState>,
 ) -> AppResult<i64> {
-    let prev_frame_id = get_room_frame_id(room_id, None)?;
+    let prev_frame_id = get_room_frame_id(room_id, None).ok();
     let hash_data = utils::hash_keys(state_ids_compressed.iter().map(|s| &s[..]));
     if let Ok(frame_id) = get_frame_id(room_id, &hash_data) {
         update_frame_id(event_id, frame_id)?;
         Ok(frame_id)
     } else {
         let frame_id = ensure_frame(room_id, hash_data)?;
-        let states_parents = load_frame_info(prev_frame_id)?;
+        let states_parents = if let Some(prev_frame_id) = prev_frame_id {
+            load_frame_info(prev_frame_id)?
+        } else {
+            Vec::new()
+        };
 
         let (appended, disposed) = if let Some(parent_state_info) = states_parents.last() {
             let appended: CompressedState = state_ids_compressed

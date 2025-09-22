@@ -12,11 +12,13 @@ use std::time::{Duration, Instant};
 use diesel::prelude::*;
 use fetch_state::fetch_state;
 use indexmap::IndexMap;
+use palpo_core::state::Event;
 use state_at_incoming::{state_at_incoming_degree_one, state_at_incoming_resolved};
 
 use crate::core::Seqnum;
 use crate::core::UnixMillis;
 use crate::core::events::StateEventType;
+use crate::core::events::TimelineEventType;
 use crate::core::events::room::server_acl::RoomServerAclEventContent;
 use crate::core::federation::authorization::{
     EventAuthorizationResBody, event_authorization_request,
@@ -115,7 +117,8 @@ pub(crate) async fn process_incoming_pdu(
         return Ok(());
     }
 
-    let (incoming_pdu, val, event_guard) = process_to_outlier_pdu(
+    println!("ZZZZZZZzzz");
+    let Some((incoming_pdu, val, event_guard)) = process_to_outlier_pdu(
         origin,
         event_id,
         room_id,
@@ -123,7 +126,12 @@ pub(crate) async fn process_incoming_pdu(
         value,
         &mut Default::default(),
     )
-    .await?;
+    .await?
+    else {
+        println!("RRRRRRRRRRRRRREturn for none");
+        return Ok(());
+    };
+    println!("Vzzzzzzzzzzzzzz event");
 
     check_room_id(room_id, &incoming_pdu)?;
 
@@ -185,7 +193,7 @@ pub(crate) async fn process_pulled_pdu(
         return Ok(());
     }
 
-    let (incoming_pdu, val, event_guard) = process_to_outlier_pdu(
+    let Some((incoming_pdu, val, event_guard)) = process_to_outlier_pdu(
         origin,
         event_id,
         room_id,
@@ -193,7 +201,10 @@ pub(crate) async fn process_pulled_pdu(
         value,
         known_events,
     )
-    .await?;
+    .await?
+    else {
+        return Ok(());
+    };
 
     // Skip old events
     let first_pdu_in_room = timeline::first_pdu_in_room(room_id)?
@@ -228,11 +239,13 @@ fn process_to_outlier_pdu<'a>(
 ) -> Pin<
     Box<
         impl Future<
-            Output = AppResult<(
-                SnPduEvent,
-                BTreeMap<String, CanonicalJsonValue>,
-                Option<SeqnumQueueGuard>,
-            )>,
+            Output = AppResult<
+                Option<(
+                    SnPduEvent,
+                    BTreeMap<String, CanonicalJsonValue>,
+                    Option<SeqnumQueueGuard>,
+                )>,
+            >,
         >
         + 'a
         + Send,
@@ -251,11 +264,11 @@ fn process_to_outlier_pdu<'a>(
             && let Ok(val) =
                 serde_json::from_value::<BTreeMap<String, CanonicalJsonValue>>(event_data.clone())
         {
-            return Ok((
+            return Ok(Some((
                 SnPduEvent::from_json_value(&room_id, event_id, event_sn, event_data)?,
                 val,
                 None,
-            ));
+            )));
         }
 
         // 1.1. Remove unsigned field
@@ -317,6 +330,41 @@ fn process_to_outlier_pdu<'a>(
         .map_err(|_| AppError::internal("event is not a valid PDU."))?;
 
         check_room_id(room_id, &incoming_pdu)?;
+
+        if !crate::room::is_server_joined(crate::config::server_name(), room_id)? {
+            if incoming_pdu.event_ty == TimelineEventType::RoomMember
+                && incoming_pdu.state_key.as_deref() != Some(incoming_pdu.sender().as_str())
+                && incoming_pdu
+                    .state_key
+                    .as_deref()
+                    .unwrap_or_default()
+                    .ends_with(&*format!(":{}", crate::config::server_name()))
+            {
+                let (event_sn, event_guard) = ensure_event_sn(room_id, event_id)?;
+                let mut db_event =
+                    NewDbEvent::from_canonical_json(&incoming_pdu.event_id, event_sn, &val)?;
+                db_event.is_outlier = true;
+                db_event.rejection_reason = None;
+                db_event.save()?;
+                DbEventData {
+                    event_id: incoming_pdu.event_id.clone(),
+                    event_sn,
+                    room_id: incoming_pdu.room_id.clone(),
+                    internal_metadata: None,
+                    json_data: serde_json::to_value(&val)?,
+                    format_version: None,
+                }
+                .save()?;
+
+                debug!("added pdu as outlier");
+                return Ok(Some((
+                    SnPduEvent::new(incoming_pdu, event_sn),
+                    val,
+                    event_guard,
+                )));
+            }
+            return Ok(None);
+        }
 
         // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
         fetch_and_process_missing_prev_events(
@@ -438,7 +486,11 @@ fn process_to_outlier_pdu<'a>(
         .save()?;
 
         debug!("added pdu as outlier");
-        Ok((SnPduEvent::new(incoming_pdu, event_sn), val, event_guard))
+        Ok(Some((
+            SnPduEvent::new(incoming_pdu, event_sn),
+            val,
+            event_guard,
+        )))
     })
 }
 
@@ -465,7 +517,66 @@ pub async fn process_to_timeline_pdu(
     // 10. Fetch missing state and auth chain events by calling /state_ids at backwards extremities
     //     doing all the checks in this list starting at 1. These are not timeline events.
     debug!("Resolving state at event");
+    if !crate::room::is_server_joined(crate::config::server_name(), room_id)? {
+        if incoming_pdu.event_ty == TimelineEventType::RoomMember
+            && incoming_pdu.state_key.as_deref() != Some(incoming_pdu.sender().as_str())
+            && incoming_pdu
+                .state_key
+                .as_deref()
+                .unwrap_or_default()
+                .ends_with(&*format!(":{}", crate::config::server_name()))
+        {
+            println!("ZDDDDDDDDDDDff    we  0");
+            let state_at_incoming_event = state_at_incoming_degree_one(&incoming_pdu)
+                .await?
+                .unwrap_or_default();
+            println!("ZDDDDDDDDDDDff    we 1");
+            // 13. Use state resolution to find new room state
+            let state_lock = crate::room::lock_state(room_id).await;
+            println!("ZDDDDDDDDDDDff    we  2");
+            // Now that the event has passed all auth it is added into the timeline.
+            // We use the `state_at_event` instead of `state_after` so we accurately
+            // represent the state for this event.
+            let event_id = incoming_pdu.event_id.clone();
+            debug!("Calculating extremities");
+            let  extremities: BTreeSet<_> = state::get_forward_extremities(room_id)?
+                .into_iter()
+                .collect();
+            let extremities = extremities
+                .iter()
+                .map(Borrow::borrow)
+                .chain(once(event_id.borrow()));
+            println!("ZDDDDDDDDDDDff    we  3");
+            debug!("Compressing state at event");
+            let compressed_state_ids = Arc::new(
+                state_at_incoming_event
+                    .iter()
+                    .map(|(field_id, event_id)| {
+                        state::compress_event(
+                            room_id,
+                            *field_id,
+                            crate::event::ensure_event_sn(room_id, event_id)?.0,
+                        )
+                    })
+                    .collect::<AppResult<_>>()?,
+            );
 
+            debug!("Appended incoming pdu");
+            println!("ZDDDDDDDDDDDff    we  4");
+            timeline::append_pdu(&incoming_pdu, json_data, extremities, &state_lock).await?;
+            println!("ZDDDDDDDDDDDff    we  5");
+            state::set_event_state(
+                &incoming_pdu.event_id,
+                incoming_pdu.event_sn,
+                &incoming_pdu.room_id,
+                compressed_state_ids,
+            )?;
+            println!("ZDDDDDDDDDDDff    we  6");
+
+            drop(state_lock);
+        }
+        return Ok(());
+    }
     let state_at_incoming_event = if incoming_pdu.prev_events.len() == 1 {
         state_at_incoming_degree_one(&incoming_pdu).await?
     } else {
@@ -880,11 +991,12 @@ pub(crate) async fn fetch_and_process_outliers(
             )
             .await
             {
-                Ok((pdu, json, guard)) => {
+                Ok(Some((pdu, json, guard))) => {
                     if next_id == *id {
                         pdus.push((pdu, Some(json), guard));
                     }
                 }
+                Ok(None) => {}
                 Err(e) => {
                     warn!("authentication of event {} failed: {:?}", next_id, e);
                     back_off((*next_id).to_owned());

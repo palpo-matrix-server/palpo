@@ -438,8 +438,11 @@ pub fn parse_incoming_pdu(
         .and_then(|id| RoomId::parse(id.as_str()?).ok())
         .ok_or(MatrixError::invalid_param("invalid room id in pdu"))?;
 
-    let room_version_id = crate::room::get_version(&room_id)
-        .map_err(|_| MatrixError::invalid_param(format!("server is not in room `{room_id}` when parse incoming event")))?;
+    let room_version_id = crate::room::get_version(&room_id).map_err(|_| {
+        MatrixError::invalid_param(format!(
+            "server is not in room `{room_id}` when parse incoming event"
+        ))
+    })?;
 
     let event_id = match crate::event::gen_event_id(&value, &room_version_id) {
         Ok(t) => t,

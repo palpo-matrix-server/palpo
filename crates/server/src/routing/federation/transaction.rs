@@ -61,7 +61,9 @@ async fn send_message(
     }
 
     let txn_start_time = Instant::now();
+    println!("=============call===process_pdus 0");
     let resolved_map = process_pdus(&body.pdus, &body.origin, &txn_start_time).await?;
+    println!("==============end call==process_pdus 0");
     process_edus(body.edus, &body.origin).await;
 
     json_ok(SendMessageResBody {
@@ -106,7 +108,7 @@ async fn process_pdus(
         debug!(
             pdu_elapsed = ?pdu_start_time.elapsed(),
             txn_elapsed = ?txn_start_time.elapsed(),
-            "Finished PDU {event_id}",
+            "finished PDU {event_id}",
         );
 
         // if result.is_ok() {

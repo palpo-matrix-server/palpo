@@ -255,7 +255,10 @@ pub fn update_membership(
                         .filter(room_users::user_id.eq(user_id)),
                 )
                 .execute(conn)?;
-            println!("insert membership   1   {}   {}   {}   {}", room_id, user_id, event_id, membership);
+                println!(
+                    "insert membership   1   {}   {}   {}   {}",
+                    room_id, user_id, event_id, membership
+                );
                 diesel::insert_into(room_users::table)
                     .values(&NewDbRoomUser {
                         room_id: room_id.to_owned(),

@@ -138,7 +138,7 @@ pub async fn sync_events(
         {
             Ok(left_room) => left_room,
             Err(e) => {
-                tracing::error!(error = ?e, "load joined room failed");
+                tracing::error!(error = ?e, "load left room failed");
                 continue;
             }
         };

@@ -146,6 +146,7 @@ async fn invite_user(
     depot: &mut Depot,
 ) -> JsonResult<InviteUserResBodyV2> {
     let body = body.into_inner();
+    println!("iiiiiiiiiiiiiiiiinvite_user body: {:?}", body);
     let origin = depot.origin()?;
     let conf = config::get();
     handler::acl_check(origin, &args.room_id)?;
@@ -174,7 +175,7 @@ async fn invite_user(
     }
     let invitee = data::user::get_user(&invitee_id)
         .map_err(|_| MatrixError::not_found("invitee user not found"))?;
-
+    println!("iiiiiiiiiiiiiiiiinvite_user 1");
     handler::acl_check(invitee_id.server_name(), &args.room_id)?;
 
     crate::server_key::hash_and_sign_event(&mut signed_event, &body.room_version)
@@ -202,6 +203,7 @@ async fn invite_user(
     ensure_room(&args.room_id, &body.room_version)?;
     drop(state_lock);
 
+    println!("iiiiiiiiiiiiiiiiinvite_user 2");
     if data::room::is_banned(&args.room_id)? {
         return Err(MatrixError::forbidden("this room is banned on this homeserver", None).into());
     }
@@ -215,7 +217,7 @@ async fn invite_user(
     let mut event: JsonObject = serde_json::from_str(body.event.get())
         .map_err(|_| MatrixError::invalid_param("invalid invite event bytes"))?;
 
-    let event_id: OwnedEventId = format!("$dummy_{}", Ulid::new().to_string()).try_into()?;
+    // let event_id: OwnedEventId = format!("$dummy_{}", Ulid::new().to_string()).try_into()?;
     event.insert("event_id".to_owned(), event_id.to_string().into());
 
     let (event_sn, event_guard) = crate::event::ensure_event_sn(&args.room_id, &event_id)?;
@@ -225,15 +227,14 @@ async fn invite_user(
             MatrixError::invalid_param("invalid invite event")
         })?;
 
+    println!("iiiiiiiiiiiiiiiiinvite_user 3: {}", pdu.event_id);
     invite_state.push(pdu.to_stripped_state_event());
 
     // If we are active in the room, the remote server will notify us about the join via /send.
     // If we are not in the room, we need to manually
     // record the invited state for client /sync through update_membership(), and
     // send the invite PDU to the relevant appservices.
-    println!("MMMMMMMMMMMMMMMmm   0");
     if !room::is_server_joined(&config::get().server_name, &args.room_id)? {
-    println!("MMMMMMMMMMMMMMMmm   1");
         crate::membership::update_membership(
             &pdu.event_id,
             pdu.event_sn,
@@ -244,6 +245,7 @@ async fn invite_user(
             Some(invite_state),
         )?;
     }
+    println!("iiiiiiiiiiiiiiiiinvite_user 4");
     drop(event_guard);
 
     json_ok(InviteUserResBodyV2 {

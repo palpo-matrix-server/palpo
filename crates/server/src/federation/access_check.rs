@@ -8,10 +8,17 @@ pub fn access_check(
     room_id: &RoomId,
     event_id: Option<&EventId>,
 ) -> AppResult<()> {
+    println!(">>>>>>>>>>>>>. access check");
     if !room::is_server_joined(origin, room_id)? {
-        return Err(MatrixError::forbidden("server is not in room", None).into());
+        println!(">>>>>>>>>>>>>. access check 1");
+        return Err(MatrixError::forbidden(
+            format!("server `{origin}` is not in room `{room_id}`"),
+            None,
+        )
+        .into());
     }
 
+    println!(">>>>>>>>>>>>>. access check 2");
     handler::acl_check(origin, room_id)?;
 
     // let world_readable = crate::room::is_world_readable(room_id);

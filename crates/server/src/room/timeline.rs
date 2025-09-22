@@ -826,10 +826,9 @@ pub async fn build_and_append_pdu(
         )
         && curr_state.content.get() == pdu_builder.content.get()
     {
-        println!("xxxxxxxxxxxxxx");
         return Ok(curr_state);
     }
-        println!("xxxxxxxxxxxxxx 1");
+    println!("xxxxxxxxxxxxxx 1");
 
     let (pdu, pdu_json, _event_guard) =
         create_hash_and_sign_event(pdu_builder, sender, room_id, room_version, state_lock).await?;
@@ -876,7 +875,6 @@ pub async fn build_and_append_pdu(
 
     // Remove our server from the server list since it will be added to it by room_servers() and/or the if statement above
     servers.remove(&conf.server_name);
-    println!("==================send pdu  servers: {:?}  pdu: {pdu:#?}", servers);
     crate::sending::send_pdu_servers(servers.into_iter(), &pdu.event_id)?;
 
     Ok(pdu)

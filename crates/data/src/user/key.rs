@@ -139,7 +139,6 @@ pub struct NewDbKeyChange {
     pub changed_at: UnixMillis,
 }
 
-
 pub fn count_one_time_keys(
     user_id: &UserId,
     device_id: &DeviceId,

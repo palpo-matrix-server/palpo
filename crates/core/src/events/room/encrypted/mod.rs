@@ -9,7 +9,8 @@ use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
 use super::message;
-use crate::{OwnedEventId,
+use crate::{
+    OwnedEventId,
     events::relation::{Annotation, CustomRelation, InReplyTo, Reference, RelationType, Thread},
     serde::JsonObject,
 };

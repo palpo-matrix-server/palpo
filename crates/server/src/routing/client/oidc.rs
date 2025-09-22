@@ -1129,10 +1129,9 @@ async fn create_or_get_user(
 
     // Check if user registration is allowed
     if !oidc_config.allow_registration {
-        return Err(MatrixError::forbidden(
-            "New user registration via OIDC is disabled",
-            None,
-        ).into());
+        return Err(
+            MatrixError::forbidden("New user registration via OIDC is disabled", None).into(),
+        );
     }
 
     tracing::info!("Creating new Matrix user account: {}", user_id);
@@ -1176,10 +1175,7 @@ async fn create_or_get_user(
 /// - Cryptographically secure access token generation
 /// - Device metadata tracking (user agent, timestamps)
 /// - Proper database transaction handling
-async fn create_access_token_for_user(
-    user: &DbUser,
-    device_id: &str,
-) -> AppResult<String> {
+async fn create_access_token_for_user(user: &DbUser, device_id: &str) -> AppResult<String> {
     use crate::data::connect;
     use crate::data::schema::*;
     use diesel::prelude::*;

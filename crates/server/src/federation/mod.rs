@@ -130,7 +130,7 @@ pub(crate) async fn send_request(
                 let msg = extra
                     .remove("error")
                     .map(|v| v.as_str().unwrap_or_default().to_owned())
-                    .unwrap_or("Parse remote respone data failed.".to_owned());
+                    .unwrap_or("parse remote respone data failed".to_owned());
                 Err(MatrixError {
                     status_code: Some(status),
                     authenticate,

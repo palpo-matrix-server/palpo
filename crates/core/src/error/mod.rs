@@ -172,7 +172,7 @@ impl Serialize for MatrixError {
 impl fmt::Display for MatrixError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let code = self.status_code.unwrap_or(StatusCode::BAD_REQUEST).as_u16();
-        write!(f, "[{code} / {}]: {:?}", self.kind.code(),self.body)
+        write!(f, "[{code} / {}]: {:?}", self.kind.code(), self.body)
     }
 }
 

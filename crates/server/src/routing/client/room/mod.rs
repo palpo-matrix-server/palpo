@@ -310,8 +310,6 @@ async fn upgrade(
     body: JsonBody<UpgradeRoomReqBody>,
     depot: &mut Depot,
 ) -> JsonResult<UpgradeRoomResBody> {
-    use RoomVersionId::*;
-
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
     let room_id = room_id.into_inner();

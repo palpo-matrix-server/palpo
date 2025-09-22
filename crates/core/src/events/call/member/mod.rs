@@ -328,7 +328,6 @@ impl Membership {
     }
 }
 
-
 // #[cfg(test)]
 // mod tests {
 //     use std::time::Duration;

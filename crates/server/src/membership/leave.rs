@@ -1,16 +1,12 @@
 use std::collections::HashSet;
 
-use diesel::prelude::*;
-
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::membership::{MakeLeaveResBody, SendLeaveReqBody, make_leave_request};
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_raw_json_value};
 use crate::core::{Seqnum, UnixMillis};
-use crate::data::connect;
 use crate::data::room::{DbEventData, NewDbEvent};
-use crate::data::schema::*;
 use crate::event::{PduBuilder, ensure_event_sn};
 use crate::membership::federation::membership::{SendLeaveReqArgsV2, send_leave_request_v2};
 use crate::room::{self, state, timeline};
@@ -69,7 +65,7 @@ pub async fn leave_room(
         )
         .await?;
     } else {
-         match leave_room_remote(user_id, room_id).await {
+        match leave_room_remote(user_id, room_id).await {
             Err(e) => {
                 warn!("failed to leave room {} remotely: {}", user_id, e);
             }

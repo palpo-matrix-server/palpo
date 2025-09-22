@@ -105,35 +105,34 @@ pub struct SasV1Content {
     /// `m.key.verification.start` message.
     pub hash: HashAlgorithm,
 
-// #[cfg(test)]
-// mod tests {
-//     use std::collections::BTreeMap;
+    // #[cfg(test)]
+    // mod tests {
+    //     use std::collections::BTreeMap;
 
-//     use crate::{event_id, serde::Base64};
-//     use assert_matches2::assert_matches;
-//     use serde_json::{from_value as from_json_value, json, to_value as
-// to_json_value, Value as JsonValue};
+    //     use crate::{event_id, serde::Base64};
+    //     use assert_matches2::assert_matches;
+    //     use serde_json::{from_value as from_json_value, json, to_value as
+    // to_json_value, Value as JsonValue};
 
-//     use super::{
-//         AcceptMethod, HashAlgorithm, KeyAgreementProtocol,
-// KeyVerificationAcceptEventContent,         MessageAuthenticationCode,
-// SasV1Content, ShortAuthenticationString,
-// ToDeviceKeyVerificationAcceptEventContent,         _CustomContent,
-//     };
-//     use crate::events::{relation::Reference, ToDeviceEvent};
+    //     use super::{
+    //         AcceptMethod, HashAlgorithm, KeyAgreementProtocol,
+    // KeyVerificationAcceptEventContent,         MessageAuthenticationCode,
+    // SasV1Content, ShortAuthenticationString,
+    // ToDeviceKeyVerificationAcceptEventContent,         _CustomContent,
+    //     };
+    //     use crate::events::{relation::Reference, ToDeviceEvent};
 
-//     #[test]
-//     fn serialization() {
-//         let key_verification_accept_content =
-// ToDeviceKeyVerificationAcceptEventContent {             transaction_id:
-// "456".into(),             method: AcceptMethod::SasV1(SasV1Content {
-//                 hash: HashAlgorithm::Sha256,
-//                 key_agreement_protocol: KeyAgreementProtocol::Curve25519,
-//                 message_authentication_code:
-// MessageAuthenticationCode::HkdfHmacSha256V2,
-// short_authentication_string: vec![ShortAuthenticationString::Decimal],
-//                 commitment: Base64::new(b"hello".to_vec()),
-
+    //     #[test]
+    //     fn serialization() {
+    //         let key_verification_accept_content =
+    // ToDeviceKeyVerificationAcceptEventContent {             transaction_id:
+    // "456".into(),             method: AcceptMethod::SasV1(SasV1Content {
+    //                 hash: HashAlgorithm::Sha256,
+    //                 key_agreement_protocol: KeyAgreementProtocol::Curve25519,
+    //                 message_authentication_code:
+    // MessageAuthenticationCode::HkdfHmacSha256V2,
+    // short_authentication_string: vec![ShortAuthenticationString::Decimal],
+    //                 commitment: Base64::new(b"hello".to_vec()),
     /// The message authentication code the device is choosing to use, out of
     /// the options in the `m.key.verification.start` message.
     pub message_authentication_code: MessageAuthenticationCode,
