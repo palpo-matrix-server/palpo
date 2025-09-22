@@ -38,67 +38,15 @@ pub async fn leave_room(
     reason: Option<String>,
 ) -> AppResult<()> {
     // Ask a remote server if we don't have this room
-    if !room::is_server_joined(&config::get().server_name, room_id)?
-        && room_id.server_name().map_err(|name| {
-            AppError::public(format!("Bad room id, server name is invalid: `{name}`."))
-        })? != config::get().server_name
-        && !room::user::is_knocked(user_id, room_id)?
-    {
-        match leave_room_remote(user_id, room_id).await {
-            Err(e) => {
-                warn!("Failed to leave room {} remotely: {}", user_id, e);
-            }
-            Ok((event_id, event_sn)) => {
-                let last_state = state::get_user_state(user_id, room_id)?;
+    println!(
+        "leave_room    1   {}   {}",
+        !room::is_server_joined(&config::get().server_name, room_id)?,
+        !room::user::is_knocked(user_id, room_id)?
+    );
+    let member_event =
+        room::get_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None).ok();
 
-                // We always drop the invite, we can't rely on other servers
-                membership::update_membership(
-                    &event_id,
-                    event_sn,
-                    room_id,
-                    user_id,
-                    MembershipState::Leave,
-                    user_id,
-                    last_state,
-                )?;
-            }
-        }
-    } else {
-        let member_event =
-            room::get_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None).ok();
-
-        // Fix for broken rooms
-        let Some(member_event) = member_event else {
-            warn!("Trying to leave a room you are not a member of.");
-            // timeline::build_and_append_pdu(
-            //     PduBuilder::state(
-            //         user_id.to_string(),
-            //         &RoomMemberEventContent::new(MembershipState::Leave),
-            //     ),
-            //     user_id,
-            //     room_id,
-            // )?;
-            let event_id_sns = room_users::table
-                .filter(room_users::room_id.eq(room_id))
-                .filter(room_users::user_id.eq(user_id))
-                .order_by(room_users::id.desc())
-                .select((room_users::event_id, room_users::event_sn))
-                .first::<(OwnedEventId, i64)>(&mut connect()?)
-                .optional()?;
-            if let Some((event_id, event_sn)) = event_id_sns {
-                membership::update_membership(
-                    &event_id,
-                    event_sn,
-                    room_id,
-                    user_id,
-                    MembershipState::Leave,
-                    user_id,
-                    None,
-                )?;
-            }
-            return Ok(());
-        };
-
+    if let Some(member_event) = &member_event {
         let mut event = member_event
             .get_content::<RoomMemberEventContent>()
             .map_err(|_| AppError::public("Invalid member event in database."))?;
@@ -120,6 +68,26 @@ pub async fn leave_room(
             &room::lock_state(room_id).await,
         )
         .await?;
+    } else {
+         match leave_room_remote(user_id, room_id).await {
+            Err(e) => {
+                warn!("failed to leave room {} remotely: {}", user_id, e);
+            }
+            Ok((event_id, event_sn)) => {
+                let last_state = state::get_user_state(user_id, room_id)?;
+
+                // We always drop the invite, we can't rely on other servers
+                membership::update_membership(
+                    &event_id,
+                    event_sn,
+                    room_id,
+                    user_id,
+                    MembershipState::Leave,
+                    user_id,
+                    last_state,
+                )?;
+            }
+        }
     }
 
     Ok(())

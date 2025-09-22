@@ -198,6 +198,7 @@ pub fn update_joined_servers(room_id: &RoomId) -> AppResult<()> {
         .collect::<HashSet<OwnedServerName>>()
         .into_iter()
         .collect::<Vec<_>>();
+    println!("joined servers for room {}: {:?}", room_id, joined_servers);
 
     diesel::delete(
         room_joined_servers::table
@@ -207,6 +208,7 @@ pub fn update_joined_servers(room_id: &RoomId) -> AppResult<()> {
     .execute(&mut connect()?)?;
 
     for joined_server in joined_servers {
+        println!("adding joined server {} to room {}", &joined_server, room_id);
         data::room::add_joined_server(room_id, &joined_server)?;
     }
     Ok(())
@@ -595,7 +597,6 @@ pub async fn user_can_invite(room_id: &RoomId, sender_id: &UserId, _target_user:
         return true;
     }
     if let Ok(power_levels) = get_power_levels(room_id).await {
-        println!(">>>>>>>>>>>>>>>>.power levels: {:?}", power_levels);
         power_levels.user_can_invite(sender_id)
     } else {
         false

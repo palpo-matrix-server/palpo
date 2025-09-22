@@ -303,21 +303,22 @@ where
         let mut highlight = false;
         let mut notify = false;
 
-        let power_levels = crate::room::get_power_levels(pdu.room_id()).await?;
-        for action in data::user::pusher::get_actions(
-            user_id,
-            &rules_for_user,
-            &power_levels,
-            &sync_pdu,
-            &pdu.room_id,
-        )? {
-            match action {
-                Action::Notify => notify = true,
-                Action::SetTweak(Tweak::Highlight(true)) => {
-                    highlight = true;
-                }
-                _ => {}
-            };
+        if let Ok(power_levels) = crate::room::get_power_levels(pdu.room_id()).await {
+            for action in data::user::pusher::get_actions(
+                user_id,
+                &rules_for_user,
+                &power_levels,
+                &sync_pdu,
+                &pdu.room_id,
+            )? {
+                match action {
+                    Action::Notify => notify = true,
+                    Action::SetTweak(Tweak::Highlight(true)) => {
+                        highlight = true;
+                    }
+                    _ => {}
+                };
+            }
         }
 
         if notify {
@@ -825,8 +826,10 @@ pub async fn build_and_append_pdu(
         )
         && curr_state.content.get() == pdu_builder.content.get()
     {
+        println!("xxxxxxxxxxxxxx");
         return Ok(curr_state);
     }
+        println!("xxxxxxxxxxxxxx 1");
 
     let (pdu, pdu_json, _event_guard) =
         create_hash_and_sign_event(pdu_builder, sender, room_id, room_version, state_lock).await?;
@@ -873,6 +876,7 @@ pub async fn build_and_append_pdu(
 
     // Remove our server from the server list since it will be added to it by room_servers() and/or the if statement above
     servers.remove(&conf.server_name);
+    println!("==================send pdu  servers: {:?}  pdu: {pdu:#?}", servers);
     crate::sending::send_pdu_servers(servers.into_iter(), &pdu.event_id)?;
 
     Ok(pdu)

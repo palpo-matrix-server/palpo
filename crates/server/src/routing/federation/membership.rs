@@ -224,13 +224,16 @@ async fn invite_user(
             warn!("invalid invite event: {}", e);
             MatrixError::invalid_param("invalid invite event")
         })?;
+
     invite_state.push(pdu.to_stripped_state_event());
 
     // If we are active in the room, the remote server will notify us about the join via /send.
     // If we are not in the room, we need to manually
     // record the invited state for client /sync through update_membership(), and
     // send the invite PDU to the relevant appservices.
+    println!("MMMMMMMMMMMMMMMmm   0");
     if !room::is_server_joined(&config::get().server_name, &args.room_id)? {
+    println!("MMMMMMMMMMMMMMMmm   1");
         crate::membership::update_membership(
             &pdu.event_id,
             pdu.event_sn,
@@ -441,6 +444,6 @@ async fn send_leave(
     )
     .await?;
 
-    crate::sending::send_pdu_room(&args.room_id, &event_id, &[]).unwrap();
+    crate::sending::send_pdu_room(&args.room_id, &event_id).unwrap();
     empty_ok()
 }

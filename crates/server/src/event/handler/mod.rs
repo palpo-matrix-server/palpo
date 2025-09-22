@@ -438,7 +438,6 @@ fn process_to_outlier_pdu<'a>(
         .save()?;
 
         debug!("added pdu as outlier");
-
         Ok((SnPduEvent::new(incoming_pdu, event_sn), val, event_guard))
     })
 }

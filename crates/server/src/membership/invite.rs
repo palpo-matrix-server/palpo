@@ -59,7 +59,16 @@ pub async fn invite_user(
             (pdu, pdu_json, invite_room_state)
         };
         let room_version_id = room::get_version(room_id)?;
-        data::room::add_joined_server(room_id, invitee_id.server_name())?;
+
+        crate::membership::update_membership(
+            &pdu.event_id,
+            pdu.event_sn,
+            room_id,
+            &invitee_id,
+            MembershipState::Invite,
+            inviter_id,
+            Some(invite_room_state.clone()),
+        )?;
 
         let invite_request = crate::core::federation::membership::invite_user_request_v2(
             &invitee_id.server_name().origin().await,
@@ -120,7 +129,7 @@ pub async fn invite_user(
 
         handler::process_incoming_pdu(&origin, &event_id, room_id, &room_version_id, value, true)
             .await?;
-        return sending::send_pdu_room(room_id, &event_id, &[invitee_id.server_name().to_owned()]);
+        return sending::send_pdu_room(room_id, &event_id);
     }
 
     timeline::build_and_append_pdu(
