@@ -424,9 +424,9 @@ pub(crate) async fn join_room_by_id_or_alias(
             //     }
             // }
 
-            addl_servers.sort_unstable();
-            addl_servers.dedup();
             servers.append(&mut addl_servers);
+            servers.sort_unstable();
+            servers.dedup();
 
             (room_id, servers)
         }

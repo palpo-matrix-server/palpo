@@ -259,14 +259,14 @@ async fn register(
         for room in &conf.auto_join_rooms {
             let Ok(room_id) = room::alias::resolve(room).await else {
                 error!(
-                    "Failed to resolve room alias to room ID when attempting to auto join \
+                    "failed to resolve room alias to room ID when attempting to auto join \
 					 {room}, skipping"
                 );
                 continue;
             };
 
             if !room::is_server_joined(&conf.server_name, &room_id)? {
-                warn!("Skipping room {room} to automatically join as we have never joined before.");
+                warn!("skipping room {room} to automatically join as we have never joined before.");
                 continue;
             }
 
@@ -275,7 +275,7 @@ async fn register(
                     &db_user,
                     Some(&device_id),
                     &room_id,
-                    Some("Automatically joining this room upon registration".to_owned()),
+                    Some("automatically joining this room upon registration".to_owned()),
                     &[conf.server_name.clone(), room_server_name.to_owned()],
                     None,
                     None,
@@ -288,7 +288,7 @@ async fn register(
                         error!("Failed to automatically join room {room} for user {user_id}: {e}");
                     }
                     _ => {
-                        info!("Automatically joined room {room} for user {user_id}");
+                        info!("automatically joined room {room} for user {user_id}");
                     }
                 }
             }

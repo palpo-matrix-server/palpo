@@ -74,6 +74,7 @@ pub async fn join_room(
     let (should_remote, servers) =
         room::should_join_on_remote_servers(sender_id, room_id, servers).await?;
 
+    println!(":================xx====should_remote: {should_remote}  servers:{servers:#?}"); // --- IGNORE ---
     if !should_remote {
         info!("We can join locally");
         let join_rule = room::get_join_rule(room_id)?;
