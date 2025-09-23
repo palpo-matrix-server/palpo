@@ -224,7 +224,7 @@ pub(crate) async fn process_pulled_pdu(
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
-    handler::process_to_timeline_pdu(incoming_pdu, val, origin, room_id).await?;
+    handler::process_to_timeline_pdu(incoming_pdu, val, origin, room_id, ).await?;
     drop(event_guard);
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
@@ -336,7 +336,9 @@ fn process_to_outlier_pdu<'a>(
 
         check_room_id(room_id, &incoming_pdu)?;
 
+        println!("========is_server_joined 0");
         if !crate::room::is_server_joined(crate::config::server_name(), room_id)? {
+            println!("========is_server_joined 1");
             if incoming_pdu.event_ty == TimelineEventType::RoomMember
                 && incoming_pdu.state_key.as_deref() != Some(incoming_pdu.sender().as_str())
                 && incoming_pdu
@@ -887,7 +889,6 @@ pub(crate) async fn fetch_and_process_outliers(
     Vec<(
         SnPduEvent,
         Option<CanonicalJsonObject>,
-
         Option<SeqnumQueueGuard>,
     )>,
 > {
@@ -1067,8 +1068,10 @@ pub async fn fetch_and_process_missing_prev_events(
         incoming_pdu.event_id.clone(),
         incoming_pdu.prev_events.clone(),
     );
-    println!("==============missing_stack: {missing_stack:#?}   forward_extremities:{forward_extremities:?}  known_events:{known_events:?}  fetched_events:{fetched_events:?} incoming_pdu:{:#?}", incoming_pdu);
-    panic!("zzzzzzzzzzzz");
+    println!(
+        "==============missing_stack: {missing_stack:#?}   forward_extremities:{forward_extremities:?}  known_events:{known_events:?}  fetched_events:{fetched_events:?} incoming_pdu:{:#?}",
+        incoming_pdu
+    );
     while let Some((event_id, prev_events)) = missing_stack.pop() {
         let mut earliest_events = forward_extremities.clone();
         earliest_events.extend(known_events.iter().cloned());

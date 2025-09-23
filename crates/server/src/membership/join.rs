@@ -275,15 +275,27 @@ pub async fn join_room(
             warn!("Invalid PDU in send_join response: {}", e);
             AppError::public("Invalid join event PDU.")
         })?;
+    let join_event_id = parsed_join_pdu.event_id.clone();
+    let (join_event_sn, event_guard) = ensure_event_sn(room_id, &join_event_id)?;
 
     let mut state = HashMap::new();
     let pub_key_map = RwLock::new(BTreeMap::new());
 
-    info!("Acquiring server signing keys for response events");
+    info!("acquiring server signing keys for response events");
     let resp_events = &send_join_body.0;
     let resp_state = &resp_events.state;
     let resp_auth = &resp_events.auth_chain;
     crate::server_key::acquire_events_pubkeys(resp_auth.iter().chain(resp_state.iter())).await;
+
+    super::update_membership(
+        &join_event_id,
+        join_event_sn,
+        room_id,
+        &sender_id,
+        MembershipState::Join,
+        sender_id,
+        None,
+    )?;
 
     let mut parsed_pdus = IndexMap::new();
     println!("================resp_auth: {resp_auth:#?}"); // --- IGNORE ---
@@ -440,8 +452,6 @@ pub async fn join_room(
 
     let state_lock = room::lock_state(room_id).await;
     info!("Appending new room join event");
-    let join_event_id = parsed_join_pdu.event_id.clone();
-    let (join_event_sn, event_guard) = ensure_event_sn(room_id, &join_event_id)?;
     diesel::insert_into(events::table)
         .values(NewDbEvent::from_canonical_json(
             &event_id,
