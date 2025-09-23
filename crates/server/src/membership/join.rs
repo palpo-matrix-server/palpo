@@ -76,7 +76,7 @@ pub async fn join_room(
 
     println!(":================xx====should_remote: {should_remote}  servers:{servers:#?}"); // --- IGNORE ---
     if !should_remote {
-        info!("We can join locally");
+        info!("we can join locally");
         let join_rule = room::get_join_rule(room_id)?;
 
         let event = RoomMemberEventContent {
@@ -200,7 +200,7 @@ pub async fn join_room(
     let body = SendJoinReqBody(crate::sending::convert_to_outgoing_federation_event(
         join_event.clone(),
     ));
-    info!("Asking {remote_server} for send_join");
+    info!("asking {remote_server} for send_join");
     let send_join_request = crate::core::federation::membership::send_join_request(
         &remote_server.origin().await,
         SendJoinArgs {
@@ -222,7 +222,7 @@ pub async fn join_room(
 
     if let Some(signed_raw) = &send_join_body.0.event {
         info!(
-            "There is a signed event. This room is probably using restricted joins. Adding signature to our event"
+            "there is a signed event. This room is probably using restricted joins. adding signature to our event"
         );
         let (signed_event_id, signed_value) =
             match gen_event_id_canonical_json(signed_raw, &room_version_id) {
