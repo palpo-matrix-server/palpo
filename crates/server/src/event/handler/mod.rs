@@ -573,13 +573,11 @@ pub async fn process_to_timeline_pdu(
                 let mut state_after = state_at_incoming_event.clone();
 
                 println!("MMMMMMMMMMMMMM  incoming_pdu:{incoming_pdu:?} ");
-                    let state_key_id = state::ensure_field_id(
-                        &incoming_pdu.event_ty.to_string().into(),
-                        state_key,
-                    )?;
+                let state_key_id =
+                    state::ensure_field_id(&incoming_pdu.event_ty.to_string().into(), state_key)?;
 
-
-                let compressed_event = state::compress_event(room_id, state_key_id, incoming_pdu.event_sn)?;
+                let compressed_event =
+                    state::compress_event(room_id, state_key_id, incoming_pdu.event_sn)?;
                 let mut new_room_state = CompressedState::new();
                 new_room_state.insert(compressed_event);
 
@@ -730,9 +728,9 @@ pub async fn process_to_timeline_pdu(
 
         // We also add state after incoming event to the fork states
         let mut state_after = state_at_incoming_event.clone();
-            let state_key_id =
-                state::ensure_field_id(&incoming_pdu.event_ty.to_string().into(), state_key)?;
-            state_after.insert(state_key_id, incoming_pdu.event_id.clone());
+        let state_key_id =
+            state::ensure_field_id(&incoming_pdu.event_ty.to_string().into(), state_key)?;
+        state_after.insert(state_key_id, incoming_pdu.event_id.clone());
         let new_room_state = resolve_state(room_id, room_version_id, state_after).await?;
 
         // Set the new room state to the resolved state
@@ -798,7 +796,7 @@ async fn resolve_state(
 
     let mut auth_chain_sets = Vec::new();
     for state in &fork_states {
-    println!("========resolve_state   2");
+        println!("========resolve_state   2");
         auth_chain_sets.push(crate::room::auth_chain::get_auth_chain_ids(
             room_id,
             state.values().map(|e| &**e),
@@ -1076,6 +1074,9 @@ pub async fn fetch_and_process_missing_prev_events(
             .into_iter()
             .filter(|id| !earliest_events.contains(id) && !fetched_events.contains_key(id))
             .collect::<Vec<_>>();
+        println!(
+            "==============missing_events: {missing_events:#?}  earliest_events:{earliest_events:?}  fetched_events:{fetched_events:?}"
+        );
         if missing_events.is_empty() {
             continue;
         }
