@@ -181,6 +181,7 @@ pub fn set_event_state(
             (state_ids_compressed, Arc::new(CompressedState::new()))
         };
 
+        println!("===========update frame: {frame_id}");
         update_frame_id(event_id, frame_id)?;
         calc_and_save_state_delta(
             room_id,

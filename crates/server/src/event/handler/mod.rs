@@ -143,7 +143,12 @@ pub(crate) async fn process_incoming_pdu(
     // Skip old events
     let first_pdu_in_room = timeline::first_pdu_in_room(room_id)?
         .ok_or_else(|| AppError::internal("failed to find first pdu in database."))?;
+    println!(
+        "=========process incoming pdu   first_pdu_in_room:   {}  {}",
+        incoming_pdu.origin_server_ts, first_pdu_in_room.origin_server_ts
+    );
     if incoming_pdu.origin_server_ts < first_pdu_in_room.origin_server_ts {
+        println!(">>.........returning early");
         return Ok(());
     }
 
@@ -518,6 +523,7 @@ pub async fn process_to_timeline_pdu(
     //     doing all the checks in this list starting at 1. These are not timeline events.
     debug!("Resolving state at event");
     if !crate::room::is_server_joined(crate::config::server_name(), room_id)? {
+        println!("ppppppppppppprocess to timeline pdu  server bot joined");
         if incoming_pdu.event_ty == TimelineEventType::RoomMember
             && incoming_pdu.state_key.as_deref() != Some(incoming_pdu.sender().as_str())
             && incoming_pdu
@@ -539,7 +545,7 @@ pub async fn process_to_timeline_pdu(
             // represent the state for this event.
             let event_id = incoming_pdu.event_id.clone();
             debug!("Calculating extremities");
-            let  extremities: BTreeSet<_> = state::get_forward_extremities(room_id)?
+            let extremities: BTreeSet<_> = state::get_forward_extremities(room_id)?
                 .into_iter()
                 .collect();
             let extremities = extremities
@@ -560,17 +566,49 @@ pub async fn process_to_timeline_pdu(
                     })
                     .collect::<AppResult<_>>()?,
             );
+            if let Some(state_key) = &incoming_pdu.state_key {
+                debug!("Preparing for stateres to derive new room state");
 
-            debug!("Appended incoming pdu");
+                // We also add state after incoming event to the fork states
+                let mut state_after = state_at_incoming_event.clone();
+
+                println!("MMMMMMMMMMMMMM  incoming_pdu:{incoming_pdu:?} ");
+                    let state_key_id = state::ensure_field_id(
+                        &incoming_pdu.event_ty.to_string().into(),
+                        state_key,
+                    )?;
+
+
+                let compressed_event = state::compress_event(room_id, state_key_id, incoming_pdu.event_sn)?;
+                let mut new_room_state = CompressedState::new();
+                new_room_state.insert(compressed_event);
+
+                // Set the new room state to the resolved state
+                debug!("forcing new room state");
+                println!("MMMMMMMMMMMMMM  new_room_state:{new_room_state:?} ");
+                let DeltaInfo {
+                    frame_id,
+                    appended,
+                    disposed,
+                } = state::save_state(room_id, Arc::new(new_room_state))?;
+
+                println!(
+                    "MMMMMMMMMMMMMM frame_id: {frame_id:?}  appended:{appended:?}  disposed:{disposed:?} "
+                );
+                state::force_state(room_id, frame_id, appended, disposed)?;
+            }
+
+            debug!("appended incoming pdu");
             println!("ZDDDDDDDDDDDff    we  4");
             timeline::append_pdu(&incoming_pdu, json_data, extremities, &state_lock).await?;
             println!("ZDDDDDDDDDDDff    we  5");
-            state::set_event_state(
+            let frame_id = state::set_event_state(
                 &incoming_pdu.event_id,
                 incoming_pdu.event_sn,
                 &incoming_pdu.room_id,
                 compressed_state_ids,
             )?;
+            // state::set_room_state(room_id, frame_id)?;
             println!("ZDDDDDDDDDDDff    we  6");
 
             drop(state_lock);
@@ -687,19 +725,14 @@ pub async fn process_to_timeline_pdu(
             .collect::<AppResult<_>>()?,
     );
 
-    if incoming_pdu.state_key.is_some() {
+    if let Some(state_key) = &incoming_pdu.state_key {
         debug!("Preparing for stateres to derive new room state");
 
         // We also add state after incoming event to the fork states
         let mut state_after = state_at_incoming_event.clone();
-
-        if let Some(state_key) = &incoming_pdu.state_key {
             let state_key_id =
                 state::ensure_field_id(&incoming_pdu.event_ty.to_string().into(), state_key)?;
-
             state_after.insert(state_key_id, incoming_pdu.event_id.clone());
-        }
-
         let new_room_state = resolve_state(room_id, room_version_id, state_after).await?;
 
         // Set the new room state to the resolved state
@@ -733,7 +766,7 @@ pub async fn process_to_timeline_pdu(
     } else {
         debug!("Appended incoming pdu");
         timeline::append_pdu(&incoming_pdu, json_data, extremities, &state_lock).await?;
-        state::set_event_state(
+        let frame_id = state::set_event_state(
             &incoming_pdu.event_id,
             incoming_pdu.event_sn,
             &incoming_pdu.room_id,
@@ -752,22 +785,26 @@ async fn resolve_state(
     incoming_state: HashMap<i64, OwnedEventId>,
 ) -> AppResult<Arc<CompressedState>> {
     debug!("Loading current room state ids");
+    println!("========resolve_state   0");
     let current_state_ids = if let Ok(current_frame_id) = crate::room::get_frame_id(room_id, None) {
         state::get_full_state_ids(current_frame_id)?
     } else {
         HashMap::new()
     };
 
+    println!("========resolve_state   1");
     debug!("Loading fork states");
     let fork_states = [current_state_ids, incoming_state];
 
     let mut auth_chain_sets = Vec::new();
     for state in &fork_states {
+    println!("========resolve_state   2");
         auth_chain_sets.push(crate::room::auth_chain::get_auth_chain_ids(
             room_id,
             state.values().map(|e| &**e),
         )?);
     }
+    println!("========resolve_state   3");
 
     let fork_states: Vec<_> = fork_states
         .into_iter()
@@ -790,6 +827,7 @@ async fn resolve_state(
         })
         .collect();
     debug!("Resolving state");
+    println!("========resolve_state   4");
 
     let version_rules = crate::room::get_version_rules(room_version_id)?;
     let state = match crate::core::state::resolve(
@@ -815,8 +853,9 @@ async fn resolve_state(
             ));
         }
     };
+    println!("========resolve_state   5");
 
-    debug!("State resolution done. Compressing state");
+    debug!("state resolution done. compressing state");
 
     let new_room_state = state
         .into_iter()
@@ -827,6 +866,7 @@ async fn resolve_state(
         })
         .collect::<AppResult<_>>()?;
 
+    println!("========resolve_state   6");
     Ok(Arc::new(new_room_state))
 }
 

@@ -618,6 +618,7 @@ pub(super) async fn kick_user(
         )
         .into());
     };
+    println!("kkkkkkkkkkkkkkkkkick_user  memeber event: {:#?}", event);
 
     if !matches!(
         event.membership,
