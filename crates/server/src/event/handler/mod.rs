@@ -1080,6 +1080,10 @@ pub async fn fetch_and_process_missing_prev_events(
             continue;
         }
 
+        println!(
+            "Fetching missing prev events for {}: {:?}",
+            event_id, missing_events
+        );
         let request = missing_events_request(
             &origin.origin().await,
             room_id,
