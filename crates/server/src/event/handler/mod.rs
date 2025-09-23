@@ -1067,7 +1067,6 @@ pub async fn fetch_and_process_missing_prev_events(
         incoming_pdu.prev_events.clone(),
     );
     println!("==============missing_stack: {missing_stack:#?}   forward_extremities:{forward_extremities:?}  known_events:{known_events:?}  fetched_events:{fetched_events:?} incoming_pdu:{:#?}", incoming_pdu);
-    panic!("ZZZZzzzzz");
     while let Some((event_id, prev_events)) = missing_stack.pop() {
         let mut earliest_events = forward_extremities.clone();
         earliest_events.extend(known_events.iter().cloned());

@@ -371,6 +371,36 @@ pub async fn join_room(
         .iter()
         .map(|pdu| super::validate_and_add_event_id(pdu, &room_version_id, &pub_key_map))
     {
+    let mut parsed_pdus = IndexMap::new();
+    println!("================resp_auth: {resp_auth:#?}"); // --- IGNORE ---
+    for auth_pdu in resp_auth {
+        println!("==============parsing auth auth_pdu: {auth_pdu:?}"); // --- IGNORE ---
+        let (event_id, event_value, _room_id, _room_version_id) =
+            crate::parse_incoming_pdu(auth_pdu)?;
+        parsed_pdus.insert(event_id, event_value);
+    }
+    for state in resp_state {
+        println!("==============parsing auth state: {state:?}"); // --- IGNORE ---
+        let (event_id, event_value, _room_id, _room_version_id) = crate::parse_incoming_pdu(state)?;
+        parsed_pdus.insert(event_id, event_value);
+    }
+    println!("zzzzzzzzzzzzzzz  0");
+    for (event_id, event_value) in parsed_pdus {
+    println!("zzzzzzzzzzzzzzz  event_value:{event_value:?}");
+        if let Err(e) = process_incoming_pdu(
+            &remote_server,
+            &event_id,
+            room_id,
+            &room_version_id,
+            event_value,
+            true,
+        )
+        .await
+        {
+            error!("Failed to fetch missing prev events for join: {e}");
+        }
+    }
+    println!("zzzzzzzzzzzzzzzzz  end");
         let (event_id, value) = match result.await {
             Ok(t) => t,
             Err(_) => continue,
