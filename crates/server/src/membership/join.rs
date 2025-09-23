@@ -305,7 +305,7 @@ pub async fn join_room(
         )
         .await
         {
-            error!("Failed to fetch missing prev events for join: {e}");
+            error!("failed to process incoming pdu for join: {e}");
         }
     }
     if let Err(e) = fetch_and_process_missing_prev_events(
@@ -317,7 +317,7 @@ pub async fn join_room(
     )
     .await
     {
-        error!("Failed to fetch missing prev events for join: {e}");
+        error!("failed to fetch missing prev events for join: {e}");
     }
 
     info!("Going through send_join response room_state");
