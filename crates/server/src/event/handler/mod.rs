@@ -923,7 +923,7 @@ pub(crate) async fn fetch_and_process_outliers(
                 }
 
                 if time.elapsed() < min_elapsed_duration {
-                    info!("Backing off from {}", next_id);
+                    info!("backing off from {}", next_id);
                     continue;
                 }
             }
@@ -933,11 +933,11 @@ pub(crate) async fn fetch_and_process_outliers(
             }
 
             if timeline::has_pdu(&next_id) {
-                trace!("Found {} in db", next_id);
+                trace!("found {} in db", next_id);
                 continue;
             }
 
-            info!("Fetching {} over federation.", next_id);
+            info!("fetching {} over federation.", next_id);
             let request =
                 event_request(&origin.origin().await, EventReqArgs::new(next_id.clone()))?
                     .into_inner();
@@ -948,7 +948,7 @@ pub(crate) async fn fetch_and_process_outliers(
                 .await
             {
                 Ok(res) => {
-                    info!("Got {} over federation", next_id);
+                    info!("got {} over federation", next_id);
 
                     let Ok((calculated_event_id, value)) =
                         crate::event::gen_event_id_canonical_json(&res.pdu, room_version_id)
@@ -972,18 +972,18 @@ pub(crate) async fn fetch_and_process_outliers(
                                 let a: OwnedEventId = auth_event;
                                 todo_auth_events.push_back(a);
                             } else {
-                                warn!("Auth event id is not valid");
+                                warn!("auth event id is not valid");
                             }
                         }
                     } else {
-                        warn!("Auth event list invalid");
+                        warn!("auth event list invalid");
                     }
 
                     events_in_reverse_order.push((next_id.clone(), value));
                     events_all.insert(next_id);
                 }
                 Err(_) => {
-                    warn!("Failed to fetch event: {}", next_id);
+                    warn!("failed to fetch event: {}", next_id);
                     back_off((*next_id).to_owned());
                 }
             }
@@ -996,7 +996,7 @@ pub(crate) async fn fetch_and_process_outliers(
         // a. Look in the main timeline (pduid_pdu tree)
         // b. Look at outlier pdu tree (get_pdu_json checks both)
         if let Some(local_pdu) = local_pdu {
-            trace!("Found {id} in db");
+            trace!("found {id} in db");
             pdus.push((local_pdu.clone(), None, None));
         }
         for (next_id, value) in events_in_reverse_order.into_iter().rev() {
@@ -1010,7 +1010,7 @@ pub(crate) async fn fetch_and_process_outliers(
                 }
 
                 if time.elapsed() < min_elapsed_duration {
-                    info!("Backing off from {}", next_id);
+                    info!("backing off from {}", next_id);
                     continue;
                 }
             }
