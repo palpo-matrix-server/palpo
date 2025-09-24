@@ -59,7 +59,8 @@ enable = true
 
 [logger]
 level = "warn,palpo=info,salvo=error"
-format = "json" # pretty, json
+format = "pretty" # pretty, json
+ansi_colors = false
 
 # [typing]
 # allow_incoming = true

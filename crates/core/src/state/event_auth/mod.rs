@@ -169,7 +169,7 @@ where
 /// If the check fails, this returns an `Err(_)` with a description of the check that failed.
 ///
 /// [authorization rules]: https://spec.matrix.org/latest/server-server-api/#authorization-rules
-#[instrument(skip_all, fields(event_id = incoming_event.event_id().borrow().as_str()))]
+#[instrument(skip_all)]
 pub async fn check_state_independent_auth_rules<Pdu, Fetch, Fut>(
     rules: &AuthorizationRules,
     incoming_event: &Pdu,
@@ -319,7 +319,7 @@ where
 ///
 /// [authorization rules]: https://spec.matrix.org/latest/server-server-api/#authorization-rules
 /// [checks on receipt of a PDU]: https://spec.matrix.org/latest/server-server-api/#checks-performed-on-receipt-of-a-pdu
-#[instrument(skip_all, fields(event_id = incoming_event.event_id().borrow().as_str()))]
+#[instrument(skip_all)]
 pub async fn check_state_dependent_auth_rules<Pdu, Fetch, Fut>(
     auth_rules: &AuthorizationRules,
     incoming_event: &Pdu,

@@ -346,7 +346,6 @@ fn process_to_outlier_pdu(
         if !server_joined {
             if let Some(state_key) = incoming_pdu.state_key.as_deref()
                 && incoming_pdu.event_ty == TimelineEventType::RoomMember
-                && state_key != incoming_pdu.sender().as_str()
                 && state_key.ends_with(&*format!(":{}", crate::config::server_name()))
             {
                 let (event_sn, event_guard) = ensure_event_sn(room_id, event_id)?;
@@ -530,7 +529,6 @@ pub async fn process_to_timeline_pdu(
     if !server_joined {
         if let Some(state_key) = incoming_pdu.state_key.as_deref()
             && incoming_pdu.event_ty == TimelineEventType::RoomMember
-            && state_key != incoming_pdu.sender().as_str()
             && state_key.ends_with(&*format!(":{}", crate::config::server_name()))
         {
             let state_at_incoming_event = state_at_incoming_degree_one(&incoming_pdu)
