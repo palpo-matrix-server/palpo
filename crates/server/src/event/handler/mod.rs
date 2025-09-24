@@ -839,7 +839,7 @@ async fn resolve_state(
         }
     };
 
-    debug!("state resolution done. compressing state");
+    debug!("State resolution done, compressing state");
 
     let new_room_state = state
         .into_iter()
@@ -918,11 +918,11 @@ pub(crate) async fn fetch_and_process_outliers(
             }
 
             if timeline::has_pdu(&next_id) {
-                trace!("found {} in db", next_id);
+                trace!("Found {} in db", next_id);
                 continue;
             }
 
-            info!("fetching {} over federation.", next_id);
+            info!("Fetching {} over federation.", next_id);
             let request =
                 event_request(&origin.origin().await, EventReqArgs::new(next_id.clone()))?
                     .into_inner();
@@ -957,11 +957,11 @@ pub(crate) async fn fetch_and_process_outliers(
                                 let a: OwnedEventId = auth_event;
                                 todo_auth_events.push_back(a);
                             } else {
-                                warn!("auth event id is not valid");
+                                warn!("Auth event id is not valid");
                             }
                         }
                     } else {
-                        warn!("auth event list invalid");
+                        warn!("Auth event list invalid");
                     }
 
                     events_in_reverse_order.push((next_id.clone(), value));
@@ -1021,7 +1021,7 @@ pub(crate) async fn fetch_and_process_outliers(
                 }
                 Ok(None) => {}
                 Err(e) => {
-                    warn!("authentication of event {} failed: {:?}", next_id, e);
+                    warn!("Authentication of event {} failed: {:?}", next_id, e);
                     back_off((*next_id).to_owned());
                 }
             }
