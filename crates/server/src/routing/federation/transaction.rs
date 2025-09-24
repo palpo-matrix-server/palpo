@@ -60,6 +60,7 @@ async fn send_message(
         .into());
     }
 
+    println!("Received transaction from {:?}", body);
     let txn_start_time = Instant::now();
     let resolved_map = process_pdus(&body.pdus, &body.origin, &txn_start_time).await?;
     process_edus(body.edus, &body.origin).await;
@@ -87,8 +88,7 @@ async fn process_pdus(
             }
         });
 
-        // We do not add the event_id field to the pdu here because of signature
-        // and hashes checks
+        // We do not add the event_id field to the pdu here because of signature and hashes checks
     }
     let mut resolved_map = BTreeMap::new();
     for (event_id, value, room_id, room_version_id) in parsed_pdus {

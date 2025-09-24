@@ -37,6 +37,7 @@ pub async fn leave_room(
     let member_event =
         room::get_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None).ok();
 
+    println!("LEAVING ROOM {} FOR USER {}  member_event:{member_event:?}", room_id, user_id);
     if let Some(member_event) = &member_event {
         let mut event = member_event
             .get_content::<RoomMemberEventContent>()
@@ -88,6 +89,7 @@ async fn leave_room_remote(
     user_id: &UserId,
     room_id: &RoomId,
 ) -> AppResult<(OwnedEventId, Seqnum)> {
+    println!("LEAVING ROOM REMOTELY {} FOR USER {}", room_id, user_id);
     let mut make_leave_response_and_server = Err(AppError::public(
         "No server available to assist in leaving.",
     ));
