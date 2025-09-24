@@ -236,13 +236,13 @@ pub(crate) async fn process_pulled_pdu(
 }
 
 #[tracing::instrument(skip_all)]
-fn process_to_outlier_pdu<'a>(
-    origin: &'a ServerName,
-    event_id: &'a EventId,
-    room_id: &'a RoomId,
-    room_version_id: &'a RoomVersionId,
+fn process_to_outlier_pdu(
+    origin: &ServerName,
+    event_id: &EventId,
+    room_id: &RoomId,
+    room_version_id: &RoomVersionId,
     mut value: BTreeMap<String, CanonicalJsonValue>,
-    known_events: &'a mut HashSet<OwnedEventId>,
+    known_events: &mut HashSet<OwnedEventId>,
 ) -> Pin<
     Box<
         impl Future<
@@ -254,7 +254,6 @@ fn process_to_outlier_pdu<'a>(
                 )>,
             >,
         >
-        + 'a
         + Send,
     >,
 > {
