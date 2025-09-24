@@ -534,19 +534,7 @@ impl PduEvent {
 
         serde_json::from_value(data).expect("RawJson::from_value always works")
     }
-
-    pub fn is_member_leave_or_ban_event(&self) -> bool {
-        if self.event_ty != TimelineEventType::RoomMember {
-            return false;
-        }
-        if let Ok(content) = self.get_content::<RoomMemberEventContent>() {
-            content.membership == MembershipState::Leave
-                || content.membership == MembershipState::Ban
-        } else {
-            false
-        }
-    }
-
+    
     pub fn from_canonical_object(
         event_id: &EventId,
         mut json: CanonicalJsonObject,

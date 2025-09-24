@@ -345,40 +345,39 @@ fn process_to_outlier_pdu<'a>(
             incoming_pdu
         );
         let server_joined = crate::room::is_server_joined(crate::config::server_name(), room_id)?;
-        let is_leave_or_ban = incoming_pdu.is_member_leave_or_ban_event();
-        if !server_joined && is_leave_or_ban {
-            if incoming_pdu.state_key.as_deref() != Some(incoming_pdu.sender().as_str())
-                && incoming_pdu
-                    .state_key
-                    .as_deref()
-                    .unwrap_or_default()
-                    .ends_with(&*format!(":{}", crate::config::server_name()))
-            {
-                let (event_sn, event_guard) = ensure_event_sn(room_id, event_id)?;
-                let mut db_event =
-                    NewDbEvent::from_canonical_json(&incoming_pdu.event_id, event_sn, &val)?;
-                db_event.is_outlier = true;
-                db_event.rejection_reason = None;
-                db_event.save()?;
-                DbEventData {
-                    event_id: incoming_pdu.event_id.clone(),
-                    event_sn,
-                    room_id: incoming_pdu.room_id.clone(),
-                    internal_metadata: None,
-                    json_data: serde_json::to_value(&val)?,
-                    format_version: None,
-                }
-                .save()?;
+        // if !server_joined && incoming_pdu.event_ty == TimelineEventType::RoomMember {
+        //     if incoming_pdu.state_key.as_deref() != Some(incoming_pdu.sender().as_str())
+        //         && incoming_pdu
+        //             .state_key
+        //             .as_deref()
+        //             .unwrap_or_default()
+        //             .ends_with(&*format!(":{}", crate::config::server_name()))
+        //     {
+        //         let (event_sn, event_guard) = ensure_event_sn(room_id, event_id)?;
+        //         let mut db_event =
+        //             NewDbEvent::from_canonical_json(&incoming_pdu.event_id, event_sn, &val)?;
+        //         db_event.is_outlier = true;
+        //         db_event.rejection_reason = None;
+        //         db_event.save()?;
+        //         DbEventData {
+        //             event_id: incoming_pdu.event_id.clone(),
+        //             event_sn,
+        //             room_id: incoming_pdu.room_id.clone(),
+        //             internal_metadata: None,
+        //             json_data: serde_json::to_value(&val)?,
+        //             format_version: None,
+        //         }
+        //         .save()?;
 
-                debug!("added pdu as outlier");
-                return Ok(Some((
-                    SnPduEvent::new(incoming_pdu, event_sn),
-                    val,
-                    event_guard,
-                )));
-            }
-            return Ok(None);
-        }
+        //         debug!("added pdu as outlier");
+        //         return Ok(Some((
+        //             SnPduEvent::new(incoming_pdu, event_sn),
+        //             val,
+        //             event_guard,
+        //         )));
+        //     }
+        //     return Ok(None);
+        // }
 
         // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
         fetch_and_process_missing_prev_events(
@@ -532,84 +531,81 @@ pub async fn process_to_timeline_pdu(
     //     doing all the checks in this list starting at 1. These are not timeline events.
     debug!("Resolving state at event");
     let server_joined = crate::room::is_server_joined(crate::config::server_name(), room_id)?;
-    let is_leave_or_ban = incoming_pdu.is_member_leave_or_ban_event();
-    if !server_joined && is_leave_or_ban {
-        if incoming_pdu.state_key.as_deref() != Some(incoming_pdu.sender().as_str())
-            && incoming_pdu
-                .state_key
-                .as_deref()
-                .unwrap_or_default()
-                .ends_with(&*format!(":{}", crate::config::server_name()))
-        {
-            let state_at_incoming_event = state_at_incoming_degree_one(&incoming_pdu)
-                .await?
-                .unwrap_or_default();
-            // 13. Use state resolution to find new room state
-            let state_lock = crate::room::lock_state(room_id).await;
-            // Now that the event has passed all auth it is added into the timeline.
-            // We use the `state_at_event` instead of `state_after` so we accurately
-            // represent the state for this event.
-            let event_id = incoming_pdu.event_id.clone();
-            debug!("Calculating extremities");
-            let extremities: BTreeSet<_> = state::get_forward_extremities(room_id)?
-                .into_iter()
-                .collect();
-            let extremities = extremities
-                .iter()
-                .map(Borrow::borrow)
-                .chain(once(event_id.borrow()));
-            debug!("Compressing state at event");
-            let compressed_state_ids = Arc::new(
-                state_at_incoming_event
-                    .iter()
-                    .map(|(field_id, event_id)| {
-                        state::compress_event(
-                            room_id,
-                            *field_id,
-                            crate::event::ensure_event_sn(room_id, event_id)?.0,
-                        )
-                    })
-                    .collect::<AppResult<_>>()?,
-            );
-            if let Some(state_key) = &incoming_pdu.state_key {
-                debug!("Preparing for stateres to derive new room state");
+    // if !server_joined && incoming_pdu.event_ty == TimelineEventType::RoomMember {
+    //     if incoming_pdu.state_key.as_deref() != Some(incoming_pdu.sender().as_str())
+    //         && incoming_pdu
+    //             .state_key
+    //             .as_deref()
+    //             .unwrap_or_default()
+    //             .ends_with(&*format!(":{}", crate::config::server_name()))
+    //     {
+    //         let state_at_incoming_event = state_at_incoming_degree_one(&incoming_pdu)
+    //             .await?
+    //             .unwrap_or_default();
+    //         // 13. Use state resolution to find new room state
+    //         let state_lock = crate::room::lock_state(room_id).await;
+    //         // Now that the event has passed all auth it is added into the timeline.
+    //         // We use the `state_at_event` instead of `state_after` so we accurately
+    //         // represent the state for this event.
+    //         let event_id = incoming_pdu.event_id.clone();
+    //         debug!("Calculating extremities");
+    //         let extremities: BTreeSet<_> = state::get_forward_extremities(room_id)?
+    //             .into_iter()
+    //             .collect();
+    //         let extremities = extremities
+    //             .iter()
+    //             .map(Borrow::borrow)
+    //             .chain(once(event_id.borrow()));
+    //         debug!("Compressing state at event");
+    //         let compressed_state_ids = Arc::new(
+    //             state_at_incoming_event
+    //                 .iter()
+    //                 .map(|(field_id, event_id)| {
+    //                     state::compress_event(
+    //                         room_id,
+    //                         *field_id,
+    //                         crate::event::ensure_event_sn(room_id, event_id)?.0,
+    //                     )
+    //                 })
+    //                 .collect::<AppResult<_>>()?,
+    //         );
+    //         if let Some(state_key) = &incoming_pdu.state_key {
+    //             debug!("Preparing for stateres to derive new room state");
 
-                // We also add state after incoming event to the fork states
-                let mut state_after = state_at_incoming_event.clone();
+    //             // We also add state after incoming event to the fork states
+    //             let mut state_after = state_at_incoming_event.clone();
 
-                let state_key_id =
-                    state::ensure_field_id(&incoming_pdu.event_ty.to_string().into(), state_key)?;
+    //             let state_key_id =
+    //                 state::ensure_field_id(&incoming_pdu.event_ty.to_string().into(), state_key)?;
 
-                let compressed_event =
-                    state::compress_event(room_id, state_key_id, incoming_pdu.event_sn)?;
-                let mut new_room_state = CompressedState::new();
-                new_room_state.insert(compressed_event);
+    //             let compressed_event =
+    //                 state::compress_event(room_id, state_key_id, incoming_pdu.event_sn)?;
+    //             let mut new_room_state = CompressedState::new();
+    //             new_room_state.insert(compressed_event);
 
-                // Set the new room state to the resolved state
-                debug!("forcing new room state");
-                let DeltaInfo {
-                    frame_id,
-                    appended,
-                    disposed,
-                } = state::save_state(room_id, Arc::new(new_room_state))?;
+    //             // Set the new room state to the resolved state
+    //             debug!("forcing new room state");
+    //             let DeltaInfo {
+    //                 frame_id,
+    //                 appended,
+    //                 disposed,
+    //             } = state::save_state(room_id, Arc::new(new_room_state))?;
 
-                state::force_state(room_id, frame_id, appended, disposed)?;
-            }
+    //             state::force_state(room_id, frame_id, appended, disposed)?;
+    //         }
 
-            debug!("appended incoming pdu");
-            timeline::append_pdu(&incoming_pdu, json_data, extremities, &state_lock).await?;
-            let frame_id = state::set_event_state(
-                &incoming_pdu.event_id,
-                incoming_pdu.event_sn,
-                &incoming_pdu.room_id,
-                compressed_state_ids,
-            )?;
-            // state::set_room_state(room_id, frame_id)?;
-
-            drop(state_lock);
-        }
-        return Ok(());
-    }
+    //         debug!("appended incoming pdu");
+    //         timeline::append_pdu(&incoming_pdu, json_data, extremities, &state_lock).await?;
+    //         state::set_event_state(
+    //             &incoming_pdu.event_id,
+    //             incoming_pdu.event_sn,
+    //             &incoming_pdu.room_id,
+    //             compressed_state_ids,
+    //         )?;
+    //         drop(state_lock);
+    //     }
+    //     return Ok(());
+    // }
     let state_at_incoming_event = if incoming_pdu.prev_events.len() == 1 {
         state_at_incoming_degree_one(&incoming_pdu).await?
     } else {
@@ -761,7 +757,7 @@ pub async fn process_to_timeline_pdu(
     } else {
         debug!("Appended incoming pdu");
         timeline::append_pdu(&incoming_pdu, json_data, extremities, &state_lock).await?;
-        let frame_id = state::set_event_state(
+        state::set_event_state(
             &incoming_pdu.event_id,
             incoming_pdu.event_sn,
             &incoming_pdu.room_id,
@@ -1000,7 +996,7 @@ pub(crate) async fn fetch_and_process_outliers(
                 }
 
                 if time.elapsed() < min_elapsed_duration {
-                    info!("backing off from {}", next_id);
+                    info!("Backing off from {}", next_id);
                     continue;
                 }
             }
