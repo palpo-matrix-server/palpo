@@ -129,12 +129,9 @@ fn missing_events(
     let origin = depot.origin()?;
 
     let room_id = room_id.into_inner();
-    println!("=========get_missing_events   0");
     crate::federation::access_check(origin, &room_id, None)?;
-    println!("=========get_missing_events   1");
 
     let mut queued_events = body.latest_events.clone();
-    println!("=========get_missing_events   2");
     let mut events = Vec::new();
 
     let mut i = 0;

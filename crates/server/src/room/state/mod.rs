@@ -181,7 +181,6 @@ pub fn set_event_state(
             (state_ids_compressed, Arc::new(CompressedState::new()))
         };
 
-        println!("===========update frame: {frame_id}");
         update_frame_id(event_id, frame_id)?;
         calc_and_save_state_delta(
             room_id,
@@ -297,7 +296,6 @@ pub fn set_forward_extremities<'a, I>(
 where
     I: Iterator<Item = &'a EventId> + Send + 'a,
 {
-    println!(">>>>>>>>>>.......set_forward_extremities 0000 ");
     let event_ids = event_ids.collect::<Vec<_>>();
     diesel::delete(
         event_forward_extremities::table
@@ -306,7 +304,6 @@ where
     )
     .execute(&mut connect()?)?;
     for event_id in event_ids {
-        println!(">>>>>>>>>>.......set_forward_extremities  {event_id}");
         diesel::insert_into(event_forward_extremities::table)
             .values((
                 event_forward_extremities::room_id.eq(room_id),

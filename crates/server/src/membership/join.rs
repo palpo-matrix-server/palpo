@@ -74,9 +74,8 @@ pub async fn join_room(
     let (should_remote, servers) =
         room::should_join_on_remote_servers(sender_id, room_id, servers).await?;
 
-    println!(":================xx====should_remote: {should_remote}  servers:{servers:#?}"); // --- IGNORE ---
     if !should_remote {
-        info!("we can join locally");
+        info!("We can join locally");
         let join_rule = room::get_join_rule(room_id)?;
 
         let event = RoomMemberEventContent {
@@ -129,11 +128,11 @@ pub async fn join_room(
         }
     }
 
-    info!("joining {room_id} over federation");
+    info!("Joining {room_id} over federation");
     let (make_join_response, remote_server) =
         make_join_request(sender_id, room_id, &servers).await?;
 
-    info!("make_join finished");
+    info!("Make join finished");
     let room_version_id = match make_join_response.room_version {
         Some(room_version) if config::supported_room_versions().contains(&room_version) => {
             room_version
@@ -298,21 +297,16 @@ pub async fn join_room(
     )?;
 
     let mut parsed_pdus = IndexMap::new();
-    println!("================resp_auth: {resp_auth:#?}"); // --- IGNORE ---
     for auth_pdu in resp_auth {
-        println!("==============parsing auth auth_pdu: {auth_pdu:?}"); // --- IGNORE ---
         let (event_id, event_value, _room_id, _room_version_id) =
             crate::parse_incoming_pdu(auth_pdu)?;
         parsed_pdus.insert(event_id, event_value);
     }
     for state in resp_state {
-        println!("==============parsing auth state: {state:?}"); // --- IGNORE ---
         let (event_id, event_value, _room_id, _room_version_id) = crate::parse_incoming_pdu(state)?;
         parsed_pdus.insert(event_id, event_value);
     }
-    println!("zzzzzzzzzzzzzzz  0");
     for (event_id, event_value) in parsed_pdus {
-        println!("zzzzzzzzzzzzzzz  event_value:{event_value:?}");
         if let Err(e) = process_incoming_pdu(
             &remote_server,
             &event_id,
@@ -326,7 +320,6 @@ pub async fn join_room(
             error!("Failed to fetch missing prev events for join: {e}");
         }
     }
-    println!("zzzzzzzzzzzzzzzzz  end");
     if let Err(e) = fetch_and_process_missing_prev_events(
         &remote_server,
         room_id,

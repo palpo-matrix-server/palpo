@@ -550,7 +550,7 @@ async fn check_room_member_knock<Pdu, Fetch, Fut>(
     target_user: &UserId,
     auth_rules: &AuthorizationRules,
     fetch_state: &Fetch,
-) -> StateResult<()>
+) -> StateResult<()> 
 where
     Fetch: Fn(StateEventType, String) -> Fut + Sync,
     Fut: Future<Output = Result<Pdu, StateError>> + Send,
@@ -566,6 +566,7 @@ where
         || (auth_rules.knock_restricted_join_rule
             && !matches!(join_rule, JoinRuleKind::KnockRestricted))
     {
+        println!("kkkkkkkkkknock not allowed due to join rule: {join_rule:?}");
         return Err(StateError::forbidden(
             "join rule is not set to knock or knock_restricted, knocking is not allowed",
         ));

@@ -110,7 +110,6 @@ pub async fn sync_events(
 
     let mut left_rooms = BTreeMap::new();
     let all_left_rooms = room::user::left_rooms(sender_id, since_sn)?;
-    println!("aaaaaaaaaaaaaaaaaaall left rooms: {:?}", all_left_rooms);
 
     for room_id in all_left_rooms.keys() {
         let Ok(left_sn) = room::user::left_sn(room_id, sender_id) else {
@@ -802,9 +801,7 @@ async fn load_left_room(
     _left_users: &mut HashSet<OwnedUserId>,
 ) -> AppResult<LeftRoom> {
     let conf = crate::config::get();
-    println!(">>>>>>>>>>>>>>>>.......... load left room   0");
     if !room::room_exists(room_id)? {
-    println!(">>>>>>>>>>>>>>>>.......... load left room   1");
         let event = PduEvent {
             event_id: EventId::new(&conf.server_name),
             sender: sender_id.to_owned(),
@@ -839,7 +836,6 @@ async fn load_left_room(
         });
     }
 
-    println!(">>>>>>>>>>>>>>>>.......... load left room   2");
     let since_frame_id = crate::event::get_last_frame_id(room_id, since_sn);
     let _since_state_ids = match since_frame_id {
         Ok(s) => state::get_full_state_ids(s)?,
@@ -847,15 +843,12 @@ async fn load_left_room(
     };
 
     let curr_frame_id = room::get_frame_id(room_id, None)?;
-    println!(">>>>>>>>>>>>>>>>.......... load left room   2  since_frame_id: {since_frame_id:?}  curr_frame_id:{curr_frame_id:?}");
     let left_event_id = state::get_state_event_id(
         curr_frame_id,
         &StateEventType::RoomMember,
         sender_id.as_str(),
     )?;
-    println!(">>>>>>>>>>>>>>>>.......... load left room   3  left_event_id: {left_event_id:?}");
     let left_frame_id = state::get_pdu_frame_id(&left_event_id)?;
-    println!(">>>>>>>>>>>>>>>>.......... load left room   3  left_frame_id: {left_frame_id:?}");
     let (timeline_pdus, mut limited) = load_timeline(
         sender_id,
         room_id,
@@ -866,7 +859,6 @@ async fn load_left_room(
 
     let since_sn = since_sn.unwrap_or_default();
 
-    println!(">>>>>>>>>>>>>>>>.......... load left room   4  since_sn: {since_sn:?}");
     let _send_notification_counts = !timeline_pdus.is_empty()
         || room::user::last_read_notification(sender_id, room_id)? >= since_sn;
     let mut timeline_users = HashSet::new();
@@ -882,7 +874,6 @@ async fn load_left_room(
         state::ensure_field_id(&StateEventType::RoomMember, sender_id.as_str())?;
     left_state_ids.insert(leave_state_key_id, left_event_id.clone());
 
-    println!(">>>>>>>>>>>>>>>>.......... load left room   5");
     for (key, event_id) in left_state_ids {
         if let Some(state_limit) = filter.room.state.limit
             && state_events.len() >= state_limit
@@ -909,7 +900,6 @@ async fn load_left_room(
         }
     }
 
-    println!(">>>>>>>>>>>>>>>>.......... load left room   6");
     if let Some((_, first_event)) = timeline_pdus.first()
         && first_event.event_ty == TimelineEventType::RoomCreate
     {
@@ -921,9 +911,7 @@ async fn load_left_room(
         timeline_pdus.last().map(|(sn, _)| sn.to_string())
     };
 
-    println!(">>>>>>>>>>>>>>>>.......... load left room   6");
     let left_event = timeline::get_pdu(&left_event_id).map(|pdu| pdu.to_sync_room_event());
-    println!(">>>>>>>>>>>>>>>>.......... load left room   left_event: {left_event:?}");
     Ok(LeftRoom {
         account_data: RoomAccountData { events: Vec::new() },
         timeline: Timeline {

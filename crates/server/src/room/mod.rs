@@ -198,7 +198,6 @@ pub fn update_joined_servers(room_id: &RoomId) -> AppResult<()> {
         .collect::<HashSet<OwnedServerName>>()
         .into_iter()
         .collect::<Vec<_>>();
-    println!("joined servers for room {}: {:?}", room_id, joined_servers);
 
     diesel::delete(
         room_joined_servers::table
@@ -270,7 +269,6 @@ pub async fn should_join_on_remote_servers(
     room_id: &RoomId,
     servers: &[OwnedServerName],
 ) -> AppResult<(bool, Vec<OwnedServerName>)> {
-    println!("SSSSSSSSSSSSSSSservers: {servers:?}");
     if room_id.is_local() {
         return Ok((false, vec![]));
     }
@@ -288,15 +286,12 @@ pub async fn should_join_on_remote_servers(
         membership::get_users_can_issue_invite(room_id, sender_id, &join_rule.restriction_rooms())
             .await?;
     let mut allowed_servers = crate::get_servers_from_users(&users);
-    println!("==========allowed servers: {allowed_servers:?}");
     if let Ok(room_server) = room_id.server_name() {
         let room_server = room_server.to_owned();
         if !allowed_servers.contains(&room_server) {
-            println!("==========push server: {room_server:?}");
             allowed_servers.push(room_server);
         }
     }
-    println!("==========allowed servers2: {allowed_servers:?}");
     Ok((true, allowed_servers))
 }
 pub fn is_server_joined(server: &ServerName, room_id: &RoomId) -> AppResult<bool> {

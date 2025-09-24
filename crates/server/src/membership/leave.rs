@@ -34,11 +34,6 @@ pub async fn leave_room(
     reason: Option<String>,
 ) -> AppResult<()> {
     // Ask a remote server if we don't have this room
-    println!(
-        "leave_room    1   {}   {}",
-        !room::is_server_joined(&config::get().server_name, room_id)?,
-        !room::user::is_knocked(user_id, room_id)?
-    );
     let member_event =
         room::get_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None).ok();
 

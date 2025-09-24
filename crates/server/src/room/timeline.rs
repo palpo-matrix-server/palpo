@@ -828,7 +828,6 @@ pub async fn build_and_append_pdu(
     {
         return Ok(curr_state);
     }
-    println!("xxxxxxxxxxxxxx 1");
 
     let (pdu, pdu_json, _event_guard) =
         create_hash_and_sign_event(pdu_builder, sender, room_id, room_version, state_lock).await?;
