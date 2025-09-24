@@ -518,13 +518,13 @@ pub async fn process_to_timeline_pdu(
     if crate::room::pdu_metadata::is_event_soft_failed(&incoming_pdu.event_id)? {
         return Err(MatrixError::invalid_param("Event has been soft failed").into());
     }
-    info!("Upgrading {} to timeline pdu", incoming_pdu.event_id);
+    info!("upgrading {} to timeline pdu", incoming_pdu.event_id);
     let room_version_id = &room::get_version(room_id)?;
     let version_rules = crate::room::get_version_rules(room_version_id)?;
 
     // 10. Fetch missing state and auth chain events by calling /state_ids at backwards extremities
     //     doing all the checks in this list starting at 1. These are not timeline events.
-    debug!("Resolving state at event");
+    debug!("resolving state at event");
     let server_joined = crate::room::is_server_joined(crate::config::server_name(), room_id)?;
     if !server_joined {
         if let Some(state_key) = incoming_pdu.state_key.as_deref()
@@ -541,7 +541,7 @@ pub async fn process_to_timeline_pdu(
             // We use the `state_at_event` instead of `state_after` so we accurately
             // represent the state for this event.
             let event_id = incoming_pdu.event_id.clone();
-            debug!("Calculating extremities");
+            debug!("calculating extremities");
             let extremities: BTreeSet<_> = state::get_forward_extremities(room_id)?
                 .into_iter()
                 .collect();
@@ -549,7 +549,7 @@ pub async fn process_to_timeline_pdu(
                 .iter()
                 .map(Borrow::borrow)
                 .chain(once(event_id.borrow()));
-            debug!("Compressing state at event");
+            debug!("compressing state at event");
             let compressed_state_ids = Arc::new(
                 state_at_incoming_event
                     .iter()
@@ -562,7 +562,7 @@ pub async fn process_to_timeline_pdu(
                     })
                     .collect::<AppResult<_>>()?,
             );
-            debug!("Preparing for stateres to derive new room state");
+            debug!("preparing for stateres to derive new room state");
 
             // We also add state after incoming event to the fork states
             let mut state_after = state_at_incoming_event.clone();
@@ -628,9 +628,9 @@ pub async fn process_to_timeline_pdu(
     )
     .await?;
 
-    debug!("Auth check succeeded");
+    debug!("auth check succeeded");
 
-    debug!("Gathering auth events");
+    debug!("gathering auth events");
     let version_rules = crate::room::get_version_rules(room_version_id)?;
     let auth_events = state::get_auth_events(
         room_id,
@@ -658,7 +658,7 @@ pub async fn process_to_timeline_pdu(
     .await?;
 
     // Soft fail check before doing state res
-    debug!("Performing soft-fail check");
+    debug!("performing soft-fail check");
     let soft_fail = match incoming_pdu.redacts_id(room_version_id) {
         None => false,
         Some(redact_id) => {
@@ -678,7 +678,7 @@ pub async fn process_to_timeline_pdu(
     // We start looking at current room state now, so lets lock the room
     // Now we calculate the set of extremities this room has after the incoming event has been
     // applied. We start with the previous extremities (aka leaves)
-    debug!("Calculating extremities");
+    debug!("calculating extremities");
     let mut extremities: BTreeSet<_> = state::get_forward_extremities(room_id)?
         .into_iter()
         .collect();
@@ -693,7 +693,7 @@ pub async fn process_to_timeline_pdu(
     // Only keep those extremities were not referenced yet
     // extremities.retain(|id| !matches!(crate::room::pdu_metadata::is_event_referenced(room_id, id), Ok(true)));
 
-    debug!("Compressing state at event");
+    debug!("compressing state at event");
     let compressed_state_ids = Arc::new(
         state_at_incoming_event
             .iter()
@@ -708,7 +708,7 @@ pub async fn process_to_timeline_pdu(
     );
 
     if let Some(state_key) = &incoming_pdu.state_key {
-        debug!("Preparing for stateres to derive new room state");
+        debug!("preparing for stateres to derive new room state");
 
         // We also add state after incoming event to the fork states
         let mut state_after = state_at_incoming_event.clone();
@@ -742,7 +742,7 @@ pub async fn process_to_timeline_pdu(
         debug!("Starting soft fail auth check");
         state::set_forward_extremities(&incoming_pdu.room_id, extremities, &state_lock)?;
         // Soft fail, we keep the event as an outlier but don't add it to the timeline
-        warn!("Event was soft failed: {:?}", incoming_pdu);
+        warn!("event was soft failed: {:?}", incoming_pdu);
         crate::room::pdu_metadata::mark_event_soft_failed(&incoming_pdu.event_id)?;
         return Err(MatrixError::invalid_param("Event has been soft failed").into());
     } else {
@@ -766,14 +766,14 @@ async fn resolve_state(
     room_version_id: &RoomVersionId,
     incoming_state: HashMap<i64, OwnedEventId>,
 ) -> AppResult<Arc<CompressedState>> {
-    debug!("Loading current room state ids");
+    debug!("loading current room state ids");
     let current_state_ids = if let Ok(current_frame_id) = crate::room::get_frame_id(room_id, None) {
         state::get_full_state_ids(current_frame_id)?
     } else {
         HashMap::new()
     };
 
-    debug!("Loading fork states");
+    debug!("loading fork states");
     let fork_states = [current_state_ids, incoming_state];
 
     let mut auth_chain_sets = Vec::new();
@@ -826,12 +826,12 @@ async fn resolve_state(
         Ok(new_state) => new_state,
         Err(_) => {
             return Err(AppError::internal(
-                "State resolution failed, either an event could not be found or deserialization",
+                "state resolution failed, either an event could not be found or deserialization",
             ));
         }
     };
 
-    debug!("State resolution done, compressing state");
+    debug!("state resolution done, compressing state");
 
     let new_room_state = state
         .into_iter()
@@ -914,7 +914,7 @@ pub(crate) async fn fetch_and_process_outliers(
                 continue;
             }
 
-            info!("Fetching {} over federation.", next_id);
+            info!("fetching {} over federation.", next_id);
             let request =
                 event_request(&origin.origin().await, EventReqArgs::new(next_id.clone()))?
                     .into_inner();
@@ -949,11 +949,11 @@ pub(crate) async fn fetch_and_process_outliers(
                                 let a: OwnedEventId = auth_event;
                                 todo_auth_events.push_back(a);
                             } else {
-                                warn!("Auth event id is not valid");
+                                warn!("auth event id is not valid");
                             }
                         }
                     } else {
-                        warn!("Auth event list invalid");
+                        warn!("auth event list invalid");
                     }
 
                     events_in_reverse_order.push((next_id.clone(), value));
@@ -987,7 +987,7 @@ pub(crate) async fn fetch_and_process_outliers(
                 }
 
                 if time.elapsed() < min_elapsed_duration {
-                    info!("Backing off from {}", next_id);
+                    info!("backing off from {}", next_id);
                     continue;
                 }
             }
@@ -1013,7 +1013,7 @@ pub(crate) async fn fetch_and_process_outliers(
                 }
                 Ok(None) => {}
                 Err(e) => {
-                    warn!("Authentication of event {} failed: {:?}", next_id, e);
+                    warn!("authentication of event {} failed: {:?}", next_id, e);
                     back_off((*next_id).to_owned());
                 }
             }

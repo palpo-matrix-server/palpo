@@ -530,8 +530,7 @@ impl RoomPowerLevels {
                 rules: RoomPowerLevelsRules::new(rules, creators),
             },
             // events_default, users_default and invite having a default of 0 while the others have
-            // a default of 50 is not an oversight, these defaults are from the Matrix
-            // specification.
+            // a default of 50 is not an oversight, these defaults are from the Matrix specification.
             RoomPowerLevelsSource::None => Self {
                 ban: default_power_level(),
                 events: BTreeMap::new(),
@@ -658,6 +657,7 @@ impl RoomPowerLevels {
     ///
     /// Shorthand for `power_levels.user_can_do(user_id, PowerLevelAction::Invite)`.
     pub fn user_can_invite(&self, user_id: &UserId) -> bool {
+        println!("=============== user_id: {:?}, invite level: {}, user level: {:?}", user_id, self.invite, self.for_user(user_id));
         self.for_user(user_id) >= self.invite
     }
 
