@@ -168,11 +168,11 @@ impl Writer for AppError {
                 return;
             }
             Self::Diesel(e) => {
-                tracing::error!(error = ?e, "diesel db error.");
+                tracing::error!(error = ?e, "diesel db error");
                 if let diesel::result::Error::NotFound = e {
-                    MatrixError::not_found("Resource not found.")
+                    MatrixError::not_found("resource not found")
                 } else {
-                    MatrixError::unknown("Unknown db error.")
+                    MatrixError::unknown("unknown db error")
                 }
             }
             Self::HttpStatus(e) => MatrixError::unknown(e.brief),
@@ -183,7 +183,7 @@ impl Writer for AppError {
             e => {
                 tracing::error!(error = ?e, "Unknown error.");
                 // println!("{}", std::backtrace::Backtrace::capture());
-                MatrixError::unknown("Unknown error happened.")
+                MatrixError::unknown("unknown error happened")
             }
         };
         matrix.write(req, depot, res).await;

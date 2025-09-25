@@ -128,13 +128,11 @@ pub async fn join_room(
         }
     }
 
-    info!("joining {room_id} over federation");
-
+    info!("Joining {room_id} over federation");
     let (make_join_response, remote_server) =
         make_join_request(sender_id, room_id, &servers).await?;
 
-    info!("make_join finished");
-
+    info!("Make join finished");
     let room_version_id = match make_join_response.room_version {
         Some(room_version) if config::supported_room_versions().contains(&room_version) => {
             room_version
@@ -201,7 +199,7 @@ pub async fn join_room(
     let body = SendJoinReqBody(crate::sending::convert_to_outgoing_federation_event(
         join_event.clone(),
     ));
-    info!("Asking {remote_server} for send_join");
+    info!("asking {remote_server} for send_join");
     let send_join_request = crate::core::federation::membership::send_join_request(
         &remote_server.origin().await,
         SendJoinArgs {
@@ -223,7 +221,7 @@ pub async fn join_room(
 
     if let Some(signed_raw) = &send_join_body.0.event {
         info!(
-            "There is a signed event. This room is probably using restricted joins. Adding signature to our event"
+            "there is a signed event. This room is probably using restricted joins. adding signature to our event"
         );
         let (signed_event_id, signed_value) =
             match gen_event_id_canonical_json(signed_raw, &room_version_id) {
@@ -271,21 +269,32 @@ pub async fn join_room(
     room::ensure_room(room_id, &room_version_id)?;
 
     info!("Parsing join event");
-
     let parsed_join_pdu =
         PduEvent::from_canonical_object(&event_id, join_event.clone()).map_err(|e| {
             warn!("Invalid PDU in send_join response: {}", e);
             AppError::public("Invalid join event PDU.")
         })?;
+    let join_event_id = parsed_join_pdu.event_id.clone();
+    let (join_event_sn, event_guard) = ensure_event_sn(room_id, &join_event_id)?;
 
     let mut state = HashMap::new();
     let pub_key_map = RwLock::new(BTreeMap::new());
 
-    info!("Acquiring server signing keys for response events");
+    info!("acquiring server signing keys for response events");
     let resp_events = &send_join_body.0;
     let resp_state = &resp_events.state;
     let resp_auth = &resp_events.auth_chain;
     crate::server_key::acquire_events_pubkeys(resp_auth.iter().chain(resp_state.iter())).await;
+
+    super::update_membership(
+        &join_event_id,
+        join_event_sn,
+        room_id,
+        &sender_id,
+        MembershipState::Join,
+        sender_id,
+        None,
+    )?;
 
     let mut parsed_pdus = IndexMap::new();
     for auth_pdu in resp_auth {
@@ -320,7 +329,7 @@ pub async fn join_room(
     )
     .await
     {
-        error!("Failed to fetch missing prev events for join: {e}");
+        error!("failed to fetch missing prev events for join: {e}");
     }
 
     info!("Going through send_join response room_state");
@@ -436,8 +445,6 @@ pub async fn join_room(
 
     let state_lock = room::lock_state(room_id).await;
     info!("Appending new room join event");
-    let join_event_id = parsed_join_pdu.event_id.clone();
-    let (join_event_sn, event_guard) = ensure_event_sn(room_id, &join_event_id)?;
     diesel::insert_into(events::table)
         .values(NewDbEvent::from_canonical_json(
             &event_id,

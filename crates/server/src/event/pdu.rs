@@ -534,7 +534,7 @@ impl PduEvent {
 
         serde_json::from_value(data).expect("RawJson::from_value always works")
     }
-
+    
     pub fn from_canonical_object(
         event_id: &EventId,
         mut json: CanonicalJsonObject,

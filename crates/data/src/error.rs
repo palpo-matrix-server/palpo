@@ -106,7 +106,7 @@ impl Writer for DataError {
             Self::Diesel(e) => {
                 tracing::error!(error = ?e, "diesel db error");
                 if let diesel::result::Error::NotFound = e {
-                    MatrixError::not_found("resource not found")
+                    MatrixError::not_found("data resource not found")
                 } else {
                     MatrixError::unknown("unknown db error")
                 }

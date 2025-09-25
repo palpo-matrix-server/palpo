@@ -634,7 +634,7 @@ where
         Some(creators)
     } else if let Some(room_create_event) = room_create_event {
         let room_create_event = RoomCreateEvent::new(room_create_event);
-        let creators = room_create_event.creators(rules)?;
+        let creators = room_create_event.creators()?;
         Some(creators_lock.get_or_init(|| creators))
     } else {
         None

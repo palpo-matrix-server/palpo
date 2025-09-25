@@ -5,7 +5,7 @@ use diesel::prelude::*;
 use crate::core::UnixMillis;
 use crate::core::client::backup::{BackupAlgorithm, KeyBackupData};
 use crate::core::identifiers::*;
-use crate::core::serde::{RawJson, JsonValue};
+use crate::core::serde::{JsonValue, RawJson};
 use crate::schema::*;
 use crate::{DataResult, connect};
 

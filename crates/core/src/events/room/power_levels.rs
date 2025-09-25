@@ -122,7 +122,7 @@ impl RoomPowerLevelsEventContent {
             ban: default_power_level(),
             events: BTreeMap::new(),
             events_default: 0,
-            invite: default_power_level(),
+            invite: 0,
             kick: default_power_level(),
             redact: default_power_level(),
             state_default: default_power_level(),
@@ -530,8 +530,7 @@ impl RoomPowerLevels {
                 rules: RoomPowerLevelsRules::new(rules, creators),
             },
             // events_default, users_default and invite having a default of 0 while the others have
-            // a default of 50 is not an oversight, these defaults are from the Matrix
-            // specification.
+            // a default of 50 is not an oversight, these defaults are from the Matrix specification.
             RoomPowerLevelsSource::None => Self {
                 ban: default_power_level(),
                 events: BTreeMap::new(),

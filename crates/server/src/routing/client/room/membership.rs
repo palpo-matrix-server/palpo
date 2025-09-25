@@ -424,9 +424,9 @@ pub(crate) async fn join_room_by_id_or_alias(
             //     }
             // }
 
-            addl_servers.sort_unstable();
-            addl_servers.dedup();
             servers.append(&mut addl_servers);
+            servers.sort_unstable();
+            servers.dedup();
 
             (room_id, servers)
         }
@@ -613,7 +613,7 @@ pub(super) async fn kick_user(
     let state_lock = room::lock_state(&room_id).await;
     let Ok(event) = room::get_member(&room_id, &body.user_id) else {
         return Err(MatrixError::forbidden(
-            "Users cannot kick users from a room they are not in",
+            "users cannot kick users from a room they are not in",
             None,
         )
         .into());
@@ -625,7 +625,7 @@ pub(super) async fn kick_user(
     ) {
         return Err(MatrixError::forbidden(
             format!(
-                "Cannot kick a user who is not apart of the room (current membership: {})",
+                "cannot kick a user who is not apart of the room (current membership: {})",
                 event.membership
             ),
             None,

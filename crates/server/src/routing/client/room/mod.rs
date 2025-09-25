@@ -310,8 +310,6 @@ async fn upgrade(
     body: JsonBody<UpgradeRoomReqBody>,
     depot: &mut Depot,
 ) -> JsonResult<UpgradeRoomResBody> {
-    use RoomVersionId::*;
-
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
     let room_id = room_id.into_inner();
@@ -333,9 +331,9 @@ async fn upgrade(
     } else {
         RoomId::new_v1(&conf.server_name)
     };
-    room::ensure_room(&new_room_id, &body.new_version)?;
 
     let state_lock = room::lock_state(&room_id).await;
+    room::ensure_room(&new_room_id, &body.new_version)?;
 
     // Send a m.room.tombstone event to the old room to indicate that it is not intended to be used any further
     // Fail if the sender does not have the required permissions
@@ -539,7 +537,7 @@ async fn upgrade(
         .authorization
         .explicitly_privilege_room_creators
     {
-        let creators = new_create_event.creators(&version_rules.authorization)?;
+        let creators = new_create_event.creators()?;
         for creator in &creators {
             power_levels_event_content.users.remove(creator);
         }

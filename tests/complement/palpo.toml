@@ -58,8 +58,9 @@ domain_contains_allowlist = ["*"]
 enable = true
 
 [logger]
-level = "warn,palpo=warn,salvo=error"
-format = "compact" # pretty, json
+level = "warn,palpo=info,salvo=error"
+format = "pretty" # pretty, json
+ansi_colors = false
 
 # [typing]
 # allow_incoming = true

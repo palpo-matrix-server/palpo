@@ -57,7 +57,7 @@ pub(super) async fn parse_pdu(ctx: &Context<'_>) -> AppResult<()> {
     match serde_json::from_str(&string) {
         Err(e) => return Err(AppError::public(format!("Invalid json in command body: {e}"))),
         Ok(value) => match crate::core::signatures::reference_hash(&value, &RoomVersionId::V6) {
-            Err(e) => return Err(AppError::public(format!("Could not parse PDU JSON: {e:?}"))),
+            Err(e) => return Err(AppError::public(format!("could not parse PDU json: {e:?}"))),
             Ok(hash) => {
                 let event_id = EventId::parse(format!("${hash}"));
                 match serde_json::from_value::<PduEvent>(serde_json::to_value(value)?) {
@@ -470,7 +470,7 @@ pub(super) async fn force_set_room_state_from_server(
         match crate::parse_incoming_pdu(&pdu) {
             Ok(t) => t,
             Err(e) => {
-                warn!("Could not parse PDU, ignoring: {e}");
+                warn!("could not parse PDU, ignoring: {e}");
                 continue;
             }
         };

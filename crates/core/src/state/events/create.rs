@@ -2,13 +2,14 @@
 
 use std::{borrow::Cow, collections::HashSet, ops::Deref};
 
+use serde::{Deserialize, de::IgnoredAny};
+
+use super::Event;
+use crate::room_version_rules::RoomVersionRules;
 use crate::{
     OwnedUserId, RoomVersionId, UserId, room_version_rules::AuthorizationRules,
     serde::from_raw_json_value, state::StateResult,
 };
-use serde::{Deserialize, de::IgnoredAny};
-
-use super::Event;
 
 /// A helper type for an [`Event`] of type `m.room.create`.
 ///
@@ -36,6 +37,13 @@ impl<E: Event> RoomCreateEvent<E> {
         Ok(content.room_version.unwrap_or(RoomVersionId::V1))
     }
 
+    pub fn version_rules(&self) -> StateResult<RoomVersionRules> {
+        let room_version = self.room_version()?;
+        room_version.rules().ok_or_else(|| {
+            format!("unsupported room version `{room_version}` in `m.room.create` event").into()
+        })
+    }
+
     /// Whether the room is federated.
     pub fn federate(&self) -> StateResult<bool> {
         #[derive(Deserialize)]
@@ -59,12 +67,13 @@ impl<E: Event> RoomCreateEvent<E> {
     ///
     /// This function ignores any `content.additional_creators`, and should only be used in
     /// `check_room_member_join`. Otherwise, you should use `creators` instead.
-    pub fn creator(&self, rules: &AuthorizationRules) -> StateResult<Cow<'_, UserId>> {
+    pub fn creator(&self) -> StateResult<Cow<'_, UserId>> {
         #[derive(Deserialize)]
         struct RoomCreateContentCreator {
             creator: OwnedUserId,
         }
 
+        let rules = self.version_rules()?.authorization;
         if rules.use_room_create_sender {
             Ok(Cow::Borrowed(self.sender()))
         } else {
@@ -85,16 +94,14 @@ impl<E: Event> RoomCreateEvent<E> {
     ///
     /// This function ignores the primary room creator, and should only be used in
     /// `check_room_member_join`. Otherwise, you should use `creators` instead.
-    pub fn additional_creators(
-        &self,
-        rules: &AuthorizationRules,
-    ) -> StateResult<HashSet<OwnedUserId>> {
+    pub fn additional_creators(&self) -> StateResult<HashSet<OwnedUserId>> {
         #[derive(Deserialize)]
         struct RoomCreateContentAdditionalCreators {
             #[serde(default)]
             additional_creators: HashSet<OwnedUserId>,
         }
 
+        let rules = self.version_rules()?.authorization;
         Ok(if rules.additional_room_creators {
             let content: RoomCreateContentAdditionalCreators = from_raw_json_value(self.content())
                 .map_err(|err: serde_json::Error| {
@@ -115,10 +122,10 @@ impl<E: Event> RoomCreateEvent<E> {
     /// Additionally if the `explicitly_privilege_room_creators`
     /// field of `AuthorizationRules` is set, any additional user IDs in
     /// `additional_creators`, if present, will also be considered creators.
-    pub fn creators(&self, rules: &AuthorizationRules) -> StateResult<HashSet<OwnedUserId>> {
-        let mut creators = self.additional_creators(rules)?;
+    pub fn creators(&self) -> StateResult<HashSet<OwnedUserId>> {
+        let mut creators = self.additional_creators()?;
 
-        creators.insert(self.creator(rules)?.into_owned());
+        creators.insert(self.creator()?.into_owned());
 
         Ok(creators)
     }

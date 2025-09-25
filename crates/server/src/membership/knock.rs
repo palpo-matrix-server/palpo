@@ -194,15 +194,15 @@ pub async fn knock_room(
             .json::<SendKnockResBody>()
             .await?;
 
-    info!("send_knock finished");
+    info!("Send knock finished");
 
-    info!("parsing knock event");
+    info!("Parsing knock event");
     let parsed_knock_pdu = PduEvent::from_canonical_object(&event_id, knock_event.clone())
         .map_err(|e| {
             StatusError::internal_server_error().brief(format!("Invalid knock event PDU: {e:?}"))
         })?;
 
-    info!("going through send_knock response knock state events");
+    info!("Going through send_knock response knock state events");
 
     // TODO: how to handle this? snpase save this state to unsigned field.
     let knock_state = send_knock_body
@@ -243,7 +243,7 @@ pub async fn knock_room(
                 .await?
                 .json::<EventResBody>()
                 .await?;
-            let _ = handler::process_incoming_pdu(
+            if let Err(e) = handler::process_incoming_pdu(
                 &remote_server,
                 &event_id,
                 room_id,
@@ -251,7 +251,9 @@ pub async fn knock_room(
                 serde_json::from_str(res_body.pdu.get())?,
                 true,
             )
-            .await;
+            .await {
+                error!("Failed to process event {event_id} from send_knock: {e}");
+            }
             timeline::get_pdu(&event_id)?
         };
 
@@ -366,7 +368,7 @@ async fn make_knock_request(
                 .await
                 .map_err(Into::into);
 
-        trace!("make_knock response: {make_knock_response:?}");
+        trace!("Make knock response: {make_knock_response:?}");
         make_knock_counter = make_knock_counter.saturating_add(1);
 
         make_knock_response_and_server = make_knock_response.map(|r| (r, remote_server.clone()));

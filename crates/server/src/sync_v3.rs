@@ -138,7 +138,7 @@ pub async fn sync_events(
         {
             Ok(left_room) => left_room,
             Err(e) => {
-                tracing::error!(error = ?e, "load joined room failed");
+                tracing::error!(error = ?e, "load left room failed");
                 continue;
             }
         };
@@ -869,7 +869,7 @@ async fn load_left_room(
     }
 
     let mut state_events = Vec::new();
-    let mut left_state_ids = state::get_full_state_ids(left_frame_id)?;
+    let mut left_state_ids = state::get_full_state_ids(left_frame_id).unwrap_or_default();
     let leave_state_key_id =
         state::ensure_field_id(&StateEventType::RoomMember, sender_id.as_str())?;
     left_state_ids.insert(leave_state_key_id, left_event_id.clone());
@@ -911,7 +911,7 @@ async fn load_left_room(
         timeline_pdus.last().map(|(sn, _)| sn.to_string())
     };
 
-    let _left_event = timeline::get_pdu(&left_event_id).map(|pdu| pdu.to_sync_room_event());
+    let left_event = timeline::get_pdu(&left_event_id).map(|pdu| pdu.to_sync_room_event());
     Ok(LeftRoom {
         account_data: RoomAccountData { events: Vec::new() },
         timeline: Timeline {

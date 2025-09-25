@@ -303,21 +303,22 @@ where
         let mut highlight = false;
         let mut notify = false;
 
-        let power_levels = crate::room::get_power_levels(pdu.room_id()).await?;
-        for action in data::user::pusher::get_actions(
-            user_id,
-            &rules_for_user,
-            &power_levels,
-            &sync_pdu,
-            &pdu.room_id,
-        )? {
-            match action {
-                Action::Notify => notify = true,
-                Action::SetTweak(Tweak::Highlight(true)) => {
-                    highlight = true;
-                }
-                _ => {}
-            };
+        if let Ok(power_levels) = crate::room::get_power_levels(pdu.room_id()).await {
+            for action in data::user::pusher::get_actions(
+                user_id,
+                &rules_for_user,
+                &power_levels,
+                &sync_pdu,
+                &pdu.room_id,
+            )? {
+                match action {
+                    Action::Notify => notify = true,
+                    Action::SetTweak(Tweak::Highlight(true)) => {
+                        highlight = true;
+                    }
+                    _ => {}
+                };
+            }
         }
 
         if notify {

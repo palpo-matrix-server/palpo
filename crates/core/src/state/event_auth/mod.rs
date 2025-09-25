@@ -169,7 +169,7 @@ where
 /// If the check fails, this returns an `Err(_)` with a description of the check that failed.
 ///
 /// [authorization rules]: https://spec.matrix.org/latest/server-server-api/#authorization-rules
-#[instrument(skip_all, fields(event_id = incoming_event.event_id().borrow().as_str()))]
+#[instrument(skip_all)]
 pub async fn check_state_independent_auth_rules<Pdu, Fetch, Fut>(
     rules: &AuthorizationRules,
     incoming_event: &Pdu,
@@ -319,7 +319,7 @@ where
 ///
 /// [authorization rules]: https://spec.matrix.org/latest/server-server-api/#authorization-rules
 /// [checks on receipt of a PDU]: https://spec.matrix.org/latest/server-server-api/#checks-performed-on-receipt-of-a-pdu
-#[instrument(skip_all, fields(event_id = incoming_event.event_id().borrow().as_str()))]
+#[instrument(skip_all)]
 pub async fn check_state_dependent_auth_rules<Pdu, Fetch, Fut>(
     auth_rules: &AuthorizationRules,
     incoming_event: &Pdu,
@@ -394,7 +394,7 @@ where
         return Err(StateError::forbidden("sender's membership is not `join`"));
     }
 
-    let creators = room_create_event.creators(auth_rules)?;
+    let creators = room_create_event.creators()?;
     let current_room_power_levels_event = fetch_state.room_power_levels_event().await;
 
     let sender_power_level =
@@ -528,7 +528,7 @@ fn check_room_create(
 
     // Since v12, if the `additional_creators` field is present and is not an array of strings
     // where each string passes the same user ID validation that is applied to the sender, reject.
-    room_create_event.additional_creators(rules)?;
+    room_create_event.additional_creators()?;
 
     // Otherwise, allow.
     info!("`m.room.create` event was allowed");

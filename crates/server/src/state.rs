@@ -192,7 +192,7 @@ fn allowed_to_send_state_event(
                 };
 
                 let create_event = crate::room::get_create(room_id)?;
-                for crator in create_event.creators(&version_rules.authorization)? {
+                for crator in create_event.creators()? {
                     if power_level_content.users.contains_key(&crator) {
                         return Err(MatrixError::bad_json(
                             "room creators can not be added to power level",
