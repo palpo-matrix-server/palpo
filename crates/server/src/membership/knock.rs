@@ -211,7 +211,6 @@ pub async fn knock_room(
         .map(|event| serde_json::from_str::<CanonicalJsonObject>(event.clone().into_inner().get()))
         .filter_map(Result::ok);
 
-    println!("zzzzzzzzzzzzzzzzzz  0");
     let mut state_map = HashMap::new();
 
     for value in knock_state {
@@ -235,19 +234,15 @@ pub async fn knock_room(
         };
 
         let pdu = if let Some(pdu) = timeline::get_pdu(&event_id).optional()? {
-            println!("zzzzzzzzzzzzzzzzzz  0  ---1");
             pdu
         } else {
-            println!("zzzzzzzzzzzzzzzzzz  0  ---2");
             let request =
                 event_request(&remote_server.origin().await, EventReqArgs::new(&event_id))?
                     .into_inner();
-            println!("zzzzzzzzzzzzzzzzzz  0  ---3");
             let res_body = crate::sending::send_federation_request(&remote_server, request, None)
                 .await?
                 .json::<EventResBody>()
                 .await?;
-            println!("zzzzzzzzzzzzzzzzzz  0  ---4");
             if let Err(e) = handler::process_incoming_pdu(
                 &remote_server,
                 &event_id,
@@ -259,22 +254,18 @@ pub async fn knock_room(
             .await {
                 error!("Failed to process event {event_id} from send_knock: {e}");
             }
-            println!("zzzzzzzzzzzzzzzzzz  0  ---5");
             timeline::get_pdu(&event_id)?
         };
-            println!("zzzzzzzzzzzzzzzzzz  0  ---6");
 
         if let Some(state_key) = &pdu.state_key {
             let state_key_id = state::ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
             state_map.insert(state_key_id, (pdu.event_id.clone(), pdu.event_sn));
         }
     }
-    println!("zzzzzzzzzzzzzzzzzz  1");
 
     info!("Appending room knock event locally");
     let event_id = parsed_knock_pdu.event_id.clone();
     let (event_sn, event_guard) = ensure_event_sn(room_id, &event_id)?;
-    println!("zzzzzzzzzzzzzzzzzz  2");
     NewDbEvent {
         id: event_id.to_owned(),
         sn: event_sn,
@@ -296,7 +287,6 @@ pub async fn knock_room(
     }
     .save()?;
     let knock_pdu = SnPduEvent::new(parsed_knock_pdu, event_sn);
-    println!("zzzzzzzzzzzzzzzzzz  3");
     timeline::append_pdu(
         &knock_pdu,
         knock_event,
@@ -305,7 +295,6 @@ pub async fn knock_room(
     )
     .await?;
 
-    println!("zzzzzzzzzzzzzzzzzz  4");
     info!("Compressing state from send_knock");
     let compressed = state_map
         .into_iter()
@@ -319,7 +308,6 @@ pub async fn knock_room(
         disposed,
     } = state::save_state(room_id, Arc::new(compressed))?;
 
-    println!("zzzzzzzzzzzzzzzzzz  5");
     debug!("Forcing state for new room");
     state::force_state(room_id, frame_id, appended, disposed)?;
 
@@ -335,14 +323,12 @@ pub async fn knock_room(
         sender_id,
         Some(send_knock_body.knock_room_state),
     )?;
-    println!("zzzzzzzzzzzzzzzzzz  6");
 
     info!("Setting final room state for new room");
     // We set the room state after inserting the pdu, so that we never have a moment
     // in time where events in the current room state do not exist
     let _ = state::set_room_state(room_id, frame_id);
 
-    println!("zzzzzzzzzzzzzzzzzz  7");
     drop(event_guard);
     Ok(())
 }

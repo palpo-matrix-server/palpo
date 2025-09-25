@@ -60,7 +60,7 @@ async fn send_message(
         .into());
     }
 
-    println!("Received transaction from {:?}", body);
+    println!("received transaction from {:?}", body);
     let txn_start_time = Instant::now();
     let resolved_map = process_pdus(&body.pdus, &body.origin, &txn_start_time).await?;
     process_edus(body.edus, &body.origin).await;

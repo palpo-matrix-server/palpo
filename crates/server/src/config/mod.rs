@@ -86,21 +86,21 @@ fn figment_from_path<P: AsRef<Path>>(path: P) -> Figment {
         "yaml" | "yml" => Figment::new().merge(Yaml::file(path)),
         "json" => Figment::new().merge(Json::file(path)),
         "toml" => Figment::new().merge(Toml::file(path)),
-        _ => panic!("Unsupported config file format: {ext}"),
+        _ => panic!("unsupported config file format: {ext}"),
     }
 }
 
 pub fn init(config_path: impl AsRef<Path>) {
     let config_path = config_path.as_ref();
     if !config_path.exists() {
-        panic!("Config file not found: `{}`", config_path.display());
+        panic!("config file not found: `{}`", config_path.display());
     }
 
     let raw_conf = figment_from_path(config_path).merge(Env::prefixed("PALPO_").global());
     let conf = match raw_conf.extract::<ServerConfig>() {
         Ok(s) => s,
         Err(e) => {
-            eprintln!("It looks like your config is invalid. The following error occurred: {e}");
+            eprintln!("it looks like your config is invalid. The following error occurred: {e}");
             std::process::exit(1);
         }
     };

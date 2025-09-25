@@ -566,7 +566,6 @@ where
         || (auth_rules.knock_restricted_join_rule
             && !matches!(join_rule, JoinRuleKind::KnockRestricted))
     {
-        println!("kkkkkkkkkknock not allowed due to join rule: {join_rule:?}");
         return Err(StateError::forbidden(
             "join rule is not set to knock or knock_restricted, knocking is not allowed",
         ));
