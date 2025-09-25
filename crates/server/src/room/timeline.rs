@@ -556,8 +556,10 @@ pub async fn create_hash_and_sign_event(
     //         "non-create event for room `{room_id}` of unknown version"
     //     )));
     // };
+    println!("====== create_hash_and_sign_event 0");
     let version_rules = crate::room::get_version_rules(room_version)?;
 
+    println!("====== create_hash_and_sign_event 2");
     let auth_events = state::get_auth_events(
         room_id,
         &event_type,
@@ -568,6 +570,7 @@ pub async fn create_hash_and_sign_event(
         true,
     )?;
 
+    println!("====== create_hash_and_sign_event 3");
     // Our depth is the maximum depth of prev_events + 1
     let depth = prev_events
         .iter()
@@ -576,6 +579,7 @@ pub async fn create_hash_and_sign_event(
         .unwrap_or(0)
         + 1;
 
+    println!("====== create_hash_and_sign_event 4");
     if let Some(state_key) = &state_key
         && let Ok(prev_pdu) =
             super::get_state(room_id, &event_type.to_string().into(), state_key, None)
@@ -591,6 +595,7 @@ pub async fn create_hash_and_sign_event(
         );
     }
 
+    println!("====== create_hash_and_sign_event 5");
     let temp_event_id =
         OwnedEventId::try_from(format!("$backfill_{}", Ulid::new().to_string())).unwrap();
     let content_value: JsonValue = serde_json::from_str(content.get())?;
@@ -618,6 +623,7 @@ pub async fn create_hash_and_sign_event(
         extra_data: Default::default(),
         rejection_reason: None,
     };
+    println!("====== create_hash_and_sign_event 6");
 
     let fetch_event = async |event_id: OwnedEventId| {
         timeline::get_pdu(&event_id)
@@ -630,6 +636,7 @@ pub async fn create_hash_and_sign_event(
             .map(|s| s.pdu.clone())
             .ok_or_else(|| StateError::other("missing auth events"))
     };
+    println!("====== create_hash_and_sign_event 7");
     crate::core::state::event_auth::auth_check(
         &version_rules.authorization,
         &pdu,
@@ -637,6 +644,7 @@ pub async fn create_hash_and_sign_event(
         &fetch_state,
     )
     .await?;
+    println!("====== create_hash_and_sign_event 8");
 
     // Hash and sign
     let mut pdu_json =
@@ -654,6 +662,7 @@ pub async fn create_hash_and_sign_event(
         to_canonical_value(&conf.server_name).expect("server name is a valid CanonicalJsonValue"),
     );
 
+    println!("====== create_hash_and_sign_event 9");
     match crate::server_key::hash_and_sign_event(&mut pdu_json, room_version) {
         Ok(_) => {}
         Err(e) => {
@@ -666,6 +675,7 @@ pub async fn create_hash_and_sign_event(
         }
     }
 
+    println!("====== create_hash_and_sign_event 10");
     // Generate event id
     pdu.event_id = crate::event::gen_event_id(&pdu_json, room_version)?;
     if version_rules.room_id_format == RoomIdFormatVersion::V2
@@ -691,6 +701,7 @@ pub async fn create_hash_and_sign_event(
         );
     }
 
+    println!("====== create_hash_and_sign_event 11");
     let (event_sn, event_guard) = crate::event::ensure_event_sn(room_id, &pdu.event_id)?;
     NewDbEvent {
         id: pdu.event_id.to_owned(),

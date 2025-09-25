@@ -10,26 +10,26 @@ pub type StateResult<T> = std::result::Result<T, StateError>;
 #[non_exhaustive]
 pub enum StateError {
     /// The given event was not found.
-    #[error("Failed to find event {0}")]
+    #[error("failed to find event {0}")]
     NotFound(OwnedEventId),
 
     /// Forbidden.
-    #[error("Forbidden: {0}")]
+    #[error("forbidden: {0}")]
     Forbidden(String),
 
     /// An auth event is invalid.
-    #[error("Invalid auth event: {0}")]
+    #[error("invalid auth event: {0}")]
     AuthEvent(String),
 
     /// A state event doesn't have a `state_key`.
-    #[error("State event has no `state_key`")]
+    #[error("state event has no `state_key`")]
     MissingStateKey,
 
     /// Provided `fetch_conflicted_state_subgraph` function failed.
     #[error("`fetch_conflicted_state_subgraph` failed")]
     FetchConflictedStateSubgraphFailed,
 
-    #[error("Other state error: {0}")]
+    #[error("other state error: {0}")]
     Other(String),
 }
 

@@ -251,22 +251,25 @@ async fn invite_user(
 /// # `GET /_matrix/federation/v1/make_leave/{roomId}/userId}`
 #[endpoint]
 async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<MakeLeaveResBody> {
+    println!("<<<<<<<<<<<<<<<<<<<<<<<<<<, x");
     let origin = depot.origin()?;
     if args.user_id.server_name() != origin {
         return Err(
-            MatrixError::bad_json("Not allowed to leave on behalf of another server.").into(),
+            MatrixError::bad_json("not allowed to leave on behalf of another server").into(),
         );
     }
     if !room::is_room_exists(&args.room_id)? {
-        return Err(MatrixError::forbidden("Room is unknown to this server.", None).into());
+        return Err(MatrixError::forbidden("room is unknown to this server", None).into());
     }
 
+    println!("<<<<<<<<<<<<<<<<<<<<<<<<<<, 0");
     // ACL check origin
     handler::acl_check(origin, &args.room_id)?;
 
     let room_version_id = room::get_version(&args.room_id)?;
     let state_lock = crate::room::lock_state(&args.room_id).await;
 
+    println!("<<<<<<<<<<<<<<<<<<<<<<<<<<, 1");
     let (_pdu, mut pdu_json, _event_guard) = timeline::create_hash_and_sign_event(
         PduBuilder::state(
             args.user_id.to_string(),
@@ -278,6 +281,7 @@ async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<Mak
         &state_lock,
     )
     .await?;
+    println!("<<<<<<<<<<<<<<<<<<<<<<<<<<, 2");
     drop(state_lock);
 
     // room v3 and above removed the "event_id" field from remote PDU format
@@ -441,6 +445,8 @@ async fn send_leave(
     )
     .await?;
 
-    crate::sending::send_pdu_room(&args.room_id, &event_id).unwrap();
+    crate::sending::send_pdu_room(&args.room_id, &event_id, &[origin.to_owned()]).unwrap();
+    crate::room::update_joined_servers(&args.room_id)?;
+    crate::room::update_currents(&args.room_id)?;
     empty_ok()
 }

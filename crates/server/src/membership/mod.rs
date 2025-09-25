@@ -312,7 +312,5 @@ pub fn update_membership(
         }
         _ => {}
     }
-    crate::room::update_joined_servers(room_id)?;
-    crate::room::update_currents(room_id)?;
     Ok(())
 }

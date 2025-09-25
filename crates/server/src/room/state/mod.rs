@@ -124,9 +124,6 @@ pub fn force_state(
         }
     }
 
-    room::update_joined_servers(room_id)?;
-    room::update_currents(room_id)?;
-
     set_room_state(room_id, frame_id)?;
 
     Ok(())

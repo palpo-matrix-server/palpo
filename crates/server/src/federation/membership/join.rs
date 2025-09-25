@@ -12,10 +12,12 @@ pub async fn send_join_v1(
     room_id: &RoomId,
     pdu: &RawJsonValue,
 ) -> AppResult<RoomStateV1> {
+    println!("====== send_join_v1 start  {origin}  {room_id}  {pdu:?}");
     if !room::room_exists(room_id)? {
-        return Err(MatrixError::not_found("Room is unknown to this server.").into());
+        return Err(MatrixError::not_found("room is unknown to this server.").into());
     }
 
+    println!("====== send_join_v1 1");
     handler::acl_check(origin, room_id)?;
 
     // We need to return the state prior to joining, let's keep a reference to that here
@@ -24,6 +26,7 @@ pub async fn send_join_v1(
     // We do not add the event_id field to the pdu here because of signature and hashes checks
     let room_version_id = room::get_version(room_id)?;
 
+    println!("====== send_join_v1 2");
     let (event_id, mut value) = gen_event_id_canonical_json(pdu, &room_version_id)
         .map_err(|_| MatrixError::invalid_param("Could not convert event to canonical json."))?;
 
@@ -36,12 +39,15 @@ pub async fn send_join_v1(
     )
     .map_err(|e| MatrixError::bad_json(format!("room_id field is not a valid room ID: {e}")))?;
 
+    println!("====== send_join_v1 3");
     if event_room_id != room_id {
+    println!("====== send_join_v1 4");
         return Err(
             MatrixError::bad_json("Event room_id does not match request path room ID.").into(),
         );
     }
 
+    println!("====== send_join_v1 5");
     let event_type: StateEventType = serde_json::from_value(
         value
             .get("type")
@@ -57,6 +63,7 @@ pub async fn send_join_v1(
         )
         .into());
     }
+    println!("====== send_join_v1 6");
 
     let content: RoomMemberEventContent = serde_json::from_value(
         value
@@ -190,8 +197,11 @@ pub async fn send_join_v1(
         .filter_map(|id| timeline::get_pdu_json(&id).ok().flatten())
         .map(crate::sending::convert_to_outgoing_federation_event)
         .collect();
-    crate::sending::send_pdu_room(room_id, &event_id)?;
+    crate::room::update_joined_servers(room_id)?;
+    crate::sending::send_pdu_room(room_id, &event_id, &[])?;
+    crate::room::update_currents(room_id)?;
 
+    println!("====== send_join_v1 7");
     Ok(RoomStateV1 {
         auth_chain,
         state,

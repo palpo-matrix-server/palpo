@@ -33,12 +33,14 @@ pub async fn leave_room(
     room_id: &RoomId,
     reason: Option<String>,
 ) -> AppResult<()> {
+    println!("LLLLLLLLLLLLLLLLlllleave room");
     // Ask a remote server if we don't have this room
     let member_event =
         room::get_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None).ok();
 
-    println!("LEAVING ROOM {} FOR USER {}  member_event:{member_event:?}", room_id, user_id);
+    println!("LLLLLLLLLLLLLLLLlllleave room 1");
     if let Some(member_event) = &member_event {
+        println!("LLLLLLLLLLLLLLLLlllleave room 2");
         let mut event = member_event
             .get_content::<RoomMemberEventContent>()
             .map_err(|_| AppError::public("Invalid member event in database."))?;
@@ -47,7 +49,7 @@ pub async fn leave_room(
         event.reason = reason;
         event.join_authorized_via_users_server = None;
 
-        timeline::build_and_append_pdu(
+        if let Ok(pdu) = timeline::build_and_append_pdu(
             PduBuilder {
                 event_type: TimelineEventType::RoomMember,
                 content: to_raw_json_value(&event).expect("event is valid, we just created it"),
@@ -59,26 +61,29 @@ pub async fn leave_room(
             &crate::room::get_version(room_id)?,
             &room::lock_state(room_id).await,
         )
-        .await?;
-    } else {
-        match leave_room_remote(user_id, room_id).await {
-            Err(e) => {
-                warn!("failed to leave room {} remotely: {}", user_id, e);
-            }
-            Ok((event_id, event_sn)) => {
-                let last_state = state::get_user_state(user_id, room_id)?;
+        .await
+        {
+            return crate::sending::send_pdu_room(room_id, &pdu.event_id, &[]);
+        }
+    }
+    println!("LLLLLLLLLLLLLLLLlllleave room 3");
+    match leave_room_remote(user_id, room_id).await {
+        Err(e) => {
+            warn!("failed to leave room {} remotely: {}", user_id, e);
+        }
+        Ok((event_id, event_sn)) => {
+            let last_state = state::get_user_state(user_id, room_id)?;
 
-                // We always drop the invite, we can't rely on other servers
-                membership::update_membership(
-                    &event_id,
-                    event_sn,
-                    room_id,
-                    user_id,
-                    MembershipState::Leave,
-                    user_id,
-                    last_state,
-                )?;
-            }
+            // We always drop the invite, we can't rely on other servers
+            membership::update_membership(
+                &event_id,
+                event_sn,
+                room_id,
+                user_id,
+                MembershipState::Leave,
+                user_id,
+                last_state,
+            )?;
         }
     }
 
@@ -89,7 +94,6 @@ async fn leave_room_remote(
     user_id: &UserId,
     room_id: &RoomId,
 ) -> AppResult<(OwnedEventId, Seqnum)> {
-    println!("LEAVING ROOM REMOTELY {} FOR USER {}", room_id, user_id);
     let mut make_leave_response_and_server = Err(AppError::public(
         "No server available to assist in leaving.",
     ));
