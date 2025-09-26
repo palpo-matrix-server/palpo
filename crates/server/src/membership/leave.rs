@@ -65,6 +65,7 @@ pub async fn leave_room(
         {
             return crate::sending::send_pdu_room(room_id, &pdu.event_id, &[]);
         }
+        return Ok(());
     }
     println!("LLLLLLLLLLLLLLLLlllleave room 3");
     match leave_room_remote(user_id, room_id).await {
@@ -84,6 +85,7 @@ pub async fn leave_room(
                 user_id,
                 last_state,
             )?;
+            crate::sending::send_pdu_room(room_id, &pdu.event_id, &[]);
         }
     }
 

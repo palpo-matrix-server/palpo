@@ -445,7 +445,6 @@ async fn send_leave(
     )
     .await?;
 
-    crate::sending::send_pdu_room(&args.room_id, &event_id, &[origin.to_owned()]).unwrap();
     crate::room::update_joined_servers(&args.room_id)?;
     crate::room::update_currents(&args.room_id)?;
     empty_ok()
