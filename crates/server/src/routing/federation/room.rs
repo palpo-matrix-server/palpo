@@ -309,7 +309,7 @@ async fn make_knock(
         .into());
     }
 
-    let (_pdu, mut pdu_json, _event_guard) = timeline::create_hash_and_sign_event(
+    let (_pdu, mut pdu_json, _event_guard) = timeline::hash_and_sign_event(
         PduBuilder::state(
             args.user_id.to_string(),
             &RoomMemberEventContent::new(MembershipState::Knock),

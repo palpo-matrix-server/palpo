@@ -115,7 +115,7 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         extra_data: Default::default(),
     })
     .expect("member event is valid value");
-    let (_pdu, mut pdu_json, _) = timeline::create_hash_and_sign_event(
+    let (_pdu, mut pdu_json, _) = timeline::hash_and_sign_event(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,
             content,
@@ -270,7 +270,7 @@ async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<Mak
     let state_lock = crate::room::lock_state(&args.room_id).await;
 
     println!("<<<<<<<<<<<<<<<<<<<<<<<<<<, 1");
-    let (_pdu, mut pdu_json, _event_guard) = timeline::create_hash_and_sign_event(
+    let (_pdu, mut pdu_json, _event_guard) = timeline::hash_and_sign_event(
         PduBuilder::state(
             args.user_id.to_string(),
             &RoomMemberEventContent::new(MembershipState::Leave),

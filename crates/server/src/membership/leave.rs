@@ -41,18 +41,20 @@ pub async fn leave_room(
     println!("LLLLLLLLLLLLLLLLlllleave room 1");
     if let Some(member_event) = &member_event {
         println!("LLLLLLLLLLLLLLLLlllleave room 2");
-        let mut event = member_event
+        let mut event_content = member_event
             .get_content::<RoomMemberEventContent>()
-            .map_err(|_| AppError::public("Invalid member event in database."))?;
+            .map_err(|_| AppError::public("invalid member event in database"))?;
 
-        event.membership = MembershipState::Leave;
-        event.reason = reason;
-        event.join_authorized_via_users_server = None;
+        let just_invited = event_content.membership == MembershipState::Invite;
+        event_content.membership = MembershipState::Leave;
+        event_content.reason = reason;
+        event_content.join_authorized_via_users_server = None;
 
-        if let Ok(pdu) = timeline::build_and_append_pdu(
+        match timeline::build_and_append_pdu(
             PduBuilder {
                 event_type: TimelineEventType::RoomMember,
-                content: to_raw_json_value(&event).expect("event is valid, we just created it"),
+                content: to_raw_json_value(&event_content)
+                    .expect("event is valid, we just created it"),
                 state_key: Some(user_id.to_string()),
                 ..Default::default()
             },
@@ -63,7 +65,21 @@ pub async fn leave_room(
         )
         .await
         {
-            return crate::sending::send_pdu_room(room_id, &pdu.event_id, &[]);
+            Ok(pdu) => {
+                print!("LLLLLLLLLLLLLLLLlllleave room 4");
+                if just_invited && member_event.sender.server_name() != config::server_name() {
+                    return crate::sending::send_pdu_room(
+                        room_id,
+                        &pdu.event_id,
+                        &[member_event.sender.server_name().to_owned()],
+                    );
+                } else {
+                    return crate::sending::send_pdu_room(room_id, &pdu.event_id, &[]);
+                }
+            }
+            Err(e) => {
+                error!("error when leave room: {e}");
+            }
         }
         return Ok(());
     }
@@ -85,7 +101,7 @@ pub async fn leave_room(
                 user_id,
                 last_state,
             )?;
-            crate::sending::send_pdu_room(room_id, &pdu.event_id, &[]);
+            crate::sending::send_pdu_room(room_id, &event_id, &[]);
         }
     }
 

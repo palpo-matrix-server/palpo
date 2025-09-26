@@ -18,6 +18,7 @@ use crate::core::{UnixMillis, federation};
 use crate::data::connect;
 use crate::data::room::NewDbRoomUser;
 use crate::data::schema::*;
+use crate::room::state::ensure_field;
 use crate::{AppError, AppResult, MatrixError, SigningKeys, room};
 
 mod banned;
@@ -114,7 +115,7 @@ pub fn update_membership(
         // TODO: display_name, avatar url
     }
 
-    let state_data = if let Some(last_state) = last_state {
+    let state_data = if let Some(last_state) = &last_state {
         Some(serde_json::to_value(last_state)?)
     } else {
         None
@@ -241,6 +242,15 @@ pub fn update_membership(
             if crate::user::user_is_ignored(sender_id, user_id) {
                 return Ok(());
             }
+            if let Some(last_state) = &last_state {
+                for event in last_state {
+                    if let Ok(event) = event.deserialize() {
+                        println!("llllllllensuring field for event: {:?}", event);
+                        let _ = ensure_field(&event.event_type(), event.state_key());
+                    }
+                }
+            }
+            let _ = ensure_field(&StateEventType::RoomMember, user_id.as_str());
             connect()?.transaction::<_, AppError, _>(|conn| {
                 // let forgotten = room_users::table
                 //     .filter(room_users::room_id.eq(room_id))

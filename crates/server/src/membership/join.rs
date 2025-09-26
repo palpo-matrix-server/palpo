@@ -122,7 +122,7 @@ pub async fn join_room(
                 return Ok(JoinRoomResBody::new(room_id.to_owned()));
             }
             Err(e) => {
-                tracing::error!("Failed to append join event locally: {e}");
+                tracing::error!("failed to append join event locally: {e}");
                 if servers.is_empty() || servers.iter().all(|s| s.is_local()) {
                     return Err(e);
                 }

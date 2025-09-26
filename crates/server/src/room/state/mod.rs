@@ -321,7 +321,6 @@ pub fn get_auth_events(
     state_key: Option<&str>,
     content: &serde_json::value::RawValue,
     auth_rules: &AuthorizationRules,
-    include_create: bool,
 ) -> AppResult<StateMap<SnPduEvent>> {
     let frame_id = if let Ok(current_frame_id) = get_room_frame_id(room_id, None) {
         current_frame_id
@@ -331,6 +330,7 @@ pub fn get_auth_events(
 
     let auth_types =
         crate::core::state::auth_types_for_event(kind, sender, state_key, content, auth_rules)?;
+    println!("llllllllauth_types:{auth_types:?}");
     let mut sauth_events = auth_types
         .into_iter()
         .filter_map(|(event_type, state_key)| {
@@ -340,6 +340,7 @@ pub fn get_auth_events(
         })
         .collect::<HashMap<_, _>>();
 
+    println!("llllllllsauth_events: {sauth_events:#?} auth_rules:{auth_rules:?}");
     let full_state = load_frame_info(frame_id)?
         .pop()
         .expect("there is always one layer")

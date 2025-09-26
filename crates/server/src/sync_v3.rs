@@ -111,15 +111,20 @@ pub async fn sync_events(
     let mut left_rooms = BTreeMap::new();
     let all_left_rooms = room::user::left_rooms(sender_id, since_sn)?;
 
+    println!("aaaaaaaaaaaaaaaaaall_left_rooms: {all_left_rooms:?}");
     for room_id in all_left_rooms.keys() {
+        println!("bbbbbbbbbbbbbbbbbleft room: {room_id}");
         let Ok(left_sn) = room::user::left_sn(room_id, sender_id) else {
+            println!("ccccccccccccc 0");
             tracing::warn!("left room {} without a left_sn, skipping", room_id);
             continue;
         };
         // Left before last sync
         if since_sn > Some(left_sn) {
+            println!("ccccccccccccc 1");
             continue;
         }
+        println!("ccccccccccccc 2");
         let left_room = match load_left_room(
             sender_id,
             device_id,
@@ -142,6 +147,7 @@ pub async fn sync_events(
                 continue;
             }
         };
+        println!("ccccccccccccc 4");
         left_rooms.insert(room_id.to_owned(), left_room);
     }
 
@@ -172,6 +178,7 @@ pub async fn sync_events(
                     .all(|encrypted| !encrypted);
             // If the user doesn't share an encrypted room with the target anymore, we need
             // to tell them.
+            println!("========dont_share_encrypted_room: {dont_share_encrypted_room}");
             if dont_share_encrypted_room {
                 device_list_left.insert(user_id);
             }
@@ -298,6 +305,7 @@ pub async fn sync_events(
         )?,
     };
 
+    println!("lllllllllast rooms: {rooms:?}");
     let res_body = SyncEventsResBody {
         next_batch: next_batch.to_string(),
         rooms,
@@ -349,6 +357,8 @@ async fn load_joined_room(
         Some(next_batch),
         Some(&filter.room.timeline),
     )?;
+
+    println!("==========timeline_pdus: {timeline_pdus:#?}");
 
     let since_sn = if let Some(since_sn) = since_sn {
         since_sn
