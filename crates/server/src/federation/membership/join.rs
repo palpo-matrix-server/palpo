@@ -197,8 +197,6 @@ pub async fn send_join_v1(
         .filter_map(|id| timeline::get_pdu_json(&id).ok().flatten())
         .map(crate::sending::convert_to_outgoing_federation_event)
         .collect();
-    crate::room::update_joined_servers(room_id)?;
-    crate::room::update_currents(room_id)?;
 
     println!("====== send_join_v1 7");
     Ok(RoomStateV1 {

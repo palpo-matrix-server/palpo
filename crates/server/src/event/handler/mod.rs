@@ -115,7 +115,7 @@ pub(crate) async fn process_incoming_pdu(
         handler::acl_check(sender.server_name(), room_id)?;
     }
 
-    println!("=========process incomping pdu 3");
+    println!("=========process incomping pdu 3 {value:?}");
     // 1. Skip the PDU if we already have it as a timeline event
     if state::get_pdu_frame_id(event_id).is_ok() {
         println!("=========process incomping pdu 4");
@@ -527,11 +527,16 @@ pub async fn process_to_timeline_pdu(
     debug!("resolving state at event");
     let server_joined = crate::room::is_server_joined(crate::config::server_name(), room_id)?;
     if !server_joined {
+        println!(
+            "SSSSSSSSSSSSSSSSSSServer not joined  state_key: {:?}  {} ",
+            incoming_pdu.state_key, incoming_pdu.sender().as_str()
+        );
         if let Some(state_key) = incoming_pdu.state_key.as_deref()
             && incoming_pdu.event_ty == TimelineEventType::RoomMember
             && state_key != incoming_pdu.sender().as_str() //????
-            && state_key.ends_with(&*format!(":{}", crate::config::server_name()))
+            // && state_key.ends_with(&*format!(":{}", crate::config::server_name()))
         {
+            println!("SSSSSSSSSSSSSSSSSSServer not joined 1");
             let state_at_incoming_event = state_at_incoming_degree_one(&incoming_pdu)
                 .await?
                 .unwrap_or_default();
@@ -595,6 +600,7 @@ pub async fn process_to_timeline_pdu(
             )?;
             drop(state_lock);
         }
+        println!("SSSSSSSSSSSSSSSSSSServer not joined 2  end");
         return Ok(());
     }
     let state_at_incoming_event = if incoming_pdu.prev_events.len() == 1 {

@@ -444,8 +444,5 @@ async fn send_leave(
         true,
     )
     .await?;
-
-    crate::room::update_joined_servers(&args.room_id)?;
-    crate::room::update_currents(&args.room_id)?;
     empty_ok()
 }

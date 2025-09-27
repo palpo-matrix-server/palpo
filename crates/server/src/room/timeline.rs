@@ -872,13 +872,17 @@ pub async fn build_and_append_pdu(
         super::participating_servers(room_id)?.into_iter().collect();
 
     // In case we are kicking or banning a user, we need to inform their server of the change
-    if pdu.event_ty == TimelineEventType::RoomMember
-        && let Some(state_key_uid) = &pdu
+    if pdu.event_ty == TimelineEventType::RoomMember {
+        crate::room::update_joined_servers(&room_id)?;
+        crate::room::update_currents(&room_id)?;
+
+        if let Some(state_key_uid) = &pdu
             .state_key
             .as_ref()
             .and_then(|state_key| UserId::parse(state_key.as_str()).ok())
-    {
-        servers.insert(state_key_uid.server_name().to_owned());
+        {
+            servers.insert(state_key_uid.server_name().to_owned());
+        }
     }
 
     // Remove our server from the server list since it will be added to it by room_servers() and/or the if statement above
