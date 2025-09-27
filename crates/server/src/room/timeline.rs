@@ -23,7 +23,7 @@ use crate::core::room_version_rules::RoomIdFormatVersion;
 use crate::core::serde::{
     CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJsonValue, to_canonical_value,
 };
-use crate::core::state::{Event, StateError};
+use crate::core::state::{Event, StateError, event_auth};
 use crate::core::{Direction, Seqnum, UnixMillis, user_id};
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
@@ -558,6 +558,7 @@ pub async fn hash_and_sign_event(
     // };
     println!("====== hash_and_sign_event 0");
     let version_rules = crate::room::get_version_rules(room_version)?;
+    let auth_rules = &version_rules.authorization;
 
     println!("====== hash_and_sign_event 2");
     let auth_events = state::get_auth_events(
@@ -566,7 +567,7 @@ pub async fn hash_and_sign_event(
         sender_id,
         state_key.as_deref(),
         &content,
-        &version_rules.authorization,
+        auth_rules,
     )?;
 
     println!("====== hash_and_sign_event 3");
@@ -638,13 +639,7 @@ pub async fn hash_and_sign_event(
             })
     };
     println!("====== hash_and_sign_event 7");
-    crate::core::state::event_auth::auth_check(
-        &version_rules.authorization,
-        &pdu,
-        &fetch_event,
-        &fetch_state,
-    )
-    .await?;
+    event_auth::auth_check(auth_rules, &pdu, &fetch_event, &fetch_state).await?;
     println!("====== hash_and_sign_event 8");
 
     // Hash and sign
