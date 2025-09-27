@@ -157,6 +157,7 @@ where
 
     let current_membership = fetch_state.user_membership(target_user).await?;
 
+    println!("==============target_user: {target_user:?} ====current_membership: {current_membership:?}");
     // Since v1, if the sender is banned, reject.
     if current_membership == MembershipState::Ban {
         return Err(StateError::forbidden("banned user cannot join room"));

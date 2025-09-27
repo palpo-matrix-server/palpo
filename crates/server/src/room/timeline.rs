@@ -355,6 +355,7 @@ where
             }
         }
         TimelineEventType::RoomMember => {
+            println!("ddddddddddddddddddd   4");
             if let Some(state_key) = &pdu.state_key {
                 #[derive(Deserialize)]
                 struct ExtractMembership {
@@ -380,6 +381,7 @@ where
                 if content.membership == MembershipState::Join {
                     let _ = crate::user::ping_presence(&pdu.sender, &PresenceState::Online);
                 }
+                println!("ddddddddddddddddddd   5  {}", content.membership);
                 // Update our membership info, we do this here incase a user is invited
                 // and immediately leaves we need the DB to record the invite event for auth
                 membership::update_membership(
