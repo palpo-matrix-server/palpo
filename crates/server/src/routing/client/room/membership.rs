@@ -28,7 +28,7 @@ use crate::room::{state, timeline};
 use crate::sending::send_federation_request;
 use crate::{
     AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, data, empty_ok,
-    json_ok, room, utils,
+    json_ok, room, sending, utils,
 };
 
 /// #POST /_matrix/client/r0/rooms/{room_id}/members
@@ -534,7 +534,7 @@ pub(super) async fn ban_user(
         }
     };
 
-    timeline::build_and_append_pdu(
+    let pdu = timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&event).expect("event is valid, we just created it"),
@@ -547,6 +547,13 @@ pub(super) async fn ban_user(
         &state_lock,
     )
     .await?;
+    if let Err(e) = sending::send_pdu_room(
+        &room_id,
+        &pdu.event_id,
+        &[body.user_id.server_name().to_owned()],
+    ) {
+        error!("failed to notify banned user server: {e}");
+    }
 
     empty_ok()
 }
@@ -581,7 +588,7 @@ pub(super) async fn unban_user(
     event.membership = MembershipState::Leave;
     event.reason = body.reason.clone();
 
-    timeline::build_and_append_pdu(
+    let pdu = timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&event).expect("event is valid, we just created it"),
@@ -594,6 +601,14 @@ pub(super) async fn unban_user(
         &state_lock,
     )
     .await?;
+
+    if let Err(e) = sending::send_pdu_room(
+        &room_id,
+        &pdu.event_id,
+        &[body.user_id.server_name().to_owned()],
+    ) {
+        error!("failed to notify banned user server: {e}");
+    }
 
     empty_ok()
 }
@@ -633,7 +648,7 @@ pub(super) async fn kick_user(
         .into());
     }
 
-    timeline::build_and_append_pdu(
+    let pdu = timeline::build_and_append_pdu(
         PduBuilder::state(
             body.user_id.to_string(),
             &RoomMemberEventContent {
@@ -651,6 +666,14 @@ pub(super) async fn kick_user(
         &state_lock,
     )
     .await?;
+
+    if let Err(e) = sending::send_pdu_room(
+        &room_id,
+        &pdu.event_id,
+        &[body.user_id.server_name().to_owned()],
+    ) {
+        error!("failed to notify banned user server: {e}");
+    }
 
     empty_ok()
 }
@@ -731,5 +754,6 @@ pub(crate) async fn knock_room(
     };
 
     crate::membership::knock_room(sender_id, &room_id, body.reason.clone(), &servers).await?;
+
     empty_ok()
 }

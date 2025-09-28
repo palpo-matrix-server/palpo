@@ -109,7 +109,10 @@ pub fn update_membership(
     last_state: Option<Vec<RawJson<AnyStrippedStateEvent>>>,
 ) -> AppResult<()> {
     let conf = crate::config::get();
-    println!("ddddddddddddddddddd   Updating membership: {} {} {}", user_id, room_id, membership);
+    println!(
+        "ddddddddddddddddddd   Updating membership: {} {} {}",
+        user_id, room_id, membership
+    );
     // Keep track what remote users exist by adding them as "deactivated" users
     if user_id.server_name() != conf.server_name && !crate::data::user::user_exists(user_id)? {
         crate::user::create_user(user_id, None)?;
@@ -253,7 +256,9 @@ pub fn update_membership(
                     }
                 }
             }
-    println!("ddddddddddddddddddd   2 user_id:{user_id:?}  room_id:{room_id:?} membership:{membership:?} sender_id:{sender_id:?} event_id:{event_id:?} event_sn:{event_sn:?}");
+            println!(
+                "ddddddddddddddddddd   2 user_id:{user_id:?}  room_id:{room_id:?} membership:{membership:?} sender_id:{sender_id:?} event_id:{event_id:?} event_sn:{event_sn:?}"
+            );
             let _ = ensure_field(&StateEventType::RoomMember, user_id.as_str());
             connect()?.transaction::<_, AppError, _>(|conn| {
                 // let forgotten = room_users::table
@@ -326,5 +331,7 @@ pub fn update_membership(
         }
         _ => {}
     }
+    crate::room::update_joined_servers(room_id)?;
+    crate::room::update_currents(room_id)?;
     Ok(())
 }

@@ -35,7 +35,7 @@ use crate::room::{state, timeline};
 use crate::sending::send_edu_server;
 use crate::{
     AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, SnPduEvent,
-    config, data, room,
+    config, data, room, sending
 };
 
 pub async fn join_room(
@@ -111,13 +111,21 @@ pub async fn join_room(
         )
         .await
         {
-            Ok(_) => {
+            Ok(pdu) => {
                 if let Some(device_id) = device_id {
                     crate::user::mark_device_key_update_with_joined_rooms(
                         sender_id,
                         device_id,
                         &[room_id.to_owned()],
                     )?;
+                }
+
+                if let Err(e) = sending::send_pdu_room(
+                    &room_id,
+                    &pdu.event_id,
+                    &[],
+                ) {
+                    error!("failed to notify banned user server: {e}");
                 }
                 return Ok(JoinRoomResBody::new(room_id.to_owned()));
             }
@@ -130,7 +138,7 @@ pub async fn join_room(
         }
     }
 
-        println!("====== join_room remote");
+    println!("====== join_room remote");
     info!("joining {room_id} over federation");
     let (make_join_response, remote_server) =
         make_join_request(sender_id, room_id, &servers).await?;
@@ -490,6 +498,14 @@ pub async fn join_room(
             let edu = Edu::DeviceListUpdate(content);
             send_edu_server(room_server_id, &edu)?;
         }
+    }
+
+    if let Err(e) = sending::send_pdu_room(
+        &room_id,
+        &join_pdu.event_id,
+        &[],
+    ) {
+        error!("failed to notify banned user server: {e}");
     }
     Ok(JoinRoomResBody::new(room_id.to_owned()))
 }

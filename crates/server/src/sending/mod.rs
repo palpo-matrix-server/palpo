@@ -176,7 +176,10 @@ pub fn send_pdu_room(
         .collect::<Vec<_>>();
     servers.sort_unstable();
     servers.dedup();
-    println!(">>>>>>>>>>>>>>>>......send pdu room: {pdu_id:?} {:?}", servers);
+    println!(
+        ">>>>>>>>>>>>>>>>......send pdu room: {pdu_id:?} {:?}",
+        servers
+    );
     send_pdu_servers(servers.into_iter(), pdu_id)
 }
 
@@ -187,11 +190,16 @@ pub fn send_pdu_servers<S: Iterator<Item = OwnedServerName>>(
 ) -> AppResult<()> {
     let requests = servers
         .into_iter()
-        .map(|server| {
-            (
-                OutgoingKind::Normal(server),
-                SendingEventType::Pdu(pdu_id.to_owned()),
-            )
+        .filter_map(|server| {
+            if server == config::get().server_name {
+                warn!("not sending pdu to ourself: {server}");
+                None
+            } else {
+                Some((
+                    OutgoingKind::Normal(server),
+                    SendingEventType::Pdu(pdu_id.to_owned()),
+                ))
+            }
         })
         .collect::<Vec<_>>();
     let keys = queue_requests(

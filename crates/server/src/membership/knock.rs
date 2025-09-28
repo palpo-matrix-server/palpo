@@ -22,7 +22,7 @@ use crate::room::state::{CompressedEvent, DeltaInfo};
 use crate::room::{self, state, timeline};
 use crate::{
     AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, SnPduEvent,
-    config,
+    config,sending,
 };
 
 pub async fn knock_room(
@@ -30,7 +30,7 @@ pub async fn knock_room(
     room_id: &RoomId,
     reason: Option<String>,
     servers: &[OwnedServerName],
-) -> AppResult<()> {
+) -> AppResult<Option<SnPduEvent>> {
     if room::user::is_invited(sender_id, room_id)? {
         warn!("{sender_id} is already invited in {room_id} but attempted to knock");
         return Err(MatrixError::forbidden(
@@ -51,7 +51,7 @@ pub async fn knock_room(
 
     if room::user::is_knocked(sender_id, room_id)? {
         warn!("{sender_id} is already knocked in {room_id}");
-        return Ok(());
+        return Ok(None);
     }
 
     if let Ok(memeber) = room::get_member(room_id, sender_id)
@@ -105,8 +105,15 @@ pub async fn knock_room(
         )
         .await
         {
-            Ok(_) => {
-                return Ok(());
+            Ok(pdu) => {
+                if let Err(e) = sending::send_pdu_room(
+                    &room_id,
+                    &pdu.event_id,
+                    &[sender_id.server_name().to_owned()],
+                ) {
+                    error!("failed to notify banned user server: {e}");
+                }
+                return Ok(Some(pdu));
             }
             Err(e) => {
                 tracing::error!("Failed to knock room {room_id} with conflict error: {e}");
@@ -256,13 +263,14 @@ pub async fn knock_room(
                 serde_json::from_str(res_body.pdu.get())?,
                 true,
             )
-            .await {
+            .await
+            {
                 error!("Failed to process event {event_id} from send_knock: {e}");
             }
             println!("zzzzzzzzzzzzzzzzzz  0  ---5");
             timeline::get_pdu(&event_id)?
         };
-            println!("zzzzzzzzzzzzzzzzzz  0  ---6");
+        println!("zzzzzzzzzzzzzzzzzz  0  ---6");
 
         if let Some(state_key) = &pdu.state_key {
             let state_key_id = state::ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
@@ -341,10 +349,16 @@ pub async fn knock_room(
     // We set the room state after inserting the pdu, so that we never have a moment
     // in time where events in the current room state do not exist
     let _ = state::set_room_state(room_id, frame_id);
-
+    if let Err(e) = sending::send_pdu_room(
+        &room_id,
+        &knock_pdu.event_id,
+        &[sender_id.server_name().to_owned()],
+    ) {
+        error!("failed to notify banned user server: {e}");
+    }
     println!("zzzzzzzzzzzzzzzzzz  7");
     drop(event_guard);
-    Ok(())
+    Ok(Some(knock_pdu))
 }
 
 async fn make_knock_request(

@@ -383,12 +383,24 @@ pub fn get_state_users(
 }
 
 /// Returns an list of all servers participating in this room.
-pub fn participating_servers(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
-    room_joined_servers::table
-        .filter(room_joined_servers::room_id.eq(room_id))
-        .select(room_joined_servers::server_id)
-        .load(&mut connect()?)
-        .map_err(Into::into)
+pub fn participating_servers(
+    room_id: &RoomId,
+    include_self_server: bool,
+) -> AppResult<Vec<OwnedServerName>> {
+    if include_self_server {
+        room_joined_servers::table
+            .filter(room_joined_servers::room_id.eq(room_id))
+            .select(room_joined_servers::server_id)
+            .load(&mut connect()?)
+            .map_err(Into::into)
+    } else {
+        room_joined_servers::table
+            .filter(room_joined_servers::room_id.eq(room_id))
+            .filter(room_joined_servers::server_id.ne(config::server_name()))
+            .select(room_joined_servers::server_id)
+            .load(&mut connect()?)
+            .map_err(Into::into)
+    }
 }
 
 pub fn public_room_ids() -> AppResult<Vec<OwnedRoomId>> {
@@ -595,7 +607,10 @@ pub async fn user_can_invite(room_id: &RoomId, sender_id: &UserId, _target_user:
         return true;
     }
     if let Ok(power_levels) = get_power_levels(room_id).await {
-        println!("=============== power_levels: {:#?}, room_id: {:?}, sender_id: {:?}", power_levels, room_id, sender_id);
+        println!(
+            "=============== power_levels: {:#?}, room_id: {:?}, sender_id: {:?}",
+            power_levels, room_id, sender_id
+        );
         power_levels.user_can_invite(sender_id)
     } else {
         false

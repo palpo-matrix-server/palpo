@@ -133,7 +133,7 @@ pub async fn invite_user(
         return sending::send_pdu_room(room_id, &event_id, &[invitee_id.server_name().to_owned()]);
     }
 
-        println!("====== invite_user local  {invitee_id}  {room_id}");
+    println!("====== invite_user local  {invitee_id}  {room_id}");
     timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,

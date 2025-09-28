@@ -826,6 +826,8 @@ pub async fn build_and_append_pdu(
     room_version: &RoomVersionId,
     state_lock: &RoomMutexGuard,
 ) -> AppResult<SnPduEvent> {
+    println!("====== build_and_append_pdu 0");
+
     if let Some(state_key) = &pdu_builder.state_key
         && let Ok(curr_state) = super::get_state(
             room_id,
@@ -853,6 +855,7 @@ pub async fn build_and_append_pdu(
     }
 
     let event_id = pdu.event_id.clone();
+    println!("====== build_and_append_pdu 2 {event_id}");
     append_pdu(
         &pdu,
         pdu_json,
@@ -861,32 +864,22 @@ pub async fn build_and_append_pdu(
         state_lock,
     )
     .await?;
+    println!("====== build_and_append_pdu 3");
     let frame_id = state::append_to_state(&pdu)?;
 
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
-
     state::set_room_state(room_id, frame_id)?;
 
-    let mut servers: HashSet<OwnedServerName> =
-        super::participating_servers(room_id)?.into_iter().collect();
-
     // In case we are kicking or banning a user, we need to inform their server of the change
-    if pdu.event_ty == TimelineEventType::RoomMember {
-        crate::room::update_joined_servers(&room_id)?;
-        crate::room::update_currents(&room_id)?;
+    // move to append pdu
+    // if pdu.event_ty == TimelineEventType::RoomMember {
+    //     crate::room::update_joined_servers(&room_id)?;
+    //     crate::room::update_currents(&room_id)?;
+    // }
 
-        if let Some(state_key_uid) = &pdu
-            .state_key
-            .as_ref()
-            .and_then(|state_key| UserId::parse(state_key.as_str()).ok())
-        {
-            servers.insert(state_key_uid.server_name().to_owned());
-        }
-    }
-
-    // Remove our server from the server list since it will be added to it by room_servers() and/or the if statement above
-    servers.remove(&conf.server_name);
+    let servers = super::participating_servers(room_id, false)?;
+    println!("====== build_and_append_pdu 6 {event_id}  {servers:?}");
     crate::sending::send_pdu_servers(servers.into_iter(), &pdu.event_id)?;
 
     Ok(pdu)

@@ -10,7 +10,7 @@ use crate::data::room::{DbEventData, NewDbEvent};
 use crate::event::{PduBuilder, ensure_event_sn};
 use crate::membership::federation::membership::{SendLeaveReqArgsV2, send_leave_request_v2};
 use crate::room::{self, state, timeline};
-use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, config, data, membership};
+use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, SnPduEvent, config, data, membership};
 
 // Make a user leave all their joined rooms
 pub async fn leave_all_rooms(user_id: &UserId) -> AppResult<()> {
@@ -66,22 +66,22 @@ pub async fn leave_room(
         .await
         {
             Ok(pdu) => {
-                print!("LLLLLLLLLLLLLLLLlllleave room 4");
                 if just_invited && member_event.sender.server_name() != config::server_name() {
-                    return crate::sending::send_pdu_room(
+                    let _ = crate::sending::send_pdu_room(
                         room_id,
                         &pdu.event_id,
                         &[member_event.sender.server_name().to_owned()],
                     );
                 } else {
-                    return crate::sending::send_pdu_room(room_id, &pdu.event_id, &[]);
+                    let _ = crate::sending::send_pdu_room(room_id, &pdu.event_id, &[]);
                 }
+                Ok(())
             }
             Err(e) => {
                 error!("error when leave room: {e}");
+                Err(e)
             }
-        }
-        return Ok(());
+        };
     }
     println!("LLLLLLLLLLLLLLLLlllleave room 3");
     match leave_room_remote(user_id, room_id).await {
@@ -101,10 +101,9 @@ pub async fn leave_room(
                 user_id,
                 last_state,
             )?;
-            crate::sending::send_pdu_room(room_id, &event_id, &[]);
+            let _ = crate::sending::send_pdu_room(room_id, &event_id, &[]);
         }
     }
-
     Ok(())
 }
 
