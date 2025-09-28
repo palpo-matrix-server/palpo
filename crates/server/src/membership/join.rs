@@ -279,7 +279,7 @@ pub async fn join_room(
 
     room::ensure_room(room_id, &room_version_id)?;
 
-    info!("Parsing join event");
+    info!("parsing join event");
     let parsed_join_pdu =
         PduEvent::from_canonical_object(&event_id, join_event.clone()).map_err(|e| {
             warn!("Invalid PDU in send_join response: {}", e);
@@ -343,7 +343,7 @@ pub async fn join_room(
         error!("failed to fetch missing prev events for join: {e}");
     }
 
-    info!("Going through send_join response room_state");
+    info!("going through send_join response room_state");
     for result in send_join_body
         .0
         .state
@@ -386,7 +386,7 @@ pub async fn join_room(
         }
     }
 
-    info!("Going through send_join response auth_chain");
+    info!("going through send_join response auth_chain");
     for result in send_join_body
         .0
         .auth_chain
@@ -413,7 +413,7 @@ pub async fn join_room(
         }
     }
 
-    info!("Running send_join auth check");
+    info!("running send_join auth check");
     // TODO: Authcheck
     // if !event_auth::auth_check(
     //     &RoomVersion::new(&room_version_id)?,
@@ -433,7 +433,7 @@ pub async fn join_room(
     //     return Err(MatrixError::invalid_param("Auth check failed when running send_json auth check").into());
     // }
 
-    info!("Saving state from send_join");
+    info!("saving state from send_join");
     let DeltaInfo {
         frame_id,
         appended,
@@ -455,7 +455,7 @@ pub async fn join_room(
     // room::update_currents(room_id)?;
 
     let state_lock = room::lock_state(room_id).await;
-    info!("Appending new room join event");
+    info!("appending new room join event");
     diesel::insert_into(events::table)
         .values(NewDbEvent::from_canonical_json(
             &event_id,
@@ -500,13 +500,6 @@ pub async fn join_room(
         }
     }
 
-    if let Err(e) = sending::send_pdu_room(
-        &room_id,
-        &join_pdu.event_id,
-        &[],
-    ) {
-        error!("failed to notify banned user server: {e}");
-    }
     Ok(JoinRoomResBody::new(room_id.to_owned()))
 }
 

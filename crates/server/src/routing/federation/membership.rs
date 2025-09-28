@@ -289,7 +289,7 @@ async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<Mak
 
     json_ok(MakeLeaveResBody {
         room_version: Some(room_version_id),
-        event: to_raw_value(&pdu_json).expect("CanonicalJson can be serialized to JSON"),
+        event: to_raw_value(&pdu_json).expect("canonicalJson can be serialized to JSON"),
     })
 }
 
@@ -444,5 +444,8 @@ async fn send_leave(
         true,
     )
     .await?;
+    if let Err(e) = crate::sending::send_pdu_room(&args.room_id, &event_id, &[]) {
+        error!("failed to notify leave event: {e}");
+    }
     empty_ok()
 }

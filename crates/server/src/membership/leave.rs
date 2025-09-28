@@ -35,12 +35,13 @@ pub async fn leave_room(
 ) -> AppResult<()> {
     println!("LLLLLLLLLLLLLLLLlllleave room");
     // Ask a remote server if we don't have this room
-    let member_event =
-        room::get_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None).ok();
+    let conf = config::get();
 
     println!("LLLLLLLLLLLLLLLLlllleave room 1");
-    if let Some(member_event) = &member_event {
+    if room::is_server_joined(&conf.server_name, &room_id)? {
         println!("LLLLLLLLLLLLLLLLlllleave room 2");
+        let member_event =
+            room::get_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None)?;
         let mut event_content = member_event
             .get_content::<RoomMemberEventContent>()
             .map_err(|_| AppError::public("invalid member event in database"))?;
@@ -66,7 +67,7 @@ pub async fn leave_room(
         .await
         {
             Ok(pdu) => {
-                if just_invited && member_event.sender.server_name() != config::server_name() {
+                if just_invited && member_event.sender.server_name() != &conf.server_name {
                     let _ = crate::sending::send_pdu_room(
                         room_id,
                         &pdu.event_id,
@@ -81,41 +82,41 @@ pub async fn leave_room(
                 error!("error when leave room: {e}");
                 Err(e)
             }
-        };
-    }
-    println!("LLLLLLLLLLLLLLLLlllleave room 3");
-    match leave_room_remote(user_id, room_id).await {
-        Err(e) => {
-            warn!("failed to leave room {} remotely: {}", user_id, e);
         }
-        Ok((event_id, event_sn)) => {
-            let last_state = state::get_user_state(user_id, room_id)?;
+    } else {
+        println!("LLLLLLLLLLLLLLLLlllleave room 3");
+        match leave_room_remote(user_id, room_id).await {
+            Ok((event_id, event_sn)) => {
+                let last_state = state::get_user_state(user_id, room_id)?;
 
-            // We always drop the invite, we can't rely on other servers
-            membership::update_membership(
-                &event_id,
-                event_sn,
-                room_id,
-                user_id,
-                MembershipState::Leave,
-                user_id,
-                last_state,
-            )?;
-            let _ = crate::sending::send_pdu_room(room_id, &event_id, &[]);
+                // We always drop the invite, we can't rely on other servers
+                membership::update_membership(
+                    &event_id,
+                    event_sn,
+                    room_id,
+                    user_id,
+                    MembershipState::Leave,
+                    user_id,
+                    last_state,
+                )?;
+                Ok(())
+            }
+            Err(e) => {
+                warn!("failed to leave room {} remotely: {}", user_id, e);
+                Err(e)
+            }
         }
     }
-    Ok(())
 }
 
 async fn leave_room_remote(
     user_id: &UserId,
     room_id: &RoomId,
 ) -> AppResult<(OwnedEventId, Seqnum)> {
-    let mut make_leave_response_and_server = Err(AppError::public(
-        "No server available to assist in leaving.",
-    ));
+    let mut make_leave_response_and_server =
+        Err(AppError::public("no server available to assist in leaving"));
     let invite_state = state::get_user_state(user_id, room_id)?
-        .ok_or(MatrixError::bad_state("User is not invited."))?;
+        .ok_or(MatrixError::bad_state("user is not invited"))?;
 
     let servers: HashSet<_> = invite_state
         .iter()
@@ -159,12 +160,12 @@ async fn leave_room_remote(
 
     let room_version_id = match make_leave_response.room_version {
         Some(version) if config::supported_room_versions().contains(&version) => version,
-        _ => return Err(AppError::public("Room version is not supported")),
+        _ => return Err(AppError::public("room version is not supported")),
     };
 
     let mut leave_event_stub =
         serde_json::from_str::<CanonicalJsonObject>(make_leave_response.event.get())
-            .map_err(|_| AppError::public("Invalid make_leave event json received from server."))?;
+            .map_err(|_| AppError::public("invalid make_leave event json received from server"))?;
 
     // TODO: Is origin needed?
     leave_event_stub.insert(
