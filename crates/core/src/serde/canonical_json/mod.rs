@@ -11,11 +11,15 @@ mod value;
 pub use self::value::{CanonicalJsonObject, CanonicalJsonValue};
 use crate::{room_version_rules::RedactionRules, serde::RawJson};
 
+const CANONICALJSON_MAX_INT: i64 = (2i64.pow(53)) - 1;
+const CANONICALJSON_MIN_INT: i64 = -CANONICALJSON_MAX_INT;
+
 /// The set of possible errors when serializing to canonical JSON.
 #[derive(Debug)]
 #[allow(clippy::exhaustive_enums)]
 pub enum CanonicalJsonError {
     IntConvert,
+    InvalidIntRange,
     /// An error occurred while serializing/deserializing.
     SerDe(serde_json::Error),
 }
@@ -24,6 +28,9 @@ impl fmt::Display for CanonicalJsonError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             CanonicalJsonError::IntConvert => f.write_str("number found is not a valid `int`"),
+            CanonicalJsonError::InvalidIntRange => {
+                write!(f, "integer is out of range for canonical JSON")
+            }
             CanonicalJsonError::SerDe(err) => write!(f, "serde Error: {err}"),
         }
     }
@@ -126,6 +133,28 @@ where
     T: DeserializeOwned,
 {
     serde_json::from_value(serde_json::to_value(value)?).map_err(CanonicalJsonError::SerDe)
+}
+
+pub fn validate_canonical_json(json: &CanonicalJsonObject) -> Result<(), CanonicalJsonError> {
+    for value in json.values() {
+        match value {
+            CanonicalJsonValue::Object(obj) => validate_canonical_json(obj)?,
+            CanonicalJsonValue::Array(arr) => {
+                for item in arr {
+                    if let CanonicalJsonValue::Object(obj) = item {
+                        validate_canonical_json(obj)?
+                    }
+                }
+            }
+            CanonicalJsonValue::Integer(value) => {
+                if *value < CANONICALJSON_MIN_INT || *value > CANONICALJSON_MAX_INT {
+                    return Err(CanonicalJsonError::InvalidIntRange);
+                }
+            }
+            _ => {}
+        }
+    }
+    Ok(())
 }
 
 /// The value to put in `unsigned.redacted_because`.

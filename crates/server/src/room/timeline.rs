@@ -22,6 +22,7 @@ use crate::core::push::{Action, Ruleset, Tweak};
 use crate::core::room_version_rules::RoomIdFormatVersion;
 use crate::core::serde::{
     CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJsonValue, to_canonical_value,
+    validate_canonical_json,
 };
 use crate::core::state::{Event, StateError, event_auth};
 use crate::core::{Direction, Seqnum, UnixMillis, user_id};
@@ -687,6 +688,11 @@ pub async fn hash_and_sign_event(
         );
     }
 
+    if let Err(e) = validate_canonical_json(&pdu_json) {
+        error!("Invalid event json: {}", e);
+        return Err(MatrixError::bad_json(e.to_string()).into());
+    }
+
     let (event_sn, event_guard) = crate::event::ensure_event_sn(room_id, &pdu.event_id)?;
     NewDbEvent {
         id: pdu.event_id.to_owned(),
@@ -830,7 +836,7 @@ pub async fn build_and_append_pdu(
     let room_id = &pdu.room_id;
     crate::room::ensure_room(room_id, room_version)?;
 
-    let conf = crate::config::get();
+    // let conf = crate::config::get();
     // let admin_room = super::resolve_local_alias(
     //     <&RoomAliasId>::try_from(format!("#admins:{}", &conf.server_name).as_str())
     //         .expect("#admins:server_name is a valid room alias"),
