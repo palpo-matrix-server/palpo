@@ -818,8 +818,6 @@ pub async fn build_and_append_pdu(
     room_version: &RoomVersionId,
     state_lock: &RoomMutexGuard,
 ) -> AppResult<SnPduEvent> {
-    println!("====== build_and_append_pdu 0");
-
     if let Some(state_key) = &pdu_builder.state_key
         && let Ok(curr_state) = super::get_state(
             room_id,
@@ -847,7 +845,6 @@ pub async fn build_and_append_pdu(
     }
 
     let event_id = pdu.event_id.clone();
-    println!("====== build_and_append_pdu 2 {event_id}");
     append_pdu(
         &pdu,
         pdu_json,
@@ -856,7 +853,6 @@ pub async fn build_and_append_pdu(
         state_lock,
     )
     .await?;
-    println!("====== build_and_append_pdu 3");
     let frame_id = state::append_to_state(&pdu)?;
 
     // We set the room state after inserting the pdu, so that we never have a moment in time
@@ -871,7 +867,6 @@ pub async fn build_and_append_pdu(
     // }
 
     let servers = super::participating_servers(room_id, false)?;
-    println!("====== build_and_append_pdu 6 {event_id}  {servers:?}");
     crate::sending::send_pdu_servers(servers.into_iter(), &pdu.event_id)?;
 
     Ok(pdu)
@@ -1032,11 +1027,9 @@ pub fn get_pdus(
             break;
         };
         for (event_id, event_sn) in events {
-            println!("ggggggggget_pdus: checking {event_id} {event_sn}");
             if let Ok(mut pdu) = timeline::get_pdu(&event_id)
                 && pdu.user_can_see(user_id)?
             {
-                println!("nnnnnnnnnn");
                 if pdu.sender != user_id {
                     pdu.remove_transaction_id()?;
                 }

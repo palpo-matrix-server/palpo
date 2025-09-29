@@ -43,7 +43,7 @@ pub async fn leave_room(
     if room::is_server_joined(&conf.server_name, room_id)? {
         //If only this server in room, leave locally.
         println!("LLLLLLLLLLLLLLLLlllleave room 2");
-        if let Err(e) = leave_room_local(user_id, room_id, reason).await {
+        if let Err(e) = leave_room_local(user_id, room_id, reason.clone()).await {
             warn!("failed to leave room {} locally: {}", user_id, e);
         } else {
             return Ok(());
@@ -60,7 +60,7 @@ pub async fn leave_room(
                 event_sn,
                 room_id,
                 user_id,
-                    MembershipState::Leave,
+                MembershipState::Leave,
                 user_id,
                 last_state,
             )?;
@@ -68,12 +68,21 @@ pub async fn leave_room(
         }
         Err(e) => {
             warn!("failed to leave room {} remotely: {}", user_id, e);
-            Err(e)
+            if !room::has_any_other_server(room_id, &conf.server_name)? {
+                leave_room_local(user_id, room_id, reason).await?;
+                Ok(())
+            } else {
+                Err(e)
+            }
         }
     }
 }
 
-async fn leave_room_local(user_id: &UserId, room_id: &RoomId,reason: Option<String>) -> AppResult<(OwnedEventId, Seqnum)> {
+async fn leave_room_local(
+    user_id: &UserId,
+    room_id: &RoomId,
+    reason: Option<String>,
+) -> AppResult<(OwnedEventId, Seqnum)> {
     let member_event =
         room::get_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None)?;
     let mut event_content = member_event

@@ -307,12 +307,12 @@ pub fn joined_servers(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
         .load::<OwnedServerName>(&mut connect()?)
         .map_err(Into::into)
 }
-// pub fn has_any_other_server(room_id: &RoomId, server: &ServerName) -> AppResult<bool> {
-//     let query = room_joined_servers::table
-//         .filter(room_joined_servers::room_id.eq(room_id))
-//         .filter(room_joined_servers::server_id.ne(server));
-//     diesel_exists!(query, &mut connect()?).map_err(Into::into)
-// }
+pub fn has_any_other_server(room_id: &RoomId, server: &ServerName) -> AppResult<bool> {
+    let query = room_joined_servers::table
+        .filter(room_joined_servers::room_id.eq(room_id))
+        .filter(room_joined_servers::server_id.ne(server));
+    diesel_exists!(query, &mut connect()?).map_err(Into::into)
+}
 
 #[tracing::instrument(level = "trace")]
 pub fn lookup_servers(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
