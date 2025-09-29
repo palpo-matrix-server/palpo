@@ -31,7 +31,7 @@ mod strings;
 pub mod test;
 pub use canonical_json::{
     CanonicalJsonError, CanonicalJsonObject, CanonicalJsonValue, from_canonical_value,
-    to_canonical_value,
+    to_canonical_value, validate_canonical_json,
 };
 
 pub use self::{
