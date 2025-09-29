@@ -33,80 +33,81 @@ pub async fn leave_room(
     room_id: &RoomId,
     reason: Option<String>,
 ) -> AppResult<()> {
-    println!("LLLLLLLLLLLLLLLLlllleave room");
     // Ask a remote server if we don't have this room
     let conf = config::get();
 
-    println!("LLLLLLLLLLLLLLLLlllleave room 1");
-    if room::is_server_joined(&conf.server_name, &room_id)? {
+    println!(
+        "LLLLLLLLLLLLLLLLlllleave room 1  joined:{}",
+        room::is_server_joined(&conf.server_name, room_id)?
+    );
+    if room::is_server_joined(&conf.server_name, room_id)? {
+        //If only this server in room, leave locally.
         println!("LLLLLLLLLLLLLLLLlllleave room 2");
-        let member_event =
-            room::get_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None)?;
-        let mut event_content = member_event
-            .get_content::<RoomMemberEventContent>()
-            .map_err(|_| AppError::public("invalid member event in database"))?;
-
-        let just_invited = event_content.membership == MembershipState::Invite;
-        event_content.membership = MembershipState::Leave;
-        event_content.reason = reason;
-        event_content.join_authorized_via_users_server = None;
-
-        match timeline::build_and_append_pdu(
-            PduBuilder {
-                event_type: TimelineEventType::RoomMember,
-                content: to_raw_json_value(&event_content)
-                    .expect("event is valid, we just created it"),
-                state_key: Some(user_id.to_string()),
-                ..Default::default()
-            },
-            user_id,
-            room_id,
-            &crate::room::get_version(room_id)?,
-            &room::lock_state(room_id).await,
-        )
-        .await
-        {
-            Ok(pdu) => {
-                if just_invited && member_event.sender.server_name() != &conf.server_name {
-                    let _ = crate::sending::send_pdu_room(
-                        room_id,
-                        &pdu.event_id,
-                        &[member_event.sender.server_name().to_owned()],
-                    );
-                } else {
-                    let _ = crate::sending::send_pdu_room(room_id, &pdu.event_id, &[]);
-                }
-                Ok(())
-            }
-            Err(e) => {
-                error!("error when leave room: {e}");
-                Err(e)
-            }
-        }
-    } else {
-        println!("LLLLLLLLLLLLLLLLlllleave room 3");
-        match leave_room_remote(user_id, room_id).await {
-            Ok((event_id, event_sn)) => {
-                let last_state = state::get_user_state(user_id, room_id)?;
-
-                // We always drop the invite, we can't rely on other servers
-                membership::update_membership(
-                    &event_id,
-                    event_sn,
-                    room_id,
-                    user_id,
-                    MembershipState::Leave,
-                    user_id,
-                    last_state,
-                )?;
-                Ok(())
-            }
-            Err(e) => {
-                warn!("failed to leave room {} remotely: {}", user_id, e);
-                Err(e)
-            }
+        if let Err(e) = leave_room_local(user_id, room_id, reason).await {
+            warn!("failed to leave room {} locally: {}", user_id, e);
+        } else {
+            return Ok(());
         }
     }
+    println!("LLLLLLLLLLLLLLLLlllleave room 3");
+    match leave_room_remote(user_id, room_id).await {
+        Ok((event_id, event_sn)) => {
+            let last_state = state::get_user_state(user_id, room_id)?;
+
+            // We always drop the invite, we can't rely on other servers
+            membership::update_membership(
+                &event_id,
+                event_sn,
+                room_id,
+                user_id,
+                    MembershipState::Leave,
+                user_id,
+                last_state,
+            )?;
+            Ok(())
+        }
+        Err(e) => {
+            warn!("failed to leave room {} remotely: {}", user_id, e);
+            Err(e)
+        }
+    }
+}
+
+async fn leave_room_local(user_id: &UserId, room_id: &RoomId,reason: Option<String>) -> AppResult<(OwnedEventId, Seqnum)> {
+    let member_event =
+        room::get_state(room_id, &StateEventType::RoomMember, user_id.as_str(), None)?;
+    let mut event_content = member_event
+        .get_content::<RoomMemberEventContent>()
+        .map_err(|_| AppError::public("invalid member event in database"))?;
+
+    let just_invited = event_content.membership == MembershipState::Invite;
+    event_content.membership = MembershipState::Leave;
+    event_content.reason = reason;
+    event_content.join_authorized_via_users_server = None;
+
+    let pdu = timeline::build_and_append_pdu(
+        PduBuilder {
+            event_type: TimelineEventType::RoomMember,
+            content: to_raw_json_value(&event_content).expect("event is valid, we just created it"),
+            state_key: Some(user_id.to_string()),
+            ..Default::default()
+        },
+        user_id,
+        room_id,
+        &crate::room::get_version(room_id)?,
+        &room::lock_state(room_id).await,
+    )
+    .await?;
+    if just_invited && member_event.sender.server_name() != config::server_name() {
+        let _ = crate::sending::send_pdu_room(
+            room_id,
+            &pdu.event_id,
+            &[member_event.sender.server_name().to_owned()],
+        );
+    } else {
+        let _ = crate::sending::send_pdu_room(room_id, &pdu.event_id, &[]);
+    }
+    Ok((pdu.event_id.clone(), pdu.event_sn))
 }
 
 async fn leave_room_remote(

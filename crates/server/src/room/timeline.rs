@@ -558,11 +558,9 @@ pub async fn hash_and_sign_event(
     //         "non-create event for room `{room_id}` of unknown version"
     //     )));
     // };
-    println!("====== hash_and_sign_event 0");
     let version_rules = crate::room::get_version_rules(room_version)?;
     let auth_rules = &version_rules.authorization;
 
-    println!("====== hash_and_sign_event 2");
     let auth_events = state::get_auth_events(
         room_id,
         &event_type,
@@ -572,7 +570,6 @@ pub async fn hash_and_sign_event(
         auth_rules,
     )?;
 
-    println!("====== hash_and_sign_event 3");
     // Our depth is the maximum depth of prev_events + 1
     let depth = prev_events
         .iter()
@@ -581,7 +578,6 @@ pub async fn hash_and_sign_event(
         .unwrap_or(0)
         + 1;
 
-    println!("====== hash_and_sign_event 4");
     if let Some(state_key) = &state_key
         && let Ok(prev_pdu) =
             super::get_state(room_id, &event_type.to_string().into(), state_key, None)
@@ -597,7 +593,6 @@ pub async fn hash_and_sign_event(
         );
     }
 
-    println!("====== hash_and_sign_event 5");
     let temp_event_id =
         OwnedEventId::try_from(format!("$backfill_{}", Ulid::new().to_string())).unwrap();
     let content_value: JsonValue = serde_json::from_str(content.get())?;
@@ -625,7 +620,6 @@ pub async fn hash_and_sign_event(
         extra_data: Default::default(),
         rejection_reason: None,
     };
-    println!("====== hash_and_sign_event 6");
 
     let fetch_event = async |event_id: OwnedEventId| {
         timeline::get_pdu(&event_id)
@@ -640,9 +634,7 @@ pub async fn hash_and_sign_event(
                 StateError::other(format!("missing auth events, type: {k}, state_key: {s}"))
             })
     };
-    println!("====== hash_and_sign_event 7");
     event_auth::auth_check(auth_rules, &pdu, &fetch_event, &fetch_state).await?;
-    println!("====== hash_and_sign_event 8");
 
     // Hash and sign
     let mut pdu_json =
