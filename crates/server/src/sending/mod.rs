@@ -168,6 +168,7 @@ pub fn send_pdu_room(
     let servers = room_joined_servers::table
         .filter(room_joined_servers::room_id.eq(room_id))
         .filter(room_joined_servers::server_id.ne(&config::get().server_name))
+        // .filter(room_joined_servers::server_id.ne_all(skip_servers))
         .select(room_joined_servers::server_id)
         .load::<OwnedServerName>(&mut connect()?)?;
     let mut servers = servers

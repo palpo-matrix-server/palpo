@@ -276,7 +276,6 @@ pub async fn join_room(
 
     room::ensure_room(room_id, &room_version_id)?;
 
-    info!("parsing join event");
     let parsed_join_pdu =
         PduEvent::from_canonical_object(&event_id, join_event.clone()).map_err(|e| {
             warn!("Invalid PDU in send_join response: {}", e);
