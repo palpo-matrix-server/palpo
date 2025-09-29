@@ -8,7 +8,7 @@
 {"Action":"fail","Test":"TestFederatedClientSpaces"}
 {"Action":"fail","Test":"TestFederationRoomsInvite"}
 {"Action":"fail","Test":"TestFederationRoomsInvite/Parallel"}
-{"Action":"fail","Test":"TestFederationRoomsInvite/Parallel/Invited_user_can_reject_invite_over_federation_for_empty_room"}
+{"Action":"fail","Test":"TestFederationRoomsInvite/Parallel/Invited_user_can_reject_invite_over_federation_several_times"}
 {"Action":"fail","Test":"TestFederationRoomsInvite/Parallel/Non-invitee_user_cannot_rescind_invite_over_federation"}
 {"Action":"fail","Test":"TestFederationRoomsInvite/Parallel/Remote_invited_user_can_join_the_room_when_homeserver_is_already_participating_in_the_room"}
 {"Action":"fail","Test":"TestFederationRoomsInvite/Parallel/Remote_invited_user_can_reject_invite_when_homeserver_is_already_participating_in_the_room"}
@@ -17,6 +17,10 @@
 {"Action":"fail","Test":"TestJoinFederatedRoomWithUnverifiableEvents//send_join_response_with_bad_signatures_shouldn't_block_room_join"}
 {"Action":"fail","Test":"TestJoinFederatedRoomWithUnverifiableEvents//send_join_response_with_state_with_unverifiable_auth_events_shouldn't_block_room_join"}
 {"Action":"fail","Test":"TestJoinFederatedRoomWithUnverifiableEvents//send_join_response_with_unobtainable_keys_shouldn't_block_room_join"}
+{"Action":"fail","Test":"TestKnocking"}
+{"Action":"fail","Test":"TestKnockingInMSC3787Room"}
+{"Action":"fail","Test":"TestKnockingInMSC3787Room/Users_in_the_room_see_a_user's_membership_update_when_they_knock#01"}
+{"Action":"fail","Test":"TestKnocking/Users_in_the_room_see_a_user's_membership_update_when_they_knock#01"}
 {"Action":"fail","Test":"TestMSC4289PrivilegedRoomCreators"}
 {"Action":"fail","Test":"TestMSC4289PrivilegedRoomCreators/admin_with_>PL100_sorts_after_the_room_creator_for_state_resolution"}
 {"Action":"fail","Test":"TestMSC4289PrivilegedRoomCreators/power_level_cannot_be_set_beyond_max_canonical_JSON_int"}
@@ -27,7 +31,6 @@
 {"Action":"fail","Test":"TestMSC4297StateResolutionV2_1_starts_from_empty_set"}
 {"Action":"fail","Test":"TestMSC4311FullCreateEventOnStrippedState"}
 {"Action":"fail","Test":"TestNetworkPartitionOrdering"}
-{"Action":"fail","Test":"TestOutboundFederationIgnoresMissingEventWithBadJSONForRoomVersion6"}
 {"Action":"fail","Test":"TestRestrictedRoomsRemoteJoin"}
 {"Action":"fail","Test":"TestRestrictedRoomsRemoteJoinInMSC3787Room"}
 {"Action":"fail","Test":"TestRestrictedRoomsRemoteJoinInMSC3787Room/Join_should_succeed_when_invited"}
@@ -164,7 +167,7 @@
 {"Action":"pass","Test":"TestFederationRedactSendsWithoutEvent"}
 {"Action":"pass","Test":"TestFederationRejectInvite"}
 {"Action":"pass","Test":"TestFederationRoomsInvite/Parallel/Invited_user_can_reject_invite_over_federation"}
-{"Action":"pass","Test":"TestFederationRoomsInvite/Parallel/Invited_user_can_reject_invite_over_federation_several_times"}
+{"Action":"pass","Test":"TestFederationRoomsInvite/Parallel/Invited_user_can_reject_invite_over_federation_for_empty_room"}
 {"Action":"pass","Test":"TestFederationRoomsInvite/Parallel/Invited_user_has_'is_direct'_flag_in_prev_content_after_joining"}
 {"Action":"pass","Test":"TestFederationRoomsInvite/Parallel/Inviter_user_can_rescind_invite_over_federation"}
 {"Action":"pass","Test":"TestFederationRoomsInvite/Parallel/Remote_invited_user_can_see_room_metadata"}
@@ -226,7 +229,6 @@
 {"Action":"pass","Test":"TestKeyChangesLocal/New_login_should_create_a_device_lists.changed_entry"}
 {"Action":"pass","Test":"TestKeyClaimOrdering"}
 {"Action":"pass","Test":"TestKeysQueryWithDeviceIDAsObjectFails"}
-{"Action":"pass","Test":"TestKnocking"}
 {"Action":"pass","Test":"TestKnocking/Attempting_to_join_a_room_with_join_rule_'knock'_without_an_invite_should_fail"}
 {"Action":"pass","Test":"TestKnocking/Attempting_to_join_a_room_with_join_rule_'knock'_without_an_invite_should_fail#01"}
 {"Action":"pass","Test":"TestKnocking/A_user_can_knock_on_a_room_without_a_reason"}
@@ -246,7 +248,6 @@
 {"Action":"pass","Test":"TestKnocking/A_user_that_is_banned_from_a_room_cannot_knock_on_it#01"}
 {"Action":"pass","Test":"TestKnocking/Change_the_join_rule_of_a_room_from_'invite'_to_'knock'"}
 {"Action":"pass","Test":"TestKnocking/Change_the_join_rule_of_a_room_from_'invite'_to_'knock'#01"}
-{"Action":"pass","Test":"TestKnockingInMSC3787Room"}
 {"Action":"pass","Test":"TestKnockingInMSC3787Room/Attempting_to_join_a_room_with_join_rule_'knock'_without_an_invite_should_fail"}
 {"Action":"pass","Test":"TestKnockingInMSC3787Room/Attempting_to_join_a_room_with_join_rule_'knock'_without_an_invite_should_fail#01"}
 {"Action":"pass","Test":"TestKnockingInMSC3787Room/A_user_can_knock_on_a_room_without_a_reason"}
@@ -271,13 +272,11 @@
 {"Action":"pass","Test":"TestKnockingInMSC3787Room/Knocking_on_a_room_with_join_rule_'knock'_should_succeed"}
 {"Action":"pass","Test":"TestKnockingInMSC3787Room/Knocking_on_a_room_with_join_rule_'knock'_should_succeed#01"}
 {"Action":"pass","Test":"TestKnockingInMSC3787Room/Users_in_the_room_see_a_user's_membership_update_when_they_knock"}
-{"Action":"pass","Test":"TestKnockingInMSC3787Room/Users_in_the_room_see_a_user's_membership_update_when_they_knock#01"}
 {"Action":"pass","Test":"TestKnocking/Knocking_on_a_room_with_a_join_rule_other_than_'knock'_should_fail"}
 {"Action":"pass","Test":"TestKnocking/Knocking_on_a_room_with_a_join_rule_other_than_'knock'_should_fail#01"}
 {"Action":"pass","Test":"TestKnocking/Knocking_on_a_room_with_join_rule_'knock'_should_succeed"}
 {"Action":"pass","Test":"TestKnocking/Knocking_on_a_room_with_join_rule_'knock'_should_succeed#01"}
 {"Action":"pass","Test":"TestKnocking/Users_in_the_room_see_a_user's_membership_update_when_they_knock"}
-{"Action":"pass","Test":"TestKnocking/Users_in_the_room_see_a_user's_membership_update_when_they_knock#01"}
 {"Action":"pass","Test":"TestKnockRoomsInPublicRoomsDirectory"}
 {"Action":"pass","Test":"TestKnockRoomsInPublicRoomsDirectoryInMSC3787Room"}
 {"Action":"pass","Test":"TestLeakyTyping"}
@@ -368,6 +367,7 @@
 {"Action":"pass","Test":"TestNotPresentUserCannotBanOthers"}
 {"Action":"pass","Test":"TestOlderLeftRoomsNotInLeaveSection"}
 {"Action":"pass","Test":"TestOutboundFederationEventSizeGetMissingEvents"}
+{"Action":"pass","Test":"TestOutboundFederationIgnoresMissingEventWithBadJSONForRoomVersion6"}
 {"Action":"pass","Test":"TestOutboundFederationProfile"}
 {"Action":"pass","Test":"TestOutboundFederationProfile/Outbound_federation_can_query_profile_data"}
 {"Action":"pass","Test":"TestOutboundFederationSend"}

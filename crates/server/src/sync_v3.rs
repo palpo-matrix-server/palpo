@@ -962,6 +962,7 @@ pub(crate) fn load_timeline(
         timeline::get_pdus_backward(user_id, room_id, i64::MAX, None, filter, limit + 1)?
     };
 
+    println!("================load timeline,  {}  limit: {}", timeline_pdus.len(), limit);
     if timeline_pdus.len() > limit {
         timeline_pdus.remove(0);
         Ok((timeline_pdus, true))
