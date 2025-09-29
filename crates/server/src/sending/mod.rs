@@ -163,7 +163,7 @@ pub fn send_push_pdu(pdu_id: &EventId, user: &UserId, pushkey: String) -> AppRes
 pub fn send_pdu_room(
     room_id: &RoomId,
     pdu_id: &EventId,
-    // skip_servers: &[OwnedServerName],
+    extra_servers: &[OwnedServerName],
 ) -> AppResult<()> {
     let servers = room_joined_servers::table
         .filter(room_joined_servers::room_id.eq(room_id))
@@ -171,6 +171,12 @@ pub fn send_pdu_room(
         // .filter(room_joined_servers::server_id.ne_all(skip_servers))
         .select(room_joined_servers::server_id)
         .load::<OwnedServerName>(&mut connect()?)?;
+    let mut servers = servers
+        .into_iter()
+        .chain(extra_servers.iter().cloned())
+        .collect::<Vec<_>>();
+    servers.sort_unstable();
+    servers.dedup();
     send_pdu_servers(servers.into_iter(), pdu_id)
 }
 
@@ -181,11 +187,16 @@ pub fn send_pdu_servers<S: Iterator<Item = OwnedServerName>>(
 ) -> AppResult<()> {
     let requests = servers
         .into_iter()
-        .map(|server| {
-            (
-                OutgoingKind::Normal(server),
-                SendingEventType::Pdu(pdu_id.to_owned()),
-            )
+        .filter_map(|server| {
+            if server == config::get().server_name {
+                warn!("not sending pdu to ourself: {server}");
+                None
+            } else {
+                Some((
+                    OutgoingKind::Normal(server),
+                    SendingEventType::Pdu(pdu_id.to_owned()),
+                ))
+            }
         })
         .collect::<Vec<_>>();
     let keys = queue_requests(

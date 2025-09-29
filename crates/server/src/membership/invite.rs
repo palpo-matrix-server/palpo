@@ -42,7 +42,7 @@ pub async fn invite_user(
             };
 
             let state_lock = crate::room::lock_state(room_id).await;
-            let (pdu, pdu_json, _event_guard) = timeline::create_hash_and_sign_event(
+            let (pdu, pdu_json, _event_guard) = timeline::hash_and_sign_event(
                 PduBuilder::state(invitee_id.to_string(), &content),
                 inviter_id,
                 room_id,
@@ -129,7 +129,7 @@ pub async fn invite_user(
 
         handler::process_incoming_pdu(&origin, &event_id, room_id, &room_version_id, value, true)
             .await?;
-        return sending::send_pdu_room(room_id, &event_id);
+        return sending::send_pdu_room(room_id, &event_id, &[invitee_id.server_name().to_owned()]);
     }
 
     timeline::build_and_append_pdu(

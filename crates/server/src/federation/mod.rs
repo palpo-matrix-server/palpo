@@ -26,7 +26,7 @@ pub(crate) async fn send_request(
 
     if destination == config::get().server_name {
         return Err(AppError::public(
-            "Won't send federation request to ourselves",
+            "won't send federation request to ourselves",
         ));
     }
 

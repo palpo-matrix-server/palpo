@@ -23,7 +23,7 @@ use crate::core::room_version_rules::RoomIdFormatVersion;
 use crate::core::serde::{
     CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJsonValue, to_canonical_value,
 };
-use crate::core::state::{Event, StateError};
+use crate::core::state::{Event, StateError, event_auth};
 use crate::core::{Direction, Seqnum, UnixMillis, user_id};
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
@@ -521,7 +521,7 @@ where
     Ok(())
 }
 
-pub async fn create_hash_and_sign_event(
+pub async fn hash_and_sign_event(
     pdu_builder: PduBuilder,
     sender_id: &UserId,
     room_id: &RoomId,
@@ -557,6 +557,7 @@ pub async fn create_hash_and_sign_event(
     //     )));
     // };
     let version_rules = crate::room::get_version_rules(room_version)?;
+    let auth_rules = &version_rules.authorization;
 
     let auth_events = state::get_auth_events(
         room_id,
@@ -564,8 +565,7 @@ pub async fn create_hash_and_sign_event(
         sender_id,
         state_key.as_deref(),
         &content,
-        &version_rules.authorization,
-        true,
+        auth_rules,
     )?;
 
     // Our depth is the maximum depth of prev_events + 1
@@ -626,17 +626,13 @@ pub async fn create_hash_and_sign_event(
     };
     let fetch_state = async |k: StateEventType, s: String| {
         auth_events
-            .get(&(k, s.to_owned()))
+            .get(&(k.clone(), s.to_owned()))
             .map(|s| s.pdu.clone())
-            .ok_or_else(|| StateError::other("missing auth events"))
+            .ok_or_else(|| {
+                StateError::other(format!("missing auth events, type: {k}, state_key: {s}"))
+            })
     };
-    crate::core::state::event_auth::auth_check(
-        &version_rules.authorization,
-        &pdu,
-        &fetch_event,
-        &fetch_state,
-    )
-    .await?;
+    event_auth::auth_check(auth_rules, &pdu, &fetch_event, &fetch_state).await?;
 
     // Hash and sign
     let mut pdu_json =
@@ -830,7 +826,7 @@ pub async fn build_and_append_pdu(
     }
 
     let (pdu, pdu_json, _event_guard) =
-        create_hash_and_sign_event(pdu_builder, sender, room_id, room_version, state_lock).await?;
+        hash_and_sign_event(pdu_builder, sender, room_id, room_version, state_lock).await?;
     let room_id = &pdu.room_id;
     crate::room::ensure_room(room_id, room_version)?;
 
@@ -856,24 +852,16 @@ pub async fn build_and_append_pdu(
 
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
-
     state::set_room_state(room_id, frame_id)?;
 
-    let mut servers: HashSet<OwnedServerName> =
-        super::participating_servers(room_id)?.into_iter().collect();
-
     // In case we are kicking or banning a user, we need to inform their server of the change
-    if pdu.event_ty == TimelineEventType::RoomMember
-        && let Some(state_key_uid) = &pdu
-            .state_key
-            .as_ref()
-            .and_then(|state_key| UserId::parse(state_key.as_str()).ok())
-    {
-        servers.insert(state_key_uid.server_name().to_owned());
-    }
+    // move to append pdu
+    // if pdu.event_ty == TimelineEventType::RoomMember {
+    //     crate::room::update_joined_servers(&room_id)?;
+    //     crate::room::update_currents(&room_id)?;
+    // }
 
-    // Remove our server from the server list since it will be added to it by room_servers() and/or the if statement above
-    servers.remove(&conf.server_name);
+    let servers = super::participating_servers(room_id, false)?;
     crate::sending::send_pdu_servers(servers.into_iter(), &pdu.event_id)?;
 
     Ok(pdu)

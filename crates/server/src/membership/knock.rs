@@ -22,7 +22,7 @@ use crate::room::state::{CompressedEvent, DeltaInfo};
 use crate::room::{self, state, timeline};
 use crate::{
     AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, SnPduEvent,
-    config,
+    config,sending,
 };
 
 pub async fn knock_room(
@@ -30,7 +30,7 @@ pub async fn knock_room(
     room_id: &RoomId,
     reason: Option<String>,
     servers: &[OwnedServerName],
-) -> AppResult<()> {
+) -> AppResult<Option<SnPduEvent>> {
     if room::user::is_invited(sender_id, room_id)? {
         warn!("{sender_id} is already invited in {room_id} but attempted to knock");
         return Err(MatrixError::forbidden(
@@ -51,7 +51,7 @@ pub async fn knock_room(
 
     if room::user::is_knocked(sender_id, room_id)? {
         warn!("{sender_id} is already knocked in {room_id}");
-        return Ok(());
+        return Ok(None);
     }
 
     if let Ok(memeber) = room::get_member(room_id, sender_id)
@@ -65,13 +65,14 @@ pub async fn knock_room(
         .into());
     }
 
-    if room::is_server_joined(&config::get().server_name, room_id).unwrap_or(false) {
+    let conf = config::get();
+    if room::is_server_joined(&conf.server_name, room_id).unwrap_or(false) {
         use RoomVersionId::*;
         info!("We can knock locally");
         let room_version = room::get_version(room_id)?;
         if matches!(room_version, V1 | V2 | V3 | V4 | V5 | V6) {
             return Err(MatrixError::forbidden(
-                "This room version does not support knocking.",
+                "this room version does not support knocking",
                 None,
             )
             .into());
@@ -83,7 +84,7 @@ pub async fn knock_room(
             JoinRule::Invite | JoinRule::Knock | JoinRule::KnockRestricted(..)
         ) {
             return Err(
-                MatrixError::forbidden("This room does not support knocking.", None).into(),
+                MatrixError::forbidden("this room does not support knocking", None).into(),
             );
         }
 
@@ -105,8 +106,15 @@ pub async fn knock_room(
         )
         .await
         {
-            Ok(_) => {
-                return Ok(());
+            Ok(pdu) => {
+                if let Err(e) = sending::send_pdu_room(
+                    &room_id,
+                    &pdu.event_id,
+                    &[sender_id.server_name().to_owned()],
+                ) {
+                    error!("failed to notify banned user server: {e}");
+                }
+                return Ok(Some(pdu));
             }
             Err(e) => {
                 tracing::error!("Failed to knock room {room_id} with conflict error: {e}");
@@ -127,7 +135,7 @@ pub async fn knock_room(
 
     if !config::supports_room_version(&room_version) {
         return Err(StatusError::internal_server_error()
-            .brief("Remote room version {room_version} is not supported by palpo")
+            .brief("remote room version {room_version} is not supported by palpo")
             .into());
     }
     crate::room::ensure_room(room_id, &room_version)?;
@@ -135,13 +143,13 @@ pub async fn knock_room(
     let mut knock_event_stub: CanonicalJsonObject =
         serde_json::from_str(make_knock_response.event.get()).map_err(|e| {
             StatusError::internal_server_error().brief(format!(
-                "Invalid make_knock event json received from server: {e:?}"
+                "invalid make_knock event json received from server: {e:?}"
             ))
         })?;
 
     knock_event_stub.insert(
         "origin".to_owned(),
-        CanonicalJsonValue::String(config::get().server_name.as_str().to_owned()),
+        CanonicalJsonValue::String(conf.server_name.as_str().to_owned()),
     );
     knock_event_stub.insert(
         "origin_server_ts".to_owned(),
@@ -251,7 +259,8 @@ pub async fn knock_room(
                 serde_json::from_str(res_body.pdu.get())?,
                 true,
             )
-            .await {
+            .await
+            {
                 error!("Failed to process event {event_id} from send_knock: {e}");
             }
             timeline::get_pdu(&event_id)?
@@ -328,9 +337,15 @@ pub async fn knock_room(
     // We set the room state after inserting the pdu, so that we never have a moment
     // in time where events in the current room state do not exist
     let _ = state::set_room_state(room_id, frame_id);
-
+    if let Err(e) = sending::send_pdu_room(
+        &room_id,
+        &knock_pdu.event_id,
+        &[sender_id.server_name().to_owned()],
+    ) {
+        error!("failed to notify banned user server: {e}");
+    }
     drop(event_guard);
-    Ok(())
+    Ok(Some(knock_pdu))
 }
 
 async fn make_knock_request(

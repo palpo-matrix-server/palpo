@@ -307,6 +307,12 @@ pub fn joined_servers(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
         .load::<OwnedServerName>(&mut connect()?)
         .map_err(Into::into)
 }
+pub fn has_any_other_server(room_id: &RoomId, server: &ServerName) -> AppResult<bool> {
+    let query = room_joined_servers::table
+        .filter(room_joined_servers::room_id.eq(room_id))
+        .filter(room_joined_servers::server_id.ne(server));
+    diesel_exists!(query, &mut connect()?).map_err(Into::into)
+}
 
 #[tracing::instrument(level = "trace")]
 pub fn lookup_servers(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
@@ -383,12 +389,24 @@ pub fn get_state_users(
 }
 
 /// Returns an list of all servers participating in this room.
-pub fn participating_servers(room_id: &RoomId) -> AppResult<Vec<OwnedServerName>> {
-    room_joined_servers::table
-        .filter(room_joined_servers::room_id.eq(room_id))
-        .select(room_joined_servers::server_id)
-        .load(&mut connect()?)
-        .map_err(Into::into)
+pub fn participating_servers(
+    room_id: &RoomId,
+    include_self_server: bool,
+) -> AppResult<Vec<OwnedServerName>> {
+    if include_self_server {
+        room_joined_servers::table
+            .filter(room_joined_servers::room_id.eq(room_id))
+            .select(room_joined_servers::server_id)
+            .load(&mut connect()?)
+            .map_err(Into::into)
+    } else {
+        room_joined_servers::table
+            .filter(room_joined_servers::room_id.eq(room_id))
+            .filter(room_joined_servers::server_id.ne(config::server_name()))
+            .select(room_joined_servers::server_id)
+            .load(&mut connect()?)
+            .map_err(Into::into)
+    }
 }
 
 pub fn public_room_ids() -> AppResult<Vec<OwnedRoomId>> {

@@ -115,7 +115,7 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         extra_data: Default::default(),
     })
     .expect("member event is valid value");
-    let (_pdu, mut pdu_json, _) = timeline::create_hash_and_sign_event(
+    let (_pdu, mut pdu_json, _) = timeline::hash_and_sign_event(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,
             content,
@@ -254,11 +254,11 @@ async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<Mak
     let origin = depot.origin()?;
     if args.user_id.server_name() != origin {
         return Err(
-            MatrixError::bad_json("Not allowed to leave on behalf of another server.").into(),
+            MatrixError::bad_json("not allowed to leave on behalf of another server").into(),
         );
     }
     if !room::is_room_exists(&args.room_id)? {
-        return Err(MatrixError::forbidden("Room is unknown to this server.", None).into());
+        return Err(MatrixError::forbidden("room is unknown to this server", None).into());
     }
 
     // ACL check origin
@@ -267,7 +267,7 @@ async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<Mak
     let room_version_id = room::get_version(&args.room_id)?;
     let state_lock = crate::room::lock_state(&args.room_id).await;
 
-    let (_pdu, mut pdu_json, _event_guard) = timeline::create_hash_and_sign_event(
+    let (_pdu, mut pdu_json, _event_guard) = timeline::hash_and_sign_event(
         PduBuilder::state(
             args.user_id.to_string(),
             &RoomMemberEventContent::new(MembershipState::Leave),
@@ -285,7 +285,7 @@ async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<Mak
 
     json_ok(MakeLeaveResBody {
         room_version: Some(room_version_id),
-        event: to_raw_value(&pdu_json).expect("CanonicalJson can be serialized to JSON"),
+        event: to_raw_value(&pdu_json).expect("canonicalJson can be serialized to JSON"),
     })
 }
 
@@ -440,7 +440,8 @@ async fn send_leave(
         true,
     )
     .await?;
-
-    crate::sending::send_pdu_room(&args.room_id, &event_id).unwrap();
+    if let Err(e) = crate::sending::send_pdu_room(&args.room_id, &event_id, &[]) {
+        error!("failed to notify leave event: {e}");
+    }
     empty_ok()
 }

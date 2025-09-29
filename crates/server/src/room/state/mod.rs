@@ -124,9 +124,6 @@ pub fn force_state(
         }
     }
 
-    room::update_joined_servers(room_id)?;
-    room::update_currents(room_id)?;
-
     set_room_state(room_id, frame_id)?;
 
     Ok(())
@@ -324,7 +321,6 @@ pub fn get_auth_events(
     state_key: Option<&str>,
     content: &serde_json::value::RawValue,
     auth_rules: &AuthorizationRules,
-    include_create: bool,
 ) -> AppResult<StateMap<SnPduEvent>> {
     let frame_id = if let Ok(current_frame_id) = get_room_frame_id(room_id, None) {
         current_frame_id

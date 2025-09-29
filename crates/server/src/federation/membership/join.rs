@@ -5,7 +5,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonValue, RawJsonValue, to_raw_json_value};
 use crate::event::{gen_event_id_canonical_json, handler};
 use crate::room::{state, timeline};
-use crate::{AppResult, IsRemoteOrLocal, MatrixError, room};
+use crate::{AppResult, IsRemoteOrLocal, MatrixError,sending,room};
 
 pub async fn send_join_v1(
     origin: &ServerName,
@@ -13,7 +13,7 @@ pub async fn send_join_v1(
     pdu: &RawJsonValue,
 ) -> AppResult<RoomStateV1> {
     if !room::room_exists(room_id)? {
-        return Err(MatrixError::not_found("Room is unknown to this server.").into());
+        return Err(MatrixError::not_found("room is unknown to this server.").into());
     }
 
     handler::acl_check(origin, room_id)?;
@@ -190,7 +190,15 @@ pub async fn send_join_v1(
         .filter_map(|id| timeline::get_pdu_json(&id).ok().flatten())
         .map(crate::sending::convert_to_outgoing_federation_event)
         .collect();
-    crate::sending::send_pdu_room(room_id, &event_id)?;
+
+   
+    if let Err(e) = sending::send_pdu_room(
+        &room_id,
+        &event_id,
+        &[],
+    ) {
+        error!("failed to notify user joined to servers: {e}");
+    }
 
     Ok(RoomStateV1 {
         auth_chain,

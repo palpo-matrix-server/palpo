@@ -219,11 +219,11 @@ async fn send_knock(
     let origin: OwnedServerName = serde_json::from_value(
         value
             .get("origin")
-            .ok_or_else(|| MatrixError::bad_json("Event does not have an origin server name."))?
+            .ok_or_else(|| MatrixError::bad_json("event does not have an origin server name"))?
             .clone()
             .into(),
     )
-    .map_err(|e| MatrixError::bad_json(format!("Event has an invalid origin server name: {e}")))?;
+    .map_err(|e| MatrixError::bad_json(format!("event has an invalid origin server name: {e}")))?;
 
     let mut event: JsonObject = serde_json::from_str(body.0.get())
         .map_err(|e| MatrixError::invalid_param(format!("Invalid knock event PDU: {e}")))?;
@@ -231,7 +231,7 @@ async fn send_knock(
     event.insert("event_id".to_owned(), "$placeholder".into());
 
     let pdu: PduEvent = PduEvent::from_json_value(&args.room_id, &event_id, event.into())
-        .map_err(|e| MatrixError::invalid_param(format!("Invalid knock event PDU: {e}")))?;
+        .map_err(|e| MatrixError::invalid_param(format!("invalid knock event PDU: {e}")))?;
 
     handler::process_incoming_pdu(
         &origin,
@@ -242,10 +242,9 @@ async fn send_knock(
         true,
     )
     .await
-    .map_err(|_| MatrixError::invalid_param("Could not accept as timeline event."))?;
+    .map_err(|_| MatrixError::invalid_param("could not accept as timeline event"))?;
 
     data::room::add_joined_server(&args.room_id, &origin)?;
-    crate::sending::send_pdu_room(&args.room_id, &event_id)?;
 
     let knock_room_state = state::summary_stripped(&pdu)?;
 
@@ -265,12 +264,12 @@ async fn make_knock(
 
     let origin = depot.origin()?;
     if !crate::room::room_exists(&args.room_id)? {
-        return Err(MatrixError::not_found("Room is unknown to this server.").into());
+        return Err(MatrixError::not_found("room is unknown to this server").into());
     }
 
     if args.user_id.server_name() != origin {
         return Err(MatrixError::bad_json(
-            "Not allowed to knock on behalf of another server/user.",
+            "not allowed to knock on behalf of another server/user",
         )
         .into());
     }
@@ -282,7 +281,7 @@ async fn make_knock(
 
     if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6) {
         return Err(MatrixError::incompatible_room_version(
-            "Room version does not support knocking.",
+            "room version does not support knocking",
             room_version_id,
         )
         .into());
@@ -300,17 +299,17 @@ async fn make_knock(
         && member.membership == MembershipState::Ban
     {
         warn!(
-            "Remote user {} is banned from {} but attempted to knock",
+            "remote user {} is banned from {} but attempted to knock",
             &args.user_id, &args.room_id
         );
         return Err(MatrixError::forbidden(
-            "You cannot knock on a room you are banned from.",
+            "you cannot knock on a room you are banned from",
             None,
         )
         .into());
     }
 
-    let (_pdu, mut pdu_json, _event_guard) = timeline::create_hash_and_sign_event(
+    let (_pdu, mut pdu_json, _event_guard) = timeline::hash_and_sign_event(
         PduBuilder::state(
             args.user_id.to_string(),
             &RoomMemberEventContent::new(MembershipState::Knock),

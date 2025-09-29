@@ -68,8 +68,10 @@ pub async fn sync_events(
 
     let mut joined_rooms = BTreeMap::new();
     let mut presence_updates = HashMap::new();
-    let mut joined_users = HashSet::new(); // Users that have joined any encrypted rooms the sender was in
-    let mut left_users = HashSet::new(); // Users that have left any encrypted rooms the sender was in
+    // Users that have joined any encrypted rooms the sender was in
+    let mut joined_users = HashSet::new();
+    // Users that have left any encrypted rooms the sender was in
+    let mut left_users = HashSet::new();
     let mut device_list_updates = HashSet::new();
     let mut device_list_left = HashSet::new();
 
@@ -170,8 +172,7 @@ pub async fn sync_events(
                             .is_ok()
                     })
                     .all(|encrypted| !encrypted);
-            // If the user doesn't share an encrypted room with the target anymore, we need
-            // to tell them.
+            // If the user doesn't share an encrypted room with the target anymore, we need to tell them.
             if dont_share_encrypted_room {
                 device_list_left.insert(user_id);
             }
@@ -186,8 +187,7 @@ pub async fn sync_events(
                         .is_ok()
                 })
                 .all(|encrypted| !encrypted);
-        // If the user doesn't share an encrypted room with the target anymore, we need to tell
-        // them
+        // If the user doesn't share an encrypted room with the target anymore, we need to tell them.
         if dont_share_encrypted_room {
             device_list_left.insert(user_id);
         }

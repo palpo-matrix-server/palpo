@@ -35,7 +35,7 @@ use crate::room::{state, timeline};
 use crate::sending::send_edu_server;
 use crate::{
     AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, SnPduEvent,
-    config, data, room,
+    config, data, room, sending
 };
 
 pub async fn join_room(
@@ -75,7 +75,7 @@ pub async fn join_room(
         room::should_join_on_remote_servers(sender_id, room_id, servers).await?;
 
     if !should_remote {
-        info!("We can join locally");
+        info!("we can join locally");
         let join_rule = room::get_join_rule(room_id)?;
 
         let event = RoomMemberEventContent {
@@ -109,7 +109,7 @@ pub async fn join_room(
         )
         .await
         {
-            Ok(_) => {
+            Ok(pdu) => {
                 if let Some(device_id) = device_id {
                     crate::user::mark_device_key_update_with_joined_rooms(
                         sender_id,
@@ -117,10 +117,18 @@ pub async fn join_room(
                         &[room_id.to_owned()],
                     )?;
                 }
+
+                if let Err(e) = sending::send_pdu_room(
+                    &room_id,
+                    &pdu.event_id,
+                    &[],
+                ) {
+                    error!("failed to notify banned user server: {e}");
+                }
                 return Ok(JoinRoomResBody::new(room_id.to_owned()));
             }
             Err(e) => {
-                tracing::error!("Failed to append join event locally: {e}");
+                tracing::error!("failed to append join event locally: {e}");
                 if servers.is_empty() || servers.iter().all(|s| s.is_local()) {
                     return Err(e);
                 }
@@ -128,7 +136,7 @@ pub async fn join_room(
         }
     }
 
-    info!("Joining {room_id} over federation");
+    info!("joining {room_id} over federation");
     let (make_join_response, remote_server) =
         make_join_request(sender_id, room_id, &servers).await?;
 
@@ -268,7 +276,6 @@ pub async fn join_room(
 
     room::ensure_room(room_id, &room_version_id)?;
 
-    info!("Parsing join event");
     let parsed_join_pdu =
         PduEvent::from_canonical_object(&event_id, join_event.clone()).map_err(|e| {
             warn!("Invalid PDU in send_join response: {}", e);
@@ -332,7 +339,7 @@ pub async fn join_room(
         error!("failed to fetch missing prev events for join: {e}");
     }
 
-    info!("Going through send_join response room_state");
+    info!("going through send_join response room_state");
     for result in send_join_body
         .0
         .state
@@ -375,7 +382,7 @@ pub async fn join_room(
         }
     }
 
-    info!("Going through send_join response auth_chain");
+    info!("going through send_join response auth_chain");
     for result in send_join_body
         .0
         .auth_chain
@@ -402,7 +409,7 @@ pub async fn join_room(
         }
     }
 
-    info!("Running send_join auth check");
+    info!("running send_join auth check");
     // TODO: Authcheck
     // if !event_auth::auth_check(
     //     &RoomVersion::new(&room_version_id)?,
@@ -422,7 +429,7 @@ pub async fn join_room(
     //     return Err(MatrixError::invalid_param("Auth check failed when running send_json auth check").into());
     // }
 
-    info!("Saving state from send_join");
+    info!("saving state from send_join");
     let DeltaInfo {
         frame_id,
         appended,
@@ -444,7 +451,7 @@ pub async fn join_room(
     // room::update_currents(room_id)?;
 
     let state_lock = room::lock_state(room_id).await;
-    info!("Appending new room join event");
+    info!("appending new room join event");
     diesel::insert_into(events::table)
         .values(NewDbEvent::from_canonical_json(
             &event_id,
@@ -488,6 +495,7 @@ pub async fn join_room(
             send_edu_server(room_server_id, &edu)?;
         }
     }
+
     Ok(JoinRoomResBody::new(room_id.to_owned()))
 }
 

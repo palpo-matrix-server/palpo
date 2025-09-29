@@ -623,7 +623,6 @@ pub async fn process_to_timeline_pdu(
         incoming_pdu.state_key.as_deref(),
         &incoming_pdu.content,
         &version_rules.authorization,
-        true,
     )?;
 
     event_auth::auth_check(
