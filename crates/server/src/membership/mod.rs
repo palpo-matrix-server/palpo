@@ -109,24 +109,18 @@ pub fn update_membership(
     last_state: Option<Vec<RawJson<AnyStrippedStateEvent>>>,
 ) -> AppResult<()> {
     let conf = crate::config::get();
-    println!(
-        "ddddddddddddddddddd   Updating membership: {} {} {}",
-        user_id, room_id, membership
-    );
     // Keep track what remote users exist by adding them as "deactivated" users
     if user_id.server_name() != conf.server_name && !crate::data::user::user_exists(user_id)? {
         crate::user::create_user(user_id, None)?;
         // TODO: display_name, avatar url
     }
 
-    println!("ddddddddddddddddddd   0");
     let state_data = if let Some(last_state) = &last_state {
         Some(serde_json::to_value(last_state)?)
     } else {
         None
     };
 
-    println!("ddddddddddddddddddd   1 user_id:{user_id:?} {membership:?}");
     match &membership {
         MembershipState::Join => {
             // Check if the user never joined this room
@@ -251,14 +245,10 @@ pub fn update_membership(
             if let Some(last_state) = &last_state {
                 for event in last_state {
                     if let Ok(event) = event.deserialize() {
-                        println!("llllllllensuring field for event: {:?}", event);
                         let _ = ensure_field(&event.event_type(), event.state_key());
                     }
                 }
             }
-            println!(
-                "ddddddddddddddddddd   2 user_id:{user_id:?}  room_id:{room_id:?} membership:{membership:?} sender_id:{sender_id:?} event_id:{event_id:?} event_sn:{event_sn:?}"
-            );
             let _ = ensure_field(&StateEventType::RoomMember, user_id.as_str());
             connect()?.transaction::<_, AppError, _>(|conn| {
                 // let forgotten = room_users::table

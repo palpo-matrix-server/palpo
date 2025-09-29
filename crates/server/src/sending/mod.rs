@@ -176,10 +176,6 @@ pub fn send_pdu_room(
         .collect::<Vec<_>>();
     servers.sort_unstable();
     servers.dedup();
-    println!(
-        ">>>>>>>>>>>>>>>>......send pdu room: {pdu_id:?} {:?}",
-        servers
-    );
     send_pdu_servers(servers.into_iter(), pdu_id)
 }
 

@@ -36,20 +36,14 @@ pub async fn leave_room(
     // Ask a remote server if we don't have this room
     let conf = config::get();
 
-    println!(
-        "LLLLLLLLLLLLLLLLlllleave room 1  joined:{}",
-        room::is_server_joined(&conf.server_name, room_id)?
-    );
     if room::is_server_joined(&conf.server_name, room_id)? {
         //If only this server in room, leave locally.
-        println!("LLLLLLLLLLLLLLLLlllleave room 2");
         if let Err(e) = leave_room_local(user_id, room_id, reason.clone()).await {
             warn!("failed to leave room {} locally: {}", user_id, e);
         } else {
             return Ok(());
         }
     }
-    println!("LLLLLLLLLLLLLLLLlllleave room 3");
     match leave_room_remote(user_id, room_id).await {
         Ok((event_id, event_sn)) => {
             let last_state = state::get_user_state(user_id, room_id)?;

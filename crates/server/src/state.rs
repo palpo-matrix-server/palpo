@@ -21,7 +21,6 @@ pub async fn send_state_event_for_key(
     json: RawJson<AnyStateEventContent>,
     state_key: String,
 ) -> AppResult<OwnedEventId> {
-    println!("AAAAAAAAAAAAAAAAAAAAAA set state event {event_type} {state_key} json:{json:#?}");
     allowed_to_send_state_event(room_id, event_type, &state_key, &json)?;
     let pdu = timeline::build_and_append_pdu(
         PduBuilder {
@@ -36,7 +35,6 @@ pub async fn send_state_event_for_key(
         &room::lock_state(room_id).await,
     )
     .await?;
-    println!("AAAAAAAAAAAAAAAAAAAAAA 2  {pdu:?}");
 
     Ok(pdu.pdu.event_id)
 }

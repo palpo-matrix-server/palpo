@@ -156,8 +156,6 @@ where
     }
 
     let current_membership = fetch_state.user_membership(target_user).await?;
-
-    println!("==============target_user: {target_user:?} ====current_membership: {current_membership:?}");
     // Since v1, if the sender is banned, reject.
     if current_membership == MembershipState::Ban {
         return Err(StateError::forbidden("banned user cannot join room"));
@@ -567,7 +565,6 @@ where
         || (auth_rules.knock_restricted_join_rule
             && !matches!(join_rule, JoinRuleKind::KnockRestricted))
     {
-        println!("kkkkkkkkkknock not allowed due to join rule: {join_rule:?}");
         return Err(StateError::forbidden(
             "join rule is not set to knock or knock_restricted, knocking is not allowed",
         ));

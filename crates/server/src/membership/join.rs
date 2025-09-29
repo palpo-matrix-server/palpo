@@ -74,9 +74,7 @@ pub async fn join_room(
     let (should_remote, servers) =
         room::should_join_on_remote_servers(sender_id, room_id, servers).await?;
 
-    println!("====== join_room 1 should_remote {should_remote} servers: {servers:?}");
     if !should_remote {
-        println!("====== join_room local");
         info!("we can join locally");
         let join_rule = room::get_join_rule(room_id)?;
 
@@ -138,7 +136,6 @@ pub async fn join_room(
         }
     }
 
-    println!("====== join_room remote");
     info!("joining {room_id} over federation");
     let (make_join_response, remote_server) =
         make_join_request(sender_id, room_id, &servers).await?;

@@ -28,7 +28,6 @@ pub async fn invite_user(
 
     let conf = crate::config::get();
     if invitee_id.server_name().is_remote() {
-        println!("====== invite_user remote  {invitee_id}  {room_id}");
         let (pdu, pdu_json, invite_room_state) = {
             let content = RoomMemberEventContent {
                 avatar_url: None,
@@ -133,7 +132,6 @@ pub async fn invite_user(
         return sending::send_pdu_room(room_id, &event_id, &[invitee_id.server_name().to_owned()]);
     }
 
-    println!("====== invite_user local  {invitee_id}  {room_id}");
     timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,

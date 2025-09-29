@@ -355,7 +355,6 @@ where
             }
         }
         TimelineEventType::RoomMember => {
-            println!("ddddddddddddddddddd   4");
             if let Some(state_key) = &pdu.state_key {
                 #[derive(Deserialize)]
                 struct ExtractMembership {
@@ -381,7 +380,6 @@ where
                 if content.membership == MembershipState::Join {
                     let _ = crate::user::ping_presence(&pdu.sender, &PresenceState::Online);
                 }
-                println!("ddddddddddddddddddd   5  {}", content.membership);
                 // Update our membership info, we do this here incase a user is invited
                 // and immediately leaves we need the DB to record the invite event for auth
                 membership::update_membership(
@@ -652,7 +650,6 @@ pub async fn hash_and_sign_event(
         to_canonical_value(&conf.server_name).expect("server name is a valid CanonicalJsonValue"),
     );
 
-    println!("====== hash_and_sign_event 9");
     match crate::server_key::hash_and_sign_event(&mut pdu_json, room_version) {
         Ok(_) => {}
         Err(e) => {
@@ -665,7 +662,6 @@ pub async fn hash_and_sign_event(
         }
     }
 
-    println!("====== hash_and_sign_event 10");
     // Generate event id
     pdu.event_id = crate::event::gen_event_id(&pdu_json, room_version)?;
     if version_rules.room_id_format == RoomIdFormatVersion::V2
@@ -691,7 +687,6 @@ pub async fn hash_and_sign_event(
         );
     }
 
-    println!("====== hash_and_sign_event 11");
     let (event_sn, event_guard) = crate::event::ensure_event_sn(room_id, &pdu.event_id)?;
     NewDbEvent {
         id: pdu.event_id.to_owned(),
