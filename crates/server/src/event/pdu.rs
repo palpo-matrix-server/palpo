@@ -161,6 +161,10 @@ impl SnPduEvent {
         let pdu = PduEvent::from_json_value(room_id, event_id, json)?;
         Ok(Self::new(pdu, event_sn))
     }
+
+    pub fn into_inner(self) -> PduEvent {
+        self.pdu
+    }
 }
 impl AsRef<PduEvent> for SnPduEvent {
     fn as_ref(&self) -> &PduEvent {

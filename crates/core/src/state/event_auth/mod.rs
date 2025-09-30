@@ -60,12 +60,11 @@ pub fn auth_types_for_event(
         (StateEventType::RoomMember, sender.to_string()),
     ];
 
-    // TODO: do we need `m.room.create` event for room version 12?
-    // // v1-v11, the `m.room.create` event.
-    // if !rules.room_create_event_id_as_room_id {
-    //     auth_types.push((StateEventType::RoomCreate, "".to_owned()));
-    // }
-    auth_types.push((StateEventType::RoomCreate, "".to_owned()));
+    // We don't need `m.room.create` event for room version 12?
+    // v1-v11, the `m.room.create` event.
+    if !rules.room_create_event_id_as_room_id {
+        auth_types.push((StateEventType::RoomCreate, "".to_owned()));
+    }
 
     // If type is `m.room.member`:
     if event_type == &TimelineEventType::RoomMember {

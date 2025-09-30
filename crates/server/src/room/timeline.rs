@@ -8,6 +8,7 @@ use serde::Deserialize;
 use serde_json::value::to_raw_value;
 use ulid::Ulid;
 
+use crate::admin::room;
 use crate::core::client::filter::{RoomEventFilter, UrlFilter};
 use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
@@ -627,12 +628,26 @@ pub async fn hash_and_sign_event(
             .map_err(|_| StateError::other("missing PDU 6"))
     };
     let fetch_state = async |k: StateEventType, s: String| {
-        auth_events
+        if let Some(pdu) = auth_events
             .get(&(k.clone(), s.to_owned()))
             .map(|s| s.pdu.clone())
-            .ok_or_else(|| {
-                StateError::other(format!("missing auth events, type: {k}, state_key: {s}"))
-            })
+        {
+            return Ok(pdu);
+        }
+        if auth_rules.room_create_event_id_as_room_id && k == StateEventType::RoomCreate {
+            let pdu = super::get_create(room_id)
+                .map_err(|_| StateError::other("missing create event"))?
+                .into_inner();
+            if pdu.room_id != *room_id {
+                Err(StateError::other("mismatched room id in create event"))
+            } else {
+                Ok(pdu.into_inner())
+            }
+        } else {
+            Err(StateError::other(format!(
+                "missing state event, event_type: {k}, state_key:{s}"
+            )))
+        }
     };
     event_auth::auth_check(auth_rules, &pdu, &fetch_event, &fetch_state).await?;
 
