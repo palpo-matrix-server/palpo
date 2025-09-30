@@ -219,8 +219,8 @@ pub async fn get_verify_key(
         return Ok(result);
     }
 
-    tracing::error!(?key_id, ?origin, "Failed to fetch federation signing-key");
-    Err(AppError::public("Failed to fetch federation signing-key"))
+    tracing::error!(?key_id, ?origin, "failed to fetch federation signing-key");
+    Err(AppError::public("failed to fetch federation signing-key"))
 }
 
 async fn get_verify_key_from_notaries(
@@ -242,7 +242,7 @@ async fn get_verify_key_from_notaries(
     }
 
     Err(AppError::public(
-        "Failed to fetch signing-key from notaries",
+        "failed to fetch signing-key from notaries",
     ))
 }
 
@@ -257,7 +257,7 @@ async fn get_verify_key_from_origin(
         }
     }
 
-    Err(AppError::public("Failed to fetch signing-key from origin"))
+    Err(AppError::public("failed to fetch signing-key from origin"))
 }
 pub fn sign_json(object: &mut CanonicalJsonObject) -> AppResult<()> {
     signatures::sign_json(

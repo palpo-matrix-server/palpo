@@ -787,7 +787,8 @@ async fn resolve_state(
                 .collect::<StateMap<_>>()
         })
         .collect();
-    debug!("Resolving state");
+    debug!("resolving state");
+    println!("=============fork states: {fork_states:#?}");
 
     let version_rules = crate::room::get_version_rules(room_version_id)?;
     let state = match crate::core::state::resolve(
@@ -802,12 +803,16 @@ async fn resolve_state(
             .map(|set| set.iter().map(|id| id.to_owned()).collect::<HashSet<_>>())
             .collect::<Vec<_>>(),
         &async |id| timeline::get_pdu(&id).map_err(|_| StateError::other("missing PDU 4")),
-        |_| None, //TODO
+        |map| {
+            println!("===============================conflieced state map: {map:#?}");
+            Some(Default::default())
+        }, //TODO
     )
     .await
     {
         Ok(new_state) => new_state,
-        Err(_) => {
+        Err(e) => {
+            error!("state resolution failed: {}", e);
             return Err(AppError::internal(
                 "state resolution failed, either an event could not be found or deserialization",
             ));

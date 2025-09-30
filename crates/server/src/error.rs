@@ -119,18 +119,21 @@ impl AppError {
 impl Writer for AppError {
     async fn write(mut self, req: &mut Request, depot: &mut Depot, res: &mut Response) {
         let matrix = match self {
-            Self::Salvo(_e) => MatrixError::unknown("Unknown error in salvo."),
-            Self::FrequentlyRequest => MatrixError::unknown("Frequently request resource."),
+            Self::Salvo(_e) => MatrixError::unknown("unknown error in salvo"),
+            Self::FrequentlyRequest => MatrixError::unknown("frequently request resource"),
             Self::Public(msg) => MatrixError::unknown(msg),
-            Self::Internal(_msg) => MatrixError::unknown("Unknown error."),
+            Self::Internal(msg) => {
+                error!(error = ?msg, "internal error");
+                MatrixError::unknown("unknown error")
+            },
             // Self::LocalUnableProcess(msg) => MatrixError::unrecognized(msg),
             Self::Matrix(e) => e,
             Self::State(e) => {
                 if let StateError::Forbidden(msg) = e {
-                    tracing::error!(error = ?msg, "forbidden error.");
+                    tracing::error!(error = ?msg, "forbidden error");
                     MatrixError::forbidden(msg, None)
                 } else if let StateError::AuthEvent(msg) = e {
-                    tracing::error!(error = ?msg, "forbidden error.");
+                    tracing::error!(error = ?msg, "forbidden error");
                     MatrixError::forbidden(msg, None)
                 } else {
                     MatrixError::unknown(e.to_string())
@@ -181,7 +184,7 @@ impl Writer for AppError {
                 return;
             }
             e => {
-                tracing::error!(error = ?e, "Unknown error.");
+                tracing::error!(error = ?e, "unknown error");
                 // println!("{}", std::backtrace::Backtrace::capture());
                 MatrixError::unknown("unknown error happened")
             }

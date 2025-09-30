@@ -26,7 +26,7 @@ pub enum StateError {
     MissingStateKey,
 
     /// Provided `fetch_conflicted_state_subgraph` function failed.
-    #[error("`fetch_conflicted_state_subgraph` failed")]
+    #[error("fetch conflicted state subgraph failed")]
     FetchConflictedStateSubgraphFailed,
 
     #[error("other state error: {0}")]

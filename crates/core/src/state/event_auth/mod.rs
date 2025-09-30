@@ -560,7 +560,6 @@ fn check_room_power_levels(
     // IDs with values that are integers, reject.
     let new_users = room_power_levels_event.users(rules)?;
 
-    println!("==========room_power_levels_event: {:?}", room_power_levels_event);
     // Since v12, if the `users` property in `content` contains the `sender` of the `m.room.create`
     // event or any of the user IDs in the create event's `content.additional_creators`, reject.
     if rules.explicitly_privilege_room_creators
@@ -570,7 +569,6 @@ fn check_room_power_levels(
                 .any(|creator| new_users.contains_key(creator))
         })
     {
-        println!("============new_users: {:?}  room_creators:{:?}", new_users, room_creators);
         return Err(StateError::other(
             "creator user IDs are not allowed in the `content.users` field",
         ));
