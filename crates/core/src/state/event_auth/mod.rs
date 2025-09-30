@@ -60,12 +60,11 @@ pub fn auth_types_for_event(
         (StateEventType::RoomMember, sender.to_string()),
     ];
 
-    // TODO: do we need `m.room.create` event for room version 12?
-    // // v1-v11, the `m.room.create` event.
-    // if !rules.room_create_event_id_as_room_id {
-    //     auth_types.push((StateEventType::RoomCreate, "".to_owned()));
-    // }
-    auth_types.push((StateEventType::RoomCreate, "".to_owned()));
+    // We don't need `m.room.create` event for room version 12?
+    // v1-v11, the `m.room.create` event.
+    if !rules.room_create_event_id_as_room_id {
+        auth_types.push((StateEventType::RoomCreate, "".to_owned()));
+    }
 
     // If type is `m.room.member`:
     if event_type == &TimelineEventType::RoomMember {
@@ -560,19 +559,19 @@ fn check_room_power_levels(
     // IDs with values that are integers, reject.
     let new_users = room_power_levels_event.users(rules)?;
 
-    // // Since v12, if the `users` property in `content` contains the `sender` of the `m.room.create`
-    // // event or any of the user IDs in the create event's `content.additional_creators`, reject.
-    // if rules.explicitly_privilege_room_creators
-    //     && new_users.is_some_and(|new_users| {
-    //         room_creators
-    //             .iter()
-    //             .any(|creator| new_users.contains_key(creator))
-    //     })
-    // {
-    //     return Err(StateError::other(
-    //         "creator user IDs are not allowed in the `users` field",
-    //     ));
-    // }
+    // Since v12, if the `users` property in `content` contains the `sender` of the `m.room.create`
+    // event or any of the user IDs in the create event's `content.additional_creators`, reject.
+    if rules.explicitly_privilege_room_creators
+        && new_users.is_some_and(|new_users| {
+            room_creators
+                .iter()
+                .any(|creator| new_users.contains_key(creator))
+        })
+    {
+        return Err(StateError::other(
+            "creator user IDs are not allowed in the `content.users` field",
+        ));
+    }
 
     debug!("validation of power event finished");
 

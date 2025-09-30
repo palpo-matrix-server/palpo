@@ -84,6 +84,20 @@ impl RoomCreateEventContent {
             room_type: None,
         }
     }
+
+    /// Creates a new `RoomCreateEventContent` with the default values and no
+    /// creator, as introduced in room version 11.
+    ///
+    /// The room version is set to [`RoomVersionId::V12`].
+    pub fn new_v12() -> Self {
+        Self {
+            creator: None,
+            federate: true,
+            room_version: RoomVersionId::V12,
+            predecessor: None,
+            room_type: None,
+        }
+    }
 }
 
 impl RedactContent for RoomCreateEventContent {

@@ -1,5 +1,5 @@
 {"Action":"fail","Test":"TestClientSpacesSummary"}
-{"Action":"fail","Test":"TestClientSpacesSummary/max_depth"}
+{"Action":"fail","Test":"TestClientSpacesSummaryJoinRules"}
 {"Action":"fail","Test":"TestClientSpacesSummary/pagination"}
 {"Action":"fail","Test":"TestClientSpacesSummary/query_whole_graph"}
 {"Action":"fail","Test":"TestClientSpacesSummary/redact_link"}
@@ -22,9 +22,6 @@
 {"Action":"fail","Test":"TestKnocking/Users_in_the_room_see_a_user's_membership_update_when_they_knock#01"}
 {"Action":"fail","Test":"TestMSC4289PrivilegedRoomCreators"}
 {"Action":"fail","Test":"TestMSC4289PrivilegedRoomCreators/admin_with_>PL100_sorts_after_the_room_creator_for_state_resolution"}
-{"Action":"fail","Test":"TestMSC4289PrivilegedRoomCreators/power_level_cannot_be_set_beyond_max_canonical_JSON_int"}
-{"Action":"fail","Test":"TestMSC4289PrivilegedRoomCreators/power_level_content_override_cannot_set_the_room_creator"}
-{"Action":"fail","Test":"TestMSC4291RoomIDAsHashOfCreateEvent_AuthEventsOmitsCreateEvent"}
 {"Action":"fail","Test":"TestMSC4291RoomIDAsHashOfCreateEvent_UpgradedRooms"}
 {"Action":"fail","Test":"TestMSC4297StateResolutionV2_1_includes_conflicted_subgraph"}
 {"Action":"fail","Test":"TestMSC4297StateResolutionV2_1_starts_from_empty_set"}
@@ -40,6 +37,7 @@
 {"Action":"fail","Test":"TestSyncTimelineGap"}
 {"Action":"fail","Test":"TestSyncTimelineGap/full"}
 {"Action":"fail","Test":"TestSyncTimelineGap/incremental"}
+{"Action":"fail","Test":"TestThreadReceiptsInSyncMSC4102"}
 {"Action":"fail","Test":"TestUnrejectRejectedEvents"}
 {"Action":"pass","Test":"TestACLs"}
 {"Action":"pass","Test":"TestAddAccountData"}
@@ -113,7 +111,7 @@
 {"Action":"pass","Test":"TestChangePasswordPushers"}
 {"Action":"pass","Test":"TestChangePasswordPushers/Pushers_created_with_a_different_access_token_are_deleted_on_password_change"}
 {"Action":"pass","Test":"TestChangePasswordPushers/Pushers_created_with_the_same_access_token_are_not_deleted_on_password_change"}
-{"Action":"pass","Test":"TestClientSpacesSummaryJoinRules"}
+{"Action":"pass","Test":"TestClientSpacesSummary/max_depth"}
 {"Action":"pass","Test":"TestContent"}
 {"Action":"pass","Test":"TestContentCSAPIMediaV1"}
 {"Action":"pass","Test":"TestContentMediaV1"}
@@ -359,9 +357,12 @@
 {"Action":"pass","Test":"TestMSC4289PrivilegedRoomCreators_InvitedAreCreators"}
 {"Action":"pass","Test":"TestMSC4289PrivilegedRoomCreators/m.room.tombstone_needs_PL150_in_the_PL_event"}
 {"Action":"pass","Test":"TestMSC4289PrivilegedRoomCreators/PL_event_is_missing_creator_in_users_map"}
+{"Action":"pass","Test":"TestMSC4289PrivilegedRoomCreators/power_level_cannot_be_set_beyond_max_canonical_JSON_int"}
 {"Action":"pass","Test":"TestMSC4289PrivilegedRoomCreators/power_level_content_override_can_be_set"}
+{"Action":"pass","Test":"TestMSC4289PrivilegedRoomCreators/power_level_content_override_cannot_set_the_room_creator"}
 {"Action":"pass","Test":"TestMSC4289PrivilegedRoomCreators_Upgrades"}
 {"Action":"pass","Test":"TestMSC4291RoomIDAsHashOfCreateEvent"}
+{"Action":"pass","Test":"TestMSC4291RoomIDAsHashOfCreateEvent_AuthEventsOmitsCreateEvent"}
 {"Action":"pass","Test":"TestMSC4291RoomIDAsHashOfCreateEvent_CannotSendCreateEvent"}
 {"Action":"pass","Test":"TestMSC4291RoomIDAsHashOfCreateEvent_RoomIDIsOnCreateEvent"}
 {"Action":"pass","Test":"TestNotPresentUserCannotBanOthers"}
@@ -597,7 +598,6 @@
 {"Action":"pass","Test":"TestSync/parallel/sync_should_succeed_even_if_the_sync_token_points_to_a_redaction_of_an_unknown_event"}
 {"Action":"pass","Test":"TestTentativeEventualJoiningAfterRejecting"}
 {"Action":"pass","Test":"TestThreadedReceipts"}
-{"Action":"pass","Test":"TestThreadReceiptsInSyncMSC4102"}
 {"Action":"pass","Test":"TestThreadsEndpoint"}
 {"Action":"pass","Test":"TestToDeviceMessages"}
 {"Action":"pass","Test":"TestToDeviceMessagesOverFederation"}

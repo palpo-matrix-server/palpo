@@ -143,6 +143,10 @@ impl<E: Event> RoomCreateEvent<E> {
             })?;
         Ok(content.creator.is_some())
     }
+
+    pub fn into_inner(self) -> E {
+        self.0
+    }
 }
 
 impl<E: Event> Deref for RoomCreateEvent<E> {

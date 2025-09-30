@@ -24,7 +24,7 @@ use std::{
 use crate::{EventId, RoomId, UnixMillis, UserId, events::TimelineEventType, serde::RawJsonValue};
 
 /// Abstraction of a PDU so users can have their own PDU types.
-pub trait Event {
+pub trait Event: Debug {
     type Id: Clone + Debug + Display + Eq + Ord + Hash + Borrow<EventId>;
 
     /// The `EventId` of this event.

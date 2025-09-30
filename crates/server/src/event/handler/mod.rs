@@ -270,6 +270,7 @@ fn process_to_outlier_pdu(
         value.remove("unsigned");
 
         let version_rules = crate::room::get_version_rules(room_version_id)?;
+    let auth_rules = &version_rules.authorization;
         let origin_server_ts = value.get("origin_server_ts").ok_or_else(|| {
             error!("invalid PDU, no origin_server_ts field");
             MatrixError::missing_param("invalid PDU, no origin_server_ts field")
@@ -439,7 +440,7 @@ fn process_to_outlier_pdu(
         }
 
         if let Err(e) = event_auth::auth_check(
-            &version_rules.authorization,
+            &auth_rules,
             &incoming_pdu,
             &async |event_id| {
                 timeline::get_pdu(&event_id)
@@ -447,10 +448,26 @@ fn process_to_outlier_pdu(
                     .map_err(|_| StateError::other("missing PDU 1"))
             },
             &async |k, s| {
-                auth_events
+                if let Some(pdu) = auth_events
                     .get(&(k.to_string().into(), s.to_owned()))
                     .map(|s| s.pdu.clone())
-                    .ok_or_else(|| StateError::other("auth event not found"))
+                {
+                    return Ok(pdu);
+                }
+                if auth_rules.room_create_event_id_as_room_id && k == StateEventType::RoomCreate {
+                    let pdu = crate::room::get_create(room_id)
+                        .map_err(|_| StateError::other("missing create event"))?
+                        .into_inner();
+                    if pdu.room_id != *room_id {
+                        Err(StateError::other("mismatched room id in create event"))
+                    } else {
+                        Ok(pdu.into_inner())
+                    }
+                } else {
+                    Err(StateError::other(format!(
+                        "missing state event, event_type: {k}, state_key:{s}"
+                    )))
+                }
             },
         )
         .await
@@ -616,26 +633,39 @@ pub async fn process_to_timeline_pdu(
 
     debug!("gathering auth events");
     let version_rules = crate::room::get_version_rules(room_version_id)?;
+    let auth_rules = &version_rules.authorization;
     let auth_events = state::get_auth_events(
         room_id,
         &incoming_pdu.event_ty,
         &incoming_pdu.sender,
         incoming_pdu.state_key.as_deref(),
         &incoming_pdu.content,
-        &version_rules.authorization,
+        &auth_rules,
     )?;
 
     event_auth::auth_check(
-        &version_rules.authorization,
+        &auth_rules,
         &incoming_pdu,
         &async |event_id| {
             timeline::get_pdu(&event_id).map_err(|_| StateError::other("missing PDU 3"))
         },
         &async |k, s| {
-            auth_events
-                .get(&(k.clone(), s.to_string()))
-                .cloned()
-                .ok_or_else(|| StateError::other("Auth event not found"))
+            if let Some(pdu) = auth_events.get(&(k.clone(), s.to_string())).cloned() {
+                return Ok(pdu);
+            }
+            if auth_rules.room_create_event_id_as_room_id && k == StateEventType::RoomCreate {
+                let pdu = crate::room::get_create(room_id)
+                    .map_err(|_| StateError::other("missing create event"))?;
+                if pdu.room_id != *room_id {
+                    Err(StateError::other("mismatched room id in create event"))
+                } else {
+                    Ok(pdu.into_inner())
+                }
+            } else {
+                Err(StateError::other(format!(
+                    "missing state event, event_type: {k}, state_key:{s}"
+                )))
+            }
         },
     )
     .await?;
@@ -787,7 +817,7 @@ async fn resolve_state(
                 .collect::<StateMap<_>>()
         })
         .collect();
-    debug!("Resolving state");
+    debug!("resolving state");
 
     let version_rules = crate::room::get_version_rules(room_version_id)?;
     let state = match crate::core::state::resolve(
@@ -802,12 +832,15 @@ async fn resolve_state(
             .map(|set| set.iter().map(|id| id.to_owned()).collect::<HashSet<_>>())
             .collect::<Vec<_>>(),
         &async |id| timeline::get_pdu(&id).map_err(|_| StateError::other("missing PDU 4")),
-        |_| None, //TODO
+        |map| {
+            Some(Default::default())
+        }, //TODO
     )
     .await
     {
         Ok(new_state) => new_state,
-        Err(_) => {
+        Err(e) => {
+            error!("state resolution failed: {}", e);
             return Err(AppError::internal(
                 "state resolution failed, either an event could not be found or deserialization",
             ));

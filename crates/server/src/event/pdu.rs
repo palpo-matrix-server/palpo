@@ -143,11 +143,12 @@ impl SnPduEvent {
     }
 
     pub fn from_canonical_object(
+        room_id: &RoomId,
         event_id: &EventId,
         event_sn: Seqnum,
         json: CanonicalJsonObject,
     ) -> Result<Self, serde_json::Error> {
-        let pdu = PduEvent::from_canonical_object(event_id, json)?;
+        let pdu = PduEvent::from_canonical_object(room_id, event_id, json)?;
         Ok(Self::new(pdu, event_sn))
     }
 
@@ -159,6 +160,10 @@ impl SnPduEvent {
     ) -> AppResult<Self> {
         let pdu = PduEvent::from_json_value(room_id, event_id, json)?;
         Ok(Self::new(pdu, event_sn))
+    }
+
+    pub fn into_inner(self) -> PduEvent {
+        self.pdu
     }
 }
 impl AsRef<PduEvent> for SnPduEvent {
@@ -534,11 +539,13 @@ impl PduEvent {
 
         serde_json::from_value(data).expect("RawJson::from_value always works")
     }
-    
+
     pub fn from_canonical_object(
+        room_id: &RoomId,
         event_id: &EventId,
         mut json: CanonicalJsonObject,
     ) -> Result<Self, serde_json::Error> {
+        json.insert("room_id".to_owned(), room_id.as_str().into());
         json.insert(
             "event_id".to_owned(),
             CanonicalJsonValue::String(event_id.as_str().to_owned()),
@@ -558,7 +565,7 @@ impl PduEvent {
 
             serde_json::from_value(serde_json::Value::Object(obj)).map_err(Into::into)
         } else {
-            Err(AppError::public("Invalid JSON value"))
+            Err(AppError::public("invalid json value"))
         }
     }
 

@@ -8,6 +8,7 @@ use serde::Deserialize;
 use serde_json::value::to_raw_value;
 use ulid::Ulid;
 
+use crate::admin::room;
 use crate::core::client::filter::{RoomEventFilter, UrlFilter};
 use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
@@ -626,12 +627,26 @@ pub async fn hash_and_sign_event(
             .map_err(|_| StateError::other("missing PDU 6"))
     };
     let fetch_state = async |k: StateEventType, s: String| {
-        auth_events
+        if let Some(pdu) = auth_events
             .get(&(k.clone(), s.to_owned()))
             .map(|s| s.pdu.clone())
-            .ok_or_else(|| {
-                StateError::other(format!("missing auth events, type: {k}, state_key: {s}"))
-            })
+        {
+            return Ok(pdu);
+        }
+        if auth_rules.room_create_event_id_as_room_id && k == StateEventType::RoomCreate {
+            let pdu = super::get_create(room_id)
+                .map_err(|_| StateError::other("missing create event"))?
+                .into_inner();
+            if pdu.room_id != *room_id {
+                Err(StateError::other("mismatched room id in create event"))
+            } else {
+                Ok(pdu.into_inner())
+            }
+        } else {
+            Err(StateError::other(format!(
+                "missing state event, event_type: {k}, state_key:{s}"
+            )))
+        }
     };
     event_auth::auth_check(auth_rules, &pdu, &fetch_event, &fetch_state).await?;
 
@@ -641,7 +656,9 @@ pub async fn hash_and_sign_event(
 
     pdu_json.remove("event_id");
 
-    if version_rules.room_id_format == RoomIdFormatVersion::V2 {
+    if version_rules.room_id_format == RoomIdFormatVersion::V2
+        && pdu.event_ty == TimelineEventType::RoomCreate
+    {
         pdu_json.remove("room_id");
     }
 
@@ -656,9 +673,9 @@ pub async fn hash_and_sign_event(
         Err(e) => {
             return match e {
                 AppError::Signatures(crate::core::signatures::Error::PduSize) => {
-                    Err(MatrixError::too_large("Message is too long").into())
+                    Err(MatrixError::too_large("message is too long").into())
                 }
-                _ => Err(MatrixError::unknown("Signing event failed").into()),
+                _ => Err(MatrixError::unknown("signing event failed").into()),
             };
         }
     }
@@ -681,15 +698,9 @@ pub async fn hash_and_sign_event(
         "event_id".to_owned(),
         CanonicalJsonValue::String(pdu.event_id.as_str().to_owned()),
     );
-    if version_rules.room_id_format == RoomIdFormatVersion::V2 {
-        pdu_json.insert(
-            "room_id".to_owned(),
-            CanonicalJsonValue::String(room_id.as_str().to_owned()),
-        );
-    }
 
     if let Err(e) = validate_canonical_json(&pdu_json) {
-        error!("Invalid event json: {}", e);
+        error!("invalid event json: {}", e);
         return Err(MatrixError::bad_json(e.to_string()).into());
     }
 

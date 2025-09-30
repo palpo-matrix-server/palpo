@@ -327,14 +327,13 @@ async fn upgrade(
     // Create a replacement room
     let new_room_id = if version_rules.authorization.room_create_event_id_as_room_id {
         OwnedRoomId::try_from(format!("!placehold_{}", Ulid::new().to_string()))
-            .expect("Invalid room ID")
+            .expect("room id should be valid")
     } else {
         RoomId::new_v1(&conf.server_name)
     };
 
     let state_lock = room::lock_state(&room_id).await;
     room::ensure_room(&new_room_id, &body.new_version)?;
-
     // Send a m.room.tombstone event to the old room to indicate that it is not intended to be used any further
     // Fail if the sender does not have the required permissions
     let tombstone_event_id = timeline::build_and_append_pdu(
@@ -396,23 +395,23 @@ async fn upgrade(
         "room_version".into(),
         json!(&body.new_version)
             .try_into()
-            .map_err(|_| MatrixError::bad_json("Error forming creation event"))?,
+            .map_err(|_| MatrixError::bad_json("error forming creation event"))?,
     );
     create_event_content.insert(
         "predecessor".into(),
         json!(predecessor)
             .try_into()
-            .map_err(|_| MatrixError::bad_json("Error forming creation event"))?,
+            .map_err(|_| MatrixError::bad_json("error forming creation event"))?,
     );
     // Validate creation event content
     let de_result = serde_json::from_str::<CanonicalJsonObject>(
         to_raw_value(&create_event_content)
-            .expect("Error forming creation event")
+            .expect("error forming creation event")
             .get(),
     );
 
     if de_result.is_err() {
-        return Err(MatrixError::bad_json("Error forming creation event").into());
+        return Err(MatrixError::bad_json("error forming creation event").into());
     }
 
     let new_create_event = timeline::build_and_append_pdu(
@@ -476,6 +475,9 @@ async fn upgrade(
 
     // Replicate transferable state events to the new room
     for event_ty in transferable_state_events {
+        if event_ty == StateEventType::RoomPowerLevels {
+            continue; // Handled later
+        }
         let event_content = match room::get_state(&room_id, &event_ty, "", None) {
             Ok(v) => v.content.clone(),
             _ => continue, // Skipping missing events.
@@ -636,7 +638,7 @@ pub(super) async fn create_room(
                 room_version
             } else {
                 return Err(MatrixError::unsupported_room_version(
-                    "This server does not support that room version.",
+                    "this server does not support that room version",
                 )
                 .into());
             }
@@ -646,7 +648,7 @@ pub(super) async fn create_room(
     let version_rules = crate::room::get_version_rules(&room_version)?;
 
     if !conf.allow_room_creation && authed.appservice.is_none() && !authed.is_admin() {
-        return Err(MatrixError::forbidden("Room creation has been disabled.", None).into());
+        return Err(MatrixError::forbidden("room creation has been disabled", None).into());
     }
 
     let alias: Option<OwnedRoomAliasId> = if let Some(localpart) = &body.room_alias_name {
@@ -655,7 +657,7 @@ pub(super) async fn create_room(
             .map_err(|_| MatrixError::invalid_param("Invalid alias."))?;
 
         if room::resolve_local_alias(&alias).is_ok() {
-            return Err(MatrixError::room_in_use("Room alias already exists.").into());
+            return Err(MatrixError::room_in_use("room alias already exists").into());
         } else {
             Some(alias)
         }
@@ -712,14 +714,14 @@ pub(super) async fn create_room(
         .explicitly_privilege_room_creators
     {
         users.insert(sender_id.to_owned(), 100);
-    }
-
-    if preset == RoomPreset::TrustedPrivateChat {
-        for invitee_id in &body.invite {
-            if user_is_ignored(sender_id, invitee_id) || user_is_ignored(invitee_id, sender_id) {
-                continue;
+        if preset == RoomPreset::TrustedPrivateChat {
+            for invitee_id in &body.invite {
+                if user_is_ignored(sender_id, invitee_id) || user_is_ignored(invitee_id, sender_id)
+                {
+                    continue;
+                }
+                users.insert(invitee_id.to_owned(), 100);
             }
-            users.insert(invitee_id.to_owned(), 100);
         }
     }
 
@@ -753,7 +755,7 @@ pub(super) async fn create_room(
                     alias: Some(room_alias_id.to_owned()),
                     alt_aliases: vec![],
                 })
-                .expect("We checked that alias earlier, it must be fine"),
+                .expect("we checked that alias earlier, it must be fine"),
                 state_key: Some("".to_owned()),
                 ..Default::default()
             },
@@ -1015,7 +1017,7 @@ async fn create_create_event(
                 "room_version".into(),
                 json!(room_version.as_str())
                     .try_into()
-                    .map_err(|e| MatrixError::bad_json(format!("Invalid creation content: {e}")))?,
+                    .map_err(|e| MatrixError::bad_json(format!("invalid creation content: {e}")))?,
             );
 
             content
@@ -1057,7 +1059,7 @@ async fn create_create_event(
     }
 
     // 1. The room create event, using a placeholder room_id
-    let temp_room_id = OwnedRoomId::try_from("!placehold").expect("Invalid room ID");
+    let temp_room_id = OwnedRoomId::try_from("!placehold").expect("invalid room id");
     let state_lock = room::lock_state(&temp_room_id).await;
     room::ensure_room(&temp_room_id, room_version)?;
     let create_event = timeline::build_and_append_pdu(
@@ -1073,7 +1075,6 @@ async fn create_create_event(
         &state_lock,
     )
     .await?;
-
     drop(state_lock);
 
     let state_lock = room::lock_state(&create_event.room_id).await;

@@ -202,10 +202,10 @@ pub async fn knock_room(
             .json::<SendKnockResBody>()
             .await?;
 
-    info!("Send knock finished");
+    info!("send knock finished");
 
-    info!("Parsing knock event");
-    let parsed_knock_pdu = PduEvent::from_canonical_object(&event_id, knock_event.clone())
+    info!("parsing knock event");
+    let parsed_knock_pdu = PduEvent::from_canonical_object(room_id, &event_id, knock_event.clone())
         .map_err(|e| {
             StatusError::internal_server_error().brief(format!("Invalid knock event PDU: {e:?}"))
         })?;
