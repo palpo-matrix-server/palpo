@@ -443,7 +443,6 @@ pub fn reference_hash(
         return Err(Error::PduSize);
     }
 
-    println!("PppppppppppppppppppppppppDU JSON: {}", json);
     let hash = Sha256::digest(json.as_bytes());
 
     let base64_alphabet = match rules.event_id_format {

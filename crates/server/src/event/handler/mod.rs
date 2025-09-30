@@ -818,7 +818,6 @@ async fn resolve_state(
         })
         .collect();
     debug!("resolving state");
-    println!("=============fork states: {fork_states:#?}");
 
     let version_rules = crate::room::get_version_rules(room_version_id)?;
     let state = match crate::core::state::resolve(
@@ -834,7 +833,6 @@ async fn resolve_state(
             .collect::<Vec<_>>(),
         &async |id| timeline::get_pdu(&id).map_err(|_| StateError::other("missing PDU 4")),
         |map| {
-            println!("===============================conflieced state map: {map:#?}");
             Some(Default::default())
         }, //TODO
     )

@@ -677,11 +677,9 @@ pub(super) async fn create_room(
             create_create_event_legacy(sender_id, &body, &room_version, &version_rules).await?
         }
         RoomIdFormatVersion::V2 => {
-            println!("CCCCCCCCCCCCCCCCCCCCCCCCcc v2");
             create_create_event(sender_id, &body, &preset, &room_version, &version_rules).await?
         }
     };
-    println!("Cccccccccccreated room {}", room_id);
 
     // 2. Let the room creator join
     timeline::build_and_append_pdu(
@@ -1013,7 +1011,6 @@ async fn create_create_event(
 ) -> AppResult<(OwnedRoomId, RoomMutexGuard)> {
     let mut create_content = match &body.creation_content {
         Some(content) => {
-            println!("pppp               ppppppppppppp  content: {:?}", content);
             let mut content = content.deserialize_as::<CanonicalJsonObject>()?;
 
             content.insert(
@@ -1038,10 +1035,8 @@ async fn create_create_event(
             content
         }
     };
-    println!("zzzzzzzzzzzzzzzzzzz");
 
     if version_rules.authorization.additional_room_creators {
-        println!("pppp               ppppppppppppp  0");
         let mut additional_creators = body
             .creation_content
             .as_ref()
@@ -1062,7 +1057,6 @@ async fn create_create_event(
             );
         }
     }
-    println!("pppp               create content: {:#?}", create_content);
 
     // 1. The room create event, using a placeholder room_id
     let temp_room_id = OwnedRoomId::try_from("!placehold").expect("invalid room id");
@@ -1081,8 +1075,6 @@ async fn create_create_event(
         &state_lock,
     )
     .await?;
-
-    println!("cccccccccccccccccccccccccccccccreate event id:{:#?}", create_event);
     drop(state_lock);
 
     let state_lock = room::lock_state(&create_event.room_id).await;

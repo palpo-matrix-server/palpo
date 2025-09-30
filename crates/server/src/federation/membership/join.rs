@@ -12,7 +12,6 @@ pub async fn send_join_v1(
     room_id: &RoomId,
     pdu: &RawJsonValue,
 ) -> AppResult<RoomStateV1> {
-    println!("DDDDDDDDDDDDDDDDDDDDDDDDDDDDD pdu: {pdu:?}");
     if !room::room_exists(room_id)? {
         return Err(MatrixError::not_found("room is unknown to this server.").into());
     }
@@ -178,7 +177,6 @@ pub async fn send_join_v1(
     .await?;
 
     let state_ids = state::get_full_state_ids(frame_id)?;
-    println!("===========state ids: {:#?}", state_ids);
     let state = state_ids
         .iter()
         .filter_map(|(_, id)| timeline::get_pdu_json(id).ok().flatten())
@@ -202,7 +200,6 @@ pub async fn send_join_v1(
         error!("failed to notify user joined to servers: {e}");
     }
 
-    println!("===========state : {:#?}  event value: {:#?}", state, value);
     Ok(RoomStateV1 {
         auth_chain,
         state,

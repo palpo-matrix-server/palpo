@@ -530,7 +530,6 @@ pub async fn hash_and_sign_event(
     room_version: &RoomVersionId,
     _state_lock: &RoomMutexGuard,
 ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
-    println!("===============hash_and_sign_event");
     let PduBuilder {
         event_type,
         content,
@@ -669,7 +668,6 @@ pub async fn hash_and_sign_event(
         to_canonical_value(&conf.server_name).expect("server name is a valid CanonicalJsonValue"),
     );
 
-    println!("===============pdu json: {:#?}", pdu_json);
     match crate::server_key::hash_and_sign_event(&mut pdu_json, room_version) {
         Ok(_) => {}
         Err(e) => {
@@ -682,22 +680,12 @@ pub async fn hash_and_sign_event(
         }
     }
 
-    println!("===============pdu json2: {:#?}", pdu_json);
     // Generate event id
     pdu.event_id = crate::event::gen_event_id(&pdu_json, room_version)?;
-    println!("===============pdu event id: {}", pdu.event_id);
     if version_rules.room_id_format == RoomIdFormatVersion::V2
         && pdu.event_ty == TimelineEventType::RoomCreate
     {
-        println!(
-            "mmmmmmmmmmmmmmmmmmmmmmmmm room id version 2  event id: {}",
-            pdu.event_id
-        );
         pdu.room_id = RoomId::new_v2(pdu.event_id.localpart())?;
-        println!(
-            "mmmmmmmmmmmmmmmmmmmmmmmmm room id version 2   room id: {}",
-            pdu.room_id
-        );
         diesel::update(
             event_forward_extremities::table.filter(event_forward_extremities::room_id.eq(room_id)),
         )
@@ -710,25 +698,11 @@ pub async fn hash_and_sign_event(
         "event_id".to_owned(),
         CanonicalJsonValue::String(pdu.event_id.as_str().to_owned()),
     );
-    // if version_rules.room_id_format == RoomIdFormatVersion::V2 {
-    //     println!(
-    //         "mmmmmmmmmmmmmmmmmmmmmmmmm room id version 2 insert room id: {}",
-    //         pdu.room_id
-    //     );
-    //     pdu_json.insert(
-    //         "room_id".to_owned(),
-    //         CanonicalJsonValue::String(room_id.as_str().to_owned()),
-    //     );
-    // }
 
     if let Err(e) = validate_canonical_json(&pdu_json) {
         error!("invalid event json: {}", e);
         return Err(MatrixError::bad_json(e.to_string()).into());
     }
-    println!(
-        "mmmmmmmmmmmmmmmmmmmmmmmmm room id pdu_json: {:#?}",
-        pdu_json
-    );
 
     let (event_sn, event_guard) = crate::event::ensure_event_sn(room_id, &pdu.event_id)?;
     NewDbEvent {
