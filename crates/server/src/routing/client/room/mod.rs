@@ -313,6 +313,7 @@ async fn upgrade(
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
     let room_id = room_id.into_inner();
+    println!("======old room id: {}", room_id);
 
     if !config::supported_room_versions().contains(&body.new_version) {
         return Err(MatrixError::unsupported_room_version(
@@ -324,17 +325,25 @@ async fn upgrade(
     let conf = config::get();
     let version_rules = crate::room::get_version_rules(&body.new_version)?;
 
+    println!(
+        "================upgrade room to version: {}",
+        body.new_version
+    );
+    println!(
+        "================upgrade room to version_rules: {:#?}",
+        version_rules
+    );
     // Create a replacement room
     let new_room_id = if version_rules.authorization.room_create_event_id_as_room_id {
         OwnedRoomId::try_from(format!("!placehold_{}", Ulid::new().to_string()))
-            .expect("Invalid room ID")
+            .expect("room id should be valid")
     } else {
         RoomId::new_v1(&conf.server_name)
     };
 
     let state_lock = room::lock_state(&room_id).await;
     room::ensure_room(&new_room_id, &body.new_version)?;
-
+    println!("================upgrad 1");
     // Send a m.room.tombstone event to the old room to indicate that it is not intended to be used any further
     // Fail if the sender does not have the required permissions
     let tombstone_event_id = timeline::build_and_append_pdu(
@@ -362,6 +371,7 @@ async fn upgrade(
         (*tombstone_event_id).to_owned(),
     ));
 
+    println!("================upgrad 2");
     // Send a m.room.create event containing a predecessor field and the applicable room_version
 
     // Get the old room creation event
@@ -392,29 +402,32 @@ async fn upgrade(
         );
     }
 
+    println!("================upgrad 3");
     create_event_content.insert(
         "room_version".into(),
         json!(&body.new_version)
             .try_into()
-            .map_err(|_| MatrixError::bad_json("Error forming creation event"))?,
+            .map_err(|_| MatrixError::bad_json("error forming creation event"))?,
     );
     create_event_content.insert(
         "predecessor".into(),
         json!(predecessor)
             .try_into()
-            .map_err(|_| MatrixError::bad_json("Error forming creation event"))?,
+            .map_err(|_| MatrixError::bad_json("error forming creation event"))?,
     );
     // Validate creation event content
     let de_result = serde_json::from_str::<CanonicalJsonObject>(
         to_raw_value(&create_event_content)
-            .expect("Error forming creation event")
+            .expect("error forming creation event")
             .get(),
     );
 
     if de_result.is_err() {
-        return Err(MatrixError::bad_json("Error forming creation event").into());
+        println!("================upgrad 4");
+        return Err(MatrixError::bad_json("error forming creation event").into());
     }
 
+    println!("================upgrad 5");
     let new_create_event = timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomCreate,
@@ -435,6 +448,7 @@ async fn upgrade(
 
     let new_create_event = RoomCreateEvent::new(new_create_event.pdu);
 
+    println!("================upgrad 6");
     // Join the new room
     timeline::build_and_append_pdu(
         PduBuilder {
@@ -474,13 +488,21 @@ async fn upgrade(
         StateEventType::RoomPowerLevels,
     ];
 
+    println!("================upgrad 7 -- 0");
     // Replicate transferable state events to the new room
     for event_ty in transferable_state_events {
+        if event_ty == StateEventType::RoomPowerLevels {
+            continue; // Handled later
+        }
+        println!("================upgrad 7 -- 1");
         let event_content = match room::get_state(&room_id, &event_ty, "", None) {
             Ok(v) => v.content.clone(),
             _ => continue, // Skipping missing events.
         };
 
+        println!(
+            "================upgrad 7 -- 2  event_ty:{event_ty:?}  event_content:{event_content:?}"
+        );
         timeline::build_and_append_pdu(
             PduBuilder {
                 event_type: event_ty.to_string().into(),
@@ -494,13 +516,16 @@ async fn upgrade(
             &state_lock,
         )
         .await?;
+        println!("================upgrad 7 -- 3");
     }
 
+    println!("================upgrad 7 -- 4");
     // Moves any local aliases to the new room
     for alias in room::local_aliases_for_room(&room_id)? {
         room::set_alias(&new_room_id, &alias, sender_id)?;
     }
 
+    println!("================upgrad 7 -- 5");
     // Get the old room power levels
     let mut power_levels_event_content = room::get_state_content::<RoomPowerLevelsEventContent>(
         &room_id,
@@ -509,6 +534,7 @@ async fn upgrade(
         None,
     )?;
 
+    println!("================upgrad 8");
     // Setting events_default and invite to the greater of 50 and users_default + 1
     let restricted_level = max(50, power_levels_event_content.users_default + 1);
     if power_levels_event_content.events_default < restricted_level {
@@ -517,6 +543,10 @@ async fn upgrade(
     if power_levels_event_content.invite < restricted_level {
         power_levels_event_content.invite = restricted_level;
     }
+    println!(
+        "================upgrad 9  room_id:{room_id} {}",
+        crate::room::get_version(&room_id)?
+    );
     // Modify the power levels in the old room to prevent sending of events and inviting new users
     let _ = timeline::build_and_append_pdu(
         PduBuilder {
@@ -533,14 +563,17 @@ async fn upgrade(
     )
     .await?;
 
+    println!("========xxxxxxxxxxxx===version_rules: {:#?}", version_rules);
     if version_rules
         .authorization
         .explicitly_privilege_room_creators
     {
+        println!("zzzzzzzzzz");
         let creators = new_create_event.creators()?;
         for creator in &creators {
             power_levels_event_content.users.remove(creator);
         }
+        println!("DDDDDDDDDDDDDDDDDDDDF  creators: {:?}", creators);
         power_levels_event_content.users.remove(sender_id);
     }
     let _ = timeline::build_and_append_pdu(
@@ -712,14 +745,14 @@ pub(super) async fn create_room(
         .explicitly_privilege_room_creators
     {
         users.insert(sender_id.to_owned(), 100);
-    }
-
-    if preset == RoomPreset::TrustedPrivateChat {
-        for invitee_id in &body.invite {
-            if user_is_ignored(sender_id, invitee_id) || user_is_ignored(invitee_id, sender_id) {
-                continue;
+        if preset == RoomPreset::TrustedPrivateChat {
+            for invitee_id in &body.invite {
+                if user_is_ignored(sender_id, invitee_id) || user_is_ignored(invitee_id, sender_id)
+                {
+                    continue;
+                }
+                users.insert(invitee_id.to_owned(), 100);
             }
-            users.insert(invitee_id.to_owned(), 100);
         }
     }
 

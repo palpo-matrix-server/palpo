@@ -125,7 +125,9 @@ impl<E: Event> RoomCreateEvent<E> {
     pub fn creators(&self) -> StateResult<HashSet<OwnedUserId>> {
         let mut creators = self.additional_creators()?;
 
+        println!("creators before insert: {:?}", creators);
         creators.insert(self.creator()?.into_owned());
+        println!("creators after insert: {:?}", creators);
 
         Ok(creators)
     }

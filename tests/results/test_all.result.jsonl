@@ -22,7 +22,6 @@
 {"Action":"fail","Test":"TestKnocking/Users_in_the_room_see_a_user's_membership_update_when_they_knock#01"}
 {"Action":"fail","Test":"TestMSC4289PrivilegedRoomCreators"}
 {"Action":"fail","Test":"TestMSC4289PrivilegedRoomCreators/admin_with_>PL100_sorts_after_the_room_creator_for_state_resolution"}
-{"Action":"fail","Test":"TestMSC4289PrivilegedRoomCreators/power_level_cannot_be_set_beyond_max_canonical_JSON_int"}
 {"Action":"fail","Test":"TestMSC4289PrivilegedRoomCreators/power_level_content_override_cannot_set_the_room_creator"}
 {"Action":"fail","Test":"TestMSC4291RoomIDAsHashOfCreateEvent_AuthEventsOmitsCreateEvent"}
 {"Action":"fail","Test":"TestMSC4291RoomIDAsHashOfCreateEvent_UpgradedRooms"}
