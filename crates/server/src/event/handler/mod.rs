@@ -270,10 +270,10 @@ fn process_to_outlier_pdu(
         value.remove("unsigned");
 
         let version_rules = crate::room::get_version_rules(room_version_id)?;
-    let auth_rules = &version_rules.authorization;
+        let auth_rules = &version_rules.authorization;
         let origin_server_ts = value.get("origin_server_ts").ok_or_else(|| {
-            error!("invalid PDU, no origin_server_ts field");
-            MatrixError::missing_param("invalid PDU, no origin_server_ts field")
+            error!("invalid pdu, no origin_server_ts field");
+            MatrixError::missing_param("invalid pdu, no origin_server_ts field")
         })?;
 
         let _origin_server_ts = {
@@ -298,7 +298,7 @@ fn process_to_outlier_pdu(
                 // Skip the PDU if it is redacted and we already have it as an outlier event
                 if timeline::get_pdu_json(event_id)?.is_some() {
                     return Err(MatrixError::invalid_param(
-                        "Event was redacted and we already knew about it",
+                        "event was redacted and we already knew about it",
                     )
                     .into());
                 }
@@ -833,8 +833,17 @@ async fn resolve_state(
             .collect::<Vec<_>>(),
         &async |id| timeline::get_pdu(&id).map_err(|_| StateError::other("missing PDU 4")),
         |map| {
-            Some(Default::default())
-        }, //TODO
+            let mut subgraph = HashSet::new();
+            for event_ids in map.values() {
+                for event_id in event_ids {
+                    if let Ok(pdu) = timeline::get_pdu(event_id) {
+                        subgraph.extend(pdu.auth_events.iter().cloned());
+                        subgraph.extend(pdu.prev_events.iter().cloned());
+                    }
+                }
+            }
+            Some(subgraph)
+        },
     )
     .await
     {
@@ -1064,7 +1073,11 @@ pub async fn fetch_and_process_missing_prev_events(
         earliest_events.extend(known_events.iter().cloned());
         let missing_events = prev_events
             .into_iter()
-            .filter(|id| !earliest_events.contains(id) && !fetched_events.contains_key(id))
+            .filter(|id| {
+                !earliest_events.contains(id)
+                    && !fetched_events.contains_key(id)
+                    && !timeline::get_pdu(id).is_ok()
+            })
             .collect::<Vec<_>>();
         if missing_events.is_empty() {
             continue;

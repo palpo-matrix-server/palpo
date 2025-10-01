@@ -177,6 +177,7 @@ pub fn send_pdu_room(
         .collect::<Vec<_>>();
     servers.sort_unstable();
     servers.dedup();
+    println!("===============pdu_id: {pdu_id} ======sendsend_pdu_room  {} {:?}", room_id, servers);
     send_pdu_servers(servers.into_iter(), pdu_id)
 }
 

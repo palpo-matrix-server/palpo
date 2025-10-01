@@ -60,6 +60,7 @@ async fn send_message(
         .into());
     }
 
+    println!("DDDDDDDDDDXXXXXXXXXXXXXXXXXXXxx send_message {body:#?}");
     let txn_start_time = Instant::now();
     let resolved_map = process_pdus(&body.pdus, &body.origin, &txn_start_time).await?;
     process_edus(body.edus, &body.origin).await;
@@ -77,8 +78,10 @@ async fn process_pdus(
     origin: &ServerName,
     txn_start_time: &Instant,
 ) -> AppResult<BTreeMap<OwnedEventId, AppResult<()>>> {
+    println!("==========process_pdus  {} pdus", pdus.len());
     let mut parsed_pdus = Vec::with_capacity(pdus.len());
     for pdu in pdus {
+        println!("=====================process_pdu  {:?}", pdu.get());
         parsed_pdus.push(match crate::parse_incoming_pdu(pdu) {
             Ok(t) => t,
             Err(e) => {
@@ -89,10 +92,12 @@ async fn process_pdus(
 
         // We do not add the event_id field to the pdu here because of signature and hashes checks
     }
+    println!("xxxxxxxxxxxxxxxxxxxxxxx  0");
     let mut resolved_map = BTreeMap::new();
     for (event_id, value, room_id, room_version_id) in parsed_pdus {
         // crate::server::check_running()?;
         let pdu_start_time = Instant::now();
+    println!("xxxxxxxxxxxxxxxxxxxxxxx  1");
         let result = handler::process_incoming_pdu(
             origin,
             &event_id,
@@ -102,6 +107,7 @@ async fn process_pdus(
             true,
         )
         .await;
+    println!("xxxxxxxxxxxxxxxxxxxxxxx  2");
         debug!(
             pdu_elapsed = ?pdu_start_time.elapsed(),
             txn_elapsed = ?txn_start_time.elapsed(),
