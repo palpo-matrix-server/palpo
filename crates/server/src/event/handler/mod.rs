@@ -1226,7 +1226,6 @@ pub async fn fetch_and_process_auth_chain(
                     &room_version_id,
                     event_value,
                     known_events,
-                    false,
                 )
                 .await?;
             }
