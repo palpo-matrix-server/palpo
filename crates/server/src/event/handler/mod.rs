@@ -385,8 +385,15 @@ fn process_to_outlier_pdu(
             timeline::get_may_missing_pdus(room_id, &incoming_pdu.auth_events)?;
 
         if !missing_auth_event_ids.is_empty() {
-            fetch_and_process_auth_chain(origin, room_id, &incoming_pdu.event_id, known_events)
-                .await?;
+            // fetch_and_process_auth_chain(origin, room_id, &incoming_pdu.event_id, known_events)
+            //     .await?;
+            crate::event::handler::fetch_state(
+                origin,
+                room_id,
+                room_version_id,
+                &incoming_pdu.event_id,
+            )
+            .await?;
         }
         let (auth_events, missing_auth_event_ids) =
             timeline::get_may_missing_pdus(room_id, &incoming_pdu.auth_events)?;
@@ -573,7 +580,7 @@ pub async fn process_to_timeline_pdu(
             debug!("preparing for stateres to derive new room state");
 
             // We also add state after incoming event to the fork states
-            let mut state_after = state_at_incoming_event.clone();
+            // let mut state_after = state_at_incoming_event.clone();
 
             let state_key_id =
                 state::ensure_field_id(&incoming_pdu.event_ty.to_string().into(), state_key)?;
@@ -1062,10 +1069,6 @@ pub async fn fetch_and_process_missing_prev_events(
     incoming_pdu: &PduEvent,
     known_events: &mut HashSet<OwnedEventId>,
 ) -> AppResult<()> {
-    println!(
-        ">>>>>>>>>>>>>>>>>>>>>>>.fetch_and_process_missing_prev_events known_events:{:?}",
-        known_events.len()
-    );
     let room_version_id = &room::get_version(room_id)?;
 
     let min_depth = timeline::first_pdu_in_room(room_id)

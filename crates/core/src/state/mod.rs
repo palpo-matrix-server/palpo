@@ -108,7 +108,6 @@ where
 
     info!(count = conflicted_state_set.len(), "conflicted events");
     trace!(map = ?conflicted_state_set, "conflicted events");
-    println!("ccccccconflicted events: {:#?}", conflicted_state_set);
 
     // Since v12, fetch the conflicted state subgraph.
     let conflicted_state_subgraph = if state_res_rules.consider_conflicted_state_subgraph {
@@ -150,7 +149,6 @@ where
 
     info!(count = full_conflicted_set.len(), "full conflicted set");
     trace!(set = ?full_conflicted_set, "full conflicted set");
-    println!("ffffffull conflicted set: {full_conflicted_set:#?}");
 
     // 1. Select the set X of all power events that appear in the full conflicted set. For each such
     //    power event P, enlarge X by adding the events in the auth chain of P which also belong to

@@ -102,14 +102,12 @@ async fn leave_room_local(
     )
     .await?;
     if just_invited && member_event.sender.server_name() != config::server_name() {
-        println!("=====================send leave pdu to other server  {}", user_id);
         let _ = crate::sending::send_pdu_room(
             room_id,
             &pdu.event_id,
             &[member_event.sender.server_name().to_owned()],
         );
     } else {
-        println!("=====================send leave pdu to other server2  {}", user_id);
         let _ = crate::sending::send_pdu_room(room_id, &pdu.event_id, &[]);
     }
     Ok((pdu.event_id.clone(), pdu.event_sn))
