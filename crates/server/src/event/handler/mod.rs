@@ -124,6 +124,7 @@ pub(crate) async fn process_incoming_pdu(
         room_version_id,
         value,
         &mut Default::default(),
+        true,
     )
     .await?
     else {
@@ -167,6 +168,7 @@ pub(crate) async fn process_pulled_pdu(
     room_version_id: &RoomVersionId,
     value: BTreeMap<String, CanonicalJsonValue>,
     known_events: &mut HashSet<OwnedEventId>,
+    fetch_missing_prev_events: bool,
 ) -> AppResult<()> {
     // 1.3.1 Check room ACL on origin field/server
     handler::acl_check(origin, room_id)?;
@@ -175,11 +177,11 @@ pub(crate) async fn process_pulled_pdu(
     let sender: OwnedUserId = serde_json::from_value(
         value
             .get("sender")
-            .ok_or_else(|| MatrixError::invalid_param("PDU does not have a valid sender key: {e}"))?
+            .ok_or_else(|| MatrixError::invalid_param("pdu does not have a valid sender key: {e}"))?
             .clone()
             .into(),
     )
-    .map_err(|_| MatrixError::bad_json("User ID in sender is invalid."))?;
+    .map_err(|_| MatrixError::bad_json("user id in sender is invalid"))?;
 
     if sender.server_name().ne(origin) {
         handler::acl_check(sender.server_name(), room_id)?;
@@ -197,6 +199,7 @@ pub(crate) async fn process_pulled_pdu(
         room_version_id,
         value,
         known_events,
+        fetch_missing_prev_events,
     )
     .await?
     else {
@@ -205,7 +208,7 @@ pub(crate) async fn process_pulled_pdu(
 
     // Skip old events
     let first_pdu_in_room = timeline::first_pdu_in_room(room_id)?
-        .ok_or_else(|| AppError::internal("failed to find first pdu in database."))?;
+        .ok_or_else(|| AppError::internal("failed to find first pdu in database"))?;
     if incoming_pdu.origin_server_ts < first_pdu_in_room.origin_server_ts {
         return Ok(());
     }
@@ -233,6 +236,7 @@ fn process_to_outlier_pdu(
     room_version_id: &RoomVersionId,
     mut value: BTreeMap<String, CanonicalJsonValue>,
     known_events: &mut HashSet<OwnedEventId>,
+    fetch_missing_prev_events: bool,
 ) -> Pin<
     Box<
         impl Future<
@@ -359,15 +363,17 @@ fn process_to_outlier_pdu(
             return Ok(None);
         }
 
-        // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
-        fetch_and_process_missing_prev_events(
-            origin,
-            room_id,
-            room_version_id,
-            &incoming_pdu,
-            known_events,
-        )
-        .await?;
+        if fetch_missing_prev_events {
+            // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
+            fetch_and_process_missing_prev_events(
+                origin,
+                room_id,
+                room_version_id,
+                &incoming_pdu,
+                known_events,
+            )
+            .await?;
+        }
 
         // 6. Reject "due to auth events" if the event doesn't pass auth based on the auth events
         debug!(
@@ -1029,6 +1035,7 @@ pub(crate) async fn fetch_and_process_outliers(
                 room_version_id,
                 value,
                 &mut Default::default(),
+                true,
             )
             .await
             {
@@ -1074,10 +1081,6 @@ pub async fn fetch_and_process_missing_prev_events(
         incoming_pdu.prev_events.clone(),
     );
     while let Some((event_id, prev_events)) = missing_stack.pop() {
-        println!(
-            "======>>>>>>>>>>==========event_id: {}  prev_events: {prev_events:#?}",
-            event_id
-        );
         let mut earliest_events = forward_extremities.clone();
         earliest_events.extend(known_events.iter().cloned());
 
@@ -1158,7 +1161,6 @@ pub async fn fetch_and_process_missing_prev_events(
                     })
                     .collect::<Vec<_>>();
                 if !prev_events.is_empty() {
-                    println!("==============add prev events: {prev_events:#?}");
                     missing_stack.insert(event_id.clone(), prev_events);
                 }
             }
@@ -1186,6 +1188,7 @@ pub async fn fetch_and_process_missing_prev_events(
                     room_version_id,
                     event_val.clone(),
                     known_events,
+                    false,
                 )
                 .await?;
             }
@@ -1226,6 +1229,7 @@ pub async fn fetch_and_process_auth_chain(
                     &room_version_id,
                     event_value,
                     known_events,
+                    true,
                 )
                 .await?;
             }
