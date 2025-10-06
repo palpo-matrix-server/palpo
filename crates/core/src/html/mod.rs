@@ -13,7 +13,7 @@
 //! [spec]: https://spec.matrix.org/latest/client-server-api/#mroommessage-msgtypes
 
 #![warn(missing_docs)]
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 use std::{
     cell::RefCell,
     collections::BTreeSet,
