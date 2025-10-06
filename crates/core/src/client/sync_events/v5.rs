@@ -172,7 +172,7 @@ pub struct SyncList {
     pub count: usize,
 }
 
-/// A slising sync response updated room (see [`super::Response::rooms`]).
+/// A sliding sync response updated room (see [`super::Response::rooms`]).
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct SyncRoom {
     /// The name as calculated by the server.
