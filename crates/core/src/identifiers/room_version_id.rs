@@ -120,8 +120,6 @@ impl RoomVersionId {
             Self::V9 => RoomVersionRules::V9,
             Self::V10 => RoomVersionRules::V10,
             Self::V11 => RoomVersionRules::V11,
-            // #[cfg(feature = "unstable-hydra")]
-            // Self::HydraV11 => RoomVersionRules::HYDRA_V11,
             Self::V12 => RoomVersionRules::V12,
             #[cfg(feature = "unstable-msc2870")]
             Self::MSC2870 => RoomVersionRules::MSC2870,
