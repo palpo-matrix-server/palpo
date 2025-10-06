@@ -27,7 +27,7 @@ use html5ever::serialize::{Serialize, SerializeOpts, Serializer, TraversalScope,
 use html5ever::tendril::TendrilSink;
 use html5ever::tree_builder::{NodeOrText, TreeSink};
 pub use html5ever::{Attribute, LocalName, Namespace, Prefix, QualName, tendril::StrTendril};
-use html5ever::{ParseOpts, local_name, namespace_url, ns, parse_fragment};
+use html5ever::{ParseOpts, local_name,  ns, parse_fragment};
 
 mod helpers;
 mod sanitizer_config;
@@ -80,6 +80,7 @@ impl Html {
             ParseOpts::default(),
             QualName::new(None, ns!(html), local_name!("div")),
             Vec::new(),
+            true
         );
         parser.process(string.into());
         parser.finish()
