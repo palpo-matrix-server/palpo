@@ -42,6 +42,7 @@ pub use self::{
         CrossSigningOrDeviceSignatures, DeviceSignatures, EntitySignatures, ServerSignatures,
         Signatures,
     },
+    space_child_order::{OwnedSpaceChildOrder, SpaceChildOrder},
     transaction_id::{OwnedTransactionId, TransactionId},
     user_id::{OwnedUserId, UserId},
     voip_id::{OwnedVoipId, VoipId},
@@ -68,6 +69,7 @@ mod server_name;
 mod server_signing_key_version;
 mod session_id;
 mod signatures;
+mod space_child_order;
 mod transaction_id;
 mod voip_id;
 mod voip_version_id;
