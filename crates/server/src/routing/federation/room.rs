@@ -268,10 +268,9 @@ async fn make_knock(
     }
 
     if args.user_id.server_name() != origin {
-        return Err(MatrixError::bad_json(
-            "not allowed to knock on behalf of another server/user",
-        )
-        .into());
+        return Err(
+            MatrixError::bad_json("not allowed to knock on behalf of another server/user").into(),
+        );
     }
 
     // ACL check origin server
@@ -302,11 +301,9 @@ async fn make_knock(
             "remote user {} is banned from {} but attempted to knock",
             &args.user_id, &args.room_id
         );
-        return Err(MatrixError::forbidden(
-            "you cannot knock on a room you are banned from",
-            None,
-        )
-        .into());
+        return Err(
+            MatrixError::forbidden("you cannot knock on a room you are banned from", None).into(),
+        );
     }
 
     let (_pdu, mut pdu_json, _event_guard) = timeline::hash_and_sign_event(

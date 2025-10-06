@@ -7,8 +7,8 @@
 
 use std::time::Duration;
 
-use serde::{Deserialize, Serialize};
 use salvo::oapi::ToSchema;
+use serde::{Deserialize, Serialize};
 
 use crate::PrivOwnedStr;
 use crate::UnixMillis;
@@ -128,8 +128,8 @@ mod tests {
     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
 
     use super::{NotificationType, RtcNotificationEventContent};
-    use crate::{UnixMillis, owned_event_id};
     use crate::events::{AnyMessageLikeEvent, Mentions, MessageLikeEvent};
+    use crate::{UnixMillis, owned_event_id};
 
     #[test]
     fn notification_event_serialization() {

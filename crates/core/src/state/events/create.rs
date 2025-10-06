@@ -6,10 +6,7 @@ use serde::{Deserialize, de::IgnoredAny};
 
 use super::Event;
 use crate::room_version_rules::RoomVersionRules;
-use crate::{
-    OwnedUserId, RoomVersionId, UserId, 
-    serde::from_raw_json_value, state::StateResult,
-};
+use crate::{OwnedUserId, RoomVersionId, UserId, serde::from_raw_json_value, state::StateResult};
 
 /// A helper type for an [`Event`] of type `m.room.create`.
 ///

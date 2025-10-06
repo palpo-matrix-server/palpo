@@ -4,8 +4,8 @@
 
 use std::collections::BTreeMap;
 
-use serde::{Deserialize, Serialize};
 use salvo::oapi::ToSchema;
+use serde::{Deserialize, Serialize};
 
 use crate::OwnedRoomId;
 use crate::macros::EventContent;
@@ -96,8 +96,8 @@ mod tests {
     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
 
     use super::DoNotDisturbEventContent;
-    use crate::owned_room_id;
     use crate::events::{AnyGlobalAccountDataEvent, do_not_disturb::DoNotDisturbRoomKey};
+    use crate::owned_room_id;
 
     #[test]
     fn serialization_with_single_room() {

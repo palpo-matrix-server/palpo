@@ -62,7 +62,7 @@ impl ConditionalPushRule {
     ///
     /// * `event` - The flattened JSON representation of a room message event.
     /// * `context` - The context of the room at the time of the event.
-    pub fn applies(&self, event: &FlattenedJson, context: &PushConditionRoomCtx) -> bool {
+    pub async fn applies(&self, event: &FlattenedJson, context: &PushConditionRoomCtx) -> bool {
         if !self.enabled {
             return false;
         }
@@ -100,9 +100,12 @@ impl ConditionalPushRule {
             return false;
         }
 
-        self.conditions
-            .iter()
-            .all(|cond| cond.applies(event, context))
+        for cond in &self.conditions {
+            if !cond.applies(event, context).await {
+                return false;
+            }
+        }
+        true
     }
 }
 

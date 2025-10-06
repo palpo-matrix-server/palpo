@@ -1,3 +1,7 @@
+#[cfg(all(feature = "unstable-msc4306"))]
+use std::panic::RefUnwindSafe;
+#[cfg(feature = "unstable-msc4306")]
+use std::{future::Future, pin::Pin, sync::Arc};
 use std::{collections::BTreeMap, ops::RangeBounds, str::FromStr};
 
 use regex::bytes::Regex;
@@ -11,6 +15,8 @@ use crate::{
     OwnedRoomId, OwnedUserId, PrivOwnedStr, RoomVersionId, UserId,
     power_levels::NotificationPowerLevels, room_version_rules::RoomPowerLevelsRules,
 };
+#[cfg(feature = "unstable-msc4306")]
+use crate::EventId;
 
 mod flattened_json;
 mod push_condition_serde;
@@ -130,6 +136,17 @@ pub enum PushCondition {
         value: ScalarJsonValue,
     },
 
+    /// Matches a thread event based on the user's thread subscription status, as defined by
+    /// [MSC4306].
+    ///
+    /// [MSC4306]: https://github.com/matrix-org/matrix-spec-proposals/pull/4306
+    #[cfg(feature = "unstable-msc4306")]
+    ThreadSubscription {
+        /// Whether the user must be subscribed (`true`) or unsubscribed (`false`) to the thread
+        /// for the condition to match.
+        subscribed: bool,
+    },
+
     #[doc(hidden)]
     #[salvo(schema(skip))]
     _Custom(_CustomPushCondition),
@@ -161,7 +178,7 @@ impl PushCondition {
     /// * `context` - The context of the room at the time of the event. If the
     ///   power levels context is missing from it, conditions that depend on it
     ///   will never apply.
-    pub fn applies(&self, event: &FlattenedJson, context: &PushConditionRoomCtx) -> bool {
+    pub async fn applies(&self, event: &FlattenedJson, context: &PushConditionRoomCtx) -> bool {
         if event
             .get_str("sender")
             .is_some_and(|sender| sender == context.user_id)
@@ -215,6 +232,33 @@ impl PushCondition {
                 .get(key)
                 .and_then(FlattenedJsonValue::as_array)
                 .is_some_and(|a| a.contains(value)),
+            #[cfg(feature = "unstable-msc4306")]
+            Self::ThreadSubscription {
+                subscribed: must_be_subscribed,
+            } => {
+                let Some(has_thread_subscription_fn) = &context.has_thread_subscription_fn else {
+                    // If we don't have a function to check thread subscriptions, we can't
+                    // determine if the condition applies.
+                    return false;
+                };
+
+                // The event must have a relation of type `m.thread`.
+                if event.get_str("content.m\\.relates_to.rel_type") != Some("m.thread") {
+                    return false;
+                }
+
+                // Retrieve the thread root event ID.
+                let Some(Ok(thread_root)) = event
+                    .get_str("content.m\\.relates_to.event_id")
+                    .map(<&EventId>::try_from)
+                else {
+                    return false;
+                };
+
+                let is_subscribed = has_thread_subscription_fn(thread_root).await;
+
+                *must_be_subscribed == is_subscribed
+            }
             Self::_Custom(_) => false,
         }
     }
@@ -235,7 +279,7 @@ pub struct _CustomPushCondition {
 
 /// The context of the room associated to an event to be able to test all push
 /// conditions.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 #[allow(clippy::exhaustive_structs)]
 pub struct PushConditionRoomCtx {
     /// The ID of the room.
@@ -257,6 +301,71 @@ pub struct PushConditionRoomCtx {
 
     /// The list of features this room's version or the room itself supports.
     pub supported_features: Vec<RoomVersionFeature>,
+
+    /// A closure that returns a future indicating if the given thread (represented by its thread
+    /// root event id) is subscribed to by the current user, where subscriptions are defined as per
+    /// [MSC4306].
+    ///
+    /// [MSC4306]: https://github.com/matrix-org/matrix-spec-proposals/pull/4306
+    #[cfg(feature = "unstable-msc4306")]
+    pub has_thread_subscription_fn: Option<Arc<HasThreadSubscriptionFn>>,
+}
+impl PushConditionRoomCtx {
+    /// Create a new `PushConditionRoomCtx`.
+    pub fn new(
+        room_id: OwnedRoomId,
+        member_count: u64,
+        user_id: OwnedUserId,
+        user_display_name: String,
+    ) -> Self {
+        Self {
+            room_id,
+            member_count,
+            user_id,
+            user_display_name,
+            power_levels: None,
+            #[cfg(feature = "unstable-msc3931")]
+            supported_features: Vec::new(),
+            #[cfg(feature = "unstable-msc4306")]
+            has_thread_subscription_fn: None,
+        }
+    }
+
+    /// Set a function to check if the user is subscribed to a thread, so as to define the push
+    /// rules defined in [MSC4306].
+    ///
+    /// [MSC4306]: https://github.com/matrix-org/matrix-spec-proposals/pull/4306
+    #[cfg(feature = "unstable-msc4306")]
+    pub fn with_has_thread_subscription_fn(
+        self,
+        #[cfg(not(target_family = "wasm"))]
+        has_thread_subscription_fn: impl for<'a> Fn(
+            &'a EventId,
+        ) -> HasThreadSubscriptionFuture<'a>
+        + Send
+        + Sync
+        + RefUnwindSafe
+        + 'static,
+        #[cfg(target_family = "wasm")]
+        has_thread_subscription_fn: impl for<'a> Fn(
+            &'a EventId,
+        ) -> HasThreadSubscriptionFuture<'a>
+        + RefUnwindSafe
+        + 'static,
+    ) -> Self {
+        Self {
+            has_thread_subscription_fn: Some(Arc::new(has_thread_subscription_fn)),
+            ..self
+        }
+    }
+
+    /// Add the given power levels context to this `PushConditionRoomCtx`.
+    pub fn with_power_levels(self, power_levels: PushConditionPowerLevelsCtx) -> Self {
+        Self {
+            power_levels: Some(power_levels),
+            ..self
+        }
+    }
 }
 
 /// The room power levels context to be able to test the corresponding push
@@ -484,6 +593,13 @@ impl StrExt for str {
         }
     }
 }
+
+#[cfg(all(feature = "unstable-msc4306"))]
+type HasThreadSubscriptionFuture<'a> = Pin<Box<dyn Future<Output = bool> + Send + 'a>>;
+
+#[cfg(all(feature = "unstable-msc4306"))]
+type HasThreadSubscriptionFn =
+    dyn for<'a> Fn(&'a EventId) -> HasThreadSubscriptionFuture<'a> + Send + Sync + RefUnwindSafe;
 
 // #[cfg(test)]
 // mod tests {

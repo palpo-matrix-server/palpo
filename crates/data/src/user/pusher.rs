@@ -100,7 +100,7 @@ pub fn get_pushers(user_id: &UserId) -> DataResult<Vec<DbPusher>> {
         .map_err(Into::into)
 }
 
-pub fn get_actions<'a>(
+pub async fn get_actions<'a>(
     user: &UserId,
     ruleset: &'a Ruleset,
     power_levels: &RoomPowerLevels,
@@ -123,9 +123,10 @@ pub fn get_actions<'a>(
             .unwrap_or_else(|| user.localpart().to_owned()),
         power_levels: Some(power_levels),
         supported_features: vec![],
+        has_thread_subscription_fn: None,
     };
 
-    Ok(ruleset.get_actions(pdu, &ctx))
+    Ok(ruleset.get_actions(pdu, &ctx).await)
 }
 
 pub fn get_push_keys(user_id: &UserId) -> DataResult<Vec<String>> {

@@ -29,7 +29,10 @@ mod tests {
 
         // String too long.
         let order = repeat_n('a', 60).collect::<String>();
-        assert_eq!(SpaceChildOrder::parse(&order), Err(Error::MaximumLengthExceeded));
+        assert_eq!(
+            SpaceChildOrder::parse(&order),
+            Err(Error::MaximumLengthExceeded)
+        );
 
         // Invalid character.
         assert_eq!(SpaceChildOrder::parse("🔝"), Err(Error::InvalidCharacters));

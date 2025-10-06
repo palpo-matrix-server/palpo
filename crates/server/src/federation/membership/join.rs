@@ -5,7 +5,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonValue, RawJsonValue, to_raw_json_value};
 use crate::event::{gen_event_id_canonical_json, handler};
 use crate::room::{state, timeline};
-use crate::{AppResult, IsRemoteOrLocal, MatrixError,sending,room};
+use crate::{AppResult, IsRemoteOrLocal, MatrixError, room, sending};
 
 pub async fn send_join_v1(
     origin: &ServerName,
@@ -191,12 +191,7 @@ pub async fn send_join_v1(
         .map(crate::sending::convert_to_outgoing_federation_event)
         .collect();
 
-   
-    if let Err(e) = sending::send_pdu_room(
-        &room_id,
-        &event_id,
-        &[],
-    ) {
+    if let Err(e) = sending::send_pdu_room(&room_id, &event_id, &[]) {
         error!("failed to notify user joined to servers: {e}");
     }
 
