@@ -2,12 +2,11 @@ use std::collections::BTreeMap;
 
 use diesel::prelude::*;
 
-use crate::core::encryption::{CrossSigningKey, DeviceKeys, OneTimeKey};
+use crate::core::encryption::DeviceKeys;
 use crate::core::identifiers::*;
 use crate::core::serde::JsonValue;
 use crate::core::{DeviceKeyAlgorithm, Seqnum, UnixMillis};
 use crate::schema::*;
-use crate::user::clean_signatures;
 use crate::{DataResult, connect};
 
 #[derive(Identifiable, Insertable, Queryable, Debug, Clone)]

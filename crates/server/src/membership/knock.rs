@@ -22,7 +22,7 @@ use crate::room::state::{CompressedEvent, DeltaInfo};
 use crate::room::{self, state, timeline};
 use crate::{
     AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, SnPduEvent,
-    config,sending,
+    config, sending,
 };
 
 pub async fn knock_room(
@@ -83,9 +83,7 @@ pub async fn knock_room(
             join_rule,
             JoinRule::Invite | JoinRule::Knock | JoinRule::KnockRestricted(..)
         ) {
-            return Err(
-                MatrixError::forbidden("this room does not support knocking", None).into(),
-            );
+            return Err(MatrixError::forbidden("this room does not support knocking", None).into());
         }
 
         let content = RoomMemberEventContent {

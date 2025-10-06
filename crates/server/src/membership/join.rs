@@ -35,7 +35,7 @@ use crate::room::{state, timeline};
 use crate::sending::send_edu_server;
 use crate::{
     AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, SnPduEvent,
-    config, data, room, sending
+    config, data, room, sending,
 };
 
 pub async fn join_room(
@@ -118,11 +118,7 @@ pub async fn join_room(
                     )?;
                 }
 
-                if let Err(e) = sending::send_pdu_room(
-                    &room_id,
-                    &pdu.event_id,
-                    &[],
-                ) {
+                if let Err(e) = sending::send_pdu_room(&room_id, &pdu.event_id, &[]) {
                     error!("failed to notify banned user server: {e}");
                 }
                 return Ok(JoinRoomResBody::new(room_id.to_owned()));
@@ -276,11 +272,11 @@ pub async fn join_room(
 
     room::ensure_room(room_id, &room_version_id)?;
 
-    let parsed_join_pdu =
-        PduEvent::from_canonical_object(room_id, &event_id, join_event.clone()).map_err(|e| {
-            warn!("Invalid PDU in send_join response: {}", e);
-            AppError::public("Invalid join event PDU.")
-        })?;
+    let parsed_join_pdu = PduEvent::from_canonical_object(room_id, &event_id, join_event.clone())
+        .map_err(|e| {
+        warn!("Invalid PDU in send_join response: {}", e);
+        AppError::public("Invalid join event PDU.")
+    })?;
     let join_event_id = parsed_join_pdu.event_id.clone();
     let (join_event_sn, event_guard) = ensure_event_sn(room_id, &join_event_id)?;
 
@@ -355,11 +351,12 @@ pub async fn join_room(
             pdu
         } else {
             let (event_sn, event_guard) = ensure_event_sn(room_id, &event_id)?;
-            let pdu = SnPduEvent::from_canonical_object(room_id, &event_id, event_sn, value.clone())
-                .map_err(|e| {
-                    warn!("Invalid PDU in send_join response: {} {:?}", e, value);
-                    AppError::public("Invalid PDU in send_join response.")
-                })?;
+            let pdu =
+                SnPduEvent::from_canonical_object(room_id, &event_id, event_sn, value.clone())
+                    .map_err(|e| {
+                        warn!("Invalid PDU in send_join response: {} {:?}", e, value);
+                        AppError::public("Invalid PDU in send_join response.")
+                    })?;
 
             NewDbEvent::from_canonical_json(&event_id, event_sn, &value)?.save()?;
             DbEventData {

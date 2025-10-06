@@ -8,7 +8,6 @@ use serde::Deserialize;
 use serde_json::value::to_raw_value;
 use ulid::Ulid;
 
-use crate::admin::room;
 use crate::core::client::filter::{RoomEventFilter, UrlFilter};
 use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
@@ -312,7 +311,7 @@ where
                 &power_levels,
                 &sync_pdu,
                 &pdu.room_id,
-            )? {
+            ).await? {
                 match action {
                     Action::Notify => notify = true,
                     Action::SetTweak(Tweak::Highlight(true)) => {

@@ -35,7 +35,7 @@ mod tests {
 
     use super::SpaceOrderEventContent;
     use crate::SpaceChildOrder;
-    use crate::{AnyRoomAccountDataEvent, RoomAccountDataEvent};
+    use crate::events::{AnyRoomAccountDataEvent, RoomAccountDataEvent};
 
     #[test]
     fn deserialize() {

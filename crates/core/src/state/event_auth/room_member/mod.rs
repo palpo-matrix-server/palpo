@@ -549,7 +549,7 @@ async fn check_room_member_knock<Pdu, Fetch, Fut>(
     target_user: &UserId,
     auth_rules: &AuthorizationRules,
     fetch_state: &Fetch,
-) -> StateResult<()> 
+) -> StateResult<()>
 where
     Fetch: Fn(StateEventType, String) -> Fut + Sync,
     Fut: Future<Output = Result<Pdu, StateError>> + Send,

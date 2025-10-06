@@ -2,11 +2,15 @@
 mod alias;
 mod summary;
 mod thread;
+mod thread_msc4306;
+mod thread_msc4308;
 pub use alias::*;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 pub use summary::*;
 pub use thread::*;
+pub use thread_msc4306::*;
+pub use thread_msc4308::*;
 
 use crate::{
     Direction, OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedServerName, OwnedUserId,

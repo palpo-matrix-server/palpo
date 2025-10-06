@@ -187,6 +187,8 @@ impl<'de> Visitor<'de> for ErrorKindVisitor {
             ErrorCode::CannotOverwriteMedia => ErrorKind::CannotOverwriteMedia,
             ErrorCode::CaptchaInvalid => ErrorKind::CaptchaInvalid,
             ErrorCode::CaptchaNeeded => ErrorKind::CaptchaNeeded,
+            #[cfg(feature = "unstable-msc4306")]
+            ErrorCode::ConflictingUnsubscription => ErrorKind::ConflictingUnsubscription,
             ErrorCode::ConnectionFailed => ErrorKind::ConnectionFailed,
             ErrorCode::ConnectionTimeout => ErrorKind::ConnectionTimeout,
             ErrorCode::DuplicateAnnotation => ErrorKind::DuplicateAnnotation,
@@ -213,6 +215,8 @@ impl<'de> Visitor<'de> for ErrorKindVisitor {
             ErrorCode::MissingParam => ErrorKind::MissingParam,
             ErrorCode::MissingToken => ErrorKind::MissingToken,
             ErrorCode::NotFound => ErrorKind::NotFound,
+            #[cfg(feature = "unstable-msc4306")]
+            ErrorCode::NotInThread => ErrorKind::NotInThread,
             ErrorCode::NotJson => ErrorKind::NotJson,
             ErrorCode::NotYetUploaded => ErrorKind::NotYetUploaded,
             ErrorCode::ResourceLimitExceeded => ErrorKind::ResourceLimitExceeded {
@@ -321,6 +325,16 @@ pub enum ErrorCode {
     /// A Captcha is required to complete the request.
     CaptchaNeeded,
 
+    /// `M_CONFLICTING_UNSUBSCRIPTION`
+    ///
+    /// Part of [MSC4306]: an automatic thread subscription has been skipped by the server, because
+    /// the user unsubsubscribed after the indicated subscribed-to event.
+    ///
+    /// [MSC4306]: https://github.com/matrix-org/matrix-spec-proposals/pull/4306
+    #[cfg(feature = "unstable-msc4306")]
+    #[palpo_enum(rename = "IO.ELEMENT.MSC4306.M_CONFLICTING_UNSUBSCRIPTION")]
+    ConflictingUnsubscription,
+
     /// `M_CONNECTION_FAILED`
     ///
     /// The connection to the application service failed.
@@ -407,6 +421,16 @@ pub enum ErrorCode {
     ///
     /// No resource was found for this request.
     NotFound,
+
+    /// `M_NOT_IN_THREAD`
+    ///
+    /// Part of [MSC4306]: an automatic thread subscription was set to an event ID that isn't part
+    /// of the subscribed-to thread.
+    ///
+    /// [MSC4306]: https://github.com/matrix-org/matrix-spec-proposals/pull/4306
+    #[cfg(feature = "unstable-msc4306")]
+    #[palpo_enum(rename = "IO.ELEMENT.MSC4306.M_NOT_IN_THREAD")]
+    NotInThread,
 
     /// `M_NOT_JSON`
     ///

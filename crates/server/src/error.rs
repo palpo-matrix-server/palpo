@@ -125,7 +125,7 @@ impl Writer for AppError {
             Self::Internal(msg) => {
                 error!(error = ?msg, "internal error");
                 MatrixError::unknown("unknown error")
-            },
+            }
             // Self::LocalUnableProcess(msg) => MatrixError::unrecognized(msg),
             Self::Matrix(e) => e,
             Self::State(e) => {

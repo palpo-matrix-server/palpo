@@ -47,6 +47,11 @@ pub enum RuleKind {
     /// Content-specific rules.
     Content,
 
+    /// Post-content specific rules.
+    #[cfg(feature = "unstable-msc4306")]
+    #[palpo_enum(rename = "io.element.msc4306.postcontent")]
+    PostContent,
+
     #[doc(hidden)]
     #[salvo(schema(value_type = String))]
     _Custom(PrivOwnedStr),
@@ -60,6 +65,10 @@ pub enum NewPushRule {
 
     /// Content-specific rules.
     Content(NewPatternedPushRule),
+
+    /// Post-content specific rules.
+    #[cfg(feature = "unstable-msc4306")]
+    PostContent(NewConditionalPushRule),
 
     /// Room-specific rules.
     Room(NewSimplePushRule<OwnedRoomId>),
@@ -77,6 +86,8 @@ impl NewPushRule {
         match self {
             NewPushRule::Override(_) => RuleKind::Override,
             NewPushRule::Content(_) => RuleKind::Content,
+            #[cfg(feature = "unstable-msc4306")]
+            NewPushRule::PostContent(_) => RuleKind::PostContent,
             NewPushRule::Room(_) => RuleKind::Room,
             NewPushRule::Sender(_) => RuleKind::Sender,
             NewPushRule::Underride(_) => RuleKind::Underride,
@@ -88,6 +99,8 @@ impl NewPushRule {
         match self {
             NewPushRule::Override(r) => &r.rule_id,
             NewPushRule::Content(r) => &r.rule_id,
+            #[cfg(feature = "unstable-msc4306")]
+            NewPushRule::PostContent(r) => &r.rule_id,
             NewPushRule::Room(r) => r.rule_id.as_ref(),
             NewPushRule::Sender(r) => r.rule_id.as_ref(),
             NewPushRule::Underride(r) => &r.rule_id,
