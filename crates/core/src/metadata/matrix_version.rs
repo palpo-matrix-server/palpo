@@ -114,6 +114,11 @@ pub enum MatrixVersion {
     ///
     /// See <https://spec.matrix.org/v1.15/>.
     V1_15,
+
+    /// Version 1.16 of the Matrix specification, released in Q3 2025.
+    ///
+    /// See <https://spec.matrix.org/v1.16/>.
+    V1_16,
 }
 
 impl TryFrom<&str> for MatrixVersion {
