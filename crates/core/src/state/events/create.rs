@@ -7,7 +7,7 @@ use serde::{Deserialize, de::IgnoredAny};
 use super::Event;
 use crate::room_version_rules::RoomVersionRules;
 use crate::{
-    OwnedUserId, RoomVersionId, UserId, room_version_rules::AuthorizationRules,
+    OwnedUserId, RoomVersionId, UserId, 
     serde::from_raw_json_value, state::StateResult,
 };
 
