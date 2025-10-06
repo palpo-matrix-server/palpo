@@ -3,7 +3,7 @@
 //!
 //! [federation-api]: https://spec.matrix.org/latest/server-server-api/
 
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 mod serde;
 
 pub mod authorization;
