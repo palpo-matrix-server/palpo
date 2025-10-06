@@ -651,7 +651,7 @@ pub struct RoomMemberUnsigned {
 
     /// Stripped state events to assist the receiver in identifying the room after knocking.
     #[serde(default)]
-    pub knock_room_state: Vec<Raw<AnyStrippedStateEvent>>,
+    pub knock_room_state: Vec<RawJson<AnyStrippedStateEvent>>,
 
     /// [Bundled aggregations] of related child events.
     ///
