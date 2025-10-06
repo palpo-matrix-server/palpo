@@ -123,6 +123,7 @@ palpo-core = { workspace = true, features = [
     "unstable-msc4274",
     "unstable-msc4278",
     "unstable-msc4310",
+    "unstable-msc4359",
     "unstable-pdu",
     "unstable-unspecified",
 ] }
