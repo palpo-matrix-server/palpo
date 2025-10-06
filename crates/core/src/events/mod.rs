@@ -161,6 +161,8 @@ pub mod room_key;
 #[cfg(feature = "unstable-msc4268")]
 pub mod room_key_bundle;
 pub mod room_key_request;
+#[cfg(any(feature = "unstable-msc4310", feature = "unstable-msc4075"))]
+pub mod rtc;
 pub mod secret;
 pub mod secret_storage;
 pub mod space;
