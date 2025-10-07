@@ -798,7 +798,6 @@ fn servers_to_check_signatures(
                     .server_name()
                     .map(ToOwned::to_owned)
                     .ok_or_else(|| ParseError::server_name_from_event_id(event_id))?;
-
                 servers_to_check.insert(server_name);
             }
             Some(_) => return Err(JsonError::not_of_type("event_id", JsonType::String)),
@@ -817,10 +816,14 @@ fn servers_to_check_signatures(
         let authorized_user = authorized_user.as_str().ok_or_else(|| {
             JsonError::not_of_type("join_authorised_via_users_server", JsonType::String)
         })?;
-        let authorized_user =
-            <&UserId>::try_from(authorized_user).map_err(|e| Error::from(ParseError::UserId(e)))?;
-
-        servers_to_check.insert(authorized_user.server_name().to_owned());
+        match <&UserId>::try_from(authorized_user) {
+            Ok(authorized_user) => {
+                servers_to_check.insert(authorized_user.server_name().to_owned());
+            }
+            Err(e) => {
+                warn!("failed to parse join_authorised_via_users_server user id: {e}");
+            }
+        }
     }
 
     Ok(servers_to_check)

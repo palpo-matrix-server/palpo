@@ -190,7 +190,7 @@ pub(crate) async fn user_can_perform_restricted_join(
     };
 
     if r.allow.is_empty() {
-        tracing::info!("{room_id} is restricted but the allow key is empty");
+        tracing::info!("`{room_id}` is restricted but the allow key is empty");
         return Ok(false);
     }
 
@@ -211,7 +211,7 @@ pub(crate) async fn user_can_perform_restricted_join(
         Ok(true)
     } else {
         Err(MatrixError::unable_to_authorize_join(
-            "Joining user is not known to be in any required room.",
+            "joining user is not known to be in any required room",
         )
         .into())
     }

@@ -156,7 +156,7 @@ pub async fn get_event_keys(
         Ok(required) => required,
         Err(e) => {
             return Err(AppError::public(format!(
-                "Failed to determine keys required to verify: {e}"
+                "failed to determine keys required to verify: {e}"
             )));
         }
     };

@@ -293,7 +293,7 @@ fn process_to_outlier_pdu(
         let mut val = match crate::server_key::verify_event(&value, Some(room_version_id)).await {
             Ok(crate::core::signatures::Verified::Signatures) => {
                 // Redact
-                warn!("Calculated hash does not match: {}", event_id);
+                warn!("calculated hash does not match: {}", event_id);
                 let obj = match canonical_json::redact(value, &version_rules.redaction, None) {
                     Ok(obj) => obj,
                     Err(_) => return Err(MatrixError::invalid_param("redaction failed").into()),
@@ -311,7 +311,7 @@ fn process_to_outlier_pdu(
             }
             Ok(crate::core::signatures::Verified::All) => value,
             Err(e) => {
-                warn!("Dropping bad event {}: {}  {value:#?}", event_id, e,);
+                warn!("dropping bad event {}: {}  {value:#?}", event_id, e,);
                 return Err(MatrixError::invalid_param("signature verification failed").into());
             }
         };
@@ -325,7 +325,7 @@ fn process_to_outlier_pdu(
         let incoming_pdu = PduEvent::from_json_value(
             room_id,
             event_id,
-            serde_json::to_value(&val).expect("CanonicalJson is a valid JsonValue"),
+            serde_json::to_value(&val).expect("`CanonicalJson` is a valid `JsonValue`"),
         )
         .map_err(|_| AppError::internal("event is not a valid PDU."))?;
 
@@ -459,7 +459,7 @@ fn process_to_outlier_pdu(
             &async |event_id| {
                 timeline::get_pdu(&event_id)
                     .map(|s| s.pdu)
-                    .map_err(|_| StateError::other("missing PDU 1"))
+                    .map_err(|_| StateError::other("missing pdu 1"))
             },
             &async |k, s| {
                 if let Some(pdu) = auth_events

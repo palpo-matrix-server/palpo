@@ -95,7 +95,7 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
                 .ok()
             } else {
                 return Err(MatrixError::unable_to_grant_join(
-                    "No user on this server is able to assist in joining.",
+                    "no user on this server is able to assist in joining.",
                 )
                 .into());
             }
