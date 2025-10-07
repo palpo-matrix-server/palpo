@@ -736,16 +736,20 @@ pub fn required_keys(
 ) -> Result<BTreeMap<OwnedServerName, Vec<OwnedServerSigningKeyId>>, Error> {
     use CanonicalJsonValue::Object;
 
+    println!("+============================required_keys");
     let mut map = BTreeMap::<OwnedServerName, Vec<OwnedServerSigningKeyId>>::new();
     let Some(Object(signatures)) = object.get("signatures") else {
         return Ok(map);
     };
 
+    println!("+============================required_keys  1");
     for server in servers_to_check_signatures(object, &version.signatures)? {
+        println!("+============================required_keys  2");
         let Some(Object(set)) = signatures.get(server.as_str()) else {
             continue;
         };
 
+        println!("+============================required_keys  3");
         let entry = map.entry(server.clone()).or_default();
         set.keys()
             .cloned()
@@ -774,12 +778,16 @@ fn servers_to_check_signatures(
 ) -> Result<BTreeSet<OwnedServerName>, Error> {
     let mut servers_to_check = BTreeSet::new();
 
+    println!("=============servers_to_check_signatures  0");
     if !is_invite_via_third_party_id(object)? {
+        println!("=============servers_to_check_signatures  1");
         match object.get("sender") {
             Some(CanonicalJsonValue::String(raw_sender)) => {
+                println!("=============servers_to_check_signatures  2");
                 let user_id = <&UserId>::try_from(raw_sender.as_str())
                     .map_err(|e| Error::from(ParseError::UserId(e)))?;
 
+                println!("=============servers_to_check_signatures  3");
                 servers_to_check.insert(user_id.server_name().to_owned());
             }
             Some(_) => return Err(JsonError::not_of_type("sender", JsonType::String)),
@@ -788,16 +796,20 @@ fn servers_to_check_signatures(
     }
 
     if rules.check_event_id_server {
+        println!("=============servers_to_check_signatures  4");
         match object.get("event_id") {
             Some(CanonicalJsonValue::String(raw_event_id)) => {
+                println!("=============servers_to_check_signatures  5");
                 let event_id: OwnedEventId = raw_event_id
                     .parse()
                     .map_err(|e| Error::from(ParseError::EventId(e)))?;
+                println!("=============servers_to_check_signatures  6");
 
                 let server_name = event_id
                     .server_name()
                     .map(ToOwned::to_owned)
                     .ok_or_else(|| ParseError::server_name_from_event_id(event_id))?;
+                println!("=============servers_to_check_signatures  7");
 
                 servers_to_check.insert(server_name);
             }
@@ -808,6 +820,7 @@ fn servers_to_check_signatures(
         }
     }
 
+    println!("=============servers_to_check_signatures  8");
     if rules.check_join_authorised_via_users_server
         && let Some(authorized_user) = object
             .get("content")
@@ -817,10 +830,15 @@ fn servers_to_check_signatures(
         let authorized_user = authorized_user.as_str().ok_or_else(|| {
             JsonError::not_of_type("join_authorised_via_users_server", JsonType::String)
         })?;
-        let authorized_user =
-            <&UserId>::try_from(authorized_user).map_err(|e| Error::from(ParseError::UserId(e)))?;
-
-        servers_to_check.insert(authorized_user.server_name().to_owned());
+        println!("=============servers_to_check_signatures  9  authorized_user: {authorized_user}");
+        match <&UserId>::try_from(authorized_user) {
+            Ok(authorized_user) => {
+                servers_to_check.insert(authorized_user.server_name().to_owned());
+            }
+            Err(e) => {
+                warn!("failed to parse join_authorised_via_users_server user id: {e}");
+            }
+        }
     }
 
     Ok(servers_to_check)

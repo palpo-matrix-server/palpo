@@ -105,7 +105,7 @@ async fn process_pdus(
         debug!(
             pdu_elapsed = ?pdu_start_time.elapsed(),
             txn_elapsed = ?txn_start_time.elapsed(),
-            "finished PDU {event_id}",
+            "finished pdu {event_id}",
         );
 
         // if result.is_ok() {
@@ -118,7 +118,7 @@ async fn process_pdus(
         if let Err(e) = result
             && matches!(e, AppError::Matrix(_))
         {
-            warn!("incoming PDU failed {id}: {e:?}");
+            warn!("incoming pdu failed {id}: {e:?}");
         }
     }
 
@@ -182,7 +182,7 @@ async fn process_edu_receipt(origin: &ServerName, receipt: ReceiptContent) {
         if handler::acl_check(origin, &room_id).is_err() {
             warn!(
                 %origin, %room_id,
-                "received read receipt EDU from ACL'd server"
+                "received read receipt edu from ACL'd server"
             );
             continue;
         }
@@ -191,7 +191,7 @@ async fn process_edu_receipt(origin: &ServerName, receipt: ReceiptContent) {
             if user_id.server_name() != origin {
                 warn!(
                     %user_id, %origin,
-                    "received read receipt EDU for user not belonging to origin"
+                    "received read receipt edu for user not belonging to origin"
                 );
                 continue;
             }
@@ -216,7 +216,7 @@ async fn process_edu_receipt(origin: &ServerName, receipt: ReceiptContent) {
             } else {
                 warn!(
                     %user_id, %room_id, %origin,
-                    "received read receipt EDU from server who does not have a member in the room",
+                    "received read receipt edu from server who does not have a member in the room",
                 );
                 continue;
             }
@@ -232,7 +232,7 @@ async fn process_edu_typing(origin: &ServerName, typing: TypingContent) {
     if typing.user_id.server_name() != origin {
         warn!(
             %typing.user_id, %origin,
-            "received typing EDU for user not belonging to origin"
+            "received typing edu for user not belonging to origin"
         );
         return;
     }
@@ -240,7 +240,7 @@ async fn process_edu_typing(origin: &ServerName, typing: TypingContent) {
     if handler::acl_check(typing.user_id.server_name(), &typing.room_id).is_err() {
         warn!(
             %typing.user_id, %typing.room_id, %origin,
-            "received typing EDU for ACL'd user's server"
+            "received typing edu for ACL'd user's server"
         );
         return;
     }
@@ -260,7 +260,7 @@ async fn process_edu_typing(origin: &ServerName, typing: TypingContent) {
     } else {
         warn!(
             %typing.user_id, %typing.room_id, %origin,
-            "received typing EDU for user not in room"
+            "received typing edu for user not in room"
         );
     }
 }
@@ -273,7 +273,7 @@ async fn process_edu_device_list_update(origin: &ServerName, content: DeviceList
     if user_id.server_name() != origin {
         warn!(
             %user_id, %origin,
-            "received device list update EDU for user not belonging to origin"
+            "received device list update edu for user not belonging to origin"
         );
         return;
     }
@@ -292,7 +292,7 @@ async fn process_edu_direct_to_device(origin: &ServerName, content: DirectDevice
     if sender.server_name() != origin {
         warn!(
             %sender, %origin,
-            "received direct to device EDU for user not belonging to origin"
+            "received direct to device edu for user not belonging to origin"
         );
         return;
     }
@@ -306,7 +306,7 @@ async fn process_edu_direct_to_device(origin: &ServerName, content: DirectDevice
         for (target_device_id_maybe, event) in map {
             let Ok(event) = event
                 .deserialize_as()
-                .map_err(|e| error!("To-Device event is invalid: {e}"))
+                .map_err(|e| error!("to-device event is invalid: {e}"))
             else {
                 continue;
             };

@@ -360,7 +360,7 @@ pub(super) async fn sign_json(ctx: &Context<'_>) -> AppResult<()> {
 
     let string = ctx.body[1..ctx.body.len().checked_sub(1).unwrap()].join("\n");
     match serde_json::from_str(&string) {
-        Err(e) => return Err(AppError::public(format!("Invalid json: {e}"))),
+        Err(e) => return Err(AppError::public(format!("invalid json: {e}"))),
         Ok(mut value) => {
             crate::server_key::sign_json(&mut value)?;
             let json_text = serde_json::to_string_pretty(&value)?;
@@ -379,9 +379,9 @@ pub(super) async fn verify_json(ctx: &Context<'_>) -> AppResult<()> {
 
     let string = ctx.body[1..ctx.body.len().checked_sub(1).unwrap()].join("\n");
     match serde_json::from_str::<CanonicalJsonObject>(&string) {
-        Err(e) => return Err(AppError::public(format!("Invalid json: {e}"))),
+        Err(e) => return Err(AppError::public(format!("invalid json: {e}"))),
         Ok(value) => match crate::server_key::verify_json(&value, None).await {
-            Err(e) => return Err(AppError::public(format!("Signature verification failed: {e}"))),
+            Err(e) => return Err(AppError::public(format!("signature verification failed: {e}"))),
             Ok(()) => write!(ctx, "Signature correct"),
         },
     }
@@ -392,7 +392,7 @@ pub(super) async fn verify_pdu(ctx: &Context<'_>, event_id: OwnedEventId) -> App
     use crate::core::signatures::Verified;
 
     let Some(mut event) = timeline::get_pdu_json(&event_id)? else {
-        return Err(AppError::public("PDU not found in our database."));
+        return Err(AppError::public("pdu not found in our database."));
     };
 
     event.remove("event_id");
