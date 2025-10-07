@@ -277,9 +277,6 @@ where
     }
 
     let current_target_user_membership = fetch_state.user_membership(target_user).await?;
-    println!(
-        "cccccccccccccccccurrent_target_user_membership: {current_target_user_membership:?}   user: {target_user}",
-    );
 
     // Since v1, if target user’s current membership state is join or ban, reject.
     if matches!(
