@@ -12,7 +12,7 @@ use crate::core::client::sync_events::v3::{
     SyncEventsResBody, Timeline, ToDevice,
 };
 use crate::core::device::DeviceLists;
-use crate::core::events::receipt::ReceiptEvent;
+use crate::core::events::receipt::SyncReceiptEvent;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{
     AnyRawAccountDataEvent, AnySyncEphemeralRoomEvent, StateEventType, TimelineEventType,
@@ -702,8 +702,7 @@ async fn load_joined_room(
 
     let mut edus: Vec<RawJson<AnySyncEphemeralRoomEvent>> = Vec::new();
     for (_, content) in data::room::receipt::read_receipts(room_id, since_sn)? {
-        let receipt = ReceiptEvent {
-            room_id: room_id.to_owned(),
+        let receipt = SyncReceiptEvent {
             content,
         };
         edus.push(RawJson::new(&receipt)?.cast());
@@ -911,7 +910,7 @@ async fn load_left_room(
         timeline_pdus.last().map(|(sn, _)| sn.to_string())
     };
 
-    let left_event = timeline::get_pdu(&left_event_id).map(|pdu| pdu.to_sync_room_event());
+    // let left_event = timeline::get_pdu(&left_event_id).map(|pdu| pdu.to_sync_room_event());
     Ok(LeftRoom {
         account_data: RoomAccountData { events: Vec::new() },
         timeline: Timeline {
