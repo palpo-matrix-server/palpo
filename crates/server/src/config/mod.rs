@@ -28,6 +28,8 @@ pub use db::*;
 // pub use dns::*;
 mod federation;
 pub use federation::*;
+mod http_client;
+pub use http_client::*;
 // mod ldap;
 // pub use ldap::*;
 mod logger;

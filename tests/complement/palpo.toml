@@ -57,6 +57,9 @@ domain_contains_allowlist = ["*"]
 [federation]
 enable = true
 
+[client]
+federation_retries = 2
+
 [logger]
 level = "warn,palpo=info,salvo=error"
 format = "pretty" # pretty, json

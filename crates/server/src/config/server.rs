@@ -8,9 +8,9 @@ use serde::de::IgnoredAny;
 use url::Url;
 
 use super::{
-    AdminConfig, BlurhashConfig, CompressionConfig, DbConfig, FederationConfig, JwtConfig,
-    LoggerConfig, MediaConfig, OidcConfig, PresenceConfig, ProxyConfig, ReadReceiptConfig,
-    TurnConfig, TypingConfig, UrlPreviewConfig,
+    AdminConfig, BlurhashConfig, HttpClientConfig, CompressionConfig, DbConfig, FederationConfig,
+    JwtConfig, LoggerConfig, MediaConfig, OidcConfig, PresenceConfig, ProxyConfig,
+    ReadReceiptConfig, TurnConfig, TypingConfig, UrlPreviewConfig,
 };
 use crate::core::client::discovery::support::ContactRole;
 use crate::core::serde::{default_false, default_true};
@@ -703,6 +703,10 @@ pub struct ServerConfig {
     // external structure; separate section
     #[serde(default)]
     pub federation: FederationConfig,
+
+    // external structure; separate section
+    #[serde(default)]
+    pub http_client: HttpClientConfig,
 
     /// Enables configuration reload when the server receives SIGUSR1 on
     /// supporting platforms.
