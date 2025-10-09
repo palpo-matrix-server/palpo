@@ -68,7 +68,7 @@ pub async fn knock_room(
     let conf = config::get();
     if room::is_server_joined(&conf.server_name, room_id).unwrap_or(false) {
         use RoomVersionId::*;
-        info!("We can knock locally");
+        info!("we can knock locally");
         let room_version = room::get_version(room_id)?;
         if matches!(room_version, V1 | V2 | V3 | V4 | V5 | V6) {
             return Err(MatrixError::forbidden(
@@ -122,7 +122,7 @@ pub async fn knock_room(
             }
         }
     }
-    info!("Knocking {room_id} over federation.");
+    info!("knocking {room_id} over federation");
 
     let (make_knock_response, remote_server) =
         make_knock_request(sender_id, room_id, servers).await?;
@@ -270,7 +270,7 @@ pub async fn knock_room(
         }
     }
 
-    info!("Appending room knock event locally");
+    info!("appending room knock event locally");
     let event_id = parsed_knock_pdu.event_id.clone();
     let (event_sn, event_guard) = ensure_event_sn(room_id, &event_id)?;
     NewDbEvent {
@@ -302,25 +302,25 @@ pub async fn knock_room(
     )
     .await?;
 
-    info!("Compressing state from send_knock");
+    info!("compressing state from send_knock");
     let compressed = state_map
         .into_iter()
         .map(|(k, (_event_id, event_sn))| Ok(CompressedEvent::new(k, event_sn)))
         .collect::<AppResult<_>>()?;
 
-    debug!("Saving compressed state");
+    debug!("saving compressed state");
     let DeltaInfo {
         frame_id,
         appended,
         disposed,
     } = state::save_state(room_id, Arc::new(compressed))?;
 
-    debug!("Forcing state for new room");
+    debug!("forcing state for new room");
     state::force_state(room_id, frame_id, appended, disposed)?;
 
     let frame_id = state::append_to_state(&knock_pdu)?;
 
-    info!("Updating membership locally to knock state with provided stripped state events");
+    info!("updating membership locally to knock state with provided stripped state events");
     crate::membership::update_membership(
         &event_id,
         knock_pdu.event_sn,
@@ -331,17 +331,10 @@ pub async fn knock_room(
         Some(send_knock_body.knock_room_state),
     )?;
 
-    info!("Setting final room state for new room");
+    info!("setting final room state for new room");
     // We set the room state after inserting the pdu, so that we never have a moment
     // in time where events in the current room state do not exist
     let _ = state::set_room_state(room_id, frame_id);
-    if let Err(e) = sending::send_pdu_room(
-        &room_id,
-        &knock_pdu.event_id,
-        &[sender_id.server_name().to_owned()],
-    ) {
-        error!("failed to notify banned user server: {e}");
-    }
     drop(event_guard);
     Ok(Some(knock_pdu))
 }
@@ -362,7 +355,7 @@ async fn make_knock_request(
             continue;
         }
 
-        info!("Asking {remote_server} for make_knock ({make_knock_counter})");
+        info!("asking {remote_server} for make_knock ({make_knock_counter})");
 
         let request = crate::core::federation::knock::make_knock_request(
             &remote_server.origin().await,

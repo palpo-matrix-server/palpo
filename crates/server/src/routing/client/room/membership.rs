@@ -678,6 +678,7 @@ pub(super) async fn kick_user(
     empty_ok()
 }
 
+/// #POST /_matrix/client/v3/knock/{room_id_or_alias}
 #[endpoint]
 pub(crate) async fn knock_room(
     _aa: AuthArgs,

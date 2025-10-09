@@ -160,15 +160,15 @@ pub enum VerificationError {
     UnsupportedAlgorithm,
 
     /// The signatures for an entity cannot be found in the signatures map.
-    #[error("Could not find signatures for entity {0:?}")]
+    #[error("could not find signatures for entity {0:?}")]
     NoSignaturesForEntity(String),
 
     /// The public keys for an entity cannot be found in the public keys map.
-    #[error("Could not find public keys for entity {0:?}")]
+    #[error("could not find public keys for entity {0:?}")]
     NoPublicKeysForEntity(String),
 
     /// For when a public key cannot be found for a `target`.
-    #[error("Could not find public key for {entity:?}")]
+    #[error("could not find public key for {entity:?}")]
     PublicKeyNotFound {
         /// The entity for which the key is missing.
         entity: String,
@@ -178,11 +178,11 @@ pub enum VerificationError {
     },
 
     /// No signature with a supported algorithm was found for the given entity.
-    #[error("Could not find supported signature for entity {0:?}")]
+    #[error("could not find supported signature for entity {0:?}")]
     NoSupportedSignatureForEntity(String),
 
     /// The signature verification failed.
-    #[error("Could not verify signature: {0}")]
+    #[error("could not verify signature: {0}")]
     Signature(#[source] ed25519_dalek::SignatureError),
 }
 
