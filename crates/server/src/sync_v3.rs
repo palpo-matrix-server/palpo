@@ -430,6 +430,9 @@ async fn load_joined_room(
             };
 
             let joined_since_last_sync = room::user::join_sn(sender_id, room_id)? >= since_sn;
+            println!(
+                ">>>>>>>>>>>>>>>>>>>>>>Probably {sender_id}  since = 0, we will do an initial sync  since_sn:{since_sn}  {room_id}"
+            );
             if since_sn == 0 || joined_since_last_sync {
                 // Probably since = 0, we will do an initial sync
                 let (joined_member_count, invited_member_count, heroes) = calculate_counts()?;
@@ -437,14 +440,17 @@ async fn load_joined_room(
                     state::get_full_state_ids(since_frame_id.unwrap_or(current_frame_id))?;
                 let mut state_events = Vec::new();
                 let mut lazy_loaded = HashSet::new();
+                println!("current_state_ids: {current_state_ids:?}");
 
                 for (state_key_id, event_id) in current_state_ids {
                     if timeline_pdu_ids.contains(&event_id) {
+                        println!("break  0  event_id: {event_id}");
                         continue;
                     }
                     if let Some(state_limit) = filter.room.state.limit
                         && state_events.len() >= state_limit
                     {
+                        println!("break  1  event_id: {event_id}");
                         break;
                     }
                     let DbRoomStateField {
@@ -453,7 +459,11 @@ async fn load_joined_room(
                         ..
                     } = state::get_field(state_key_id)?;
 
+                    println!(
+                        "full_state: {full_state}  lazy_load_enabled: {lazy_load_enabled}   state_key: {state_key} event_ty: {event_ty:?}  timeline_users:{timeline_users:?}"
+                    );
                     if event_ty != StateEventType::RoomMember {
+                        println!("llllllll 0");
                         let Ok(pdu) = timeline::get_pdu(&event_id) else {
                             error!("pdu in state not found: {}", event_id);
                             continue;
@@ -508,6 +518,7 @@ async fn load_joined_room(
                                                       // !share_encrypted_room(sender_id, user_id, &room_id).unwrap_or(false)
                                                       // }),
                 );
+                println!("==========state_events.len():{}", state_events.len());
                 (
                     heroes,
                     joined_member_count,
@@ -516,6 +527,9 @@ async fn load_joined_room(
                     state_events,
                 )
             } else if let Some(since_frame_id) = since_frame_id {
+                println!(
+                    ">>>>>>>>>>>>>>>>>>>>>Incremental /sync  since_frame_id:{since_frame_id} {sender_id} {room_id}"
+                );
                 // Incremental /sync
                 let mut state_events = Vec::new();
                 let mut lazy_loaded = HashSet::new();
@@ -702,9 +716,7 @@ async fn load_joined_room(
 
     let mut edus: Vec<RawJson<AnySyncEphemeralRoomEvent>> = Vec::new();
     for (_, content) in data::room::receipt::read_receipts(room_id, since_sn)? {
-        let receipt = SyncReceiptEvent {
-            content,
-        };
+        let receipt = SyncReceiptEvent { content };
         edus.push(RawJson::new(&receipt)?.cast());
     }
     if room::typing::last_typing_update(room_id).await? >= since_sn {

@@ -1,7 +1,7 @@
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{OwnedEventId, OwnedRoomId};
+use crate::OwnedEventId;
 
 // `GET /_matrix/client/*/rooms/{roomId}/thread/{eventId}/subscription`
 //

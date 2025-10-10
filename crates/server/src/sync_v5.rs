@@ -370,7 +370,7 @@ async fn process_rooms(
             .iter()
             .filter_map(|state| {
                 let state_key = match state.1.as_str() {
-                    "$LAZY" => return None,
+                    "$LAZY" | "*" => return None,
                     "$ME" => sender_id.as_str(),
                     _ => state.1.as_str(),
                 };

@@ -50,7 +50,7 @@ pub async fn join_room(
 ) -> AppResult<JoinRoomResBody> {
     if sender.is_guest && appservice.is_none() && !room::guest_can_join(room_id) {
         return Err(
-            MatrixError::forbidden("Guests are not allowed to join this room", None).into(),
+            MatrixError::forbidden("guests are not allowed to join this room", None).into(),
         );
     }
     let sender_id = &sender.id;
@@ -136,12 +136,12 @@ pub async fn join_room(
     let (make_join_response, remote_server) =
         make_join_request(sender_id, room_id, &servers).await?;
 
-    info!("Make join finished");
+    info!("make join finished");
     let room_version_id = match make_join_response.room_version {
         Some(room_version) if config::supported_room_versions().contains(&room_version) => {
             room_version
         }
-        _ => return Err(AppError::public("Room version is not supported")),
+        _ => return Err(AppError::public("room version is not supported")),
     };
 
     let mut join_event_stub: CanonicalJsonObject =
@@ -233,25 +233,25 @@ pub async fn join_room(
                 Err(_) => {
                     // Event could not be converted to canonical json
                     return Err(MatrixError::invalid_param(
-                        "Could not convert event to canonical json.",
+                        "could not convert event to canonical json",
                     )
                     .into());
                 }
             };
 
         if signed_event_id != event_id {
-            return Err(MatrixError::invalid_param("Server sent event with wrong event id").into());
+            return Err(MatrixError::invalid_param("server sent event with wrong event id").into());
         }
 
         match signed_value["signatures"]
             .as_object()
             .ok_or(MatrixError::invalid_param(
-                "Server sent invalid signatures type",
+                "server sent invalid signatures type",
             ))
             .and_then(|e| {
                 e.get(remote_server.as_str())
                     .ok_or(MatrixError::invalid_param(
-                        "Server did not send its signature",
+                        "server did not send its signature",
                     ))
             }) {
             Ok(signature) => {
@@ -274,8 +274,8 @@ pub async fn join_room(
 
     let parsed_join_pdu = PduEvent::from_canonical_object(room_id, &event_id, join_event.clone())
         .map_err(|e| {
-        warn!("Invalid PDU in send_join response: {}", e);
-        AppError::public("Invalid join event PDU.")
+        warn!("invalid pdu in send_join response: {}", e);
+        AppError::public("invalid join event pdu")
     })?;
     let join_event_id = parsed_join_pdu.event_id.clone();
     let (join_event_sn, event_guard) = ensure_event_sn(room_id, &join_event_id)?;
@@ -354,8 +354,8 @@ pub async fn join_room(
             let pdu =
                 SnPduEvent::from_canonical_object(room_id, &event_id, event_sn, value.clone())
                     .map_err(|e| {
-                        warn!("Invalid PDU in send_join response: {} {:?}", e, value);
-                        AppError::public("Invalid PDU in send_join response.")
+                        warn!("invalid pdu in send_join response: {} {:?}", e, value);
+                        AppError::public("invalid pdu in send_join response.")
                     })?;
 
             NewDbEvent::from_canonical_json(&event_id, event_sn, &value)?.save()?;
@@ -469,7 +469,7 @@ pub async fn join_room(
     let frame_id_after_join = state::append_to_state(&join_pdu)?;
     drop(event_guard);
 
-    info!("Setting final room state for new room");
+    info!("setting final room state for new room");
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
     state::set_room_state(room_id, frame_id_after_join)?;
@@ -512,7 +512,7 @@ pub async fn get_first_user_can_issue_invite(
             }
         }
     }
-    Err(MatrixError::not_found("No user can issue invite in this room.").into())
+    Err(MatrixError::not_found("no user can issue invite in this room").into())
 }
 pub async fn get_users_can_issue_invite(
     room_id: &RoomId,
@@ -540,15 +540,14 @@ async fn make_join_request(
     servers: &[OwnedServerName],
 ) -> AppResult<(MakeJoinResBody, OwnedServerName)> {
     let mut last_join_error = Err(StatusError::bad_request()
-        .brief("No server available to assist in joining.")
+        .brief("no server available to assist in joining")
         .into());
 
     for remote_server in servers {
         if remote_server == &config::get().server_name {
             continue;
         }
-        info!("Asking {remote_server} for make_join");
-
+        info!("asking {remote_server} for make_join");
         let make_join_request = crate::core::federation::membership::make_join_request(
             &remote_server.origin().await,
             MakeJoinReqArgs {

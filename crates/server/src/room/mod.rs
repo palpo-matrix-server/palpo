@@ -387,6 +387,13 @@ pub fn get_state_users(
             .map_err(Into::into)
     }
 }
+pub fn server_name(room_id: &RoomId) -> AppResult<OwnedServerName> {
+    if let Ok(server_name) = room_id.server_name() {
+        return Ok(server_name.to_owned());
+    }
+    let create_event = get_create(room_id)?;
+    Ok(create_event.creator()?.server_name().to_owned())
+}
 
 /// Returns an list of all servers participating in this room.
 pub fn participating_servers(
