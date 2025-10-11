@@ -51,7 +51,6 @@ pub(super) async fn get_hierarchy(
     let mut rooms = Vec::with_capacity(limit);
     let mut parents = BTreeSet::new();
     while let Some((current_room, via)) = queue.pop_front() {
-        println!("===============mm   ===========");
         let summary = match crate::room::space::get_summary_and_children_client(
             &current_room,
             suggested_only,
@@ -62,7 +61,6 @@ pub(super) async fn get_hierarchy(
         {
             Ok(summary) => summary,
             Err(e) => {
-                println!("===============mm   0");
                 error!("failed to get space summary for {}: {}", current_room, e);
                 None
             }
@@ -70,30 +68,20 @@ pub(super) async fn get_hierarchy(
 
         match (summary, &current_room == room_id) {
             (None | Some(SummaryAccessibility::Inaccessible), false) => {
-                println!("===============mm   1");
                 // Just ignore other unavailable rooms
             }
             (None, true) => {
-                println!("===============mm   2");
                 return Err(
                     MatrixError::forbidden("the requested room was not found", None).into(),
                 );
             }
             (Some(SummaryAccessibility::Inaccessible), true) => {
-                println!("===============mm   3");
                 return Err(
                     MatrixError::forbidden("the requested room is inaccessible", None).into(),
                 );
             }
             (Some(SummaryAccessibility::Accessible(summary)), _) => {
-                println!("===============mm   4");
                 let populate = parents.len() >= room_sns.len();
-                println!(
-                    "====          ============== parents.len(): {}   room_sns.len(): {}   populate: {}",
-                    parents.len(),
-                    room_sns.len(),
-                    populate
-                );
 
                 let mut children = Vec::new();
                 if crate::room::get_room_type(&current_room).ok().flatten() == Some(RoomType::Space)
@@ -101,13 +89,11 @@ pub(super) async fn get_hierarchy(
                     children = get_parent_children_via(&summary, suggested_only)
                         .into_iter()
                         .filter(|(room, _)| !parents.contains(room))
-                        .rev()
                         .collect::<Vec<Entry>>();
 
                     if !populate {
                         children = children
                             .iter()
-                            .rev()
                             .skip_while(|(room, _)| {
                                 crate::room::get_room_sn(room)
                                     .map(|room_sn| Some(&room_sn) != room_sns.get(parents.len()))
@@ -116,33 +102,25 @@ pub(super) async fn get_hierarchy(
                             .map(Clone::clone)
                             .collect::<Vec<_>>()
                             .into_iter()
-                            .rev()
                             .collect::<Vec<Entry>>();
                     }
-                    println!(
-                        "cccccc current: {current_room}   populate: {populate} summary:{summary:?} children: {children:?}"
-                    );
                 }
 
                 if populate {
                     rooms.push(summary_to_chunk(summary.clone()));
                 } else if queue.is_empty() && children.is_empty() {
-                    println!("===============mm   5");
                     break;
                 }
 
                 parents.insert(current_room.clone());
                 if rooms.len() >= limit {
-                    println!("===============mm   6");
                     break;
                 }
 
                 if parents.len() > max_depth {
-                    println!("===============mm   7");
                     continue;
                 }
 
-                println!("===============mm   8");
                 queue.extend(children);
             }
         }

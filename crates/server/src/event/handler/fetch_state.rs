@@ -1,4 +1,5 @@
 use std::collections::{HashMap, hash_map};
+use indexmap::IndexMap;
 
 use crate::core::ServerName;
 use crate::core::federation::event::{
@@ -16,7 +17,7 @@ pub(super) async fn fetch_state(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
     event_id: &EventId,
-) -> AppResult<Option<HashMap<i64, OwnedEventId>>> {
+) -> AppResult<Option<IndexMap<i64, OwnedEventId>>> {
     debug!("Calling /state_ids");
     // Call /state_ids to find out what the state at this pdu is. We trust the server's
     // response to some extend, but we still do a lot of checks on the events
@@ -36,7 +37,7 @@ pub(super) async fn fetch_state(
     let state_vec =
         super::fetch_and_process_outliers(origin, &res.pdu_ids, room_id, room_version_id).await?;
 
-    let mut state: HashMap<_, OwnedEventId> = HashMap::new();
+    let mut state: IndexMap<_, OwnedEventId> = IndexMap::new();
     for (pdu, _, _event_guard) in state_vec {
         let state_key = pdu
             .state_key
@@ -46,10 +47,10 @@ pub(super) async fn fetch_state(
         let state_key_id = state::ensure_field_id(&pdu.event_ty.to_string().into(), &state_key)?;
 
         match state.entry(state_key_id) {
-            hash_map::Entry::Vacant(v) => {
+            indexmap::map::Entry::Vacant(v) => {
                 v.insert(pdu.event_id.clone());
             }
-            hash_map::Entry::Occupied(_) => {
+            indexmap::map::Entry::Occupied(_) => {
                 return Err(AppError::internal(
                     "State event's type and state_key combination exists multiple times.",
                 ));

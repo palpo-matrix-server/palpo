@@ -571,7 +571,7 @@ fn collect_e2ee(
             if encrypted_room {
                 let current_state_ids = state::get_full_state_ids(current_frame_id)?;
 
-                let since_state_ids: HashMap<_, _> = state::get_full_state_ids(since_frame_id)?;
+                let since_state_ids = state::get_full_state_ids(since_frame_id)?;
 
                 for (key, id) in current_state_ids {
                     if since_state_ids.get(&key) != Some(&id) {

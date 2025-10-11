@@ -1,3 +1,4 @@
+use indexmap::IndexMap;
 use std::collections::{HashMap, HashSet};
 
 use state::DbRoomStateField;
@@ -12,7 +13,7 @@ use crate::{AppResult, room};
 
 pub(super) async fn state_at_incoming_degree_one(
     incoming_pdu: &PduEvent,
-) -> AppResult<Option<HashMap<i64, OwnedEventId>>> {
+) -> AppResult<Option<IndexMap<i64, OwnedEventId>>> {
     let prev_event = &*incoming_pdu.prev_events[0];
     let Ok(prev_frame_id) = state::get_pdu_frame_id(prev_event) else {
         return Ok(None);
@@ -40,7 +41,7 @@ pub(super) async fn state_at_incoming_resolved(
     incoming_pdu: &PduEvent,
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
-) -> AppResult<Option<HashMap<i64, OwnedEventId>>> {
+) -> AppResult<Option<IndexMap<i64, OwnedEventId>>> {
     debug!("Calculating state at event using state res");
     let mut extremity_state_hashes = HashMap::new();
 
@@ -70,7 +71,7 @@ pub(super) async fn state_at_incoming_resolved(
     let mut auth_chain_sets = Vec::with_capacity(extremity_state_hashes.len());
 
     for (sstate_hash, prev_event) in extremity_state_hashes {
-        let mut leaf_state: HashMap<_, _> = state::get_full_state_ids(sstate_hash)?;
+        let mut leaf_state = state::get_full_state_ids(sstate_hash)?;
 
         if let Some(state_key) = &prev_event.state_key {
             let state_key_id =
