@@ -625,20 +625,35 @@ pub async fn process_to_timeline_pdu(
         Some(state) => state,
     };
 
-    debug!("Performing auth check");
+    debug!("performing auth check");
     // 11. Check the auth of the event passes based on the state of the event
     event_auth::auth_check(
         &version_rules.authorization,
         &incoming_pdu,
         &async |event_id| {
-            timeline::get_pdu(&event_id).map_err(|_| StateError::other("missing PDU 2"))
+            timeline::get_pdu(&event_id).map_err(|_| StateError::other("missing pdu 2"))
         },
         &async |k, s| {
             state::ensure_field_id(&k.to_string().into(), &s)
                 .ok()
-                .and_then(|state_key_id| state_at_incoming_event.get(&state_key_id))
-                .and_then(|event_id| timeline::get_pdu(event_id).ok())
-                .ok_or_else(|| StateError::other("failed to get PDU"))
+                .and_then(|state_key_id| match state_at_incoming_event.get(&state_key_id){
+                    Some(event_id) => Some(event_id),
+                    None => {
+                        error!("missing state key id {state_key_id} for state type: {k}, state_key: {s}");
+                        None},
+                })
+                .and_then(|event_id| match timeline::get_pdu(event_id) {
+                    Ok(pdu) => Some(pdu),
+                    Err(e) => {
+                        error!("failed to get pdu for state resolution: {}", e);
+                        None
+                    }
+                })
+                .ok_or_else(|| {
+                    StateError::other(format!(
+                        "failed to get pdu for state type: {k}, state_key: {s}"
+                    ))
+                })
         },
     )
     .await?;

@@ -1,5 +1,5 @@
-use std::collections::{HashMap, hash_map};
 use indexmap::IndexMap;
+use std::collections::{HashMap, hash_map};
 
 use crate::core::ServerName;
 use crate::core::federation::event::{
@@ -42,7 +42,7 @@ pub(super) async fn fetch_state(
         let state_key = pdu
             .state_key
             .clone()
-            .ok_or_else(|| AppError::internal("Found non-state pdu in state events."))?;
+            .ok_or_else(|| AppError::internal("found non-state pdu in state events"))?;
 
         let state_key_id = state::ensure_field_id(&pdu.event_ty.to_string().into(), &state_key)?;
 
@@ -51,9 +51,10 @@ pub(super) async fn fetch_state(
                 v.insert(pdu.event_id.clone());
             }
             indexmap::map::Entry::Occupied(_) => {
-                return Err(AppError::internal(
-                    "State event's type and state_key combination exists multiple times.",
-                ));
+                return Err(AppError::internal(format!(
+                    "state event's type `{}` and state_key `{}` combination exists multiple times",
+                    pdu.event_ty, state_key
+                )));
             }
         }
     }
