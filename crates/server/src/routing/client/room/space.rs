@@ -31,7 +31,6 @@ pub(super) async fn get_hierarchy(
         .as_ref()
         .and_then(|s| PaginationToken::from_str(s).ok());
 
-    println!("======================pagination_token: {pagination_token:?}");
     // Should prevent unexpeded behaviour in (bad) clients
     if let Some(token) = &pagination_token
         && (token.suggested_only != args.suggested_only || token.max_depth != max_depth)
