@@ -11,9 +11,7 @@ use std::collections::BTreeMap;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    OwnedEventId, OwnedRoomId, EventId, RoomId,Direction
-};
+use crate::{Direction, OwnedEventId, OwnedRoomId};
 
 // const METADATA: Metadata = metadata! {
 //     method: GET,

@@ -311,7 +311,9 @@ where
                 &power_levels,
                 &sync_pdu,
                 &pdu.room_id,
-            ).await? {
+            )
+            .await?
+            {
                 match action {
                     Action::Notify => notify = true,
                     Action::SetTweak(Tweak::Highlight(true)) => {
@@ -349,10 +351,9 @@ where
         }
         TimelineEventType::SpaceChild => {
             if let Some(_state_key) = &pdu.state_key {
-                super::space::ROOM_ID_SPACE_CHUNK_CACHE
-                    .lock()
-                    .unwrap()
-                    .remove(&pdu.room_id);
+                let mut cache = super::space::ROOM_ID_SPACE_CHUNK_CACHE.lock().unwrap();
+                cache.remove(&(pdu.room_id.clone(), false));
+                cache.remove(&(pdu.room_id.clone(), true));
             }
         }
         TimelineEventType::RoomMember => {

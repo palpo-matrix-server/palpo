@@ -23,7 +23,7 @@ pub use session::*;
 pub mod presence;
 use std::mem;
 
-use diesel::dsl::count_distinct;
+use diesel::dsl;
 use diesel::prelude::*;
 pub use presence::*;
 
@@ -169,7 +169,7 @@ pub fn get_user(user_id: &UserId) -> DataResult<DbUser> {
 /// Returns the number of users registered on this server.
 pub fn count() -> DataResult<u64> {
     let count = user_passwords::table
-        .select(count_distinct(user_passwords::user_id))
+        .select(dsl::count(user_passwords::user_id).aggregate_distinct())
         .first::<i64>(&mut connect()?)?;
     Ok(count as u64)
 }

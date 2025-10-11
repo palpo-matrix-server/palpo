@@ -23,7 +23,7 @@ pub use pagination_token::PaginationToken;
 
 use super::state::get_full_state;
 
-type CacheItem = LruCache<OwnedRoomId, Option<CachedSpaceHierarchySummary>>;
+type CacheItem = LruCache<(OwnedRoomId, bool), Option<CachedSpaceHierarchySummary>>;
 pub static ROOM_ID_SPACE_CHUNK_CACHE: LazyLock<Mutex<CacheItem>> =
     LazyLock::new(|| Mutex::new(LruCache::new(100)));
 
@@ -49,11 +49,12 @@ pub enum Identifier<'a> {
 pub async fn get_summary_and_children_local(
     current_room: &RoomId,
     identifier: &Identifier<'_>,
+    suggested_only: bool,
 ) -> AppResult<Option<SummaryAccessibility>> {
     match ROOM_ID_SPACE_CHUNK_CACHE
         .lock()
         .unwrap()
-        .get_mut(current_room)
+        .get_mut(&(current_room.to_owned(), suggested_only))
         .as_ref()
     {
         None => (), // cache miss
@@ -73,14 +74,14 @@ pub async fn get_summary_and_children_local(
         }
     }
 
-    let children_pdus: Vec<_> = get_stripped_space_child_events(current_room)?;
+    let children_pdus: Vec<_> = get_stripped_space_child_events(current_room, suggested_only)?;
 
     let Ok(summary) = get_room_summary(current_room, children_pdus, identifier).await else {
         return Ok(None);
     };
 
     ROOM_ID_SPACE_CHUNK_CACHE.lock().unwrap().insert(
-        current_room.to_owned(),
+        (current_room.to_owned(), suggested_only),
         Some(CachedSpaceHierarchySummary {
             summary: summary.clone(),
         }),
@@ -112,7 +113,7 @@ async fn get_summary_and_children_federation(
             && let Ok(body) = response.json::<HierarchyResBody>().await
         {
             ROOM_ID_SPACE_CHUNK_CACHE.lock().unwrap().insert(
-                current_room.to_owned(),
+                (current_room.to_owned(), suggested_only),
                 Some(CachedSpaceHierarchySummary {
                     summary: body.room.clone(),
                 }),
@@ -132,7 +133,7 @@ async fn get_summary_and_children_federation(
         .into_iter()
         .filter_map(|child| {
             if let Ok(mut cache) = ROOM_ID_SPACE_CHUNK_CACHE.lock() {
-                if !cache.contains_key(current_room) {
+                if !cache.contains_key(&(current_room.to_owned(), suggested_only)) {
                     Some((child, cache))
                 } else {
                     None
@@ -141,7 +142,7 @@ async fn get_summary_and_children_federation(
                 None
             }
         })
-        .for_each(|(child, cache)| cache_insert(cache, current_room, child));
+        .for_each(|(child, cache)| cache_insert(cache, current_room, child, suggested_only));
 
     let summary = res_body.room;
     let identifier = Identifier::UserId(user_id);
@@ -162,15 +163,16 @@ async fn get_summary_and_children_federation(
 /// Simply returns the stripped m.space.child events of a room
 fn get_stripped_space_child_events(
     room_id: &RoomId,
+    suggested_only: bool,
 ) -> AppResult<Vec<RawJson<HierarchySpaceChildEvent>>> {
     let frame_id = super::get_frame_id(room_id, None)?;
     let child_events = get_full_state(frame_id)?
         .into_iter()
         .filter_map(|((state_event_type, state_key), pdu)| {
             if state_event_type == StateEventType::SpaceChild {
-                if let Ok(content) = pdu.get_content::<SpaceChildEventContent>()
-                    && content.via.is_empty()
-                {
+                let content = pdu.get_content::<SpaceChildEventContent>().ok()?;
+
+                if content.via.is_empty() || (suggested_only && !content.suggested) {
                     return None;
                 }
 
@@ -195,7 +197,9 @@ pub async fn get_summary_and_children_client(
 ) -> AppResult<Option<SummaryAccessibility>> {
     let identifier = Identifier::UserId(user_id);
 
-    if let Ok(Some(response)) = get_summary_and_children_local(current_room, &identifier).await {
+    if let Ok(Some(response)) =
+        get_summary_and_children_local(current_room, &identifier, suggested_only).await
+    {
         return Ok(Some(response));
     }
 
@@ -314,6 +318,7 @@ fn cache_insert(
     mut cache: MutexGuard<'_, CacheItem>,
     current_room: &RoomId,
     child: SpaceHierarchyChildSummary,
+    suggested_only: bool,
 ) {
     let SpaceHierarchyChildSummary {
         canonical_alias,
@@ -343,13 +348,14 @@ fn cache_insert(
         room_type,
         allowed_room_ids,
         room_id: room_id.clone(),
-        children_state: get_stripped_space_child_events(&room_id).unwrap_or_default(),
+        children_state: get_stripped_space_child_events(&room_id, suggested_only)
+            .unwrap_or_default(),
         room_version,
         encryption,
     };
 
     cache.insert(
-        current_room.to_owned(),
+        (current_room.to_owned(), suggested_only),
         Some(CachedSpaceHierarchySummary { summary }),
     );
 }

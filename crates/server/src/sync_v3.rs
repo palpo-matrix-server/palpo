@@ -1,9 +1,9 @@
 use std::collections::{BTreeMap, HashMap, HashSet, hash_map::Entry};
+use indexmap::IndexMap;
 
-use palpo_core::Seqnum;
 use state::DbRoomStateField;
 
-use crate::core::UnixMillis;
+use crate::core::{Seqnum, UnixMillis};
 use crate::core::client::filter::{FilterDefinition, LazyLoadOptions, RoomEventFilter};
 use crate::core::client::sync_events::UnreadNotificationsCount;
 use crate::core::client::sync_events::v3::{
@@ -702,9 +702,7 @@ async fn load_joined_room(
 
     let mut edus: Vec<RawJson<AnySyncEphemeralRoomEvent>> = Vec::new();
     for (_, content) in data::room::receipt::read_receipts(room_id, since_sn)? {
-        let receipt = SyncReceiptEvent {
-            content,
-        };
+        let receipt = SyncReceiptEvent { content };
         edus.push(RawJson::new(&receipt)?.cast());
     }
     if room::typing::last_typing_update(room_id).await? >= since_sn {
@@ -838,7 +836,7 @@ async fn load_left_room(
     let since_frame_id = crate::event::get_last_frame_id(room_id, since_sn);
     let _since_state_ids = match since_frame_id {
         Ok(s) => state::get_full_state_ids(s)?,
-        _ => HashMap::new(),
+        _ => IndexMap::new(),
     };
 
     let curr_frame_id = room::get_frame_id(room_id, None)?;

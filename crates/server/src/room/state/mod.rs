@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex};
 
 use diesel::prelude::*;
+use indexmap::IndexMap;
 use lru_cache::LruCache;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
@@ -115,10 +116,9 @@ pub fn force_state(
                 )?;
             }
             TimelineEventType::SpaceChild => {
-                room::space::ROOM_ID_SPACE_CHUNK_CACHE
-                    .lock()
-                    .unwrap()
-                    .remove(&pdu.room_id);
+                let mut cache = room::space::ROOM_ID_SPACE_CHUNK_CACHE.lock().unwrap();
+                cache.remove(&(pdu.room_id.clone(), false));
+                cache.remove(&(pdu.room_id.clone(), true));
             }
             _ => continue,
         }
@@ -359,12 +359,12 @@ pub fn get_auth_events(
 
 /// Builds a StateMap by iterating over all keys that start
 /// with state_hash, this gives the full state for the given state_hash.
-pub fn get_full_state_ids(frame_id: i64) -> AppResult<HashMap<i64, OwnedEventId>> {
+pub fn get_full_state_ids(frame_id: i64) -> AppResult<IndexMap<i64, OwnedEventId>> {
     let full_state = load_frame_info(frame_id)?
         .pop()
         .expect("there is always one layer")
         .full_state;
-    let mut map = HashMap::new();
+    let mut map = IndexMap::new();
     for compressed in full_state.iter() {
         let splited = compressed.split()?;
         map.insert(splited.0, splited.1);
@@ -372,13 +372,13 @@ pub fn get_full_state_ids(frame_id: i64) -> AppResult<HashMap<i64, OwnedEventId>
     Ok(map)
 }
 
-pub fn get_full_state(frame_id: i64) -> AppResult<HashMap<(StateEventType, String), SnPduEvent>> {
+pub fn get_full_state(frame_id: i64) -> AppResult<IndexMap<(StateEventType, String), SnPduEvent>> {
     let full_state = load_frame_info(frame_id)?
         .pop()
         .expect("there is always one layer")
         .full_state;
 
-    let mut result = HashMap::new();
+    let mut result = IndexMap::new();
     for compressed in full_state.iter() {
         let (_, event_id) = compressed.split()?;
         if let Ok(pdu) = timeline::get_pdu(&event_id) {

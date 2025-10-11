@@ -1,13 +1,8 @@
-{"Action":"fail","Test":"TestClientSpacesSummary"}
-{"Action":"fail","Test":"TestClientSpacesSummary/max_depth"}
-{"Action":"fail","Test":"TestClientSpacesSummary/pagination"}
-{"Action":"fail","Test":"TestClientSpacesSummary/query_whole_graph"}
-{"Action":"fail","Test":"TestClientSpacesSummary/redact_link"}
-{"Action":"fail","Test":"TestClientSpacesSummary/suggested_only"}
 {"Action":"fail","Test":"TestCorruptedAuthChain"}
 {"Action":"fail","Test":"TestFederatedClientSpaces"}
 {"Action":"fail","Test":"TestFederationRoomsInvite"}
 {"Action":"fail","Test":"TestFederationRoomsInvite/Parallel"}
+{"Action":"fail","Test":"TestFederationRoomsInvite/Parallel/Inviter_user_can_rescind_invite_over_federation"}
 {"Action":"fail","Test":"TestFederationRoomsInvite/Parallel/Non-invitee_user_cannot_rescind_invite_over_federation"}
 {"Action":"fail","Test":"TestFederationRoomsInvite/Parallel/Remote_invited_user_can_join_the_room_when_homeserver_is_already_participating_in_the_room"}
 {"Action":"fail","Test":"TestFederationRoomsInvite/Parallel/Remote_invited_user_can_reject_invite_when_homeserver_is_already_participating_in_the_room"}
@@ -21,7 +16,6 @@
 {"Action":"fail","Test":"TestSyncTimelineGap"}
 {"Action":"fail","Test":"TestSyncTimelineGap/full"}
 {"Action":"fail","Test":"TestSyncTimelineGap/incremental"}
-{"Action":"fail","Test":"TestUnrejectRejectedEvents"}
 {"Action":"pass","Test":"TestACLs"}
 {"Action":"pass","Test":"TestAddAccountData"}
 {"Action":"pass","Test":"TestAddAccountData/Can_add_global_account_data"}
@@ -94,7 +88,13 @@
 {"Action":"pass","Test":"TestChangePasswordPushers"}
 {"Action":"pass","Test":"TestChangePasswordPushers/Pushers_created_with_a_different_access_token_are_deleted_on_password_change"}
 {"Action":"pass","Test":"TestChangePasswordPushers/Pushers_created_with_the_same_access_token_are_not_deleted_on_password_change"}
+{"Action":"pass","Test":"TestClientSpacesSummary"}
 {"Action":"pass","Test":"TestClientSpacesSummaryJoinRules"}
+{"Action":"pass","Test":"TestClientSpacesSummary/max_depth"}
+{"Action":"pass","Test":"TestClientSpacesSummary/pagination"}
+{"Action":"pass","Test":"TestClientSpacesSummary/query_whole_graph"}
+{"Action":"pass","Test":"TestClientSpacesSummary/redact_link"}
+{"Action":"pass","Test":"TestClientSpacesSummary/suggested_only"}
 {"Action":"pass","Test":"TestContent"}
 {"Action":"pass","Test":"TestContentCSAPIMediaV1"}
 {"Action":"pass","Test":"TestContentMediaV1"}
@@ -150,7 +150,6 @@
 {"Action":"pass","Test":"TestFederationRoomsInvite/Parallel/Invited_user_can_reject_invite_over_federation_for_empty_room"}
 {"Action":"pass","Test":"TestFederationRoomsInvite/Parallel/Invited_user_can_reject_invite_over_federation_several_times"}
 {"Action":"pass","Test":"TestFederationRoomsInvite/Parallel/Invited_user_has_'is_direct'_flag_in_prev_content_after_joining"}
-{"Action":"pass","Test":"TestFederationRoomsInvite/Parallel/Inviter_user_can_rescind_invite_over_federation"}
 {"Action":"pass","Test":"TestFederationRoomsInvite/Parallel/Remote_invited_user_can_see_room_metadata"}
 {"Action":"pass","Test":"TestFederationThumbnail"}
 {"Action":"pass","Test":"TestFetchEvent"}
@@ -621,6 +620,7 @@
 {"Action":"pass","Test":"TestUnknownEndpoints/Media_endpoints"}
 {"Action":"pass","Test":"TestUnknownEndpoints/Server-server_endpoints"}
 {"Action":"pass","Test":"TestUnknownEndpoints/Unknown_prefix"}
+{"Action":"pass","Test":"TestUnrejectRejectedEvents"}
 {"Action":"pass","Test":"TestUploadKey"}
 {"Action":"pass","Test":"TestUploadKeyIdempotency"}
 {"Action":"pass","Test":"TestUploadKeyIdempotencyOverlap"}

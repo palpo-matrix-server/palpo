@@ -791,13 +791,13 @@ pub async fn process_to_timeline_pdu(
 async fn resolve_state(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
-    incoming_state: HashMap<i64, OwnedEventId>,
+    incoming_state: IndexMap<i64, OwnedEventId>,
 ) -> AppResult<Arc<CompressedState>> {
     debug!("loading current room state ids");
     let current_state_ids = if let Ok(current_frame_id) = crate::room::get_frame_id(room_id, None) {
         state::get_full_state_ids(current_frame_id)?
     } else {
-        HashMap::new()
+        IndexMap::new()
     };
 
     debug!("loading fork states");

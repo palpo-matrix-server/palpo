@@ -370,7 +370,7 @@ async fn process_rooms(
             .iter()
             .filter_map(|state| {
                 let state_key = match state.1.as_str() {
-                    "$LAZY" => return None,
+                    "$LAZY" | "*" => return None,
                     "$ME" => sender_id.as_str(),
                     _ => state.1.as_str(),
                 };
@@ -571,7 +571,7 @@ fn collect_e2ee(
             if encrypted_room {
                 let current_state_ids = state::get_full_state_ids(current_frame_id)?;
 
-                let since_state_ids: HashMap<_, _> = state::get_full_state_ids(since_frame_id)?;
+                let since_state_ids = state::get_full_state_ids(since_frame_id)?;
 
                 for (key, id) in current_state_ids {
                     if since_state_ids.get(&key) != Some(&id) {
