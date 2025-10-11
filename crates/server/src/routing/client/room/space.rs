@@ -91,19 +91,19 @@ pub(super) async fn get_hierarchy(
                         .filter(|(room, _)| !parents.contains(room))
                         .collect::<Vec<Entry>>();
 
-                    if !populate {
-                        children = children
-                            .iter()
-                            .skip_while(|(room, _)| {
-                                crate::room::get_room_sn(room)
-                                    .map(|room_sn| Some(&room_sn) != room_sns.get(parents.len()))
-                                    .unwrap_or_else(|_| false)
-                            })
-                            .map(Clone::clone)
-                            .collect::<Vec<_>>()
-                            .into_iter()
-                            .collect::<Vec<Entry>>();
-                    }
+                    // if !populate {
+                    //     children = children
+                    //         .iter()
+                    //         .skip_while(|(room, _)| {
+                    //             crate::room::get_room_sn(room)
+                    //                 .map(|room_sn| Some(&room_sn) != room_sns.get(parents.len()))
+                    //                 .unwrap_or_else(|_| false)
+                    //         })
+                    //         .map(Clone::clone)
+                    //         .collect::<Vec<_>>()
+                    //         .into_iter()
+                    //         .collect::<Vec<Entry>>();
+                    // }
                 }
 
                 if populate {
@@ -112,16 +112,19 @@ pub(super) async fn get_hierarchy(
                     break;
                 }
 
-                parents.insert(current_room.clone());
                 if rooms.len() >= limit {
                     break;
                 }
+
+                parents.insert(current_room.clone());
 
                 if parents.len() > max_depth {
                     continue;
                 }
 
-                queue.extend(children);
+                for child in children.into_iter().rev() {
+                    queue.push_front(child);
+                }
             }
         }
     }
