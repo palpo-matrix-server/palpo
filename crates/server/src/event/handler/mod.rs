@@ -631,7 +631,7 @@ pub async fn process_to_timeline_pdu(
         &version_rules.authorization,
         &incoming_pdu,
         &async |event_id| {
-            timeline::get_pdu(&event_id).map_err(|_| StateError::other("missing pdu 2"))
+            timeline::get_pdu(&event_id).map_err(|_| StateError::other("missing PDU 2"))
         },
         &async |k, s| {
             state::ensure_field_id(&k.to_string().into(), &s)
@@ -650,6 +650,9 @@ pub async fn process_to_timeline_pdu(
                     }
                 })
                 .ok_or_else(|| {
+                    error!(
+                        "failed to get pdu for state type: {k}, state_key: {s}"
+                    );
                     StateError::other(format!(
                         "failed to get pdu for state type: {k}, state_key: {s}"
                     ))
