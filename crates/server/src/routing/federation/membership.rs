@@ -1,3 +1,6 @@
+use std::borrow::Borrow;
+use std::iter::once;
+
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
@@ -8,7 +11,7 @@ use crate::core::federation::membership::*;
 use crate::core::identifiers::*;
 use crate::core::room::JoinRule;
 use crate::core::room::RoomEventReqArgs;
-use crate::core::serde::{CanonicalJsonValue, JsonObject};
+use crate::core::serde::{CanonicalJsonValue,CanonicalJsonObject, JsonObject};
 use crate::event::handler;
 use crate::federation::maybe_strip_event_id;
 use crate::room::{ensure_room, timeline};
@@ -198,7 +201,6 @@ async fn invite_user(
 
     let state_lock = room::lock_state(&args.room_id).await;
     ensure_room(&args.room_id, &body.room_version)?;
-    drop(state_lock);
 
     if data::room::is_banned(&args.room_id)? {
         return Err(MatrixError::forbidden("this room is banned on this homeserver", None).into());
@@ -209,38 +211,45 @@ async fn invite_user(
     }
 
     let mut invite_state = body.invite_room_state.clone();
-
-    let mut event: JsonObject = serde_json::from_str(body.event.get())
-        .map_err(|_| MatrixError::invalid_param("invalid invite event bytes"))?;
-
-    // let event_id: OwnedEventId = format!("$dummy_{}", Ulid::new().to_string()).try_into()?;
-    event.insert("event_id".to_owned(), event_id.to_string().into());
-
-    let (event_sn, event_guard) = crate::event::ensure_event_sn(&args.room_id, &event_id)?;
-    let pdu = SnPduEvent::from_json_value(&args.room_id, &event_id, event_sn, event.into())
-        .map_err(|e| {
-            warn!("invalid invite event: {}", e);
-            MatrixError::invalid_param("invalid invite event")
-        })?;
-
-    invite_state.push(pdu.to_stripped_state_event());
+    // invite_state.push(pdu.to_stripped_state_event());
 
     // If we are active in the room, the remote server will notify us about the join via /send.
     // If we are not in the room, we need to manually
     // record the invited state for client /sync through update_membership(), and
     // send the invite PDU to the relevant appservices.
     if !room::is_server_joined(&config::get().server_name, &args.room_id)? {
-        crate::membership::update_membership(
-            &pdu.event_id,
-            pdu.event_sn,
-            &args.room_id,
-            &invitee_id,
-            MembershipState::Invite,
-            &sender_id,
-            Some(invite_state),
-        )?;
+        let mut event: CanonicalJsonObject = serde_json::from_str(body.event.get())
+            .map_err(|_| MatrixError::invalid_param("invalid invite event bytes"))?;
+
+        // let event_id: OwnedEventId = format!("$dummy_{}", Ulid::new().to_string()).try_into()?;
+        event.insert("event_id".to_owned(), event_id.to_string().into());
+
+        let (event_sn, event_guard) = crate::event::ensure_event_sn(&args.room_id, &event_id)?;
+        println!(
+            "============ensure event 5 sn: {event_sn}, {}",
+            event_guard.is_some()
+        );
+        let pdu = SnPduEvent::from_canonical_object(&args.room_id, &event_id, event_sn, event.clone())
+            .map_err(|e| {
+                warn!("invalid invite event: {}", e);
+                MatrixError::invalid_param("invalid invite event")
+            })?;
+
+        timeline::append_pdu(&pdu, event, once(event_id.borrow()), &state_lock).await?;
+
+        // crate::membership::update_membership(
+        //     &pdu.event_id,
+        //     pdu.event_sn,
+        //     &args.room_id,
+        //     &invitee_id,
+        //     MembershipState::Invite,
+        //     &sender_id,
+        //     Some(invite_state),
+        // )?;
+
+        drop(event_guard);
     }
-    drop(event_guard);
+    drop(state_lock);
 
     json_ok(InviteUserResBodyV2 {
         event: crate::sending::convert_to_outgoing_federation_event(signed_event),

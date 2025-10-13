@@ -125,7 +125,7 @@ pub fn get_pdu(event_id: &EventId) -> AppResult<SnPduEvent> {
         ))
         .first::<(Seqnum, OwnedRoomId, JsonValue)>(&mut connect()?)?;
     let pdu = PduEvent::from_json_value(&room_id, event_id, json)
-        .map_err(|_e| AppError::internal("Invalid PDU in db."))?;
+        .map_err(|_e| AppError::internal("invalid pdu in db"))?;
     Ok(SnPduEvent::new(pdu, event_sn))
 }
 
@@ -147,7 +147,7 @@ pub fn get_may_missing_pdus(
     let mut missing_ids = event_ids.iter().cloned().collect::<HashSet<_>>();
     for (event_id, event_sn, json) in events {
         let mut pdu = SnPduEvent::from_json_value(room_id, &event_id, event_sn, json)
-            .map_err(|_e| AppError::internal("Invalid PDU in db."))?;
+            .map_err(|_e| AppError::internal("invalid pdu in db"))?;
         pdu.rejection_reason = events::table
             .filter(events::id.eq(&event_id))
             .select(events::rejection_reason)
@@ -644,7 +644,7 @@ pub async fn hash_and_sign_event(
             }
         } else {
             Err(StateError::other(format!(
-                "missing state event, event_type: {k}, state_key:{s}"
+                "failed hash and sigin event, missing state event, event_type: {k}, state_key:{s}"
             )))
         }
     };
@@ -705,6 +705,7 @@ pub async fn hash_and_sign_event(
     }
 
     let (event_sn, event_guard) = crate::event::ensure_event_sn(room_id, &pdu.event_id)?;
+            println!("============ensure event 4 sn: {event_sn}, {}", event_guard.is_some());
     NewDbEvent {
         id: pdu.event_id.to_owned(),
         sn: event_sn,

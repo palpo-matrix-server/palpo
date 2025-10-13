@@ -14,6 +14,7 @@ use crate::{AppResult, room};
 pub(super) async fn state_at_incoming_degree_one(
     incoming_pdu: &PduEvent,
 ) -> AppResult<Option<IndexMap<i64, OwnedEventId>>> {
+    print!("===========state_at_incoming_degree_one===========");
     let prev_event = &*incoming_pdu.prev_events[0];
     let Ok(prev_frame_id) = state::get_pdu_frame_id(prev_event) else {
         return Ok(None);
@@ -23,7 +24,7 @@ pub(super) async fn state_at_incoming_degree_one(
         return Ok(None);
     };
 
-    debug!("Using cached state");
+    debug!("using cached state");
     let prev_pdu = timeline::get_pdu(prev_event)?;
 
     if let Some(state_key) = &prev_pdu.state_key {
@@ -42,7 +43,8 @@ pub(super) async fn state_at_incoming_resolved(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
 ) -> AppResult<Option<IndexMap<i64, OwnedEventId>>> {
-    debug!("Calculating state at event using state res");
+    print!("===========state_at_incoming_resolved===========");
+    debug!("calculating state at event using state res");
     let mut extremity_state_hashes = HashMap::new();
 
     let mut okay = true;
@@ -130,6 +132,7 @@ pub(super) async fn state_at_incoming_resolved(
         |_| None, //TODO
     )
     .await;
+println!("=========state_at_incoming_resolved==after resolve_state======== {:#?}", result);
     drop(state_lock);
 
     match result {

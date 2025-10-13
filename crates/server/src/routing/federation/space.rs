@@ -29,7 +29,9 @@ async fn get_hierarchy(
     let room_id = &args.room_id;
     let suggested_only = args.suggested_only;
     let identifier = &Identifier::ServerName(origin);
-    match crate::room::space::get_summary_and_children_local(room_id, identifier, suggested_only).await? {
+    match crate::room::space::get_summary_and_children_local(room_id, identifier, suggested_only)
+        .await?
+    {
         None => Err(MatrixError::not_found("The requested room was not found").into()),
 
         Some(SummaryAccessibility::Inaccessible) => {
@@ -40,9 +42,13 @@ async fn get_hierarchy(
             let children_via = get_parent_children_via(&room, suggested_only);
             let (children, inaccessible_children) = stream::iter(children_via)
                 .filter_map(|(child, _via)| async move {
-                    match crate::room::space::get_summary_and_children_local(&child, identifier, suggested_only)
-                        .await
-                        .ok()?
+                    match crate::room::space::get_summary_and_children_local(
+                        &child,
+                        identifier,
+                        suggested_only,
+                    )
+                    .await
+                    .ok()?
                     {
                         None => None,
                         Some(SummaryAccessibility::Inaccessible) => Some((None, Some(child))),

@@ -1,8 +1,8 @@
 #[cfg(all(feature = "unstable-msc4306"))]
 use std::panic::RefUnwindSafe;
+use std::{collections::BTreeMap, ops::RangeBounds, str::FromStr};
 #[cfg(feature = "unstable-msc4306")]
 use std::{future::Future, pin::Pin, sync::Arc};
-use std::{collections::BTreeMap, ops::RangeBounds, str::FromStr};
 
 use regex::bytes::Regex;
 use salvo::oapi::ToSchema;
@@ -10,13 +10,13 @@ use serde::{Deserialize, Serialize};
 use serde_json::value::Value as JsonValue;
 use wildmatch::WildMatch;
 
+#[cfg(feature = "unstable-msc4306")]
+use crate::EventId;
 use crate::macros::StringEnum;
 use crate::{
     OwnedRoomId, OwnedUserId, PrivOwnedStr, RoomVersionId, UserId,
     power_levels::NotificationPowerLevels, room_version_rules::RoomPowerLevelsRules,
 };
-#[cfg(feature = "unstable-msc4306")]
-use crate::EventId;
 
 mod flattened_json;
 mod push_condition_serde;

@@ -12,13 +12,14 @@ use crate::{AppError, AppResult, exts::*};
 /// Call /state_ids to find out what the state at this pdu is. We trust the
 /// server's response to some extend (sic), but we still do a lot of checks
 /// on the events
-pub(super) async fn fetch_state(
+pub async fn fetch_state(
     origin: &ServerName,
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
     event_id: &EventId,
 ) -> AppResult<Option<IndexMap<i64, OwnedEventId>>> {
-    debug!("Calling /state_ids");
+    println!("================fetch state ====== {origin}, {room_id}, {event_id}");
+    debug!("calling /state_ids");
     // Call /state_ids to find out what the state at this pdu is. We trust the server's
     // response to some extend, but we still do a lot of checks on the events
     let request = room_state_ids_request(
@@ -33,12 +34,16 @@ pub(super) async fn fetch_state(
         .await?
         .json::<RoomStateIdsResBody>()
         .await?;
-    debug!("Fetching state events at event.");
+    debug!("fetching state events at event: {event_id}");
+
+    println!("============response of state request: {res:#?}");
     let state_vec =
         super::fetch_and_process_outliers(origin, &res.pdu_ids, room_id, room_version_id).await?;
+        println!("===========after fetch_and_process_outliers");
 
     let mut state: IndexMap<_, OwnedEventId> = IndexMap::new();
     for (pdu, _, _event_guard) in state_vec {
+        println!("====================state pdu: {pdu:?}");
         let state_key = pdu
             .state_key
             .clone()
@@ -51,10 +56,14 @@ pub(super) async fn fetch_state(
                 v.insert(pdu.event_id.clone());
             }
             indexmap::map::Entry::Occupied(_) => {
-                return Err(AppError::internal(format!(
+                error!(
                     "state event's type `{}` and state_key `{}` combination exists multiple times",
                     pdu.event_ty, state_key
-                )));
+                );
+                // return Err(AppError::internal(format!(
+                //     "state event's type `{}` and state_key `{}` combination exists multiple times",
+                //     pdu.event_ty, state_key
+                // )));
             }
         }
     }

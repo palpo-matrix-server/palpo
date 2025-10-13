@@ -1,9 +1,13 @@
-use std::collections::{BTreeMap, HashMap, HashSet, hash_map::Entry};
 use indexmap::IndexMap;
+use std::collections::{BTreeMap, HashMap, HashSet, hash_map::Entry};
 
 use state::DbRoomStateField;
 
-use crate::core::{Seqnum, UnixMillis};
+use crate::core::serde::JsonValue;
+use diesel::prelude::*;
+use palpo_data::schema::*;
+use palpo_data::connect;
+
 use crate::core::client::filter::{FilterDefinition, LazyLoadOptions, RoomEventFilter};
 use crate::core::client::sync_events::UnreadNotificationsCount;
 use crate::core::client::sync_events::v3::{
@@ -19,6 +23,7 @@ use crate::core::events::{
 };
 use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
+use crate::core::{Seqnum, UnixMillis};
 use crate::event::{EventHash, PduEvent, SnPduEvent};
 use crate::room::{state, timeline};
 use crate::{AppError, AppResult, config, data, extract_variant, room};
@@ -38,12 +43,33 @@ pub async fn sync_events(
     device_id: &DeviceId,
     args: &SyncEventsReqArgs,
 ) -> AppResult<SyncEventsResBody> {
+    println!(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   sync events  {args:?}");
     let curr_sn = data::curr_sn()?;
     crate::seqnum_reach(curr_sn).await;
+    {
+        match connect() {
+            Ok(mut conn) => {
+                println!(
+                    ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   current sn reached  {curr_sn}  {:?}  {:?}",
+                    event_datas::table
+                        .filter(event_datas::event_sn.eq(curr_sn))
+                        .select(event_datas::json_data)
+                        .load::<JsonValue>(&mut conn),
+                    event_points::table
+                        .filter(event_points::event_sn.eq(curr_sn))
+                        .select(event_points::event_id)
+                        .load::<String>(&mut conn)
+                );
+            }
+            Err(e) => {
+                error!("db error: {e}");
+            }
+        }
+    }
     let since_sn = if let Some(since_str) = args.since.as_ref() {
         let since = since_str
             .parse()
-            .map_err(|_| AppError::public("Invalid `since` parameter, must be a number."))?;
+            .map_err(|_| AppError::public("invalid `since` parameter, must be a number"))?;
         if since > curr_sn {
             return Ok(SyncEventsResBody::new(since_str.to_owned()));
         }
@@ -52,6 +78,9 @@ pub async fn sync_events(
         None
     };
     let next_batch = curr_sn + 1;
+    println!(
+        ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   sync events  since {since_sn:?}, curr {curr_sn}, next {next_batch}"
+    );
 
     // Load filter
     let filter = match &args.filter {

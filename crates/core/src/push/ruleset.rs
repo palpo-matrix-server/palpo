@@ -333,7 +333,10 @@ impl Ruleset {
     ) -> Option<AnyPushRuleRef<'_>> {
         let event = FlattenedJson::from_raw(event);
 
-        if event.get_str("sender").is_some_and(|sender| sender == context.user_id) {
+        if event
+            .get_str("sender")
+            .is_some_and(|sender| sender == context.user_id)
+        {
             // no need to look at the rules if the event was by the user themselves
             return None;
         }
@@ -357,8 +360,13 @@ impl Ruleset {
     /// * `context` - The context of the message and room at the time of the
     ///   event.
     #[instrument(skip_all, fields(context.room_id = %context.room_id))]
-    pub async fn get_actions<T>(&self, event: &RawJson<T>, context: &PushConditionRoomCtx) -> &[Action] {
-        self.get_match(event, context).await
+    pub async fn get_actions<T>(
+        &self,
+        event: &RawJson<T>,
+        context: &PushConditionRoomCtx,
+    ) -> &[Action] {
+        self.get_match(event, context)
+            .await
             .map(|rule| rule.actions())
             .unwrap_or(&[])
     }

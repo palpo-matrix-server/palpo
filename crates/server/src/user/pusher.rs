@@ -151,7 +151,9 @@ pub async fn send_push_notice(
         &power_levels,
         &pdu.to_sync_room_event(),
         &pdu.room_id,
-    ).await? {
+    )
+    .await?
+    {
         let n = match action {
             Action::Notify => true,
             Action::SetTweak(tweak) => {

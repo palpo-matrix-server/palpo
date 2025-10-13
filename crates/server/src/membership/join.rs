@@ -133,6 +133,7 @@ pub async fn join_room(
     }
 
     info!("joining {room_id} over federation");
+    println!("=======================join federation  0");
     let (make_join_response, remote_server) =
         make_join_request(sender_id, room_id, &servers).await?;
 
@@ -144,6 +145,7 @@ pub async fn join_room(
         _ => return Err(AppError::public("room version is not supported")),
     };
 
+    println!("=======================join federation  1");
     let mut join_event_stub: CanonicalJsonObject =
         serde_json::from_str(make_join_response.event.get())
             .map_err(|_| AppError::public("Invalid make_join event json received from server."))?;
@@ -181,14 +183,17 @@ pub async fn join_room(
         })
         .expect("event is valid, we just created it"),
     );
+    println!("=======================join federation  3");
 
     // We keep the "event_id" in the pdu only in v1 or v2 rooms
     maybe_strip_event_id(&mut join_event_stub, &room_version_id);
 
+    println!("=======================join federation  4");
     // In order to create a compatible ref hash (EventID) the `hashes` field needs to be present
     crate::server_key::hash_and_sign_event(&mut join_event_stub, &room_version_id)
         .expect("event is valid, we just created it");
 
+    println!("=======================join federation  5");
     // Generate event id
     let event_id = crate::event::gen_event_id(&join_event_stub, &room_version_id)?;
 
@@ -214,6 +219,7 @@ pub async fn join_room(
         body,
     )?
     .into_inner();
+    println!("=======================join federation  6");
 
     let send_join_body =
         crate::sending::send_federation_request(&remote_server, send_join_request, None)
@@ -222,6 +228,7 @@ pub async fn join_room(
             .await?;
 
     info!("send_join finished");
+    println!("=======================join federation  7");
 
     if let Some(signed_raw) = &send_join_body.0.event {
         info!(
@@ -264,7 +271,7 @@ pub async fn join_room(
             }
             Err(e) => {
                 warn!(
-                    "Server {remote_server} sent invalid signature in sendjoin signatures for event {signed_value:?}: {e:?}",
+                    "server {remote_server} sent invalid signature in sendjoin signatures for event {signed_value:?}: {e:?}",
                 );
             }
         }
@@ -272,6 +279,7 @@ pub async fn join_room(
 
     room::ensure_room(room_id, &room_version_id)?;
 
+    println!(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>join room remote 0");
     let parsed_join_pdu = PduEvent::from_canonical_object(room_id, &event_id, join_event.clone())
         .map_err(|e| {
         warn!("invalid pdu in send_join response: {}", e);
@@ -279,16 +287,19 @@ pub async fn join_room(
     })?;
     let join_event_id = parsed_join_pdu.event_id.clone();
     let (join_event_sn, event_guard) = ensure_event_sn(room_id, &join_event_id)?;
+            println!("============ensure event 1 sn: {join_event_sn}, {}", event_guard.is_some());
 
     let mut state = HashMap::new();
     let pub_key_map = RwLock::new(BTreeMap::new());
 
+    println!(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>join room remote 1  sn:{join_event_sn}  {join_event_id}");
     info!("acquiring server signing keys for response events");
     let resp_events = &send_join_body.0;
     let resp_state = &resp_events.state;
     let resp_auth = &resp_events.auth_chain;
     crate::server_key::acquire_events_pubkeys(resp_auth.iter().chain(resp_state.iter())).await;
 
+    println!(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>join room remote 2");
     super::update_membership(
         &join_event_id,
         join_event_sn,
@@ -299,6 +310,7 @@ pub async fn join_room(
         None,
     )?;
 
+    println!(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>join room remote 3");
     let mut parsed_pdus = IndexMap::new();
     for auth_pdu in resp_auth {
         let (event_id, event_value, _room_id, _room_version_id) =
@@ -323,6 +335,7 @@ pub async fn join_room(
             error!("failed to fetch missing prev events for join: {e}");
         }
     }
+    println!(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>join room remote 4");
     if let Err(e) = fetch_and_process_missing_prev_events(
         &remote_server,
         room_id,
@@ -334,7 +347,16 @@ pub async fn join_room(
     {
         error!("failed to fetch missing prev events for join: {e}");
     }
+    println!(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>join room remote 5");
+    crate::event::handler::fetch_state(
+        &remote_server,
+        room_id,
+        &room_version_id,
+        &parsed_join_pdu.event_id,
+    )
+    .await?;
 
+    println!(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>join room remote 6");
     info!("going through send_join response room_state");
     for result in send_join_body
         .0
@@ -351,6 +373,7 @@ pub async fn join_room(
             pdu
         } else {
             let (event_sn, event_guard) = ensure_event_sn(room_id, &event_id)?;
+            println!("============ensure event 2 sn: {event_sn}, {}", event_guard.is_some());
             let pdu =
                 SnPduEvent::from_canonical_object(room_id, &event_id, event_sn, value.clone())
                     .map_err(|e| {
@@ -392,7 +415,8 @@ pub async fn join_room(
         };
 
         if !timeline::has_pdu(&event_id) {
-            let (event_sn, _event_guard) = ensure_event_sn(room_id, &event_id)?;
+            let (event_sn, event_guard) = ensure_event_sn(room_id, &event_id)?;
+            println!("============ensure event 3 sn: {join_event_sn}, {}", event_guard.is_some());
             NewDbEvent::from_canonical_json(&event_id, event_sn, &value)?.save()?;
             DbEventData {
                 event_id: event_id.to_owned(),

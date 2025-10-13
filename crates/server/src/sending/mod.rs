@@ -131,7 +131,10 @@ pub fn federation_client() -> ClientWithMiddleware {
             //     .map(|secret| jsonwebtoken::DecodingKey::from_secret(secret.as_bytes()));
 
             let retry_policy = ExponentialBackoff::builder()
-                .retry_bounds(Duration::from_secs(5), Duration::from_millis(conf.http_client.federation_timeout))
+                .retry_bounds(
+                    Duration::from_secs(5),
+                    Duration::from_millis(conf.http_client.federation_timeout),
+                )
                 .build_with_max_retries(conf.http_client.federation_retries);
 
             let client = reqwest_client_builder(conf)

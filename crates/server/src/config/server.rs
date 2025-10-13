@@ -8,7 +8,7 @@ use serde::de::IgnoredAny;
 use url::Url;
 
 use super::{
-    AdminConfig, BlurhashConfig, HttpClientConfig, CompressionConfig, DbConfig, FederationConfig,
+    AdminConfig, BlurhashConfig, CompressionConfig, DbConfig, FederationConfig, HttpClientConfig,
     JwtConfig, LoggerConfig, MediaConfig, OidcConfig, PresenceConfig, ProxyConfig,
     ReadReceiptConfig, TurnConfig, TypingConfig, UrlPreviewConfig,
 };

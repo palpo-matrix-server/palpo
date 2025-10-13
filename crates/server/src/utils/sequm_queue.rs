@@ -1,7 +1,8 @@
 use std::collections::BTreeSet;
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use std::{fmt::Debug, sync::Arc};
+use std::{sync::Arc};
+use std::fmt::{self, Display, Debug, Formatter};
 
 use crate::core::Seqnum;
 
@@ -22,6 +23,7 @@ impl Future for SeqnumQueueFuture {
 
         if let Some(first) = queue.first() {
             if first > &self.value {
+                println!("=================wake up==================seqnum ready: {}", self.value);
                 Poll::Ready(())
             } else {
                 cx.waker().wake_by_ref();
@@ -78,6 +80,19 @@ impl SeqnumQueue {
 impl Drop for SeqnumQueueGuard {
     fn drop(&mut self) {
         let mut queue = self.queue.lock().expect("locked");
+        println!("=================drop guard==================remove seqnum: {}", self.value);
         queue.remove(&self.value);
+    }
+}
+
+impl Display for SeqnumQueueGuard {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "SeqnumQueueGuard({})", self.value)
+    }
+}
+
+impl Debug for SeqnumQueueGuard {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "SeqnumQueueGuard({})", self.value)
     }
 }
