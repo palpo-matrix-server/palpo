@@ -14,7 +14,6 @@ use crate::{AppResult, room};
 pub(super) async fn state_at_incoming_degree_one(
     incoming_pdu: &PduEvent,
 ) -> AppResult<Option<IndexMap<i64, OwnedEventId>>> {
-    print!("===========state_at_incoming_degree_one===========");
     let prev_event = &*incoming_pdu.prev_events[0];
     let Ok(prev_frame_id) = state::get_pdu_frame_id(prev_event) else {
         return Ok(None);
@@ -43,7 +42,6 @@ pub(super) async fn state_at_incoming_resolved(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
 ) -> AppResult<Option<IndexMap<i64, OwnedEventId>>> {
-    print!("===========state_at_incoming_resolved===========");
     debug!("calculating state at event using state res");
     let mut extremity_state_hashes = HashMap::new();
 
