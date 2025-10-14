@@ -569,6 +569,10 @@ impl RoomPowerLevels {
             return UserPowerLevel::Infinite;
         }
 
+        println!(
+            "=============for user {user_id}   power level: {:?}",
+            self.users.get(user_id).map_or(self.users_default, |pl| *pl)
+        );
         self.users
             .get(user_id)
             .map_or(self.users_default, |pl| *pl)
@@ -659,6 +663,11 @@ impl RoomPowerLevels {
     ///
     /// Shorthand for `power_levels.user_can_do(user_id, PowerLevelAction::Invite)`.
     pub fn user_can_invite(&self, user_id: &UserId) -> bool {
+        println!(
+            "=============user_can_invite {user_id}   power level: {:?} invite: {}",
+            self.for_user(user_id),
+            self.invite
+        );
         self.for_user(user_id) >= self.invite
     }
 
