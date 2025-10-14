@@ -106,7 +106,7 @@ pub fn update_membership(
     user_id: &UserId,
     membership: MembershipState,
     sender_id: &UserId,
-    mut last_state: Option<Vec<RawJson<AnyStrippedStateEvent>>>,
+    last_state: Option<Vec<RawJson<AnyStrippedStateEvent>>>,
 ) -> AppResult<()> {
     let conf = crate::config::get();
     // Keep track what remote users exist by adding them as "deactivated" users
@@ -247,11 +247,6 @@ pub fn update_membership(
                     if let Ok(event) = event.deserialize() {
                         let _ = ensure_field(&event.event_type(), event.state_key());
                     }
-                }
-            }
-            if let Some(last_state) = &mut last_state {
-                if let Ok(create_event) = crate::room::get_create(room_id) {
-                    last_state.push(create_event.to_stripped_state_event())
                 }
             }
             let _ = ensure_field(&StateEventType::RoomMember, user_id.as_str());

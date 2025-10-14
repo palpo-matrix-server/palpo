@@ -181,7 +181,7 @@ pub async fn knock_room(
     // It has enough fields to be called a proper event now
     let knock_event = knock_event_stub;
 
-    info!("Asking {remote_server} for send_knock in room {room_id}");
+    info!("asking {remote_server} for send_knock in room {room_id}");
     let send_knock_request = send_knock_request(
         &remote_server.origin().await,
         SendKnockReqArgs {
@@ -208,7 +208,7 @@ pub async fn knock_room(
             StatusError::internal_server_error().brief(format!("Invalid knock event PDU: {e:?}"))
         })?;
 
-    info!("Going through send_knock response knock state events");
+    info!("going through send_knock response knock state events");
 
     // TODO: how to handle this? snpase save this state to unsigned field.
     let knock_state = send_knock_body
