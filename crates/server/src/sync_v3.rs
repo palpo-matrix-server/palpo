@@ -43,29 +43,8 @@ pub async fn sync_events(
     device_id: &DeviceId,
     args: &SyncEventsReqArgs,
 ) -> AppResult<SyncEventsResBody> {
-    println!(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   sync events  {args:?}");
     let curr_sn = data::curr_sn()?;
     crate::seqnum_reach(curr_sn).await;
-    {
-        match connect() {
-            Ok(mut conn) => {
-                println!(
-                    ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   current sn reached  {curr_sn}  {:?}  {:?}",
-                    event_datas::table
-                        .filter(event_datas::event_sn.eq(curr_sn))
-                        .select(event_datas::json_data)
-                        .load::<JsonValue>(&mut conn),
-                    event_points::table
-                        .filter(event_points::event_sn.eq(curr_sn))
-                        .select(event_points::event_id)
-                        .load::<String>(&mut conn)
-                );
-            }
-            Err(e) => {
-                error!("db error: {e}");
-            }
-        }
-    }
     let since_sn = if let Some(since_str) = args.since.as_ref() {
         let since = since_str
             .parse()
@@ -78,9 +57,6 @@ pub async fn sync_events(
         None
     };
     let next_batch = curr_sn + 1;
-    println!(
-        ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   sync events  since {since_sn:?}, curr {curr_sn}, next {next_batch}"
-    );
 
     // Load filter
     let filter = match &args.filter {
@@ -141,6 +117,7 @@ pub async fn sync_events(
 
     let mut left_rooms = BTreeMap::new();
     let all_left_rooms = room::user::left_rooms(sender_id, since_sn)?;
+    println!("============================all_left_rooms: {all_left_rooms:?}");
 
     for room_id in all_left_rooms.keys() {
         let Ok(left_sn) = room::user::left_sn(room_id, sender_id) else {

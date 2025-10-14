@@ -130,10 +130,6 @@ pub fn invited_rooms(
                 .map(|state_data| (room_id, state_data))
         })
         .collect();
-    println!("======={user_id}=== since: {since_sn} ===invited_rooms: {list:#?}  {:#?}", room_users::table
-        .filter(room_users::user_id.eq(user_id))
-        .select((room_users::room_id, room_users::event_sn, room_users::membership, room_users::state_data))
-        .load::<(OwnedRoomId, i64, String, Option<JsonValue>)>(&mut connect()?)?);
     Ok(list)
 }
 

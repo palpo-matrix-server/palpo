@@ -72,6 +72,7 @@ pub(crate) async fn process_incoming_pdu(
     value: BTreeMap<String, CanonicalJsonValue>,
     is_timeline_event: bool,
 ) -> AppResult<()> {
+    println!("=================process_incoming_pdu 0");
     if !crate::room::room_exists(room_id)? {
         return Err(MatrixError::not_found("room is unknown to this server").into());
     }
@@ -86,6 +87,7 @@ pub(crate) async fn process_incoming_pdu(
         return Ok(());
     }
 
+    println!("=================process_incoming_pdu 1");
     // 1.2 Check if the room is disabled
     if crate::room::is_disabled(room_id)? {
         return Err(MatrixError::forbidden(
@@ -108,6 +110,7 @@ pub(crate) async fn process_incoming_pdu(
     )
     .map_err(|_| MatrixError::bad_json("User ID in sender is invalid."))?;
 
+    println!("=================process_incoming_pdu 2");
     if sender.server_name().ne(origin) {
         handler::acl_check(sender.server_name(), room_id)?;
     }
@@ -117,6 +120,7 @@ pub(crate) async fn process_incoming_pdu(
         return Ok(());
     }
 
+    println!("=================process_incoming_pdu 3");
     let Some((incoming_pdu, val, event_guard)) = process_to_outlier_pdu(
         origin,
         event_id,
@@ -144,6 +148,7 @@ pub(crate) async fn process_incoming_pdu(
     if incoming_pdu.origin_server_ts < first_pdu_in_room.origin_server_ts {
         return Ok(());
     }
+    println!("=================process_incoming_pdu 40");
 
     // Done with prev events, now handling the incoming event
     let start_time = Instant::now();
@@ -151,6 +156,7 @@ pub(crate) async fn process_incoming_pdu(
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
+    println!("=================process_incoming_pdu before process_to_timeline_pdu");
     handler::process_to_timeline_pdu(incoming_pdu, val, origin, room_id).await?;
     drop(event_guard);
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
@@ -219,6 +225,7 @@ pub(crate) async fn process_pulled_pdu(
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
+    println!("=================process_pulled_pdu before process_to_timeline_pdu");
     handler::process_to_timeline_pdu(incoming_pdu, val, origin, room_id).await?;
     drop(event_guard);
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
@@ -518,15 +525,16 @@ pub async fn process_to_timeline_pdu(
     origin: &ServerName,
     room_id: &RoomId,
 ) -> AppResult<()> {
-    println!("===========start  process_to_timeline_pdu ==============");
+    println!("===========start  process_to_timeline_pdu ==========mm====");
     // Skip the PDU if we already have it as a timeline event
     if timeline::has_non_outlier_pdu(&incoming_pdu.event_id)? {
         return Ok(());
     }
     let _event_sn = crate::event::ensure_event_sn(&incoming_pdu.room_id, &incoming_pdu.event_id)?;
+    println!("===========  process_to_timeline_pdu  x 0");
 
-    if crate::room::pdu_metadata::is_event_soft_failed(&incoming_pdu.event_id)? {
-        return Err(MatrixError::invalid_param("Event has been soft failed").into());
+    if crate::room::pdu_metadata::is_event_soft_failed(&incoming_pdu.event_id).unwrap_or(false) {
+        return Err(MatrixError::invalid_param("event has been soft failed").into());
     }
     info!("upgrading {} to timeline pdu", incoming_pdu.event_id);
     let room_version_id = &room::get_version(room_id)?;
@@ -537,6 +545,7 @@ pub async fn process_to_timeline_pdu(
     debug!("resolving state at event");
     let server_joined = crate::room::is_server_joined(crate::config::server_name(), room_id)?;
     if !server_joined {
+        println!("=========process_to_timeline_pdu server not joined========");
         if let Some(state_key) = incoming_pdu.state_key.as_deref()
             && incoming_pdu.event_ty == TimelineEventType::RoomMember
             && state_key != incoming_pdu.sender().as_str() //????
@@ -573,6 +582,7 @@ pub async fn process_to_timeline_pdu(
                     .collect::<AppResult<_>>()?,
             );
             debug!("preparing for stateres to derive new room state");
+        println!("=========process_to_timeline_pdu 1");
 
             // We also add state after incoming event to the fork states
             // let mut state_after = state_at_incoming_event.clone();
@@ -592,8 +602,10 @@ pub async fn process_to_timeline_pdu(
                 appended,
                 disposed,
             } = state::save_state(room_id, Arc::new(new_room_state))?;
+        println!("=========process_to_timeline_pdu 2");
 
             state::force_state(room_id, frame_id, appended, disposed)?;
+        println!("=========process_to_timeline_pdu 3");
 
             debug!("appended incoming pdu");
             timeline::append_pdu(&incoming_pdu, json_data, extremities, &state_lock).await?;
@@ -603,10 +615,12 @@ pub async fn process_to_timeline_pdu(
                 &incoming_pdu.room_id,
                 compressed_state_ids,
             )?;
+        println!("=========process_to_timeline_pdu 4");
             drop(state_lock);
         }
         return Ok(());
     }
+        println!("=========process_to_timeline_pdu 5");
     // let state_at_incoming_event = if incoming_pdu.prev_events.len() == 1 {
     //     state_at_incoming_degree_one(&incoming_pdu).await?
     // } else {
@@ -614,10 +628,6 @@ pub async fn process_to_timeline_pdu(
     // };
     let state_at_incoming_event =
         state_at_incoming_resolved(&incoming_pdu, room_id, room_version_id).await?;
-    println!(
-        "=======state_at_incoming_event: {:#?}",
-        state_at_incoming_event
-    );
 
     let state_at_incoming_event = match state_at_incoming_event {
         None => fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id)
@@ -782,7 +792,6 @@ pub async fn process_to_timeline_pdu(
     } else {
         vec![]
     };
-    println!("=================================guards: {:?}", guards);
 
     // Now that the event has passed all auth it is added into the timeline.
     // We use the `state_at_event` instead of `state_after` so we accurately

@@ -77,12 +77,14 @@ async fn process_pdus(
     origin: &ServerName,
     txn_start_time: &Instant,
 ) -> AppResult<BTreeMap<OwnedEventId, AppResult<()>>> {
+        println!("=========process_pdus========0");
     let mut parsed_pdus = Vec::with_capacity(pdus.len());
     for pdu in pdus {
+        println!("=========process_pdus========1");
         parsed_pdus.push(match crate::parse_incoming_pdu(pdu) {
             Ok(t) => t,
             Err(e) => {
-                warn!("could not parse PDU: {e}");
+                warn!("could not parse pdu: {e}");
                 continue;
             }
         });
@@ -93,6 +95,7 @@ async fn process_pdus(
     for (event_id, value, room_id, room_version_id) in parsed_pdus {
         // crate::server::check_running()?;
         let pdu_start_time = Instant::now();
+        println!("=========process_pdus========2");
         let result = handler::process_incoming_pdu(
             origin,
             &event_id,
@@ -107,6 +110,7 @@ async fn process_pdus(
             txn_elapsed = ?txn_start_time.elapsed(),
             "finished pdu {event_id}",
         );
+        println!("=========process_pdus========3  {result:?}");
 
         // if result.is_ok() {
         //     resolved_map.insert(event_id, Ok(()));

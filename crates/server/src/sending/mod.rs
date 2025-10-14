@@ -435,7 +435,7 @@ async fn send_events(
                                     (
                                         OutgoingKind::Normal(server.clone()),
                                         AppError::internal(
-                                            "[Normal] Event in servernamevent_datas not found in database.",
+                                            format!("event not found: {server} {pdu_id}"),
                                         ),
                                     )
                                 })?,

@@ -333,13 +333,11 @@ pub fn get_auth_events(
     let mut sauth_events = auth_types
         .into_iter()
         .filter_map(|(event_type, state_key)| {
-            println!("==mmmm======event_type: {event_type}, state_key: {state_key}");
             get_field_id(&event_type.to_string().into(), &state_key)
                 .ok()
                 .map(|field_id| (field_id, (event_type, state_key)))
         })
         .collect::<HashMap<_, _>>();
-    println!("==mmmm======sauth_events: {sauth_events:#?}");
 
     let full_state = load_frame_info(frame_id)?
         .pop()

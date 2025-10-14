@@ -11,7 +11,7 @@ use crate::core::federation::membership::*;
 use crate::core::identifiers::*;
 use crate::core::room::JoinRule;
 use crate::core::room::RoomEventReqArgs;
-use crate::core::serde::{CanonicalJsonValue,CanonicalJsonObject, JsonObject};
+use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonObject};
 use crate::event::handler;
 use crate::federation::maybe_strip_event_id;
 use crate::room::{ensure_room, timeline};
@@ -152,6 +152,7 @@ async fn invite_user(
     let conf = config::get();
     handler::acl_check(origin, &args.room_id)?;
 
+    println!("=========invite_user======== {:#?}", body);
     if !config::supported_room_versions().contains(&body.room_version) {
         return Err(MatrixError::incompatible_room_version(
             "server does not support this room version",
@@ -159,7 +160,7 @@ async fn invite_user(
         )
         .into());
     }
-
+println!("=========invite_user========1");
     let mut signed_event = utils::to_canonical_object(&body.event)
         .map_err(|_| MatrixError::invalid_param("invite event is invalid"))?;
 
@@ -174,10 +175,12 @@ async fn invite_user(
     if invitee_id.server_name().is_remote() {
         return Err(MatrixError::invalid_param("cannot invite remote users").into());
     }
+println!("=========invite_user========2");
     let invitee = data::user::get_user(&invitee_id)
         .map_err(|_| MatrixError::not_found("invitee user not found"))?;
     handler::acl_check(invitee_id.server_name(), &args.room_id)?;
 
+println!("=========invite_user========3");
     crate::server_key::hash_and_sign_event(&mut signed_event, &body.room_version)
         .map_err(|e| MatrixError::invalid_param(format!("failed to sign event: {e}")))?;
 
@@ -190,6 +193,7 @@ async fn invite_user(
         CanonicalJsonValue::String(event_id.to_string()),
     );
 
+println!("=========invite_user========4");
     let sender_id: OwnedUserId = serde_json::from_value(
         signed_event
             .get("sender")
@@ -201,7 +205,7 @@ async fn invite_user(
 
     let state_lock = room::lock_state(&args.room_id).await;
     ensure_room(&args.room_id, &body.room_version)?;
-
+println!("=========invite_user========5");
     if data::room::is_banned(&args.room_id)? {
         return Err(MatrixError::forbidden("this room is banned on this homeserver", None).into());
     }
@@ -210,6 +214,7 @@ async fn invite_user(
         return Err(MatrixError::forbidden("this server does not allow room invites", None).into());
     }
 
+println!("=========invite_user========6");
     let mut invite_state = body.invite_room_state.clone();
     // invite_state.push(pdu.to_stripped_state_event());
 
@@ -217,40 +222,40 @@ async fn invite_user(
     // If we are not in the room, we need to manually
     // record the invited state for client /sync through update_membership(), and
     // send the invite PDU to the relevant appservices.
-    if !room::is_server_joined(&config::get().server_name, &args.room_id)? {
-        let mut event: CanonicalJsonObject = serde_json::from_str(body.event.get())
-            .map_err(|_| MatrixError::invalid_param("invalid invite event bytes"))?;
+    // if !room::is_server_joined(&config::get().server_name, &args.room_id)? {
+    let mut event: CanonicalJsonObject = serde_json::from_str(body.event.get())
+        .map_err(|_| MatrixError::invalid_param("invalid invite event bytes"))?;
 
-        // let event_id: OwnedEventId = format!("$dummy_{}", Ulid::new().to_string()).try_into()?;
-        event.insert("event_id".to_owned(), event_id.to_string().into());
+    // let event_id: OwnedEventId = format!("$dummy_{}", Ulid::new().to_string()).try_into()?;
+    event.insert("event_id".to_owned(), event_id.to_string().into());
 
-        let (event_sn, event_guard) = crate::event::ensure_event_sn(&args.room_id, &event_id)?;
-        println!(
-            "============ensure event 5 sn: {event_sn}, {}",
-            event_guard.is_some()
-        );
-        let pdu = SnPduEvent::from_canonical_object(&args.room_id, &event_id, event_sn, event.clone())
-            .map_err(|e| {
-                warn!("invalid invite event: {}", e);
-                MatrixError::invalid_param("invalid invite event")
-            })?;
+println!("=========invite_user========7");
+    let (event_sn, event_guard) = crate::event::ensure_event_sn(&args.room_id, &event_id)?;
+println!("=========invite_user========8");
+    let pdu = SnPduEvent::from_canonical_object(&args.room_id, &event_id, event_sn, event.clone())
+        .map_err(|e| {
+            warn!("invalid invite event: {}", e);
+            MatrixError::invalid_param("invalid invite event")
+        })?;
 
-        timeline::append_pdu(&pdu, event, once(event_id.borrow()), &state_lock).await?;
+println!("=========invite_user========9");
+    timeline::append_pdu(&pdu, event, once(event_id.borrow()), &state_lock).await?;
 
-        // crate::membership::update_membership(
-        //     &pdu.event_id,
-        //     pdu.event_sn,
-        //     &args.room_id,
-        //     &invitee_id,
-        //     MembershipState::Invite,
-        //     &sender_id,
-        //     Some(invite_state),
-        // )?;
+    // crate::membership::update_membership(
+    //     &pdu.event_id,
+    //     pdu.event_sn,
+    //     &args.room_id,
+    //     &invitee_id,
+    //     MembershipState::Invite,
+    //     &sender_id,
+    //     Some(invite_state),
+    // )?;
 
-        drop(event_guard);
-    }
+    drop(event_guard);
+    // }
     drop(state_lock);
 
+println!("=========invite_user========10");
     json_ok(InviteUserResBodyV2 {
         event: crate::sending::convert_to_outgoing_federation_event(signed_event),
     })
