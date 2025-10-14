@@ -140,7 +140,7 @@ pub(super) fn get_context(
 
     if !state::user_can_see_event(sender_id, &args.event_id)? {
         return Err(
-            MatrixError::forbidden("You don't have permission to view this event.", None).into(),
+            MatrixError::forbidden("you don't have permission to view this event", None).into(),
         );
     }
 

@@ -51,7 +51,7 @@ pub(super) fn get_members(
             Some(leave_sn)
         } else {
             return Err(MatrixError::forbidden(
-                "You don't have permission to view this room.",
+                "you don't have permission to view this room",
                 None,
             )
             .into());
@@ -165,7 +165,7 @@ pub(super) fn joined_members(
     //     if let Ok(leave_sn) = crate::room::user::leave_sn(sender_id, &room_id) {
     //         Some(leave_sn)
     //     } else {
-    //         return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
+    //         return Err(MatrixError::forbidden("you don't have permission to view this room", None).into());
     //     }
     // } else {
     //     None
@@ -173,7 +173,7 @@ pub(super) fn joined_members(
     // the sender user must be in the room
     if !state::user_can_see_events(sender_id, &room_id)? {
         return Err(
-            MatrixError::forbidden("You don't have permission to view this room.", None).into(),
+            MatrixError::forbidden("you don't have permission to view this room", None).into(),
         );
     }
 
