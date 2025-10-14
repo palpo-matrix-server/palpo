@@ -134,13 +134,13 @@ async fn send_knock(
     // ACL check origin server
     handler::acl_check(origin, &args.room_id)?;
 
-    let room_version_id = crate::room::get_version(&args.room_id)?;
+    let room_version = crate::room::get_version(&args.room_id)?;
 
-    if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6) {
+    if matches!(room_version, V1 | V2 | V3 | V4 | V5 | V6) {
         return Err(MatrixError::forbidden("Room version does not support knocking.", None).into());
     }
 
-    let Ok((event_id, value)) = gen_event_id_canonical_json(&body.0, &room_version_id) else {
+    let Ok((event_id, value)) = gen_event_id_canonical_json(&body.0, &room_version) else {
         // Event could not be converted to canonical json
         return Err(
             MatrixError::invalid_param("Could not convert event to canonical json.").into(),
@@ -237,7 +237,7 @@ async fn send_knock(
         &origin,
         &event_id,
         &args.room_id,
-        &room_version_id,
+        &room_version,
         value.clone(),
         true,
     )
