@@ -620,7 +620,6 @@ pub async fn user_can_invite(room_id: &RoomId, sender_id: &UserId, _target_user:
         return true;
     }
     if let Ok(power_levels) = get_power_levels(room_id).await {
-        println!("=================power level: {power_levels:?}=================");
         power_levels.user_can_invite(sender_id)
     } else {
         false
