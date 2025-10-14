@@ -727,6 +727,7 @@ pub(super) async fn create_room(
 
     let power_levels_content = default_power_levels_content(
         &version_rules.authorization,
+        body.preset.as_ref(),
         body.power_level_content_override.as_ref(),
         &body.visibility,
         users,
@@ -1128,62 +1129,54 @@ async fn create_create_event(
 /// creates the power_levels_content for the PDU builder
 fn default_power_levels_content(
     auth_rules: &AuthorizationRules,
+    preset: Option<&RoomPreset>,
     power_level_content_override: Option<&RawJson<RoomPowerLevelsEventContent>>, // must be raw_json
     visibility: &Visibility,
     users: BTreeMap<OwnedUserId, i64>,
 ) -> AppResult<serde_json::Value> {
-    let mut power_levels_content = serde_json::to_value(RoomPowerLevelsEventContent {
+    let mut power_levels_content = json!(RoomPowerLevelsEventContent {
         users,
         ..RoomPowerLevelsEventContent::new(auth_rules)
-    })
-    .expect("event is valid, we just created it");
+    });
 
     // secure proper defaults of sensitive/dangerous permissions that moderators
     // (power level 50) should not have easy access to
-    power_levels_content["events"]["m.room.power_levels"] =
-        serde_json::to_value(100).expect("100 is valid Value");
-    power_levels_content["events"]["m.room.server_acl"] =
-        serde_json::to_value(100).expect("100 is valid Value");
+    power_levels_content["events"]["m.room.power_levels"] = json!(100);
+    power_levels_content["events"]["m.room.server_acl"] = json!(100);
     if auth_rules.explicitly_privilege_room_creators {
-        power_levels_content["events"]["m.room.tombstone"] =
-            serde_json::to_value(150).expect("150 is valid Value");
+        power_levels_content["events"]["m.room.tombstone"] = json!(150);
     } else {
-        serde_json::to_value(100).expect("100 is valid Value");
+        power_levels_content["events"]["m.room.tombstone"] = json!(100);
     }
 
-    power_levels_content["events"]["m.room.encryption"] =
-        serde_json::to_value(100).expect("100 is valid Value");
-    power_levels_content["events"]["m.room.history_visibility"] =
-        serde_json::to_value(100).expect("100 is valid Value");
+    power_levels_content["events"]["m.room.encryption"] = json!(100);
+    power_levels_content["events"]["m.room.history_visibility"] = json!(100);
 
     // always allow users to respond (not post new) to polls. this is primarily
     // useful in read-only announcement rooms that post a public poll.
-    power_levels_content["events"]["org.matrix.msc3381.poll.response"] =
-        serde_json::to_value(0).expect("0 is valid Value");
-    power_levels_content["events"]["m.poll.response"] =
-        serde_json::to_value(0).expect("0 is valid Value");
+    power_levels_content["events"]["org.matrix.msc3381.poll.response"] = json!(0);
+    power_levels_content["events"]["m.poll.response"] = json!(0);
 
     // synapse does this too. clients do not expose these permissions. it prevents
     // default users from calling public rooms, for obvious reasons.
     if *visibility == Visibility::Public {
-        power_levels_content["events"]["m.call.invite"] =
-            serde_json::to_value(50).expect("50 is valid Value");
-        power_levels_content["events"]["m.call"] =
-            serde_json::to_value(50).expect("50 is valid Value");
-        power_levels_content["events"]["m.call.member"] =
-            serde_json::to_value(50).expect("50 is valid Value");
-        power_levels_content["events"]["org.matrix.msc3401.call"] =
-            serde_json::to_value(50).expect("50 is valid Value");
-        power_levels_content["events"]["org.matrix.msc3401.call.member"] =
-            serde_json::to_value(50).expect("50 is valid Value");
+        power_levels_content["events"]["m.call.invite"] = json!(50);
+        power_levels_content["events"]["m.call"] = json!(50);
+        power_levels_content["events"]["m.call.member"] = json!(50);
+        power_levels_content["events"]["org.matrix.msc3401.call"] = json!(50);
+        power_levels_content["events"]["org.matrix.msc3401.call.member"] = json!(50);
+    }
+
+    if preset == Some(&RoomPreset::TrustedPrivateChat) || preset == Some(&RoomPreset::PrivateChat) {
+        power_levels_content["invite"] = json!(0);
     }
 
     if let Some(power_level_content_override) = power_level_content_override {
         let JsonValue::Object(json) =
             serde_json::from_str(power_level_content_override.inner().get())
-                .map_err(|_| MatrixError::bad_json("Invalid power_level_content_override."))?
+                .map_err(|_| MatrixError::bad_json("invalid power_level_content_override"))?
         else {
-            return Err(MatrixError::bad_json("Invalid power_level_content_override.").into());
+            return Err(MatrixError::bad_json("invalid power_level_content_override").into());
         };
 
         for (key, value) in json {
