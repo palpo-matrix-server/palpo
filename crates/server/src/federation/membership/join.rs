@@ -69,7 +69,7 @@ pub async fn send_join_v1(
 
     if content.membership != MembershipState::Join {
         return Err(MatrixError::bad_json(
-            "Not allowed to send a non-join membership event to join endpoint.",
+            "not allowed to send a non-join membership event to join endpoint",
         )
         .into());
     }
@@ -106,7 +106,7 @@ pub async fn send_join_v1(
             .clone()
             .into(),
     )
-    .map_err(|e| MatrixError::bad_json(format!("state key is not a valid user ID: {e}")))?;
+    .map_err(|e| MatrixError::bad_json(format!("state key is not a valid user id: {e}")))?;
     if state_key != sender {
         return Err(MatrixError::bad_json("state key does not match sender user").into());
     };

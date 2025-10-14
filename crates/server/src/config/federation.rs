@@ -50,4 +50,3 @@ impl Default for FederationConfig {
         }
     }
 }
-

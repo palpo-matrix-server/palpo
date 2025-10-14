@@ -285,7 +285,7 @@ async fn get_aliases(
 
     if !room::user::is_joined(authed.user_id(), &room_id)? {
         return Err(
-            MatrixError::forbidden("You don't have permission to view this room.", None).into(),
+            MatrixError::forbidden("you don't have permission to view this room", None).into(),
         );
     }
 

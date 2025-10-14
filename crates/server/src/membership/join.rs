@@ -264,7 +264,7 @@ pub async fn join_room(
             }
             Err(e) => {
                 warn!(
-                    "Server {remote_server} sent invalid signature in sendjoin signatures for event {signed_value:?}: {e:?}",
+                    "server {remote_server} sent invalid signature in sendjoin signatures for event {signed_value:?}: {e:?}",
                 );
             }
         }
@@ -334,6 +334,13 @@ pub async fn join_room(
     {
         error!("failed to fetch missing prev events for join: {e}");
     }
+    // crate::event::handler::fetch_state(
+    //     &remote_server,
+    //     room_id,
+    //     &room_version_id,
+    //     &parsed_join_pdu.event_id,
+    // )
+    // .await?;
 
     info!("going through send_join response room_state");
     for result in send_join_body
@@ -392,7 +399,7 @@ pub async fn join_room(
         };
 
         if !timeline::has_pdu(&event_id) {
-            let (event_sn, _event_guard) = ensure_event_sn(room_id, &event_id)?;
+            let (event_sn, event_guard) = ensure_event_sn(room_id, &event_id)?;
             NewDbEvent::from_canonical_json(&event_id, event_sn, &value)?.save()?;
             DbEventData {
                 event_id: event_id.to_owned(),

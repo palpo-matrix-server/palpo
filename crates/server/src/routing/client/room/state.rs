@@ -34,7 +34,7 @@ pub(super) fn get_state(
             Some(leave_sn)
         } else {
             return Err(MatrixError::forbidden(
-                "You don't have permission to view this room.",
+                "you don't have permission to view this room",
                 None,
             )
             .into());
@@ -129,7 +129,7 @@ pub(super) fn state_for_key(
             Some(leave_sn)
         } else {
             return Err(MatrixError::forbidden(
-                "You don't have permission to view this room.",
+                "you don't have permission to view this room",
                 None,
             )
             .into());
@@ -170,7 +170,7 @@ pub(super) async fn state_for_empty_key(
             Some(leave_sn)
         } else {
             return Err(MatrixError::forbidden(
-                "You don't have permission to view this room.",
+                "you don't have permission to view this room",
                 None,
             )
             .into());

@@ -82,7 +82,7 @@ async fn process_pdus(
         parsed_pdus.push(match crate::parse_incoming_pdu(pdu) {
             Ok(t) => t,
             Err(e) => {
-                warn!("could not parse PDU: {e}");
+                warn!("could not parse pdu: {e}");
                 continue;
             }
         });

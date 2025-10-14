@@ -387,7 +387,7 @@ pub fn get_full_state(frame_id: i64) -> AppResult<IndexMap<(StateEventType, Stri
                     pdu.event_ty.to_string().into(),
                     pdu.state_key
                         .as_ref()
-                        .ok_or_else(|| AppError::public("State event has no state key."))?
+                        .ok_or_else(|| AppError::public("state event has no state key."))?
                         .clone(),
                 ),
                 pdu,

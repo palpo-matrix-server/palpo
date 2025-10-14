@@ -639,7 +639,10 @@ impl ConditionalPushRule {
             default: true,
             enabled: true,
             conditions: vec![ThreadSubscription { subscribed: true }],
-            actions: vec![Action::Notify, Action::SetTweak(Tweak::Sound("default".into()))],
+            actions: vec![
+                Action::Notify,
+                Action::SetTweak(Tweak::Sound("default".into())),
+            ],
         }
     }
 }

@@ -23,7 +23,7 @@ pub(super) async fn state_at_incoming_degree_one(
         return Ok(None);
     };
 
-    debug!("Using cached state");
+    debug!("using cached state");
     let prev_pdu = timeline::get_pdu(prev_event)?;
 
     if let Some(state_key) = &prev_pdu.state_key {
@@ -42,7 +42,7 @@ pub(super) async fn state_at_incoming_resolved(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
 ) -> AppResult<Option<IndexMap<i64, OwnedEventId>>> {
-    debug!("Calculating state at event using state res");
+    debug!("calculating state at event using state res");
     let mut extremity_state_hashes = HashMap::new();
 
     let mut okay = true;

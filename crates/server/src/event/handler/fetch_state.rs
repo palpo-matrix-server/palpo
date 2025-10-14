@@ -1,5 +1,5 @@
-use std::collections::{HashMap, hash_map};
 use indexmap::IndexMap;
+use std::collections::{HashMap, hash_map};
 
 use crate::core::ServerName;
 use crate::core::federation::event::{
@@ -12,13 +12,13 @@ use crate::{AppError, AppResult, exts::*};
 /// Call /state_ids to find out what the state at this pdu is. We trust the
 /// server's response to some extend (sic), but we still do a lot of checks
 /// on the events
-pub(super) async fn fetch_state(
+pub async fn fetch_state(
     origin: &ServerName,
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
     event_id: &EventId,
 ) -> AppResult<Option<IndexMap<i64, OwnedEventId>>> {
-    debug!("Calling /state_ids");
+    debug!("calling /state_ids");
     // Call /state_ids to find out what the state at this pdu is. We trust the server's
     // response to some extend, but we still do a lot of checks on the events
     let request = room_state_ids_request(
@@ -33,7 +33,8 @@ pub(super) async fn fetch_state(
         .await?
         .json::<RoomStateIdsResBody>()
         .await?;
-    debug!("Fetching state events at event.");
+    debug!("fetching state events at event: {event_id}");
+
     let state_vec =
         super::fetch_and_process_outliers(origin, &res.pdu_ids, room_id, room_version_id).await?;
 
@@ -42,7 +43,7 @@ pub(super) async fn fetch_state(
         let state_key = pdu
             .state_key
             .clone()
-            .ok_or_else(|| AppError::internal("Found non-state pdu in state events."))?;
+            .ok_or_else(|| AppError::internal("found non-state pdu in state events"))?;
 
         let state_key_id = state::ensure_field_id(&pdu.event_ty.to_string().into(), &state_key)?;
 
@@ -51,9 +52,14 @@ pub(super) async fn fetch_state(
                 v.insert(pdu.event_id.clone());
             }
             indexmap::map::Entry::Occupied(_) => {
-                return Err(AppError::internal(
-                    "State event's type and state_key combination exists multiple times.",
-                ));
+                error!(
+                    "state event's type `{}` and state_key `{}` combination exists multiple times",
+                    pdu.event_ty, state_key
+                );
+                return Err(AppError::internal(format!(
+                    "state event's type `{}` and state_key `{}` combination exists multiple times",
+                    pdu.event_ty, state_key
+                )));
             }
         }
     }
