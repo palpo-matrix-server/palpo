@@ -1,8 +1,10 @@
 use std::borrow::Borrow;
 use std::iter::once;
 
+use diesel::prelude::*;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
+use serde_json::json;
 use serde_json::value::to_raw_value;
 
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
@@ -12,6 +14,8 @@ use crate::core::identifiers::*;
 use crate::core::room::JoinRule;
 use crate::core::room::RoomEventReqArgs;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonObject};
+use crate::data::connect;
+use crate::data::schema::*;
 use crate::event::handler;
 use crate::federation::maybe_strip_event_id;
 use crate::room::{ensure_room, timeline};
@@ -189,15 +193,6 @@ async fn invite_user(
         CanonicalJsonValue::String(event_id.to_string()),
     );
 
-    // let sender_id: OwnedUserId = serde_json::from_value(
-    //     signed_event
-    //         .get("sender")
-    //         .ok_or(MatrixError::invalid_param("event had no sender field"))?
-    //         .clone()
-    //         .into(),
-    // )
-    // .map_err(|_| MatrixError::invalid_param("sender is not a user id"))?;
-
     let state_lock = room::lock_state(&args.room_id).await;
     ensure_room(&args.room_id, &body.room_version)?;
     if data::room::is_banned(&args.room_id)? {
@@ -208,8 +203,7 @@ async fn invite_user(
         return Err(MatrixError::forbidden("this server does not allow room invites", None).into());
     }
 
-    // let mut invite_state = body.invite_room_state.clone();
-    // invite_state.push(pdu.to_stripped_state_event());
+    let mut invite_state = body.invite_room_state.clone();
 
     // If we are active in the room, the remote server will notify us about the join via /send.
     // If we are not in the room, we need to manually
@@ -228,18 +222,30 @@ async fn invite_user(
             warn!("invalid invite event: {}", e);
             MatrixError::invalid_param("invalid invite event")
         })?;
+    invite_state.push(pdu.to_stripped_state_event());
 
     timeline::append_pdu(&pdu, event, once(event_id.borrow()), &state_lock).await?;
 
-    // crate::membership::update_membership(
-    //     &pdu.event_id,
-    //     pdu.event_sn,
-    //     &args.room_id,
-    //     &invitee_id,
-    //     MembershipState::Invite,
-    //     &sender_id,
-    //     Some(invite_state),
-    // )?;
+    // let sender_id: OwnedUserId = serde_json::from_value(
+    //     signed_event
+    //         .get("sender")
+    //         .ok_or(MatrixError::invalid_param("event had no sender field"))?
+    //         .clone()
+    //         .into(),
+    // )
+    // .map_err(|_| MatrixError::invalid_param("sender is not a user id"))?;
+
+    diesel::update(
+        room_users::table.filter(
+            room_users::room_id
+                .eq(&args.room_id)
+                .and(room_users::user_id.eq(&invitee_id))
+                .and(room_users::membership.eq(MembershipState::Invite.to_string())),
+        ),
+    )
+    .set(room_users::state_data.eq(json!(invite_state)))
+    .execute(&mut connect()?)
+    .ok();
 
     drop(event_guard);
     // }

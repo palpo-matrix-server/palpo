@@ -508,8 +508,10 @@ pub struct InvitedRoom {
 
 impl InvitedRoom {
     /// Creates an empty `InvitedRoom`.
-    pub fn new() -> Self {
-        Default::default()
+    pub fn new(invite_state: InviteState) -> Self {
+        Self {
+            invite_state
+        }
     }
 
     /// Returns true if there are no updates to this room.
@@ -534,8 +536,8 @@ pub struct InviteState {
 
 impl InviteState {
     /// Creates an empty `InviteState`.
-    pub fn new() -> Self {
-        Default::default()
+    pub fn new(events: Vec<RawJson<AnyStrippedStateEvent>>) -> Self {
+        Self { events }
     }
 
     /// Returns true if there are no state updates.

@@ -3,11 +3,6 @@ use std::collections::{BTreeMap, HashMap, HashSet, hash_map::Entry};
 
 use state::DbRoomStateField;
 
-use crate::core::serde::JsonValue;
-use diesel::prelude::*;
-use palpo_data::schema::*;
-use palpo_data::connect;
-
 use crate::core::client::filter::{FilterDefinition, LazyLoadOptions, RoomEventFilter};
 use crate::core::client::sync_events::UnreadNotificationsCount;
 use crate::core::client::sync_events::v3::{
@@ -158,11 +153,7 @@ pub async fn sync_events(
             .map(|(room_id, invite_state_events)| {
                 (
                     room_id,
-                    InvitedRoom {
-                        invite_state: InviteState {
-                            events: invite_state_events,
-                        },
-                    },
+                    InvitedRoom::new(InviteState::new(invite_state_events)),
                 )
             })
             .collect();
