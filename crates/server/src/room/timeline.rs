@@ -705,7 +705,6 @@ pub async fn hash_and_sign_event(
     }
 
     let (event_sn, event_guard) = crate::event::ensure_event_sn(room_id, &pdu.event_id)?;
-            println!("============ensure event 4 sn: {event_sn}, {}", event_guard.is_some());
     NewDbEvent {
         id: pdu.event_id.to_owned(),
         sn: event_sn,

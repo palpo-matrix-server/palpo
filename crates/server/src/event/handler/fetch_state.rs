@@ -18,7 +18,6 @@ pub async fn fetch_state(
     room_version_id: &RoomVersionId,
     event_id: &EventId,
 ) -> AppResult<Option<IndexMap<i64, OwnedEventId>>> {
-    println!("================fetch state ====== {origin}, {room_id}, {event_id}");
     debug!("calling /state_ids");
     // Call /state_ids to find out what the state at this pdu is. We trust the server's
     // response to some extend, but we still do a lot of checks on the events
@@ -36,14 +35,11 @@ pub async fn fetch_state(
         .await?;
     debug!("fetching state events at event: {event_id}");
 
-    println!("============response of state request: {res:#?}");
     let state_vec =
         super::fetch_and_process_outliers(origin, &res.pdu_ids, room_id, room_version_id).await?;
-        println!("===========after fetch_and_process_outliers");
 
     let mut state: IndexMap<_, OwnedEventId> = IndexMap::new();
     for (pdu, _, _event_guard) in state_vec {
-        println!("====================state pdu: {pdu:?}");
         let state_key = pdu
             .state_key
             .clone()

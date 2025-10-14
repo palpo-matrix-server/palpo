@@ -117,7 +117,6 @@ pub async fn sync_events(
 
     let mut left_rooms = BTreeMap::new();
     let all_left_rooms = room::user::left_rooms(sender_id, since_sn)?;
-    println!("============================all_left_rooms: {all_left_rooms:?}");
 
     for room_id in all_left_rooms.keys() {
         let Ok(left_sn) = room::user::left_sn(room_id, sender_id) else {

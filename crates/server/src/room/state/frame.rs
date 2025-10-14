@@ -69,7 +69,6 @@ pub fn load_frame_info(frame_id: i64) -> AppResult<Vec<FrameInfo>> {
 }
 
 pub fn get_room_frame_id(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<i64> {
-    println!("===========get_room_frame_id=========== {room_id}, {until_sn:?}");
     let frame_id = if let Some(until_sn) = until_sn {
         event_points::table
             .filter(event_points::room_id.eq(room_id))
