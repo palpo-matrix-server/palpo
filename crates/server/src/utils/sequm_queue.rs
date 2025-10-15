@@ -1,8 +1,8 @@
 use std::collections::BTreeSet;
+use std::fmt::{self, Debug, Display, Formatter};
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::{Context, Poll};
-use std::{sync::Arc};
-use std::fmt::{self, Display, Debug, Formatter};
 
 use crate::core::Seqnum;
 

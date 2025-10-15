@@ -84,7 +84,7 @@ pub(super) fn send_receipt(
             )?;
             push_action::remove_actions_until(sender_id, &args.room_id, event_sn, thread_id)?;
         }
-        _ => return Err(AppError::internal("Unsupported receipt type")),
+        _ => return Err(AppError::internal("unsupported receipt type")),
     }
     if matches!(
         &args.receipt_type,

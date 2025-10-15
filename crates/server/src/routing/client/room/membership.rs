@@ -17,6 +17,7 @@ use crate::core::events::room::member::{MembershipState, RoomMemberEventContent}
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::query::{ProfileReqArgs, profile_request};
 use crate::core::identifiers::*;
+use crate::core::state::Event;
 use crate::core::user::ProfileResBody;
 use crate::data::connect;
 use crate::data::schema::*;
@@ -626,7 +627,12 @@ pub(super) async fn kick_user(
     let room_id = room_id.into_inner();
 
     let state_lock = room::lock_state(&room_id).await;
-    let Ok(event) = room::get_member(&room_id, &body.user_id) else {
+    let Ok(event) = room::get_state(
+        &room_id,
+        &StateEventType::RoomMember,
+        body.user_id.as_str(),
+        None,
+    ) else {
         return Err(MatrixError::forbidden(
             "users cannot kick users from a room they are not in",
             None,
@@ -634,18 +640,23 @@ pub(super) async fn kick_user(
         .into());
     };
 
+    let event_content: RoomMemberEventContent = event.get_content()?;
     if !matches!(
-        event.membership,
+        event_content.membership,
         MembershipState::Invite | MembershipState::Knock | MembershipState::Join,
     ) {
         return Err(MatrixError::forbidden(
             format!(
                 "cannot kick a user who is not apart of the room (current membership: {})",
-                event.membership
+                event_content.membership
             ),
             None,
         )
         .into());
+    }
+
+    if event_content.membership == MembershipState::Invite && event.sender() != authed.user_id() {
+        return empty_ok();
     }
 
     let pdu = timeline::build_and_append_pdu(
@@ -657,7 +668,7 @@ pub(super) async fn kick_user(
                 is_direct: None,
                 join_authorized_via_users_server: None,
                 third_party_invite: None,
-                ..event
+                ..event_content
             },
         ),
         authed.user_id(),

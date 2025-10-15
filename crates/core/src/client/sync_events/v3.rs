@@ -509,9 +509,7 @@ pub struct InvitedRoom {
 impl InvitedRoom {
     /// Creates an empty `InvitedRoom`.
     pub fn new(invite_state: InviteState) -> Self {
-        Self {
-            invite_state
-        }
+        Self { invite_state }
     }
 
     /// Returns true if there are no updates to this room.
