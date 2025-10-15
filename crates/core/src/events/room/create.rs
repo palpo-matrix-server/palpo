@@ -124,12 +124,13 @@ pub struct PreviousRoom {
     pub room_id: OwnedRoomId,
 
     /// The event ID of the last known event in the old room.
-    pub event_id: OwnedEventId,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub event_id: Option<OwnedEventId>,
 }
 
 impl PreviousRoom {
     /// Creates a new `PreviousRoom` from the given room and event IDs.
-    pub fn new(room_id: OwnedRoomId, event_id: OwnedEventId) -> Self {
+    pub fn new(room_id: OwnedRoomId, event_id: Option<OwnedEventId>) -> Self {
         Self { room_id, event_id }
     }
 }
