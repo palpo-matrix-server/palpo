@@ -43,7 +43,6 @@ pub struct HttpClientConfig {
     /// default: 1
     #[serde(default = "default_federation_idle_per_host")]
     pub federation_idle_per_host: u16,
-    
     // /// Federation sender request timeout. The time it takes for the
     // /// remote server to process sent transactions can take a while.
     // ///

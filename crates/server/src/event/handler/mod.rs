@@ -606,7 +606,7 @@ pub async fn process_to_timeline_pdu(
         }
         return Ok(());
     }
-    
+
     // let state_at_incoming_event = if incoming_pdu.prev_events.len() == 1 {
     //     state_at_incoming_degree_one(&incoming_pdu).await?
     // } else {
@@ -900,7 +900,7 @@ async fn resolve_state(
         let state_key_id = state::ensure_field_id(&event_type.to_string().into(), &state_key)?;
         let (event_sn, guard) = crate::event::ensure_event_sn(room_id, &event_id)?;
         if let Some(guard) = guard {
-        guards.push(guard);
+            guards.push(guard);
         }
         new_room_state.insert(state::compress_event(room_id, state_key_id, event_sn)?);
     }
@@ -1077,8 +1077,7 @@ pub(crate) async fn fetch_and_process_outliers(
                         pdus.push((pdu, Some(json), guard));
                     }
                 }
-                Ok(None) => {
-                }
+                Ok(None) => {}
                 Err(e) => {
                     warn!("authentication of event {} failed: {:?}", next_id, e);
                     back_off((*next_id).to_owned());

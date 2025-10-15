@@ -434,9 +434,9 @@ async fn send_events(
                                     error!("event not found: {server} {pdu_id:?}");
                                     (
                                         OutgoingKind::Normal(server.clone()),
-                                        AppError::internal(
-                                            format!("event not found: {server} {pdu_id}"),
-                                        ),
+                                        AppError::internal(format!(
+                                            "event not found: {server} {pdu_id}"
+                                        )),
                                     )
                                 })?,
                         );
