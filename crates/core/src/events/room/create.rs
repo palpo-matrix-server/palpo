@@ -122,16 +122,18 @@ impl RedactContent for RoomCreateEventContent {
 pub struct PreviousRoom {
     /// The ID of the old room.
     pub room_id: OwnedRoomId,
-
-    /// The event ID of the last known event in the old room.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub event_id: Option<OwnedEventId>,
+    // /// The event ID of the last known event in the old room.
+    // #[deprecated = "\
+    //     This field should be sent by servers when possible for backwards compatibility \
+    //     but clients should not rely on it."]
+    // #[serde(skip_serializing_if = "Option::is_none")]
+    // pub event_id: Option<OwnedEventId>,
 }
 
 impl PreviousRoom {
     /// Creates a new `PreviousRoom` from the given room and event IDs.
-    pub fn new(room_id: OwnedRoomId, event_id: Option<OwnedEventId>) -> Self {
-        Self { room_id, event_id }
+    pub fn new(room_id: OwnedRoomId) -> Self {
+        Self { room_id }
     }
 }
 

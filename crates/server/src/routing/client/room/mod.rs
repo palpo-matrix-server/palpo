@@ -42,7 +42,7 @@ use crate::core::events::room::name::RoomNameEventContent;
 use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
 use crate::core::events::room::tombstone::RoomTombstoneEventContent;
 use crate::core::events::room::topic::RoomTopicEventContent;
-use crate::core::events::{RoomAccountDataEventType, StateEventType, TimelineEventType};
+use crate::core::events::{self, RoomAccountDataEventType, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
 use crate::core::room::{JoinRule, Visibility};
 use crate::core::room_version_rules::{AuthorizationRules, RoomIdFormatVersion, RoomVersionRules};
@@ -336,10 +336,7 @@ async fn upgrade(
     room::ensure_room(&new_room_id, &body.new_version)?;
 
     // Use the m.room.tombstone event as the predecessor
-    let predecessor = Some(crate::core::events::room::create::PreviousRoom::new(
-        room_id.clone(),
-        None,
-    ));
+    let predecessor = Some(events::room::create::PreviousRoom::new(room_id.clone()));
 
     // Get the old room creation event
     let mut create_event_content = room::get_state_content::<CanonicalJsonObject>(
