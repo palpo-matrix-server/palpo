@@ -63,7 +63,6 @@ pub(super) fn send_receipt(
             let mut receipt_content = BTreeMap::new();
             receipt_content.insert(args.event_id.clone(), receipts);
 
-            println!("ddddddddddddddddddreceipt_content {receipt_content:#?}");
             room::receipt::update_read(
                 sender_id,
                 &args.room_id,

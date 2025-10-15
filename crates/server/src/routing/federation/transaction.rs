@@ -126,7 +126,6 @@ async fn process_pdus(
 }
 
 async fn process_edus(edus: Vec<Edu>, origin: &ServerName) {
-    println!("====================edus: {edus:#?}");
     for edu in edus {
         match edu {
             Edu::Presence(presence) => process_edu_presence(origin, presence).await,
