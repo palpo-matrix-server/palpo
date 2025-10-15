@@ -2,7 +2,6 @@
 //!
 //! [predefined push rules]: https://spec.matrix.org/latest/client-server-api/#predefined-rules
 
-use crate::macros::StringEnum;
 use indexmap::IndexSet;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
@@ -13,7 +12,7 @@ use super::{
     PatternedPushRule, PushConditionRoomCtx, RuleKind, RuleNotFoundError, RulesetIter,
     SimplePushRule, insert_and_move_rule,
 };
-use crate::{OwnedRoomId, OwnedUserId, PrivOwnedStr, push::RemovePushRuleError, serde::RawJson};
+use crate::{OwnedRoomId, OwnedUserId, push::RemovePushRuleError, serde::RawJson};
 
 /// A push ruleset scopes a set of rules according to some criteria.
 ///

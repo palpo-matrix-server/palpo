@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::room_version_rules::RedactionRules;
 use crate::{
-    OwnedEventId, OwnedRoomId, OwnedUserId, RoomVersionId,
+    OwnedRoomId, OwnedUserId, RoomVersionId,
     events::{EmptyStateKey, RedactContent, RedactedStateEventContent, StateEventType},
     room::RoomType,
 };

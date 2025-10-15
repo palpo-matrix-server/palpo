@@ -1,5 +1,4 @@
 use indexmap::IndexMap;
-use std::collections::{HashMap, hash_map};
 
 use crate::core::ServerName;
 use crate::core::federation::event::{
