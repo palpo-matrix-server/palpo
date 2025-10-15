@@ -36,6 +36,7 @@ pub fn update_read(user_id: &UserId, room_id: &RoomId, event: &ReceiptEvent) -> 
                     json_data: serde_json::to_value(receipt)?,
                     receipt_at,
                 };
+                println!("============{}=================receipt: {receipt:#?}", crate::config::server_name());
                 diesel::insert_into(event_receipts::table)
                     .values(&receipt)
                     .execute(&mut connect()?)?;

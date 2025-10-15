@@ -990,8 +990,6 @@ pub(crate) async fn fetch_and_process_outliers(
                 Ok(res) => {
                     info!("got event{} over federation", next_id);
 
-                    println!("got event over federation: {}   {res:#?}", next_id);
-
                     let Ok((calculated_event_id, value)) =
                         crate::event::gen_event_id_canonical_json(&res.pdu, room_version_id)
                     else {

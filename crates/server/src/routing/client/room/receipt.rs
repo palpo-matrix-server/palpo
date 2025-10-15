@@ -63,6 +63,7 @@ pub(super) fn send_receipt(
             let mut receipt_content = BTreeMap::new();
             receipt_content.insert(args.event_id.clone(), receipts);
 
+            println!("ddddddddddddddddddreceipt_content {receipt_content:#?}");
             room::receipt::update_read(
                 sender_id,
                 &args.room_id,
@@ -84,7 +85,7 @@ pub(super) fn send_receipt(
             )?;
             push_action::remove_actions_until(sender_id, &args.room_id, event_sn, thread_id)?;
         }
-        _ => return Err(AppError::internal("Unsupported receipt type")),
+        _ => return Err(AppError::internal("unsupported receipt type")),
     }
     if matches!(
         &args.receipt_type,

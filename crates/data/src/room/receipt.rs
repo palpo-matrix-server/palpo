@@ -64,6 +64,7 @@ pub fn read_receipts(
         receipts.insert(user_id.clone(), ReceiptEventContent(event_content));
     }
 
+    println!("===========room_id:{room_id}  ==since_sn: {since_sn}  =======receipts: {receipts:#?}");
     Ok(receipts)
 }
 
