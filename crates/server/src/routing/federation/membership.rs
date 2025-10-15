@@ -13,7 +13,7 @@ use crate::core::federation::membership::*;
 use crate::core::identifiers::*;
 use crate::core::room::JoinRule;
 use crate::core::room::RoomEventReqArgs;
-use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonObject};
+use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue};
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::event::handler;

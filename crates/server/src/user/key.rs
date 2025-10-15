@@ -238,7 +238,7 @@ pub fn get_master_key(user_id: &UserId) -> AppResult<Option<CrossSigningKey>> {
         .select(e2e_cross_signing_keys::key_data)
         .first::<JsonValue>(&mut connect()?)
         .optional()?;
-    if let Some(mut key_data) = key_data {
+    if let Some(key_data) = key_data {
         Ok(serde_json::from_value(key_data).ok())
     } else {
         Ok(None)
@@ -271,7 +271,7 @@ pub fn get_self_signing_key(user_id: &UserId) -> AppResult<Option<CrossSigningKe
         .select(e2e_cross_signing_keys::key_data)
         .first::<JsonValue>(&mut connect()?)
         .optional()?;
-    if let Some(mut key_data) = key_data {
+    if let Some(key_data) = key_data {
         Ok(serde_json::from_value(key_data).ok())
     } else {
         Ok(None)

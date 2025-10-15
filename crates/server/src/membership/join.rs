@@ -410,6 +410,7 @@ pub async fn join_room(
                 format_version: None,
             }
             .save()?;
+            drop(event_guard);
         }
     }
 

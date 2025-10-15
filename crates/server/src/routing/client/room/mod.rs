@@ -42,7 +42,7 @@ use crate::core::events::room::name::RoomNameEventContent;
 use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
 use crate::core::events::room::tombstone::RoomTombstoneEventContent;
 use crate::core::events::room::topic::RoomTopicEventContent;
-use crate::core::events::{RoomAccountDataEventType, StateEventType, TimelineEventType};
+use crate::core::events::{self, RoomAccountDataEventType, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
 use crate::core::room::{JoinRule, Visibility};
 use crate::core::room_version_rules::{AuthorizationRules, RoomIdFormatVersion, RoomVersionRules};
@@ -334,34 +334,9 @@ async fn upgrade(
 
     let state_lock = room::lock_state(&room_id).await;
     room::ensure_room(&new_room_id, &body.new_version)?;
-    // Send a m.room.tombstone event to the old room to indicate that it is not intended to be used any further
-    // Fail if the sender does not have the required permissions
-    let tombstone_event_id = timeline::build_and_append_pdu(
-        PduBuilder {
-            event_type: TimelineEventType::RoomTombstone,
-            content: to_raw_value(&RoomTombstoneEventContent {
-                body: "This room has been replaced".to_owned(),
-                replacement_room: new_room_id.clone(),
-            })?,
-            state_key: Some("".to_owned()),
-            ..Default::default()
-        },
-        sender_id,
-        &room_id,
-        &crate::room::get_version(&room_id)?,
-        &state_lock,
-    )
-    .await?
-    .pdu
-    .event_id;
 
     // Use the m.room.tombstone event as the predecessor
-    let predecessor = Some(crate::core::events::room::create::PreviousRoom::new(
-        room_id.clone(),
-        (*tombstone_event_id).to_owned(),
-    ));
-
-    // Send a m.room.create event containing a predecessor field and the applicable room_version
+    let predecessor = Some(events::room::create::PreviousRoom::new(room_id.clone()));
 
     // Get the old room creation event
     let mut create_event_content = room::get_state_content::<CanonicalJsonObject>(
@@ -433,6 +408,33 @@ async fn upgrade(
     let new_room_id = new_create_event.room_id.clone();
 
     let new_create_event = RoomCreateEvent::new(new_create_event.pdu);
+
+    // Send a m.room.tombstone event to the old room to indicate that it is not intended to be used any further
+    // Fail if the sender does not have the required permissions
+    let tombstone_event_id = timeline::build_and_append_pdu(
+        PduBuilder {
+            event_type: TimelineEventType::RoomTombstone,
+            content: to_raw_value(&RoomTombstoneEventContent {
+                body: "This room has been replaced".to_owned(),
+                replacement_room: new_room_id.clone(),
+            })?,
+            state_key: Some("".to_owned()),
+            ..Default::default()
+        },
+        sender_id,
+        &room_id,
+        &crate::room::get_version(&room_id)?,
+        &state_lock,
+    )
+    .await?
+    .pdu
+    .event_id;
+
+    // // Use the m.room.tombstone event as the predecessor
+    // let predecessor = Some(crate::core::events::room::create::PreviousRoom::new(
+    //     room_id.clone(),
+    //     (*tombstone_event_id).to_owned(),
+    // ));
 
     // Join the new room
     timeline::build_and_append_pdu(
