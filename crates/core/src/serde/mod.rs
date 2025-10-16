@@ -160,6 +160,6 @@ where
 }
 
 pub use crate::macros::{
-    AsRefStr, DebugAsRefStr, DeserializeFromCowStr, DisplayAsRefStr, FromString, OrdAsRefStr,
-    PartialEqAsRefStr, PartialOrdAsRefStr, SerializeAsRefStr, StringEnum,
+    AsRefStr, DebugAsRefStr, DeserializeFromCowStr, DisplayAsRefStr, EqAsRefStr, FromString,
+    OrdAsRefStr, SerializeAsRefStr, StringEnum,
 };

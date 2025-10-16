@@ -5,10 +5,7 @@
 //!
 //! [spec]: https://spec.matrix.org/latest/client-server-api/#capabilities-negotiation
 
-use std::{
-    borrow::Cow,
-    collections::{BTreeMap, btree_map},
-};
+use std::{borrow::Cow, collections::BTreeMap};
 
 use maplit::btreemap;
 use salvo::prelude::*;

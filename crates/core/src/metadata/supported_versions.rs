@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::serde::{OrdAsRefStr, PartialEqAsRefStr, PartialOrdAsRefStr, StringEnum};
+use crate::serde::{EqAsRefStr, OrdAsRefStr, StringEnum};
 use crate::{MatrixVersion, PrivOwnedStr};
 
 /// The list of Matrix versions and features supported by a homeserver.
@@ -45,7 +45,7 @@ impl SupportedVersions {
 /// specification and that Ruma still supports, like the unstable version of an endpoint or a stable
 /// feature. Features behind a cargo feature are only supported when this feature is enabled.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(Clone, StringEnum, PartialEqAsRefStr, Eq, Hash, PartialOrdAsRefStr, OrdAsRefStr)]
+#[derive(Clone, StringEnum, EqAsRefStr, Hash, OrdAsRefStr)]
 #[non_exhaustive]
 pub enum FeatureFlag {
     /// `fi.mau.msc2246` ([MSC])

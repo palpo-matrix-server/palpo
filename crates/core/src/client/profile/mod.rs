@@ -11,9 +11,8 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_value as from_json_value, to_value as to_json_value};
 
+use crate::OwnedMxcUri;
 use crate::serde::{JsonValue, StringEnum};
-use crate::{OwnedMxcUri, PrivOwnedStr};
-
 
 mod profile_field_serde;
 
