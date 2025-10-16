@@ -365,6 +365,17 @@ pub struct StrippedStateEvent<C: PossiblyRedactedStateEventContent> {
     /// This is often an empty string, but some events send a `UserId` to show
     /// which user the event affects.
     pub state_key: C::StateKey,
+
+    /// Timestamp on the originating homeserver when this event was sent.
+    ///
+    /// This field is usually stripped, but some events might include it.
+    #[cfg(feature = "unstable-msc4319")]
+    #[palpo_event(default)]
+    pub origin_server_ts: Option<UnixMillis>,
+
+    /// Additional key-value pairs not signed by the homeserver.
+    #[cfg(feature = "unstable-msc4319")]
+    pub unsigned: Option<RawJson<crate::events::StateUnsigned<C>>>,
 }
 
 /// A minimal state event, used for creating a new room.
