@@ -750,12 +750,12 @@ async fn load_joined_room(
                 .map(|(_, pdu)| pdu.to_sync_room_event())
                 .collect(),
         },
-        state: State {
-            events: state_events
+        state: State::Before(
+            state_events
                 .iter()
                 .map(|pdu| pdu.to_sync_state_event())
-                .collect(),
-        },
+                .collect::<Vec<_>>().into(),
+        ),
         ephemeral: Ephemeral { events: edus },
         unread_thread_notifications: if filter.room.timeline.unread_thread_notifications {
             notify_summary
@@ -823,9 +823,7 @@ async fn load_left_room(
                 prev_batch: Some(next_batch.to_string()),
                 events: Vec::new(),
             },
-            state: State {
-                events: vec![event.to_sync_state_event()],
-            },
+            state: State::Before(vec![event.to_sync_state_event()].into()),
         });
     }
 
@@ -915,12 +913,12 @@ async fn load_left_room(
                 .map(|(_, pdu)| pdu.to_sync_room_event())
                 .collect(),
         },
-        state: State {
-            events: state_events
+        state: State::Before(
+            state_events
                 .iter()
                 .map(|pdu| pdu.to_sync_state_event())
-                .collect(),
-        },
+                .collect::<Vec<_>>().into(),
+        ),
     })
 }
 #[tracing::instrument]
