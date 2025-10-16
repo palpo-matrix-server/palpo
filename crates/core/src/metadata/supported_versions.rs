@@ -45,7 +45,7 @@ impl SupportedVersions {
 /// specification and that Ruma still supports, like the unstable version of an endpoint or a stable
 /// feature. Features behind a cargo feature are only supported when this feature is enabled.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(Clone, StringEnum, EqAsRefStr, Hash, OrdAsRefStr)]
+#[derive(Clone, StringEnum, Hash)]
 #[non_exhaustive]
 pub enum FeatureFlag {
     /// `fi.mau.msc2246` ([MSC])

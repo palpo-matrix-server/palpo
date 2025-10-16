@@ -223,7 +223,7 @@ impl AuthorizationServerMetadata {
 
 /// The method to use at the authorization endpoint.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(Clone, StringEnum, EqAsRefStr, OrdAsRefStr)]
+#[derive(Clone, StringEnum)]
 #[palpo_enum(rename_all = "lowercase")]
 pub enum ResponseType {
     /// Use the authorization code grant flow ([RFC 6749]).
@@ -242,7 +242,7 @@ pub enum ResponseType {
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
 ///
 /// [OAuth 2.0 Multiple Response Type Encoding Practices]: https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html
-#[derive(Clone, StringEnum, EqAsRefStr, OrdAsRefStr)]
+#[derive(Clone, StringEnum)]
 #[palpo_enum(rename_all = "lowercase")]
 pub enum ResponseMode {
     /// Authorization Response parameters are encoded in the fragment added to the
@@ -259,7 +259,7 @@ pub enum ResponseMode {
 
 /// The grant type to use at the token endpoint.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(Clone, StringEnum, EqAsRefStr, OrdAsRefStr)]
+#[derive(Clone, StringEnum)]
 #[palpo_enum(rename_all = "snake_case")]
 pub enum GrantType {
     /// The authorization code grant type ([RFC 6749]).
@@ -285,7 +285,7 @@ pub enum GrantType {
 
 /// The code challenge method to use at the authorization endpoint.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(Clone, StringEnum, EqAsRefStr, OrdAsRefStr)]
+#[derive(Clone, StringEnum)]
 pub enum CodeChallengeMethod {
     /// Use a SHA-256, base64url-encoded code challenge ([RFC 7636]).
     ///
@@ -303,7 +303,7 @@ pub enum CodeChallengeMethod {
 ///
 /// [MSC 4191]: https://github.com/matrix-org/matrix-spec-proposals/pull/4191
 #[cfg(feature = "unstable-msc4191")]
-#[derive(Clone, StringEnum, EqAsRefStr, OrdAsRefStr)]
+#[derive(Clone, StringEnum)]
 pub enum AccountManagementAction {
     /// The user wishes to view their profile (name, avatar, contact details).
     ///
@@ -348,7 +348,7 @@ pub enum AuthorizationServerMetadataUrlError {
 }
 
 /// The desired user experience when using the authorization endpoint.
-#[derive(Clone, StringEnum, EqAsRefStr, OrdAsRefStr)]
+#[derive(Clone, StringEnum)]
 #[palpo_enum(rename_all = "lowercase")]
 pub enum Prompt {
     /// The user wants to create a new account ([Initiating User Registration via OpenID

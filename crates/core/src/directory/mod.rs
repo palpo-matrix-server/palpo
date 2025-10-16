@@ -110,7 +110,7 @@ pub enum RoomNetwork {
 
 /// The rule used for users wishing to join a public room.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, Clone, Default, PartialEq, Eq, StringEnum)]
+#[derive(ToSchema, Clone, Default, StringEnum)]
 #[palpo_enum(rename_all = "snake_case")]
 pub enum PublicRoomJoinRule {
     /// Users can request an invite to the room.

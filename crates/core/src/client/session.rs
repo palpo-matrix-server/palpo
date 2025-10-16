@@ -644,7 +644,7 @@ impl IdentityProvider {
 ///
 /// [matrix-spec-proposals]: https://github.com/matrix-org/matrix-spec-proposals/blob/v1.1/informal/idp-brands.md
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, Clone, PartialEq, Eq, StringEnum)]
+#[derive(ToSchema, Clone, StringEnum)]
 pub enum IdentityProviderBrand {
     /// The [Apple] brand.
     ///

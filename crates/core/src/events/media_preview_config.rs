@@ -33,7 +33,7 @@ pub struct UnstableMediaPreviewConfigEventContent(pub MediaPreviewConfigEventCon
 impl JsonCastable<MediaPreviewConfigEventContent> for UnstableMediaPreviewConfigEventContent {}
 
 /// The configuration that handles if media previews should be shown in the timeline.
-#[derive(ToSchema, Clone, PartialEq, Eq, PartialOrd, Ord, StringEnum, Default)]
+#[derive(ToSchema, Clone, StringEnum, Default)]
 #[palpo_enum(rename_all = "lowercase")]
 #[non_exhaustive]
 pub enum MediaPreviews {
@@ -52,7 +52,7 @@ pub enum MediaPreviews {
 }
 
 /// The configuration to handle if avatars should be shown in invites.
-#[derive(ToSchema, Clone, PartialEq, Eq, PartialOrd, Ord, StringEnum, Default)]
+#[derive(ToSchema, StringEnum, Clone, Default)]
 #[palpo_enum(rename_all = "lowercase")]
 #[non_exhaustive]
 pub enum InviteAvatars {

@@ -15,7 +15,7 @@ use crate::{
 
 /// The desired resizing method.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, Default, StringEnum, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(ToSchema, Default, StringEnum, Clone)]
 #[palpo_enum(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum ResizeMethod {

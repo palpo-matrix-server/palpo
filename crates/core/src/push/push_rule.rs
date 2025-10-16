@@ -28,7 +28,7 @@ use crate::{
 
 /// The kinds of push rules that are available.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, Clone, PartialEq, Eq, PartialOrd, Ord, StringEnum)]
+#[derive(ToSchema, Clone, StringEnum)]
 #[palpo_enum(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum RuleKind {
@@ -110,7 +110,7 @@ impl NewPushRule {
 
 /// The scope of a push rule.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, Clone, PartialEq, Eq, StringEnum)]
+#[derive(ToSchema, Clone, StringEnum)]
 #[palpo_enum(rename_all = "lowercase")]
 #[non_exhaustive]
 pub enum RuleScope {

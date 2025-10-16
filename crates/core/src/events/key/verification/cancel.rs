@@ -76,7 +76,7 @@ impl KeyVerificationCancelEventContent {
 /// Custom error codes should use the Java package naming convention.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
 // FIXME: Add `m.foo_bar` as a naming scheme in StringEnum and remove rename attributes.
-#[derive(ToSchema, Clone, PartialEq, Eq, StringEnum)]
+#[derive(ToSchema, Clone, StringEnum)]
 #[non_exhaustive]
 pub enum CancelCode {
     /// The user cancelled the verification.

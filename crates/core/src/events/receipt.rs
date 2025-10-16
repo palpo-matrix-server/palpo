@@ -394,7 +394,7 @@ pub struct CreateReceiptReqBody {
 
 /// The type of receipt.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, Clone, OrdAsRefStr, EqAsRefStr, StringEnum)]
+#[derive(ToSchema, Clone, StringEnum)]
 #[non_exhaustive]
 pub enum ReceiptType {
     /// A [public read receipt].

@@ -29,7 +29,7 @@ pub use self::{
 
 /// Features supported by room versions.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, Clone, PartialEq, Eq, StringEnum)]
+#[derive(ToSchema, Clone, StringEnum)]
 pub enum RoomVersionFeature {
     /// m.extensible_events
     ///

@@ -107,7 +107,7 @@ impl RtcNotificationEventContent {
 
 /// How this notification should notify the receiver.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, Clone, PartialEq, Eq, StringEnum)]
+#[derive(ToSchema, Clone, StringEnum)]
 #[palpo_enum(rename_all = "snake_case")]
 pub enum NotificationType {
     /// The receiving client should ring with an audible sound.
