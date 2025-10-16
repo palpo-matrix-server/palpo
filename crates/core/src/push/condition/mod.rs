@@ -86,6 +86,7 @@ pub enum PushCondition {
 
     /// Matches unencrypted messages where `content.body` contains the owner's
     /// display name in that room.
+    #[deprecated]
     ContainsDisplayName,
 
     /// Matches the current number of members in the room.
@@ -188,6 +189,7 @@ impl PushCondition {
 
         match self {
             Self::EventMatch { key, pattern } => check_event_match(event, key, pattern, context),
+            #[allow(deprecated)]            
             Self::ContainsDisplayName => {
                 let value = match event.get_str("content.body") {
                     Some(v) => v,
@@ -633,6 +635,7 @@ type HasThreadSubscriptionFn =
 //     }
 
 //     #[test]
+//  #[allow(deprecated)]
 //     fn serialize_contains_display_name_condition() {
 //         assert_eq!(
 //             to_json_value(PushCondition::ContainsDisplayName).unwrap(),
