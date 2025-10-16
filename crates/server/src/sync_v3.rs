@@ -754,7 +754,8 @@ async fn load_joined_room(
             state_events
                 .iter()
                 .map(|pdu| pdu.to_sync_state_event())
-                .collect::<Vec<_>>().into(),
+                .collect::<Vec<_>>()
+                .into(),
         ),
         ephemeral: Ephemeral { events: edus },
         unread_thread_notifications: if filter.room.timeline.unread_thread_notifications {
@@ -917,7 +918,8 @@ async fn load_left_room(
             state_events
                 .iter()
                 .map(|pdu| pdu.to_sync_state_event())
-                .collect::<Vec<_>>().into(),
+                .collect::<Vec<_>>()
+                .into(),
         ),
     })
 }
