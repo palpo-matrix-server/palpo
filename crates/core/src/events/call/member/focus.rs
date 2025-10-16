@@ -73,7 +73,7 @@ impl ActiveLivekitFocus {
 
 /// How to select the active focus for LiveKit
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, Clone, PartialEq, Default, StringEnum)]
+#[derive(ToSchema, Clone, Default, StringEnum)]
 #[palpo_enum(rename_all = "snake_case")]
 pub enum FocusSelection {
     /// Select the active focus by using the oldest membership and the oldest focus.

@@ -689,7 +689,7 @@ impl AsRef<str> for PredefinedRuleId {
 
 /// The rule IDs of the predefined override server push rules.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, StringEnum)]
+#[derive(Clone, StringEnum)]
 #[palpo_enum(rename_all = ".m.rule.snake_case")]
 #[non_exhaustive]
 pub enum PredefinedOverrideRuleId {
@@ -755,7 +755,7 @@ impl PredefinedOverrideRuleId {
 
 /// The rule IDs of the predefined underride server push rules.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, StringEnum)]
+#[derive(Clone, StringEnum)]
 #[palpo_enum(rename_all = ".m.rule.snake_case")]
 #[non_exhaustive]
 pub enum PredefinedUnderrideRuleId {
@@ -841,7 +841,7 @@ impl PredefinedUnderrideRuleId {
 
 /// The rule IDs of the predefined content server push rules.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, StringEnum)]
+#[derive(Clone, StringEnum)]
 #[palpo_enum(rename_all = ".m.rule.snake_case")]
 #[non_exhaustive]
 pub enum PredefinedContentRuleId {

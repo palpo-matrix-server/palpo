@@ -12,7 +12,7 @@ use crate::{
 /// convert it from a string with `::from()` / `.into()`. To check for values
 /// that are not available as a documented variant here, use its string
 /// representation, obtained through [`.as_str()`](Self::as_str()).
-#[derive(ToSchema, Clone, PartialEq, Eq, StringEnum)]
+#[derive(ToSchema, Clone, StringEnum)]
 #[non_exhaustive]
 pub enum ProfileField {
     /// Display name of the user.

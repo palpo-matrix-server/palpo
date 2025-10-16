@@ -220,7 +220,7 @@ impl<'de> Deserialize<'de> for AuthData {
 }
 
 /// The type of an authentication stage.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, StringEnum)]
+#[derive(Clone, StringEnum)]
 #[non_exhaustive]
 pub enum AuthType {
     /// Password-based authentication (`m.login.password`).

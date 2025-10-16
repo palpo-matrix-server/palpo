@@ -19,7 +19,7 @@ use crate::{
 
 /// An enum of possible room types.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, Clone, PartialEq, Eq, StringEnum)]
+#[derive(ToSchema, Clone, StringEnum)]
 #[non_exhaustive]
 pub enum RoomType {
     /// Defines the room as a space.
@@ -33,7 +33,7 @@ pub enum RoomType {
 }
 
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, Clone, Default, PartialEq, Eq, StringEnum)]
+#[derive(ToSchema, Clone, Default, StringEnum)]
 #[palpo_enum(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum Visibility {
@@ -303,7 +303,7 @@ impl<'de> Deserialize<'de> for AllowRule {
 
 /// The kind of rule used for users wishing to join this room.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(Clone, Default, PartialEq, Eq, StringEnum)]
+#[derive(Clone, Default, StringEnum)]
 #[palpo_enum(rename_all = "snake_case")]
 pub enum JoinRuleKind {
     /// A user who wishes to join the room must first receive an invite to the room from someone
