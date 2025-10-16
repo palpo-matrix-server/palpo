@@ -8,7 +8,7 @@ use salvo::prelude::*;
 use url::Url;
 
 use crate::PrivOwnedStr;
-use crate::serde::{EqAsRefStr, OrdAsRefStr, RawJson, StringEnum};
+use crate::serde::{RawJson, StringEnum};
 
 mod serde;
 
