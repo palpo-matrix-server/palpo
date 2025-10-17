@@ -4,6 +4,7 @@ use std::iter::once;
 use std::sync::{LazyLock, Mutex};
 
 use diesel::prelude::*;
+use indexmap::IndexMap;
 use serde::Deserialize;
 use serde_json::value::to_raw_value;
 use ulid::Ulid;
@@ -889,7 +890,7 @@ pub fn all_pdus(
     user_id: &UserId,
     room_id: &RoomId,
     until_sn: Option<i64>,
-) -> AppResult<Vec<(i64, SnPduEvent)>> {
+) -> AppResult<IndexMap<i64, SnPduEvent>> {
     get_pdus_forward(user_id, room_id, 0, until_sn, None, usize::MAX)
 }
 pub fn get_pdus_forward(
@@ -899,7 +900,7 @@ pub fn get_pdus_forward(
     until_sn: Option<i64>,
     filter: Option<&RoomEventFilter>,
     limit: usize,
-) -> AppResult<Vec<(i64, SnPduEvent)>> {
+) -> AppResult<IndexMap<i64, SnPduEvent>> {
     get_pdus(
         user_id,
         room_id,
@@ -917,7 +918,7 @@ pub fn get_pdus_backward(
     until_sn: Option<i64>,
     filter: Option<&RoomEventFilter>,
     limit: usize,
-) -> AppResult<Vec<(i64, SnPduEvent)>> {
+) -> AppResult<IndexMap<i64, SnPduEvent>> {
     get_pdus(
         user_id,
         room_id,
@@ -940,8 +941,8 @@ pub fn get_pdus(
     limit: usize,
     filter: Option<&RoomEventFilter>,
     dir: Direction,
-) -> AppResult<Vec<(Seqnum, SnPduEvent)>> {
-    let mut list: Vec<(Seqnum, SnPduEvent)> = Vec::with_capacity(limit.clamp(10, 100));
+) -> AppResult<IndexMap<Seqnum, SnPduEvent>> {
+    let mut list: IndexMap<Seqnum, SnPduEvent> = IndexMap::with_capacity(limit.clamp(10, 100));
     let mut start_sn = if dir == Direction::Forward {
         0
     } else {
@@ -1047,7 +1048,7 @@ pub fn get_pdus(
                 }
                 pdu.add_age()?;
                 pdu.add_unsigned_membership(user_id)?;
-                list.push((event_sn, pdu));
+                list.insert(event_sn, pdu);
                 if list.len() >= limit {
                     break;
                 }
@@ -1082,10 +1083,10 @@ pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<(
     let pdus = all_pdus(user_id!("@doesntmatter:palpo.im"), room_id, None)?;
     let first_pdu = pdus.first();
 
-    let Some(first_pdu) = first_pdu else {
+    let Some((first_sn, first_pdu)) = first_pdu else {
         return Ok(());
     };
-    if first_pdu.0 < from {
+    if *first_sn < from {
         // No backfill required, there are still events between them
         return Ok(());
     }
@@ -1112,7 +1113,7 @@ pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<(
             &backfill_server.origin().await,
             BackfillReqArgs {
                 room_id: room_id.to_owned(),
-                v: vec![(*first_pdu.1.event_id).to_owned()],
+                v: vec![(*first_pdu.event_id).to_owned()],
                 limit: 100,
             },
         )?

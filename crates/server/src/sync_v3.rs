@@ -1,6 +1,6 @@
-use indexmap::IndexMap;
 use std::collections::{BTreeMap, HashMap, HashSet, hash_map::Entry};
 
+use indexmap::IndexMap;
 use state::DbRoomStateField;
 
 use crate::core::client::filter::{FilterDefinition, LazyLoadOptions, RoomEventFilter};
@@ -459,7 +459,7 @@ async fn load_joined_room(
                         }
                     } else if !lazy_load_enabled
                     || full_state
-                    || timeline_users.contains(&state_key)
+                    // || timeline_users.contains(&state_key)
                     // TODO: Delete the following line when this is resolved: https://github.com/vector-im/element-web/issues/22565
                     || *sender_id == state_key
                     {
@@ -930,7 +930,7 @@ pub(crate) fn load_timeline(
     since_sn: Option<Seqnum>,
     until_sn: Option<Seqnum>,
     filter: Option<&RoomEventFilter>,
-) -> AppResult<(Vec<(i64, SnPduEvent)>, bool)> {
+) -> AppResult<(IndexMap<Seqnum, SnPduEvent>, bool)> {
     let limit = filter.and_then(|f| f.limit).unwrap_or(10);
     let mut timeline_pdus = if let Some(since_sn) = since_sn {
         if let Some(until_sn) = until_sn {
@@ -956,7 +956,9 @@ pub(crate) fn load_timeline(
     };
 
     if timeline_pdus.len() > limit {
-        timeline_pdus.remove(0);
+        if let Some(key) = timeline_pdus.first().map(|(key, _)| key.clone()) {
+            timeline_pdus.shift_remove(&key);
+        }
         Ok((timeline_pdus, true))
     } else {
         Ok((timeline_pdus, false))

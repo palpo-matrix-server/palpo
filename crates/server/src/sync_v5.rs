@@ -2,6 +2,8 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::sync::{Arc, LazyLock, Mutex};
 
+use indexmap::IndexMap;
+
 use crate::core::Seqnum;
 use crate::core::client::filter::RoomEventFilter;
 use crate::core::client::sync_events::{self, v5::*};
@@ -281,7 +283,7 @@ async fn process_rooms(
         let (timeline_pdus, limited) = if all_invited_rooms.contains(&new_room_id) {
             // TODO: figure out a timestamp we can use for remote invites
             invite_state = crate::room::user::invite_state(sender_id, room_id).ok();
-            (Vec::new(), true)
+            (IndexMap::new(), true)
         } else {
             crate::sync_v3::load_timeline(
                 sender_id,
@@ -353,7 +355,7 @@ async fn process_rooms(
 
         let room_events: Vec<_> = timeline_pdus
             .iter()
-            .filter_map(|item| ignored_filter(item.clone(), sender_id))
+            .filter(|item| ignored_filter(item.clone(), sender_id))
             .map(|(_, pdu)| pdu.to_sync_room_event())
             .collect();
 

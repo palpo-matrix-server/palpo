@@ -187,11 +187,11 @@ pub fn update_frame_id_by_sn(event_sn: Seqnum, frame_id: i64) -> AppResult<()> {
     Ok(())
 }
 
-pub type PdusIterItem = (Seqnum, SnPduEvent);
+pub type PdusIterItem<'a> = (&'a Seqnum, &'a SnPduEvent);
 #[inline]
-pub fn ignored_filter(item: PdusIterItem, user_id: &UserId) -> Option<PdusIterItem> {
+pub fn ignored_filter(item: PdusIterItem, user_id: &UserId) -> bool {
     let (_, ref pdu) = item;
-    is_ignored_pdu(pdu, user_id).eq(&false).then_some(item)
+    !is_ignored_pdu(pdu, user_id)
 }
 
 #[inline]
