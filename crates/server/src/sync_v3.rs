@@ -388,7 +388,7 @@ async fn load_joined_room(
 
                             if let Some(state_key) = &pdu.state_key {
                                 let user_id = UserId::parse(state_key.clone()).map_err(|_| {
-                                    AppError::public("Invalid UserId in member PDU.")
+                                    AppError::public("invalid UserId in member PDU.")
                                 })?;
 
                                 // The membership was and still is invite or join
