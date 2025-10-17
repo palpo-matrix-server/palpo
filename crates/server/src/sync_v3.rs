@@ -354,10 +354,10 @@ async fn load_joined_room(
 
     let send_notification_counts = !timeline_pdus.is_empty()
         || room::user::last_read_notification(sender_id, room_id)? >= since_sn;
-    let mut timeline_users = HashSet::new();
+    // let mut timeline_users = HashSet::new();
     let mut timeline_pdu_ids = HashSet::new();
     for (_, event) in &timeline_pdus {
-        timeline_users.insert(event.sender.as_str().to_owned());
+        // timeline_users.insert(event.sender.as_str().to_owned());
         timeline_pdu_ids.insert(event.event_id.clone());
     }
     room::lazy_loading::lazy_load_confirm_delivery(sender_id, device_id, room_id, since_sn)?;
@@ -434,8 +434,14 @@ async fn load_joined_room(
                 let mut state_events = Vec::new();
                 let mut lazy_loaded = HashSet::new();
 
+                println!("================>>>>>>>>>> current_state_ids: {:?}", current_state_ids);
                 for (state_key_id, event_id) in current_state_ids {
                     if timeline_pdu_ids.contains(&event_id) {
+                        let Ok(pdu) = timeline::get_pdu(&event_id) else {
+                            error!("pdu in state not found: {}", event_id);
+                            continue;
+                        };
+                        println!("=====================skipeed pdu: {pdu:#?}");
                         continue;
                     }
                     if let Some(state_limit) = filter.room.state.limit

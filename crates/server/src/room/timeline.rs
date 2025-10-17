@@ -932,6 +932,7 @@ pub fn get_pdus_backward(
 
 /// Returns an iterator over all events and their tokens in a room that happened before the
 /// event with id `until` in reverse-chronological order.
+/// Skips events before user joined the room.
 #[tracing::instrument]
 pub fn get_pdus(
     user_id: &UserId,
@@ -949,6 +950,8 @@ pub fn get_pdus(
         data::curr_sn()? + 1
     };
 
+    let join_depth = crate::room::user::join_depth(user_id, room_id)?;
+    println!("=================join depth: {join_depth}");
     while list.len() < limit {
         let mut query = events::table
             .filter(events::room_id.eq(room_id))
@@ -968,6 +971,7 @@ pub fn get_pdus(
         } else {
             query = query.filter(events::sn.le(since_sn));
         }
+        query = query.filter(events::depth.ge(join_depth));
 
         if let Some(filter) = filter {
             if let Some(url_filter) = &filter.url_filter {
@@ -1058,6 +1062,7 @@ pub fn get_pdus(
     if dir == Direction::Backward {
         list.reverse();
     }
+    println!("LLLLLLLLLLLLLLLLLLLLIst event: {list:#?}");
     Ok(list)
 }
 

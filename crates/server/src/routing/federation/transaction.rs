@@ -94,7 +94,6 @@ async fn process_pdus(
     }
     let mut resolved_map = BTreeMap::new();
     for (event_id, value, room_id, room_version_id) in parsed_pdus {
-        println!("====================process pdus  event_id: {event_id}   value: {value:#?}");
         // crate::server::check_running()?;
         let pdu_start_time = Instant::now();
         let result = handler::process_incoming_pdu(

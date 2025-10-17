@@ -148,6 +148,14 @@ pub fn join_sn(user_id: &UserId, room_id: &RoomId) -> AppResult<i64> {
         .first::<i64>(&mut connect()?)
         .map_err(Into::into)
 }
+pub fn join_depth(user_id: &UserId, room_id: &RoomId) -> AppResult<i64> {
+    let join_sn = join_sn(user_id, room_id)?;
+    events::table
+        .filter(events::sn.eq(join_sn))
+        .select(events::depth)
+        .first::<i64>(&mut connect()?)
+        .map_err(Into::into)
+}
 pub fn join_count(room_id: &RoomId) -> AppResult<i64> {
     let count = room_users::table
         .filter(room_users::room_id.eq(room_id))
