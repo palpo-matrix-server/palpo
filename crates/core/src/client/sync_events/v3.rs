@@ -273,7 +273,7 @@ pub struct JoinedRoom {
     /// parameter, and the start of the `timeline` (or all state up to the
     /// start of the `timeline`, if `since` is not given, or `full_state` is
     /// true).
-    #[serde(default, skip_serializing_if = "State::is_empty")]
+    #[serde(flatten, skip_serializing_if = "State::is_before_and_empty")]
     pub state: State,
 
     /// The private data that this user has attached to this room.
