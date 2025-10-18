@@ -339,7 +339,7 @@ async fn load_joined_room(
     let current_frame_id = room::get_frame_id(room_id, None)?;
     let since_frame_id = crate::event::get_last_frame_id(room_id, since_sn).ok();
 
-    let (mut timeline_pdus, limited) = load_timeline(
+    let (timeline_pdus, limited) = load_timeline(
         sender_id,
         room_id,
         since_sn,
