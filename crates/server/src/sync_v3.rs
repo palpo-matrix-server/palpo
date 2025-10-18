@@ -355,10 +355,10 @@ async fn load_joined_room(
 
     let send_notification_counts = !timeline_pdus.is_empty()
         || room::user::last_read_notification(sender_id, room_id)? >= since_sn;
-    // let mut timeline_users = HashSet::new();
+    let mut timeline_users = HashSet::new();
     let mut timeline_pdu_ids = HashSet::new();
     for (_, event) in &timeline_pdus {
-        // timeline_users.insert(event.sender.as_str().to_owned());
+        timeline_users.insert(event.sender.as_str().to_owned());
         timeline_pdu_ids.insert(event.event_id.clone());
     }
     room::lazy_loading::lazy_load_confirm_delivery(sender_id, device_id, room_id, since_sn)?;
@@ -460,7 +460,7 @@ async fn load_joined_room(
                         }
                     } else if !lazy_load_enabled
                     || full_state
-                    // || timeline_users.contains(&state_key)
+                    || timeline_users.contains(&state_key)
                     // TODO: Delete the following line when this is resolved: https://github.com/vector-im/element-web/issues/22565
                     || *sender_id == state_key
                     {
