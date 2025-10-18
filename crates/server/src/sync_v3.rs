@@ -436,12 +436,9 @@ async fn load_joined_room(
                 let mut lazy_loaded = HashSet::new();
 
                 for (state_key_id, event_id) in current_state_ids {
-                    // if timeline_pdu_ids.contains(&event_id) {
-                    //     let Ok(pdu) = timeline::get_pdu(&event_id) else {
-                    //         error!("pdu in state not found: {}", event_id);
-                    //         continue;
-                    //     };
-                    // }
+                    if timeline_pdu_ids.contains(&event_id) {
+                        continue;
+                    }
                     if let Some(state_limit) = filter.room.state.limit
                         && state_events.len() >= state_limit
                     {
