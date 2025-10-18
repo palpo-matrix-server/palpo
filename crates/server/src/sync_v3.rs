@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap, HashSet, hash_map::Entry};
 
+use futures_util::future::Join;
 use indexmap::IndexMap;
 use state::DbRoomStateField;
 
@@ -338,7 +339,7 @@ async fn load_joined_room(
     let current_frame_id = room::get_frame_id(room_id, None)?;
     let since_frame_id = crate::event::get_last_frame_id(room_id, since_sn).ok();
 
-    let (timeline_pdus, limited) = load_timeline(
+    let (mut timeline_pdus, limited) = load_timeline(
         sender_id,
         room_id,
         since_sn,
@@ -434,16 +435,13 @@ async fn load_joined_room(
                 let mut state_events = Vec::new();
                 let mut lazy_loaded = HashSet::new();
 
-                println!("================>>>>>>>>>> current_state_ids: {:?}", current_state_ids);
                 for (state_key_id, event_id) in current_state_ids {
-                    if timeline_pdu_ids.contains(&event_id) {
-                        let Ok(pdu) = timeline::get_pdu(&event_id) else {
-                            error!("pdu in state not found: {}", event_id);
-                            continue;
-                        };
-                        println!("=====================skipeed pdu: {pdu:#?}");
-                        continue;
-                    }
+                    // if timeline_pdu_ids.contains(&event_id) {
+                    //     let Ok(pdu) = timeline::get_pdu(&event_id) else {
+                    //         error!("pdu in state not found: {}", event_id);
+                    //         continue;
+                    //     };
+                    // }
                     if let Some(state_limit) = filter.room.state.limit
                         && state_events.len() >= state_limit
                     {

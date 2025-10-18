@@ -139,7 +139,7 @@ pub fn shared_rooms(user_ids: Vec<OwnedUserId>) -> AppResult<Vec<OwnedRoomId>> {
     Ok(shared_rooms)
 }
 
-pub fn join_sn(user_id: &UserId, room_id: &RoomId) -> AppResult<i64> {
+pub fn join_sn(user_id: &UserId, room_id: &RoomId) -> AppResult<Seqnum> {
     room_users::table
         .filter(room_users::room_id.eq(room_id))
         .filter(room_users::user_id.eq(user_id))
@@ -148,12 +148,13 @@ pub fn join_sn(user_id: &UserId, room_id: &RoomId) -> AppResult<i64> {
         .first::<i64>(&mut connect()?)
         .map_err(Into::into)
 }
-pub fn join_depth(user_id: &UserId, room_id: &RoomId) -> AppResult<i64> {
+pub fn join_depth(user_id: &UserId, room_id: &RoomId) -> AppResult<u64> {
     let join_sn = join_sn(user_id, room_id)?;
     events::table
         .filter(events::sn.eq(join_sn))
         .select(events::depth)
         .first::<i64>(&mut connect()?)
+        .map(|depth| depth as u64)
         .map_err(Into::into)
 }
 pub fn join_count(room_id: &RoomId) -> AppResult<i64> {
