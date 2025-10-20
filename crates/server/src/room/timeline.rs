@@ -27,7 +27,7 @@ use crate::core::serde::{
 };
 use crate::core::state::{Event, StateError, event_auth};
 use crate::core::{Direction, Seqnum, UnixMillis, user_id};
-use crate::data::room::{DbEventData, NewDbEvent};
+use crate::data::room::{DbEvent, DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::event::{EventHash, PduBuilder, PduEvent, handler};
@@ -94,7 +94,7 @@ pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<SnPduEvent>> 
     else {
         return Ok(None);
     };
-    event_datas::table
+    let mut pdu = event_datas::table
         .filter(event_datas::event_id.eq(event_id))
         .select(event_datas::json_data)
         .first::<JsonValue>(&mut connect()?)
@@ -103,7 +103,17 @@ pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<SnPduEvent>> 
             SnPduEvent::from_json_value(&room_id, event_id, event_sn, json)
                 .map_err(|_e| AppError::internal("Invalid PDU in db."))
         })
-        .transpose()
+        .transpose()?;
+    if let Some(pdu) = pdu.as_mut() {
+        let event = events::table
+            .filter(events::id.eq(event_id))
+            .first::<DbEvent>(&mut connect()?)?;
+        pdu.is_rejected = event.is_rejected;
+        pdu.is_outlier = event.is_outlier;
+        pdu.soft_failed = event.soft_failed;
+        pdu.rejection_reason = event.rejection_reason;
+    }
+    Ok(pdu)
 }
 
 pub fn has_non_outlier_pdu(event_id: &EventId) -> AppResult<bool> {
@@ -125,8 +135,15 @@ pub fn get_pdu(event_id: &EventId) -> AppResult<SnPduEvent> {
             event_datas::json_data,
         ))
         .first::<(Seqnum, OwnedRoomId, JsonValue)>(&mut connect()?)?;
-    let pdu = PduEvent::from_json_value(&room_id, event_id, json)
+    let event = events::table
+        .filter(events::id.eq(event_id))
+        .first::<DbEvent>(&mut connect()?)?;
+    let mut pdu = PduEvent::from_json_value(&room_id, event_id, json)
         .map_err(|_e| AppError::internal("invalid pdu in db"))?;
+    pdu.is_rejected = event.is_rejected;
+    pdu.is_outlier = event.is_outlier;
+    pdu.soft_failed = event.soft_failed;
+    pdu.rejection_reason = event.rejection_reason;
     Ok(SnPduEvent::new(pdu, event_sn))
 }
 
@@ -619,6 +636,9 @@ pub async fn hash_and_sign_event(
         },
         signatures: None,
         extra_data: Default::default(),
+        is_outlier: true,
+        soft_failed: false,
+        is_rejected: false,
         rejection_reason: None,
     };
 
@@ -723,6 +743,7 @@ pub async fn hash_and_sign_event(
         state_key: pdu.state_key.clone(),
         is_outlier: true,
         soft_failed: false,
+        is_rejected: false,
         rejection_reason: None,
     }
     .save()?;

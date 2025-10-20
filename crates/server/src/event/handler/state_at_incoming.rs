@@ -54,6 +54,10 @@ pub(super) async fn state_at_incoming_resolved(
             break;
         };
 
+        if !prev_event.is_rejected {
+            continue;
+        }
+
         let sstate_hash = if let Ok(s) = state::get_pdu_frame_id(prev_event_id) {
             s
         } else {
@@ -127,7 +131,18 @@ pub(super) async fn state_at_incoming_resolved(
                 .map(|s| s.pdu)
                 .map_err(|_| StateError::other("missing PDU 5"))
         },
-        |_| None, //TODO
+        |map| {
+            let mut subgraph = HashSet::new();
+            for event_ids in map.values() {
+                for event_id in event_ids {
+                    if let Ok(pdu) = timeline::get_pdu(event_id) {
+                        subgraph.extend(pdu.auth_events.iter().cloned());
+                        subgraph.extend(pdu.prev_events.iter().cloned());
+                    }
+                }
+            }
+            Some(subgraph)
+        },
     )
     .await;
     drop(state_lock);
@@ -145,7 +160,7 @@ pub(super) async fn state_at_incoming_resolved(
         )),
         Err(e) => {
             warn!(
-                "State resolution on prev events failed, either an event could not be found or deserialization: {}",
+                "state resolution on prev events failed, either an event could not be found or deserialization: {}",
                 e
             );
             Ok(None)

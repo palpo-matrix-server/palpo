@@ -19,7 +19,7 @@ use crate::core::events::{
 };
 use crate::core::identifiers::*;
 use crate::core::serde::{
-    CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJson, RawJsonValue,
+    CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJson, RawJsonValue, default_false,
 };
 use crate::core::{Seqnum, UnixMillis, UserId};
 use crate::room::state;
@@ -293,6 +293,12 @@ pub struct PduEvent {
     #[serde(default, flatten, skip_serializing_if = "BTreeMap::is_empty")]
     pub extra_data: BTreeMap<String, JsonValue>,
 
+    #[serde(skip, default)]
+    pub is_outlier: bool,
+    #[serde(skip, default = "default_false")]
+    pub soft_failed: bool,
+    #[serde(skip, default = "default_false")]
+    pub is_rejected: bool,
     #[serde(skip)]
     pub rejection_reason: Option<String>,
 }
@@ -584,10 +590,6 @@ impl PduEvent {
         T: for<'de> Deserialize<'de>,
     {
         serde_json::from_str(self.content.get())
-    }
-
-    pub fn is_rejected(&self) -> bool {
-        self.rejection_reason.is_some()
     }
 
     pub fn is_room_state(&self) -> bool {

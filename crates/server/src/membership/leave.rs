@@ -209,6 +209,7 @@ async fn leave_room_remote(
         state_key: Some(user_id.to_string()),
         is_outlier: true,
         soft_failed: false,
+        is_rejected: false,
         rejection_reason: None,
     }
     .save()?;

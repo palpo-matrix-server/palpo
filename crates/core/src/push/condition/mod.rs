@@ -189,7 +189,7 @@ impl PushCondition {
 
         match self {
             Self::EventMatch { key, pattern } => check_event_match(event, key, pattern, context),
-            #[allow(deprecated)]            
+            #[allow(deprecated)]
             Self::ContainsDisplayName => {
                 let value = match event.get_str("content.body") {
                     Some(v) => v,

@@ -414,6 +414,7 @@ CREATE TABLE events (
     is_outlier boolean NOT NULL,
     is_redacted boolean NOT NULL DEFAULT false,
     soft_failed boolean NOT NULL DEFAULT false,
+    is_rejected boolean NOT NULL DEFAULT false,
     rejection_reason text,
     CONSTRAINT events_id_sn_udx UNIQUE (id, sn)
 );

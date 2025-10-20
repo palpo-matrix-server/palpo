@@ -59,13 +59,13 @@ async fn send_message(
         )
         .into());
     }
+    println!("=============body: {body:#?}");
 
     let txn_start_time = Instant::now();
-    println!("==============befor porcdess pdus===================");
     let resolved_map = process_pdus(&body.pdus, &body.origin, &txn_start_time).await?;
-    println!("==============after porcdess pdus===================");
     process_edus(body.edus, &body.origin).await;
 
+    println!("Rrrrrrrrrrrrrrrrrrrrrr");
     json_ok(SendMessageResBody {
         pdus: resolved_map
             .into_iter()
@@ -79,7 +79,6 @@ async fn process_pdus(
     origin: &ServerName,
     txn_start_time: &Instant,
 ) -> AppResult<BTreeMap<OwnedEventId, AppResult<()>>> {
-    println!("====================process pdus====================");
     let mut parsed_pdus = Vec::with_capacity(pdus.len());
     for pdu in pdus {
         parsed_pdus.push(match crate::parse_incoming_pdu(pdu) {
@@ -111,6 +110,7 @@ async fn process_pdus(
             "finished pdu {event_id}",
         );
 
+        println!("XXXXXXXXXXXXXx");
         // if result.is_ok() {
         //     resolved_map.insert(event_id, Ok(()));
         // }
@@ -125,6 +125,7 @@ async fn process_pdus(
         }
     }
 
+    println!("RRRRRRRRRRRRRREturn resolved map");
     Ok(resolved_map)
 }
 

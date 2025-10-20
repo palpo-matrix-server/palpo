@@ -39,6 +39,7 @@ pub async fn sync_events(
     device_id: &DeviceId,
     args: &SyncEventsReqArgs,
 ) -> AppResult<SyncEventsResBody> {
+    println!("=========sync events 0");
     let curr_sn = data::curr_sn()?;
     crate::seqnum_reach(curr_sn).await;
     let since_sn = if let Some(since_str) = args.since.as_ref() {
@@ -67,6 +68,7 @@ pub async fn sync_events(
 
     let full_state = args.full_state;
 
+    println!("=========sync events 1");
     let mut joined_rooms = BTreeMap::new();
     let mut presence_updates = HashMap::new();
     // Users that have joined any encrypted rooms the sender was in
@@ -83,6 +85,7 @@ pub async fn sync_events(
         None,
     )?);
 
+    println!("=========sync events 2");
     let all_joined_rooms = data::user::joined_rooms(sender_id)?;
     for room_id in &all_joined_rooms {
         let joined_room = match load_joined_room(
@@ -111,6 +114,7 @@ pub async fn sync_events(
         }
     }
 
+    println!("=========sync events 3");
     let mut left_rooms = BTreeMap::new();
     let all_left_rooms = room::user::left_rooms(sender_id, since_sn)?;
 
@@ -148,6 +152,7 @@ pub async fn sync_events(
         left_rooms.insert(room_id.to_owned(), left_room);
     }
 
+    println!("=========sync events 4");
     let invited_rooms: BTreeMap<_, _> =
         data::user::invited_rooms(sender_id, since_sn.unwrap_or_default())?
             .into_iter()
@@ -175,6 +180,7 @@ pub async fn sync_events(
             }
         }
     }
+    println!("=========sync events 5");
     for user_id in left_users {
         let dont_share_encrypted_room =
             room::user::shared_rooms(vec![sender_id.to_owned(), user_id.clone()])?
@@ -211,6 +217,7 @@ pub async fn sync_events(
         },
     );
 
+    println!("=========sync events 6");
     if config::get().presence.allow_local {
         // Take presence updates from this room
         for (user_id, presence_event) in
@@ -262,6 +269,7 @@ pub async fn sync_events(
         since_sn.unwrap_or_default() - 1,
     )?;
 
+    println!("=========sync events 7");
     let account_data = GlobalAccountData {
         events: data::user::data_changes(None, sender_id, since_sn.unwrap_or_default(), None)?
             .into_iter()
@@ -286,6 +294,7 @@ pub async fn sync_events(
         left: device_list_left.into_iter().collect(),
     };
 
+    println!("=========sync events 8");
     let to_device = ToDevice {
         events: data::user::device::get_to_device_events(
             sender_id,
@@ -295,17 +304,21 @@ pub async fn sync_events(
         )?,
     };
 
+    println!("=========sync events 9");
     let res_body = SyncEventsResBody {
         next_batch: next_batch.to_string(),
         rooms,
         presence,
         account_data,
         device_lists,
-        device_one_time_keys_count: { data::user::count_one_time_keys(sender_id, device_id)? },
+        device_one_time_keys_count: {
+            data::user::count_one_time_keys(sender_id, device_id).unwrap_or_default()
+        },
         to_device,
         // Fallback keys are not yet supported
         device_unused_fallback_key_types: None,
     };
+    println!("=========sync events 10");
     Ok(res_body)
 }
 
@@ -816,6 +829,9 @@ async fn load_left_room(
             },
             signatures: None,
             extra_data: Default::default(),
+            is_outlier: false,
+            soft_failed: false,
+            is_rejected: false,
             rejection_reason: None,
         };
         return Ok(LeftRoom {

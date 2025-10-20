@@ -370,6 +370,7 @@ diesel::table! {
         is_outlier -> Bool,
         is_redacted -> Bool,
         soft_failed -> Bool,
+        is_rejected -> Bool,
         rejection_reason -> Nullable<Text>,
     }
 }
@@ -590,11 +591,47 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
+    server_in_rooms (id) {
+        id -> Int8,
+        server_id -> Text,
+        room_id -> Text,
+        occur_sn -> Int8,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     server_signing_keys (server_id) {
         server_id -> Text,
         key_data -> Json,
         updated_at -> Int8,
         created_at -> Int8,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
+    sliding_sync_connections (id) {
+        id -> Int8,
+        user_id -> Text,
+        device_id -> Text,
+        conn_id -> Text,
+        created_at -> Int8,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
+    sliding_sync_required_states (id) {
+        id -> Int8,
+        connection_id -> Int8,
+        required_state -> Text,
     }
 }
 
@@ -1025,7 +1062,10 @@ diesel::allow_tables_to_appear_in_same_query!(
     room_tags,
     room_users,
     rooms,
+    server_in_rooms,
     server_signing_keys,
+    sliding_sync_connections,
+    sliding_sync_required_states,
     stats_monthly_active_users,
     stats_room_currents,
     stats_user_daily_visits,
