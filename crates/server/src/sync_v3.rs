@@ -845,13 +845,17 @@ async fn load_left_room(
         });
     }
 
+    println!("=========load_left_room  0");
     let since_frame_id = crate::event::get_last_frame_id(room_id, since_sn);
+    println!("=========load_left_room  1");
     let _since_state_ids = match since_frame_id {
         Ok(s) => state::get_full_state_ids(s)?,
         _ => IndexMap::new(),
     };
 
+    println!("=========load_left_room  2");
     let curr_frame_id = room::get_frame_id(room_id, None)?;
+    println!("=========load_left_room  3");
     let left_event_id = state::get_state_event_id(
         curr_frame_id,
         &StateEventType::RoomMember,

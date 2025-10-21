@@ -245,7 +245,9 @@ impl crate::core::state::Event for SnPduEvent {
     }
 
     fn rejected(&self) -> bool {
-        self.rejection_reason.is_some()
+        println!("=========rejection_reason: {:?}", self.rejection_reason);
+        println!("=========is_rejected: {:?}", self.is_rejected);
+        self.is_rejected
     }
 }
 
@@ -681,7 +683,9 @@ impl crate::core::state::Event for PduEvent {
     }
 
     fn rejected(&self) -> bool {
-        self.rejection_reason.is_some()
+        println!("=========rejection_reason1: {:?}", self.rejection_reason);
+        println!("=========is_rejected1: {:?}", self.is_rejected);
+        self.is_rejected
     }
 }
 
