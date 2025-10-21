@@ -22,7 +22,7 @@ use crate::core::serde::RawJson;
 use crate::core::{Seqnum, UnixMillis};
 use crate::event::{EventHash, PduEvent, SnPduEvent};
 use crate::room::{state, timeline};
-use crate::{AppError, AppResult, config, data, extract_variant, room};
+use crate::{AppError, AppResult, config, data, event, extract_variant, room};
 
 pub const DEFAULT_BUMP_TYPES: &[TimelineEventType; 6] = &[
     TimelineEventType::CallInvite,

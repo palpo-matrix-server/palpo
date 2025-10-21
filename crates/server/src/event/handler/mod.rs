@@ -582,8 +582,7 @@ pub async fn process_to_timeline_pdu(
             && state_key != incoming_pdu.sender().as_str() //????
             && state_key.ends_with(&*format!(":{}", crate::config::server_name()))
         {
-            let state_at_incoming_event = state_at_incoming_degree_one(&incoming_pdu)
-                .await?;
+            let state_at_incoming_event = state_at_incoming_degree_one(&incoming_pdu).await?;
             // 13. Use state resolution to find new room state
             let state_lock = crate::room::lock_state(room_id).await;
             // Now that the event has passed all auth it is added into the timeline.
@@ -1161,13 +1160,17 @@ pub async fn fetch_and_process_missing_prev_events(
 
         let mut missing_events = Vec::with_capacity(prev_events.len());
         for prev_id in prev_events {
-            if timeline::get_pdu(&prev_id).is_ok() {
+           if timeline::get_pdu(&prev_id).is_ok() {
                 known_events.insert(prev_id);
             } else if !earliest_events.contains(&prev_id) && !fetched_events.contains_key(&prev_id)
             {
                 missing_events.push(prev_id);
             }
         }
+        println!(
+            "M<<<<<<<<<<<<<<<<<<<<<<,,,missing_events {:?}",
+            missing_events
+        );
         if missing_events.is_empty() {
             continue;
         }
