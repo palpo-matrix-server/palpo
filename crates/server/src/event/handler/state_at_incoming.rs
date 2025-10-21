@@ -13,14 +13,14 @@ use crate::{AppResult, room};
 
 pub(super) async fn state_at_incoming_degree_one(
     incoming_pdu: &PduEvent,
-) -> AppResult<Option<IndexMap<i64, OwnedEventId>>> {
+) -> AppResult<IndexMap<i64, OwnedEventId>> {
+    let room_id = &incoming_pdu.room_id;
     let prev_event = &*incoming_pdu.prev_events[0];
-    let Ok(prev_frame_id) = state::get_pdu_frame_id(prev_event) else {
-        return Ok(None);
-    };
+    let prev_frame_id =
+        state::get_pdu_frame_id(prev_event).or_else(|_| room::get_frame_id(room_id, None))?;
 
     let Ok(mut state) = state::get_full_state_ids(prev_frame_id) else {
-        return Ok(None);
+        return Ok(IndexMap::new());
     };
 
     debug!("using cached state");
@@ -34,41 +34,34 @@ pub(super) async fn state_at_incoming_degree_one(
         // Now it's the state after the pdu
     }
 
-    Ok(Some(state))
+    Ok(state)
 }
 
 pub(super) async fn state_at_incoming_resolved(
     incoming_pdu: &PduEvent,
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
-) -> AppResult<Option<IndexMap<i64, OwnedEventId>>> {
-    debug!("calculating state at event using state res");
+) -> AppResult<IndexMap<i64, OwnedEventId>> {
+    debug!("calculating state at event using state resolve");
     let mut extremity_state_hashes = HashMap::new();
 
-    let mut okay = true;
     for prev_event_id in &incoming_pdu.prev_events {
         let prev_event = if let Ok(pdu) = timeline::get_pdu(prev_event_id) {
             pdu
         } else {
-            okay = false;
-            break;
+            continue;
         };
 
         if !prev_event.is_rejected {
+            extremity_state_hashes.insert(room::get_frame_id(room_id, None)?, prev_event);
             continue;
         }
 
-        let sstate_hash = if let Ok(s) = state::get_pdu_frame_id(prev_event_id) {
-            s
-        } else {
-            okay = false;
-            break;
-        };
-
-        extremity_state_hashes.insert(sstate_hash, prev_event);
-    }
-    if !okay {
-        return Ok(None);
+        if let Ok(frame_id) =
+            state::get_pdu_frame_id(prev_event_id).or_else(|_| room::get_frame_id(room_id, None))
+        {
+            extremity_state_hashes.insert(frame_id, prev_event);
+        }
     }
 
     let mut fork_states = Vec::with_capacity(extremity_state_hashes.len());
@@ -148,22 +141,20 @@ pub(super) async fn state_at_incoming_resolved(
     drop(state_lock);
 
     match result {
-        Ok(new_state) => Ok(Some(
-            new_state
-                .into_iter()
-                .map(|((event_type, state_key), event_id)| {
-                    let state_key_id =
-                        state::ensure_field_id(&event_type.to_string().into(), &state_key)?;
-                    Ok((state_key_id, event_id))
-                })
-                .collect::<AppResult<_>>()?,
-        )),
+        Ok(new_state) => Ok(new_state
+            .into_iter()
+            .map(|((event_type, state_key), event_id)| {
+                let state_key_id =
+                    state::ensure_field_id(&event_type.to_string().into(), &state_key)?;
+                Ok((state_key_id, event_id))
+            })
+            .collect::<AppResult<_>>()?),
         Err(e) => {
             warn!(
                 "state resolution on prev events failed, either an event could not be found or deserialization: {}",
                 e
             );
-            Ok(None)
+            Ok(IndexMap::new())
         }
     }
 }

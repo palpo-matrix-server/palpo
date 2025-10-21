@@ -280,7 +280,6 @@ fn process_to_outlier_pdu(
             )));
         }
 
-        println!("============process_to_outlier_pdu  1 {value:?}");
         // 1.1. Remove unsigned field
         value.remove("unsigned");
 
@@ -301,7 +300,6 @@ fn process_to_outlier_pdu(
                     .map_err(|_| MatrixError::invalid_param("time must be after the unix epoch"))?,
             )
         };
-        println!("============process_to_outlier_pdu  2");
         let mut val = match crate::server_key::verify_event(&value, Some(room_version_id)).await {
             Ok(crate::core::signatures::Verified::Signatures) => {
                 // Redact
@@ -328,7 +326,6 @@ fn process_to_outlier_pdu(
             }
         };
 
-        println!("============process_to_outlier_pdu  3");
         // Now that we have checked the signature and hashes we can add the eventID and convert
         // to our PduEvent type
         val.insert(
@@ -344,7 +341,6 @@ fn process_to_outlier_pdu(
 
         check_room_id(room_id, &incoming_pdu)?;
 
-        println!("============process_to_outlier_pdu  4");
         let server_joined = crate::room::is_server_joined(crate::config::server_name(), room_id)?;
         if !server_joined {
             if let Some(state_key) = incoming_pdu.state_key.as_deref()
@@ -379,7 +375,6 @@ fn process_to_outlier_pdu(
 
         let mut rejection_reason = None;
         if fetch_missing_prev_events {
-            println!("============process_to_outlier_pdu  4  -- 0");
             // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
             if let Err(e) = fetch_and_process_missing_prev_events(
                 origin,
@@ -588,8 +583,7 @@ pub async fn process_to_timeline_pdu(
             && state_key.ends_with(&*format!(":{}", crate::config::server_name()))
         {
             let state_at_incoming_event = state_at_incoming_degree_one(&incoming_pdu)
-                .await?
-                .unwrap_or_default();
+                .await?;
             // 13. Use state resolution to find new room state
             let state_lock = crate::room::lock_state(room_id).await;
             // Now that the event has passed all auth it is added into the timeline.
@@ -661,61 +655,57 @@ pub async fn process_to_timeline_pdu(
     // };
     let state_at_incoming_event =
         state_at_incoming_resolved(&incoming_pdu, room_id, room_version_id).await?;
-    println!("==================to timeline 2  -- 0");
 
-    let state_at_incoming_event = match state_at_incoming_event {
-        None => fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id)
-            .await
-            .ok()
-            .flatten()
-            .unwrap_or_default(),
-        Some(state) => state,
-    };
+    // let state_at_incoming_event = match state_at_incoming_event {
+    //     None => fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id)
+    //         .await
+    //         .ok()
+    //         .flatten()
+    //         .unwrap_or_default(),
+    //     Some(state) => state,
+    // };
 
     debug!("performing auth check");
-    // If previous event is not in timeline, need skip? TestInboundFederationRejectsEventsWithRejectedAuthEvents
-    if !state_at_incoming_event.is_empty() {
-        // 11. Check the auth of the event passes based on the state of the event
-        event_auth::auth_check(
-            &version_rules.authorization,
-            &incoming_pdu,
-            &async |event_id| {
-                timeline::get_pdu(&event_id)
-                    .map_err(|_| StateError::other("missing pdu in auth check event fetch"))
-            },
-            &async |k, s| {
-                let Ok(state_key_id) = state::get_field_id(&k.to_string().into(), &s) else {
-                    error!("missing field id for state type: {k}, state_key: {s}");
-                    return Err(StateError::other(format!(
-                        "missing field id for state type: {k}, state_key: {s}"
-                    )));
-                };
+    // 11. Check the auth of the event passes based on the state of the event
+    event_auth::auth_check(
+        &version_rules.authorization,
+        &incoming_pdu,
+        &async |event_id| {
+            timeline::get_pdu(&event_id)
+                .map_err(|_| StateError::other("missing pdu in auth check event fetch"))
+        },
+        &async |k, s| {
+            let Ok(state_key_id) = state::get_field_id(&k.to_string().into(), &s) else {
+                error!("missing field id for state type: {k}, state_key: {s}");
+                return Err(StateError::other(format!(
+                    "missing field id for state type: {k}, state_key: {s}"
+                )));
+            };
 
-                match state_at_incoming_event.get(&state_key_id) {
-                    Some(event_id) => match timeline::get_pdu(event_id) {
-                        Ok(pdu) => Ok(pdu),
-                        Err(e) => {
-                            error!("failed to get pdu for state resolution: {}", e);
-                            Err(StateError::other(format!(
-                                "failed to get pdu for state resolution: {}",
-                                e
-                            )))
-                        }
-                    },
-                    None => {
-                        error!(
-                            "missing state key id {state_key_id} for state type: {k}, state_key: {s}"
-                        );
+            match state_at_incoming_event.get(&state_key_id) {
+                Some(event_id) => match timeline::get_pdu(event_id) {
+                    Ok(pdu) => Ok(pdu),
+                    Err(e) => {
+                        error!("failed to get pdu for state resolution: {}", e);
                         Err(StateError::other(format!(
-                            "missing state key id {state_key_id} for state type: {k}, state_key: {s}"
+                            "failed to get pdu for state resolution: {}",
+                            e
                         )))
                     }
+                },
+                None => {
+                    error!(
+                        "missing state key id {state_key_id} for state type: {k}, state_key: {s}"
+                    );
+                    Err(StateError::other(format!(
+                        "missing state key id {state_key_id} for state type: {k}, state_key: {s}"
+                    )))
                 }
-            },
-        )
-        .await?;
-        debug!("auth check succeeded");
-    }
+            }
+        },
+    )
+    .await?;
+    debug!("auth check succeeded");
 
     println!("==================to timeline 4");
     debug!("gathering auth events");
@@ -860,7 +850,6 @@ pub async fn process_to_timeline_pdu(
             compressed_state_ids,
         )?;
     }
-    println!("==================to timeline 8");
     drop(guards);
 
     // Event has passed all auth/stateres checks
