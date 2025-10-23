@@ -16,8 +16,11 @@ pub(super) async fn state_at_incoming_degree_one(
 ) -> AppResult<IndexMap<i64, OwnedEventId>> {
     let room_id = &incoming_pdu.room_id;
     let prev_event = &*incoming_pdu.prev_events[0];
-    let prev_frame_id =
-        state::get_pdu_frame_id(prev_event).or_else(|_| room::get_frame_id(room_id, None))?;
+    let Ok(prev_frame_id) =
+        state::get_pdu_frame_id(prev_event).or_else(|_| room::get_frame_id(room_id, None))
+    else {
+        return Ok(IndexMap::new());
+    };
 
     let Ok(mut state) = state::get_full_state_ids(prev_frame_id) else {
         return Ok(IndexMap::new());
@@ -45,23 +48,24 @@ pub(super) async fn state_at_incoming_resolved(
     debug!("calculating state at event using state resolve");
     let mut extremity_state_hashes = HashMap::new();
 
+    let Ok(curr_frame_id) = room::get_frame_id(room_id, None) else {
+        println!("=== state_at_incoming_resolved 0    room: {room_id}");
+        return Ok(IndexMap::new());
+    };
     for prev_event_id in &incoming_pdu.prev_events {
-        let prev_event = if let Ok(pdu) = timeline::get_pdu(prev_event_id) {
-            pdu
-        } else {
+        let Ok(prev_event) = timeline::get_pdu(prev_event_id) else {
+            println!("=== state_at_incoming_resolved 1    room: {room_id}");
             continue;
         };
 
         if !prev_event.is_rejected {
-            extremity_state_hashes.insert(room::get_frame_id(room_id, None)?, prev_event);
+            extremity_state_hashes.insert(curr_frame_id, prev_event);
+            println!("=== state_at_incoming_resolved 2    room: {room_id}");
             continue;
         }
 
-        if let Ok(frame_id) =
-            state::get_pdu_frame_id(prev_event_id).or_else(|_| room::get_frame_id(room_id, None))
-        {
-            extremity_state_hashes.insert(frame_id, prev_event);
-        }
+        let frame_id = state::get_pdu_frame_id(prev_event_id).unwrap_or(curr_frame_id);
+        extremity_state_hashes.insert(frame_id, prev_event);
     }
 
     let mut fork_states = Vec::with_capacity(extremity_state_hashes.len());

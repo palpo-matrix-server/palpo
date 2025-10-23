@@ -55,10 +55,10 @@ pub async fn fetch_state(
                     "state event's type `{}` and state_key `{}` combination exists multiple times",
                     pdu.event_ty, state_key
                 );
-                return Err(AppError::internal(format!(
-                    "state event's type `{}` and state_key `{}` combination exists multiple times",
-                    pdu.event_ty, state_key
-                )));
+                // return Err(AppError::internal(format!(
+                //     "state event's type `{}` and state_key `{}` combination exists multiple times",
+                //     pdu.event_ty, state_key
+                // )));
             }
         }
     }

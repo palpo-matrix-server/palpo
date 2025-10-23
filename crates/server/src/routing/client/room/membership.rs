@@ -80,7 +80,7 @@ pub(super) fn get_members(
             return Err(MatrixError::bad_state("Invalid at parameter.").into());
         }
     } else {
-        crate::room::get_frame_id(&args.room_id, until_sn)?
+        crate::room::get_frame_id(&args.room_id, until_sn).unwrap_or_default()
     };
     let states: Vec<_> = state::get_full_state(frame_id)?
         .into_iter()

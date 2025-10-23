@@ -349,7 +349,9 @@ async fn load_joined_room(
         _ => false,
     };
 
-    let current_frame_id = room::get_frame_id(room_id, None)?;
+    let Ok(current_frame_id) = room::get_frame_id(room_id, None) else {
+        return Ok(JoinedRoom::default());
+    };
     let since_frame_id = crate::event::get_last_frame_id(room_id, since_sn).ok();
 
     let (timeline_pdus, limited) = load_timeline(
@@ -854,7 +856,9 @@ async fn load_left_room(
     };
 
     println!("=========load_left_room  2");
-    let curr_frame_id = room::get_frame_id(room_id, None)?;
+    let Ok(curr_frame_id) = room::get_frame_id(room_id, None) else {
+        return Ok(LeftRoom::default());
+    };
     println!("=========load_left_room  3");
     let left_event_id = state::get_state_event_id(
         curr_frame_id,

@@ -204,9 +204,9 @@ pub(super) fn get_context(
             .map_or(&*args.event_id, |(_, e)| &*e.event_id),
     ) {
         Ok(s) => s,
-        Err(_) => crate::room::get_frame_id(&room_id, None)?,
+        Err(_) => crate::room::get_frame_id(&room_id, None).unwrap_or_default(),
     };
-    let state_ids = state::get_full_state_ids(frame_id)?;
+    let state_ids = state::get_full_state_ids(frame_id).unwrap_or_default();
     let end_token = events_after
         .last()
         .map(|(count, _)| count.to_string())

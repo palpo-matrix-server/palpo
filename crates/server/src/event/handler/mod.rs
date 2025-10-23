@@ -583,6 +583,10 @@ pub async fn process_to_timeline_pdu(
             && state_key.ends_with(&*format!(":{}", crate::config::server_name()))
         {
             let state_at_incoming_event = state_at_incoming_degree_one(&incoming_pdu).await?;
+            println!(
+                "1======room: {room_id} =========state_at_incoming_event: {:#?},  pdu: {incoming_pdu:#?}",
+                state_at_incoming_event
+            );
             // 13. Use state resolution to find new room state
             let state_lock = crate::room::lock_state(room_id).await;
             // Now that the event has passed all auth it is added into the timeline.
@@ -655,6 +659,10 @@ pub async fn process_to_timeline_pdu(
     let state_at_incoming_event =
         state_at_incoming_resolved(&incoming_pdu, room_id, room_version_id).await?;
 
+            println!(
+                "2======room: {room_id} =========state_at_incoming_event: {:#?},  pdu: {incoming_pdu:#?}",
+                state_at_incoming_event
+            );
     // let state_at_incoming_event = match state_at_incoming_event {
     //     None => fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id)
     //         .await
@@ -694,10 +702,10 @@ pub async fn process_to_timeline_pdu(
                 },
                 None => {
                     error!(
-                        "missing state key id {state_key_id} for state type: {k}, state_key: {s}"
+                        "missing state key id {state_key_id} for state type: {k}, state_key: {s}, room: {room_id}"
                     );
                     Err(StateError::other(format!(
-                        "missing state key id {state_key_id} for state type: {k}, state_key: {s}"
+                        "missing state key id {state_key_id} for state type: {k}, state_key: {s}, room: {room_id}"
                     )))
                 }
             }
@@ -1160,7 +1168,7 @@ pub async fn fetch_and_process_missing_prev_events(
 
         let mut missing_events = Vec::with_capacity(prev_events.len());
         for prev_id in prev_events {
-           if timeline::get_pdu(&prev_id).is_ok() {
+            if timeline::get_pdu(&prev_id).is_ok() {
                 known_events.insert(prev_id);
             } else if !earliest_events.contains(&prev_id) && !fetched_events.contains_key(&prev_id)
             {

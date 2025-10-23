@@ -19,7 +19,7 @@ pub async fn send_join_v1(
     handler::acl_check(origin, room_id)?;
 
     // We need to return the state prior to joining, let's keep a reference to that here
-    let frame_id = room::get_frame_id(room_id, None)?;
+    let frame_id = room::get_frame_id(room_id, None).unwrap_or_default();
 
     // We do not add the event_id field to the pdu here because of signature and hashes checks
     let room_version_id = room::get_version(room_id)?;
@@ -182,7 +182,6 @@ pub async fn send_join_v1(
         .filter_map(|(_, id)| timeline::get_pdu_json(id).ok().flatten())
         .map(crate::sending::convert_to_outgoing_federation_event)
         .collect();
-
     let auth_chain_ids =
         room::auth_chain::get_auth_chain_ids(room_id, state_ids.values().map(|id| &**id))?;
     let auth_chain = auth_chain_ids

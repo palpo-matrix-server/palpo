@@ -43,9 +43,10 @@ pub(super) fn get_state(
         None
     };
 
-    let frame_id = room::get_frame_id(&room_id, None)?;
+    let frame_id = room::get_frame_id(&room_id, None).unwrap_or_default();
 
-    let room_state = state::get_full_state(frame_id)?
+    let room_state = state::get_full_state(frame_id)
+        .unwrap_or_default()
         .values()
         .map(|pdu| pdu.to_state_event())
         .collect();
