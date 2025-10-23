@@ -22,7 +22,7 @@ use crate::core::serde::RawJson;
 use crate::core::{Seqnum, UnixMillis};
 use crate::event::{EventHash, PduEvent, SnPduEvent};
 use crate::room::{state, timeline};
-use crate::{AppError, AppResult, config, data, event, extract_variant, room};
+use crate::{AppError, AppResult, config, data, extract_variant, room};
 
 pub const DEFAULT_BUMP_TYPES: &[TimelineEventType; 6] = &[
     TimelineEventType::CallInvite,
@@ -39,7 +39,6 @@ pub async fn sync_events(
     device_id: &DeviceId,
     args: &SyncEventsReqArgs,
 ) -> AppResult<SyncEventsResBody> {
-    println!("=========sync events 0");
     let curr_sn = data::curr_sn()?;
     crate::seqnum_reach(curr_sn).await;
     let since_sn = if let Some(since_str) = args.since.as_ref() {
@@ -68,7 +67,6 @@ pub async fn sync_events(
 
     let full_state = args.full_state;
 
-    println!("=========sync events 1");
     let mut joined_rooms = BTreeMap::new();
     let mut presence_updates = HashMap::new();
     // Users that have joined any encrypted rooms the sender was in
@@ -85,7 +83,6 @@ pub async fn sync_events(
         None,
     )?);
 
-    println!("=========sync events 2");
     let all_joined_rooms = data::user::joined_rooms(sender_id)?;
     for room_id in &all_joined_rooms {
         let joined_room = match load_joined_room(
@@ -114,7 +111,6 @@ pub async fn sync_events(
         }
     }
 
-    println!("=========sync events 3");
     let mut left_rooms = BTreeMap::new();
     let all_left_rooms = room::user::left_rooms(sender_id, since_sn)?;
 
@@ -152,7 +148,6 @@ pub async fn sync_events(
         left_rooms.insert(room_id.to_owned(), left_room);
     }
 
-    println!("=========sync events 4");
     let invited_rooms: BTreeMap<_, _> =
         data::user::invited_rooms(sender_id, since_sn.unwrap_or_default())?
             .into_iter()
@@ -180,7 +175,6 @@ pub async fn sync_events(
             }
         }
     }
-    println!("=========sync events 5");
     for user_id in left_users {
         let dont_share_encrypted_room =
             room::user::shared_rooms(vec![sender_id.to_owned(), user_id.clone()])?
@@ -217,7 +211,6 @@ pub async fn sync_events(
         },
     );
 
-    println!("=========sync events 6");
     if config::get().presence.allow_local {
         // Take presence updates from this room
         for (user_id, presence_event) in
@@ -269,7 +262,6 @@ pub async fn sync_events(
         since_sn.unwrap_or_default() - 1,
     )?;
 
-    println!("=========sync events 7");
     let account_data = GlobalAccountData {
         events: data::user::data_changes(None, sender_id, since_sn.unwrap_or_default(), None)?
             .into_iter()
@@ -294,7 +286,6 @@ pub async fn sync_events(
         left: device_list_left.into_iter().collect(),
     };
 
-    println!("=========sync events 8");
     let to_device = ToDevice {
         events: data::user::device::get_to_device_events(
             sender_id,
@@ -304,7 +295,6 @@ pub async fn sync_events(
         )?,
     };
 
-    println!("=========sync events 9");
     let res_body = SyncEventsResBody {
         next_batch: next_batch.to_string(),
         rooms,
@@ -318,7 +308,6 @@ pub async fn sync_events(
         // Fallback keys are not yet supported
         device_unused_fallback_key_types: None,
     };
-    println!("=========sync events 10");
     Ok(res_body)
 }
 
@@ -847,19 +836,15 @@ async fn load_left_room(
         });
     }
 
-    println!("=========load_left_room  0");
     let since_frame_id = crate::event::get_last_frame_id(room_id, since_sn);
-    println!("=========load_left_room  1");
     let _since_state_ids = match since_frame_id {
         Ok(s) => state::get_full_state_ids(s)?,
         _ => IndexMap::new(),
     };
 
-    println!("=========load_left_room  2");
     let Ok(curr_frame_id) = room::get_frame_id(room_id, None) else {
         return Ok(LeftRoom::default());
     };
-    println!("=========load_left_room  3");
     let left_event_id = state::get_state_event_id(
         curr_frame_id,
         &StateEventType::RoomMember,

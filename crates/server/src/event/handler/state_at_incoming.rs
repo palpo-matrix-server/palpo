@@ -1,4 +1,5 @@
 use indexmap::IndexMap;
+use palpo_core::room_version_rules::RoomVersionRules;
 use std::collections::{HashMap, HashSet};
 
 use state::DbRoomStateField;
@@ -11,56 +12,57 @@ use crate::event::PduEvent;
 use crate::room::{state, timeline};
 use crate::{AppResult, room};
 
-pub(super) async fn state_at_incoming_degree_one(
-    incoming_pdu: &PduEvent,
-) -> AppResult<IndexMap<i64, OwnedEventId>> {
-    let room_id = &incoming_pdu.room_id;
-    let prev_event = &*incoming_pdu.prev_events[0];
-    let Ok(prev_frame_id) =
-        state::get_pdu_frame_id(prev_event).or_else(|_| room::get_frame_id(room_id, None))
-    else {
-        return Ok(IndexMap::new());
-    };
+// pub(super) async fn state_at_incoming_degree_one(
+//     incoming_pdu: &PduEvent,
+// ) -> AppResult<IndexMap<i64, OwnedEventId>> {
+//     let room_id = &incoming_pdu.room_id;
+//     let prev_event = &*incoming_pdu.prev_events[0];
+//     let Ok(prev_frame_id) =
+//         state::get_pdu_frame_id(prev_event).or_else(|_| room::get_frame_id(room_id, None))
+//     else {
+//         return Ok(IndexMap::new());
+//     };
 
-    let Ok(mut state) = state::get_full_state_ids(prev_frame_id) else {
-        return Ok(IndexMap::new());
-    };
+//     let Ok(mut state) = state::get_full_state_ids(prev_frame_id) else {
+//         return Ok(IndexMap::new());
+//     };
 
-    debug!("using cached state");
-    let prev_pdu = timeline::get_pdu(prev_event)?;
+//     debug!("using cached state");
+//     let prev_pdu = timeline::get_pdu(prev_event)?;
 
-    if let Some(state_key) = &prev_pdu.state_key {
-        let state_key_id =
-            state::ensure_field_id(&prev_pdu.event_ty.to_string().into(), state_key)?;
+//     if let Some(state_key) = &prev_pdu.state_key {
+//         let state_key_id =
+//             state::ensure_field_id(&prev_pdu.event_ty.to_string().into(), state_key)?;
 
-        state.insert(state_key_id, prev_event.to_owned());
-        // Now it's the state after the pdu
-    }
+//         state.insert(state_key_id, prev_event.to_owned());
+//         // Now it's the state after the pdu
+//     }
 
-    Ok(state)
-}
+//     Ok(state)
+// }
 
 pub(super) async fn state_at_incoming_resolved(
     incoming_pdu: &PduEvent,
     room_id: &RoomId,
-    room_version_id: &RoomVersionId,
+    version_rules: &RoomVersionRules,
 ) -> AppResult<IndexMap<i64, OwnedEventId>> {
     debug!("calculating state at event using state resolve");
     let mut extremity_state_hashes = HashMap::new();
 
     let Ok(curr_frame_id) = room::get_frame_id(room_id, None) else {
-        println!("=== state_at_incoming_resolved 0    room: {room_id}");
+        println!("=== state_at_incoming_resolved 0    room: {room_id}  {:?}", incoming_pdu);
         return Ok(IndexMap::new());
     };
     for prev_event_id in &incoming_pdu.prev_events {
         let Ok(prev_event) = timeline::get_pdu(prev_event_id) else {
-            println!("=== state_at_incoming_resolved 1    room: {room_id}");
+            println!("=== state_at_incoming_resolved 1    room: {room_id}  {:?}", incoming_pdu);
             continue;
         };
 
-        if !prev_event.is_rejected {
+        if prev_event.is_rejected {
+            println!("=== state_at_incoming_resolved 2    prev_event: {:?}", prev_event);
             extremity_state_hashes.insert(curr_frame_id, prev_event);
-            println!("=== state_at_incoming_resolved 2    room: {room_id}");
+            println!("=== state_at_incoming_resolved 2    room: {room_id}  incoming_pdu: {:?}", incoming_pdu);
             continue;
         }
 
@@ -111,7 +113,6 @@ pub(super) async fn state_at_incoming_resolved(
     }
 
     let state_lock = room::lock_state(room_id).await;
-    let version_rules = crate::room::get_version_rules(room_version_id)?;
     let result = resolve(
         &version_rules.authorization,
         version_rules

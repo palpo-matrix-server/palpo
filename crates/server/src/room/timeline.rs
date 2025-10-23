@@ -891,6 +891,7 @@ pub async fn build_and_append_pdu(
 
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
+    println!("=ccccall set_room_state 2");
     state::set_room_state(room_id, frame_id)?;
 
     // In case we are kicking or banning a user, we need to inform their server of the change

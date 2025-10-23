@@ -50,9 +50,9 @@ pub async fn fetch_state(
             indexmap::map::Entry::Vacant(v) => {
                 v.insert(pdu.event_id.clone());
             }
-            indexmap::map::Entry::Occupied(_) => {
+            indexmap::map::Entry::Occupied(entry) => {
                 error!(
-                    "state event's type `{}` and state_key `{}` combination exists multiple times",
+                    "state event's type `{}` and state_key `{}` combination exists multiple times, entry: {entry:?}",
                     pdu.event_ty, state_key
                 );
                 // return Err(AppError::internal(format!(

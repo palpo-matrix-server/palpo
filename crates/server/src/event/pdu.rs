@@ -681,8 +681,6 @@ impl crate::core::state::Event for PduEvent {
     }
 
     fn rejected(&self) -> bool {
-        println!("=========rejection_reason1: {:?}", self.rejection_reason);
-        println!("=========is_rejected1: {:?}", self.is_rejected);
         self.is_rejected
     }
 }

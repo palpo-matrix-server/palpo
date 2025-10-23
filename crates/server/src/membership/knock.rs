@@ -335,6 +335,7 @@ pub async fn knock_room(
     info!("setting final room state for new room");
     // We set the room state after inserting the pdu, so that we never have a moment
     // in time where events in the current room state do not exist
+    println!("=ccccall set_room_state 1");
     let _ = state::set_room_state(room_id, frame_id);
     drop(event_guard);
     Ok(Some(knock_pdu))

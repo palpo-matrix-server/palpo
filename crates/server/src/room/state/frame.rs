@@ -70,6 +70,7 @@ pub fn load_frame_info(frame_id: i64) -> AppResult<Vec<FrameInfo>> {
 
 pub fn get_room_frame_id(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<i64> {
     let frame_id = if let Some(until_sn) = until_sn {
+        println!("======get_room_frame_id1");
         event_points::table
             .filter(event_points::room_id.eq(room_id))
             .filter(event_points::event_sn.le(until_sn))
@@ -78,11 +79,13 @@ pub fn get_room_frame_id(room_id: &RoomId, until_sn: Option<i64>) -> AppResult<i
             .order(event_points::event_sn.desc())
             .first::<Option<i64>>(&mut connect()?)?
     } else {
+        println!("======get_room_frame_id2");
         rooms::table
             .find(room_id)
             .select(rooms::state_frame_id)
             .first::<Option<i64>>(&mut connect()?)?
     };
+    println!("======get_room_frame_id3 {frame_id:?}");
     frame_id.ok_or(MatrixError::not_found("room frame is not found").into())
 }
 
