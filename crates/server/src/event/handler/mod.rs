@@ -376,6 +376,7 @@ fn process_to_outlier_pdu(
             return Ok(None);
         }
 
+        let mut soft_failed = false;
         let mut rejection_reason = None;
         if fetch_missing_prev_events {
             // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
@@ -388,10 +389,11 @@ fn process_to_outlier_pdu(
             )
             .await
             {
-                rejection_reason = Some(format!(
-                    "failed to fetch missing prev events: {}",
+                println!(
+                    "==================oooooooooooo 3 failed to fetch missing prev events: {}",
                     e.to_string()
-                ));
+                );
+                soft_failed = true;
             }
         }
 
@@ -405,10 +407,8 @@ fn process_to_outlier_pdu(
             match timeline::get_may_missing_pdus(room_id, &incoming_pdu.auth_events) {
                 Ok(s) => s,
                 Err(e) => {
-                    rejection_reason = Some(format!(
-                        "failed to fetch missing auth events: {}",
-                        e.to_string()
-                    ));
+                    soft_failed = true;
+                    println!("failed to fetch missing auth events: {}", e.to_string());
                     (vec![], vec![])
                 }
             };
@@ -419,7 +419,9 @@ fn process_to_outlier_pdu(
             if let Err(e) =
                 fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id).await
             {
-                rejection_reason = Some(format!("failed to fetch state: {}", e.to_string()));
+                soft_failed = true;
+                println!("failed to fetch state: {}", e.to_string());
+                // rejection_reason = Some(format!("failed to fetch state: {}", e.to_string()));
             }
         }
         let (auth_events, missing_auth_event_ids) =
@@ -478,7 +480,7 @@ fn process_to_outlier_pdu(
             );
         }
 
-        if let Err(e) = event_auth::auth_check(
+        if let Err(_e) = event_auth::auth_check(
             &auth_rules,
             &incoming_pdu,
             &async |event_id| {
@@ -512,7 +514,8 @@ fn process_to_outlier_pdu(
         .await
             && rejection_reason.is_none()
         {
-            rejection_reason = Some(e.to_string())
+            soft_failed = true;
+            // rejection_reason = Some(e.to_string())
         };
 
         debug!("validation successful");
@@ -521,6 +524,7 @@ fn process_to_outlier_pdu(
         let (event_sn, event_guard) = ensure_event_sn(room_id, event_id)?;
         let mut db_event = NewDbEvent::from_canonical_json(&incoming_pdu.event_id, event_sn, &val)?;
         db_event.is_outlier = true;
+        db_event.soft_failed = soft_failed;
         db_event.is_rejected = rejection_reason.is_some();
         db_event.rejection_reason = rejection_reason.clone();
         println!("==========================db event: {db_event:#?}");
@@ -535,6 +539,7 @@ fn process_to_outlier_pdu(
         }
         .save()?;
 
+        incoming_pdu.soft_failed = soft_failed;
         incoming_pdu.is_rejected = rejection_reason.is_some();
         incoming_pdu.rejection_reason = rejection_reason;
 
