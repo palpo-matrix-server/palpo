@@ -31,6 +31,7 @@ use crate::core::identifiers::*;
 use crate::core::room_version_rules::StateResolutionV2Rules;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonValue, canonical_json};
 use crate::core::state::{StateError, StateMap, event_auth};
+use crate::data::room::DbEvent;
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
@@ -76,14 +77,24 @@ pub(crate) async fn process_incoming_pdu(
         return Err(MatrixError::not_found("room is unknown to this server").into());
     }
 
-    if diesel_exists!(
-        events::table
-            .filter(events::id.eq(event_id))
-            .filter(events::room_id.eq(room_id))
-            .filter(events::is_outlier.eq(false)),
-        &mut connect()?
-    )? {
-        return Ok(());
+    let event = events::table
+        .filter(events::id.eq(event_id))
+        .first::<DbEvent>(&mut connect()?);
+    if let Ok(event) = event {
+        if !event.is_outlier {
+            return Ok(());
+        }
+        println!("dddddddddddddddddddelete");
+        if event.is_rejected || event.soft_failed {
+            println!("dddddddddddddddddddelete");
+            diesel::delete(&event).execute(&mut connect()?).ok();
+            diesel::delete(event_points::table.filter(event_points::event_id.eq(event_id)))
+                .execute(&mut connect()?)
+                .ok();
+            diesel::delete(event_datas::table.filter(event_datas::event_id.eq(event_id)))
+                .execute(&mut connect()?)
+                .ok();
+        }
     }
 
     // 1.2 Check if the room is disabled
@@ -132,8 +143,7 @@ pub(crate) async fn process_incoming_pdu(
         return Ok(());
     };
 
-    println!("==================oooooooooooo 1");
-    if incoming_pdu.is_rejected {
+    if incoming_pdu.is_rejected || incoming_pdu.soft_failed {
         return Ok(());
     }
     check_room_id(room_id, &incoming_pdu)?;
@@ -577,7 +587,6 @@ pub async fn process_to_timeline_pdu(
     //     doing all the checks in this list starting at 1. These are not timeline events.
     debug!("resolving state at event");
     let server_joined = crate::room::is_server_joined(crate::config::server_name(), room_id)?;
-    println!("==================to timeline 1");
     if !server_joined {
         if let Some(state_key) = incoming_pdu.state_key.as_deref()
             && incoming_pdu.event_ty == TimelineEventType::RoomMember
@@ -587,10 +596,6 @@ pub async fn process_to_timeline_pdu(
             // let state_at_incoming_event = state_at_incoming_degree_one(&incoming_pdu).await?;
             let state_at_incoming_event =
                 state_at_incoming_resolved(&incoming_pdu, room_id, &version_rules).await?;
-            println!(
-                "1======room: {room_id} =========state_at_incoming_event: {:#?},  pdu: {incoming_pdu:#?}",
-                state_at_incoming_event
-            );
             // 13. Use state resolution to find new room state
             let state_lock = crate::room::lock_state(room_id).await;
             // Now that the event has passed all auth it is added into the timeline.
@@ -845,7 +850,7 @@ pub async fn process_to_timeline_pdu(
         // Soft fail, we keep the event as an outlier but don't add it to the timeline
         warn!("event was soft failed: {:?}", incoming_pdu);
         crate::room::pdu_metadata::mark_event_soft_failed(&incoming_pdu.event_id)?;
-        return Err(MatrixError::invalid_param("Event has been soft failed").into());
+        return Err(MatrixError::invalid_param("event has been soft failed").into());
     } else {
         debug!("appended incoming pdu");
         timeline::append_pdu(&incoming_pdu, json_data, extremities, &state_lock).await?;

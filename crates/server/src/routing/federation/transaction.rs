@@ -110,7 +110,6 @@ async fn process_pdus(
             "finished pdu {event_id}",
         );
 
-        println!("XXXXXXXXXXXXXx");
         // if result.is_ok() {
         //     resolved_map.insert(event_id, Ok(()));
         // }
@@ -125,7 +124,6 @@ async fn process_pdus(
         }
     }
 
-    println!("RRRRRRRRRRRRRREturn resolved map");
     Ok(resolved_map)
 }
 
