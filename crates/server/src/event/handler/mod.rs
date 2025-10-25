@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use diesel::prelude::*;
-pub use fetch_state::fetch_state;
+pub use fetch_state::{fetch_state_ids, fetch_state};
 use indexmap::IndexMap;
 use palpo_core::state::Event;
 use state_at_incoming::state_at_incoming_resolved;
@@ -426,6 +426,11 @@ fn process_to_outlier_pdu(
         if !missing_auth_event_ids.is_empty() {
             // fetch_and_process_auth_chain(origin, room_id, &incoming_pdu.event_id, known_events)
             //     .await?;
+            println!(
+                "==========missing_auth_event_ids: {:?}",
+                missing_auth_event_ids
+            );
+            println!("======incoming_pdu: {:?}", incoming_pdu);
             if let Err(e) =
                 fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id).await
             {
@@ -1040,13 +1045,17 @@ pub(crate) async fn fetch_and_process_outliers(
                 event_request(&origin.origin().await, EventReqArgs::new(next_id.clone()))?
                     .into_inner();
 
-            match crate::sending::send_federation_request(origin, request, None)
-                .await?
-                .json::<EventResBody>()
-                .await
-            {
+            let response =
+                match crate::sending::send_federation_request(origin, request, None).await {
+                    Ok(res) => res,
+                    Err(e) => {
+                        warn!("failed to fetch event {}: {}", next_id, e);
+                        continue;
+                    }
+                };
+            match response.json::<EventResBody>().await {
                 Ok(res) => {
-                    info!("got event{} over federation", next_id);
+                    info!("got event {} over federation", next_id);
 
                     let Ok((calculated_event_id, value)) =
                         crate::event::gen_event_id_canonical_json(&res.pdu, room_version_id)
@@ -1209,16 +1218,20 @@ pub async fn fetch_and_process_missing_prev_events(
             let (event_id, event_val, _room_id, _room_version_id) =
                 crate::parse_incoming_pdu(&event)?;
 
+            println!("================missing event responwse: {event_id}");
             if known_events.contains(&event_id) {
+                println!("=======0");
                 continue;
             }
 
+            println!("=======1");
             if fetched_events.contains_key(&event_id)
                 || missing_stack.contains_key(&event_id)
                 || incoming_pdu.event_id == event_id
                 || timeline::get_pdu(&event_id).is_ok()
             {
                 known_events.insert(event_id.clone());
+                println!("=======2");
                 continue;
             }
 
@@ -1234,6 +1247,7 @@ pub async fn fetch_and_process_missing_prev_events(
             fetched_events.insert(event_id.clone(), event_val);
             known_events.insert(event_id.clone());
 
+            println!("=======3");
             if !prev_events.contains(&incoming_pdu.event_id) {
                 let prev_events = prev_events
                     .into_iter()
@@ -1254,6 +1268,17 @@ pub async fn fetch_and_process_missing_prev_events(
                     missing_stack.insert(event_id.clone(), prev_events);
                 }
             }
+
+            println!("=======4");
+            missing_events.retain(|e| e != &event_id);
+        }
+
+        for event_id in missing_events {
+            println!("==============fetch state event id: {event_id}");
+            if let Ok(state) = fetch_state(origin, room_id, &room_version_id, &event_id).await {
+                println!("==============fetch state event id 2: {state:?}");
+                known_events.extend(state.into_values());
+            }
         }
     }
 
@@ -1271,6 +1296,7 @@ pub async fn fetch_and_process_missing_prev_events(
                     .filter(events::room_id.eq(&room_id)),
                 &mut connect()?
             )? {
+                println!("=============process pull pdu: {event_id}");
                 process_pulled_pdu(
                     origin,
                     &event_id,

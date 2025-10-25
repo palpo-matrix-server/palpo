@@ -166,12 +166,13 @@ pub fn get_may_missing_pdus(
     for (event_id, event_sn, json) in events {
         let mut pdu = SnPduEvent::from_json_value(room_id, &event_id, event_sn, json)
             .map_err(|_e| AppError::internal("invalid pdu in db"))?;
-        pdu.rejection_reason = events::table
+        let event = events::table
             .filter(events::id.eq(&event_id))
-            .select(events::rejection_reason)
-            .first::<Option<String>>(&mut connect()?)
-            .optional()?
-            .flatten();
+            .first::<DbEvent>(&mut connect()?)?;
+        pdu.is_outlier = event.is_outlier;
+        pdu.soft_failed = event.soft_failed;
+        pdu.is_rejected = event.is_rejected;
+        pdu.rejection_reason = event.rejection_reason;
         pdus.push(pdu);
         missing_ids.remove(&event_id);
     }

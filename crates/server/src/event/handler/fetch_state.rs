@@ -16,27 +16,14 @@ pub async fn fetch_state(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
     event_id: &EventId,
-) -> AppResult<Option<IndexMap<i64, OwnedEventId>>> {
+) -> AppResult<IndexMap<i64, OwnedEventId>> {
     debug!("calling /state_ids");
-    // Call /state_ids to find out what the state at this pdu is. We trust the server's
-    // response to some extend, but we still do a lot of checks on the events
-    let request = room_state_ids_request(
-        &origin.origin().await,
-        RoomStateAtEventReqArgs {
-            room_id: room_id.to_owned(),
-            event_id: event_id.to_owned(),
-        },
-    )?
-    .into_inner();
-    let res = crate::sending::send_federation_request(origin, request, None)
-        .await?
-        .json::<RoomStateIdsResBody>()
-        .await?;
-    debug!("fetching state events at event: {event_id}");
-
+    println!("=========fetch_state  0");
+    let pdu_ids = fetch_state_ids(origin, room_id, event_id).await?;
     let state_vec =
-        super::fetch_and_process_outliers(origin, &res.pdu_ids, room_id, room_version_id).await?;
+        super::fetch_and_process_outliers(origin, &pdu_ids, room_id, room_version_id).await?;
 
+    println!("================state vec: {:#?}", state_vec);
     let mut state: IndexMap<_, OwnedEventId> = IndexMap::new();
     for (pdu, _, _event_guard) in state_vec {
         let state_key = pdu
@@ -70,5 +57,31 @@ pub async fn fetch_state(
     //     return Err(AppError::internal("Incoming event refers to wrong create event."));
     // }
 
-    Ok(Some(state))
+    Ok(state)
+}
+
+pub async fn fetch_state_ids(
+    origin: &ServerName,
+    room_id: &RoomId,
+    event_id: &EventId,
+) -> AppResult<Vec<OwnedEventId>> {
+    debug!("calling /state_ids");
+    // Call /state_ids to find out what the state at this pdu is. We trust the server's
+    // response to some extend, but we still do a lot of checks on the events
+    let request = room_state_ids_request(
+        &origin.origin().await,
+        RoomStateAtEventReqArgs {
+            room_id: room_id.to_owned(),
+            event_id: event_id.to_owned(),
+        },
+    )?
+    .into_inner();
+    println!("=========fetch_state  1");
+    let res = crate::sending::send_federation_request(origin, request, None)
+        .await?
+        .json::<RoomStateIdsResBody>()
+        .await?;
+    debug!("fetching state events at event: {event_id}");
+
+    Ok(res.pdu_ids)
 }

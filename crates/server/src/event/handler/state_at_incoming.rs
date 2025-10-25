@@ -50,19 +50,31 @@ pub(super) async fn state_at_incoming_resolved(
     let mut extremity_state_hashes = HashMap::new();
 
     let Ok(curr_frame_id) = room::get_frame_id(room_id, None) else {
-        println!("=== state_at_incoming_resolved 0    room: {room_id}  {:?}", incoming_pdu);
+        println!(
+            "=== state_at_incoming_resolved 0    room: {room_id}  {:?}",
+            incoming_pdu
+        );
         return Ok(IndexMap::new());
     };
     for prev_event_id in &incoming_pdu.prev_events {
         let Ok(prev_event) = timeline::get_pdu(prev_event_id) else {
-            println!("=== state_at_incoming_resolved 1    room: {room_id}  {:?}", incoming_pdu);
+            println!(
+                "=== state_at_incoming_resolved 1    room: {room_id}  {:?}",
+                incoming_pdu
+            );
             continue;
         };
 
         if prev_event.is_rejected {
-            println!("=== state_at_incoming_resolved 2    prev_event: {:?}", prev_event);
+            println!(
+                "=== state_at_incoming_resolved 2    prev_event: {:?}",
+                prev_event
+            );
             extremity_state_hashes.insert(curr_frame_id, prev_event);
-            println!("=== state_at_incoming_resolved 2    room: {room_id}  incoming_pdu: {:?}", incoming_pdu);
+            println!(
+                "=== state_at_incoming_resolved 2    room: {room_id}  incoming_pdu: {:?}",
+                incoming_pdu
+            );
             continue;
         }
 
