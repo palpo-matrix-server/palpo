@@ -1168,7 +1168,9 @@ pub async fn fetch_and_process_missing_prev_events(
         let mut missing_events = Vec::with_capacity(prev_events.len());
         for prev_id in prev_events {
             let pdu = timeline::get_pdu(&prev_id);
-            if let Ok(pdu) = pdu && !pdu.is_rejected {
+            if let Ok(pdu) = pdu
+                && !pdu.is_rejected
+            {
                 known_events.insert(prev_id);
             } else if !earliest_events.contains(&prev_id) && !fetched_events.contains_key(&prev_id)
             {
