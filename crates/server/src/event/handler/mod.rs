@@ -15,8 +15,6 @@ use indexmap::IndexMap;
 use palpo_core::state::Event;
 use state_at_incoming::state_at_incoming_resolved;
 
-use crate::core::Seqnum;
-use crate::core::UnixMillis;
 use crate::core::events::StateEventType;
 use crate::core::events::TimelineEventType;
 use crate::core::events::room::server_acl::RoomServerAclEventContent;
@@ -31,8 +29,8 @@ use crate::core::identifiers::*;
 use crate::core::room_version_rules::StateResolutionV2Rules;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonValue, canonical_json};
 use crate::core::state::{StateError, StateMap, event_auth};
-use crate::data::room::DbEvent;
-use crate::data::room::{DbEventData, NewDbEvent};
+use crate::core::{self, Seqnum, UnixMillis};
+use crate::data::room::{DbEvent, DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::event::{PduEvent, SnPduEvent, ensure_event_sn, handler};
@@ -137,7 +135,6 @@ pub(crate) async fn process_incoming_pdu(
         value,
         &mut Default::default(),
         true,
-        true,
     )
     .await?
     else {
@@ -215,7 +212,6 @@ pub(crate) async fn process_pulled_pdu(
         value,
         known_events,
         false,
-        false,
     )
     .await?
     else {
@@ -260,7 +256,6 @@ fn process_to_outlier_pdu(
     mut value: BTreeMap<String, CanonicalJsonValue>,
     known_events: &mut HashSet<OwnedEventId>,
     fetch_missing_prev_events: bool,
-    fetch_state_for_missing_prev_events: bool,
 ) -> Pin<
     Box<
         impl Future<
@@ -405,7 +400,19 @@ fn process_to_outlier_pdu(
                     "==================oooooooooooo 3 failed to fetch missing prev events: {}",
                     e.to_string()
                 );
-                soft_failed = true;
+                if let AppError::Matrix(MatrixError { ref kind, .. }) = e {
+                    println!("=====cccccccc  0");
+                    if *kind == core::error::ErrorKind::BadJson {
+                        println!("=====cccccccc  1");
+                        rejection_reason = Some(format!("failed to bad prev events: {}", e));
+                    } else {
+                        println!("=====cccccccc  2");
+                        soft_failed = true;
+                    }
+                } else {
+                    println!("=====cccccccc  3");
+                    soft_failed = true;
+                }
             }
         }
 
@@ -1138,7 +1145,6 @@ pub(crate) async fn fetch_and_process_outliers(
                 value,
                 &mut Default::default(),
                 false,
-                false,
             )
             .await
             {
@@ -1180,24 +1186,20 @@ pub async fn fetch_and_process_missing_prev_events(
         incoming_pdu.event_id.clone(),
         incoming_pdu.prev_events.clone(),
     );
-    println!("============fetch_and_process_missing_prev_events  1  {missing_stack:?}");
     while let Some((event_id, prev_events)) = missing_stack.pop() {
         let mut earliest_events = forward_extremities.clone();
         earliest_events.extend(known_events.iter().cloned());
 
         let mut missing_events = Vec::with_capacity(prev_events.len());
         for prev_id in prev_events {
-            if timeline::get_pdu(&prev_id).is_ok() {
+            let pdu = timeline::get_pdu(&prev_id);
+            if let Ok(pdu) = pdu && !pdu.is_rejected {
                 known_events.insert(prev_id);
             } else if !earliest_events.contains(&prev_id) && !fetched_events.contains_key(&prev_id)
             {
                 missing_events.push(prev_id);
             }
         }
-        println!(
-            "M<<<<<<<<<<<<<<<<<<<<<<,,,missing_events {:?}",
-            missing_events
-        );
         if missing_events.is_empty() {
             continue;
         }
@@ -1215,10 +1217,8 @@ pub async fn fetch_and_process_missing_prev_events(
         .into_inner();
 
         known_events.insert(event_id.clone());
-        let res_body = crate::sending::send_federation_request(origin, request, None)
-            .await?
-            .json::<MissingEventsResBody>()
-            .await?;
+        let response = crate::sending::send_federation_request(origin, request, None).await?;
+        let res_body = response.json::<MissingEventsResBody>().await?;
 
         for event in res_body.events {
             let (event_id, event_val, _room_id, _room_version_id) =
@@ -1280,10 +1280,7 @@ pub async fn fetch_and_process_missing_prev_events(
         }
 
         for event_id in missing_events {
-            println!("==============fetch state event id: {event_id}");
-            println!("======incoming_pdu  {}", incoming_pdu.event_id);
             if let Ok(state) = fetch_state(origin, room_id, &room_version_id, &event_id).await {
-                println!("==============fetch state event id 2: {state:?}");
                 known_events.extend(state.into_values());
             }
         }
@@ -1352,7 +1349,6 @@ pub async fn fetch_and_process_auth_chain(
                     event_value,
                     known_events,
                     true,
-                    false,
                 )
                 .await?;
             }

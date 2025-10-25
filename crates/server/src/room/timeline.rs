@@ -52,7 +52,7 @@ pub fn first_pdu_in_room(room_id: &RoomId) -> AppResult<Option<PduEvent>> {
         .optional()?
         .map(|(event_id, json)| {
             PduEvent::from_json_value(room_id, &event_id, json)
-                .map_err(|_e| AppError::internal("Invalid PDU in db."))
+                .map_err(|_e| AppError::internal("invalid pdu in db"))
         })
         .transpose()
 }
@@ -76,7 +76,7 @@ pub fn get_pdu_json(event_id: &EventId) -> AppResult<Option<CanonicalJsonObject>
         .first::<JsonValue>(&mut connect()?)
         .optional()?
         .map(|json| {
-            serde_json::from_value(json).map_err(|_e| AppError::internal("Invalid PDU in db."))
+            serde_json::from_value(json).map_err(|_e| AppError::internal("invalid pdu in db"))
         })
         .transpose()
 }
@@ -101,7 +101,7 @@ pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<SnPduEvent>> 
         .optional()?
         .map(|json| {
             SnPduEvent::from_json_value(&room_id, event_id, event_sn, json)
-                .map_err(|_e| AppError::internal("Invalid PDU in db."))
+                .map_err(|_e| AppError::internal("invalid pdu in db"))
         })
         .transpose()?;
     if let Some(pdu) = pdu.as_mut() {

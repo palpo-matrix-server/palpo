@@ -613,7 +613,7 @@ async fn load_joined_room(
 
                     if let Some(state_key) = &state_event.state_key {
                         let user_id = UserId::parse(state_key.clone())
-                            .map_err(|_| AppError::public("invalid UserId in member PDU."))?;
+                            .map_err(|_| AppError::public("invalid UserId in member pdu"))?;
 
                         if user_id == sender_id {
                             continue;
@@ -621,7 +621,7 @@ async fn load_joined_room(
 
                         let new_membership = state_event
                             .get_content::<RoomMemberEventContent>()
-                            .map_err(|_| AppError::public("invalid PDU in database."))?
+                            .map_err(|_| AppError::public("invalid pdu in database"))?
                             .membership;
 
                         match new_membership {
