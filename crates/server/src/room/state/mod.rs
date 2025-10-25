@@ -124,7 +124,6 @@ pub fn force_state(
         }
     }
 
-    println!("=ccccall set_room_state 3");
     set_room_state(room_id, frame_id)?;
 
     Ok(())
@@ -132,7 +131,6 @@ pub fn force_state(
 
 #[tracing::instrument]
 pub fn set_room_state(room_id: &RoomId, frame_id: i64) -> AppResult<()> {
-    println!("=====set room {room_id} frame_id: {frame_id}");
     diesel::update(rooms::table.find(room_id))
         .set(rooms::state_frame_id.eq(frame_id))
         .execute(&mut connect()?)?;

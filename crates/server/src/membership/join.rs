@@ -480,7 +480,6 @@ pub async fn join_room(
     info!("setting final room state for new room");
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
-    println!("=ccccall set_room_state 0");
     state::set_room_state(room_id, frame_id_after_join)?;
     drop(state_lock);
 

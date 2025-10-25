@@ -18,12 +18,10 @@ pub async fn fetch_state(
     event_id: &EventId,
 ) -> AppResult<IndexMap<i64, OwnedEventId>> {
     debug!("calling /state_ids");
-    println!("=========fetch_state  0");
     let pdu_ids = fetch_state_ids(origin, room_id, event_id).await?;
     let state_vec =
         super::fetch_and_process_outliers(origin, &pdu_ids, room_id, room_version_id).await?;
 
-    println!("================state vec: {:#?}", state_vec);
     let mut state: IndexMap<_, OwnedEventId> = IndexMap::new();
     for (pdu, _, _event_guard) in state_vec {
         let state_key = pdu
@@ -76,11 +74,12 @@ pub async fn fetch_state_ids(
         },
     )?
     .into_inner();
-    println!("=========fetch_state  1");
+    println!("=========fetch_state_ids  1");
     let res = crate::sending::send_federation_request(origin, request, None)
         .await?
         .json::<RoomStateIdsResBody>()
         .await?;
+    println!("=========fetch_state_ids  2");
     debug!("fetching state events at event: {event_id}");
 
     Ok(res.pdu_ids)
