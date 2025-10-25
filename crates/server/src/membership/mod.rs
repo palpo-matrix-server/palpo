@@ -57,14 +57,14 @@ async fn validate_and_add_event_id(
         }
 
         if time.elapsed() < min_elapsed_duration {
-            debug!("Backing off from {}", event_id);
+            debug!("backing off from {}", event_id);
             return Err(AppError::public("bad event, still backing off"));
         }
     }
 
     let origin_server_ts = value.get("origin_server_ts").ok_or_else(|| {
-        error!("Invalid PDU, no origin_server_ts field");
-        MatrixError::missing_param("Invalid PDU, no origin_server_ts field")
+        error!("invalid pdu, no origin_server_ts field");
+        MatrixError::missing_param("invalid pdu, no origin_server_ts field")
     })?;
 
     let _origin_server_ts: UnixMillis = {
@@ -74,7 +74,7 @@ async fn validate_and_add_event_id(
 
         UnixMillis(
             ts.try_into()
-                .map_err(|_| MatrixError::invalid_param("Time must be after the unix epoch"))?,
+                .map_err(|_| MatrixError::invalid_param("time must be after the unix epoch"))?,
         )
     };
 

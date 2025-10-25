@@ -30,7 +30,7 @@ pub(crate) async fn send_request(
         ));
     }
 
-    debug!("Preparing to send request to {destination}");
+    debug!("preparing to send request to {destination}");
     let mut request_map = serde_json::Map::new();
 
     if let Some(body) = request.body() {
@@ -104,7 +104,7 @@ pub(crate) async fn send_request(
 
     let url = request.url().clone();
 
-    debug!("Sending request to {destination} at {url}");
+    debug!("sending request to {destination} at {url}");
     let response = sending::federation_client().execute(request).await;
 
     match response {
@@ -124,7 +124,7 @@ pub(crate) async fn send_request(
                     None
                 };
                 let body = response.text().await.unwrap_or_default();
-                warn!("Answer from {destination}({url}) {status}: {body}");
+                warn!("answer from {destination}({url}) {status}: {body}");
                 let mut extra = serde_json::from_str::<serde_json::Map<String, JsonValue>>(&body)
                     .unwrap_or_default();
                 let msg = extra
@@ -143,7 +143,7 @@ pub(crate) async fn send_request(
         }
         Err(e) => {
             warn!(
-                "Could not send request to {} at {}: {}",
+                "could not send request to {} at {}: {}",
                 destination, url, e
             );
             Err(e.into())

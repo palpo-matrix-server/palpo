@@ -233,6 +233,7 @@ pub struct DbEvent {
     pub is_outlier: bool,
     pub is_redacted: bool,
     pub soft_failed: bool,
+    pub is_rejected: bool,
     pub rejection_reason: Option<String>,
 }
 impl DbEvent {
@@ -267,6 +268,8 @@ pub struct NewDbEvent {
     pub is_outlier: bool,
     #[serde(default = "default_false")]
     pub soft_failed: bool,
+    #[serde(default = "default_false")]
+    pub is_rejected: bool,
     pub rejection_reason: Option<String>,
 }
 impl NewDbEvent {

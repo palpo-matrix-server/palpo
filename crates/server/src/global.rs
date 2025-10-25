@@ -431,7 +431,7 @@ pub fn parse_incoming_pdu(
 )> {
     let value: CanonicalJsonObject = serde_json::from_str(raw_value.get()).map_err(|e| {
         warn!("error parsing incoming event {:?}: {:?}", raw_value, e);
-        MatrixError::bad_json("Invalid PDU in server response")
+        MatrixError::bad_json("invalid pdu in server response")
     })?;
     let room_id = value
         .get("room_id")

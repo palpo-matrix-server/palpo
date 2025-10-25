@@ -6,7 +6,7 @@ pub mod search;
 use diesel::prelude::*;
 
 use crate::core::identifiers::*;
-use crate::core::serde::{CanonicalJsonObject, RawJsonValue};
+use crate::core::serde::{CanonicalJsonObject, JsonValue, RawJsonValue};
 use crate::core::{Direction, Seqnum, UnixMillis, signatures};
 use crate::data::connect;
 use crate::data::room::DbEvent;
@@ -22,8 +22,8 @@ pub fn gen_event_id_canonical_json(
     room_version_id: &RoomVersionId,
 ) -> AppResult<(OwnedEventId, CanonicalJsonObject)> {
     let value: CanonicalJsonObject = serde_json::from_str(pdu.get()).map_err(|e| {
-        warn!("Error parsing incoming event {:?}: {:?}", pdu, e);
-        AppError::public("Invalid PDU in server response")
+        warn!("error parsing incoming event {:?}: {:?}", pdu, e);
+        AppError::public("invalid pdu in server response")
     })?;
     let event_id = gen_event_id(&value, room_version_id)?;
     Ok((event_id, value))
@@ -187,11 +187,11 @@ pub fn update_frame_id_by_sn(event_sn: Seqnum, frame_id: i64) -> AppResult<()> {
     Ok(())
 }
 
-pub type PdusIterItem = (Seqnum, SnPduEvent);
+pub type PdusIterItem<'a> = (&'a Seqnum, &'a SnPduEvent);
 #[inline]
-pub fn ignored_filter(item: PdusIterItem, user_id: &UserId) -> Option<PdusIterItem> {
+pub fn ignored_filter(item: PdusIterItem, user_id: &UserId) -> bool {
     let (_, ref pdu) = item;
-    is_ignored_pdu(pdu, user_id).eq(&false).then_some(item)
+    !is_ignored_pdu(pdu, user_id)
 }
 
 #[inline]

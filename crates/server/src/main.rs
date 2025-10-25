@@ -183,7 +183,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         }
     }
     if !args.server {
-        tracing::info!("Server is not started, exiting...");
+        tracing::info!("server is not started, exiting...");
         return Ok(());
     }
 

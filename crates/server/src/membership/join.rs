@@ -67,7 +67,7 @@ pub async fn join_room(
             "{} is banned from {room_id} but attempted to join",
             sender_id
         );
-        return Err(MatrixError::forbidden("You are banned from the room.", None).into());
+        return Err(MatrixError::forbidden("you are banned from the room", None).into());
     }
 
     // Ask a remote server if we are not participating in this room
@@ -146,7 +146,7 @@ pub async fn join_room(
 
     let mut join_event_stub: CanonicalJsonObject =
         serde_json::from_str(make_join_response.event.get())
-            .map_err(|_| AppError::public("Invalid make_join event json received from server."))?;
+            .map_err(|_| AppError::public("invalid make_join event json received from server"))?;
 
     let join_authorized_via_users_server = join_event_stub
         .get("content")
@@ -225,7 +225,7 @@ pub async fn join_room(
 
     if let Some(signed_raw) = &send_join_body.0.event {
         info!(
-            "there is a signed event. This room is probably using restricted joins. adding signature to our event"
+            "there is a signed event. this room is probably using restricted joins. adding signature to our event"
         );
         let (signed_event_id, signed_value) =
             match gen_event_id_canonical_json(signed_raw, &room_version_id) {
@@ -320,7 +320,7 @@ pub async fn join_room(
         )
         .await
         {
-            error!("failed to fetch missing prev events for join: {e}");
+            error!("failed to process incoming events for join: {e}");
         }
     }
     if let Err(e) = fetch_and_process_missing_prev_events(

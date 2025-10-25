@@ -165,8 +165,9 @@ async fn initial_sync(
     let limit = LIMIT_MAX;
     let events = timeline::get_pdus_backward(sender_id, room_id, 0, None, None, limit)?;
 
-    let frame_id = room::get_frame_id(room_id, None)?;
-    let state: Vec<_> = room::state::get_full_state(frame_id)?
+    let frame_id = room::get_frame_id(room_id, None).unwrap_or_default();
+    let state: Vec<_> = room::state::get_full_state(frame_id)
+        .unwrap_or_default()
         .into_values()
         .map(|event| event.to_state_event())
         .collect::<Vec<_>>();

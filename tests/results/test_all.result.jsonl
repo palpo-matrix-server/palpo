@@ -1,6 +1,6 @@
-{"Action":"fail","Test":"TestCorruptedAuthChain"}
+{"Action":"fail","Test":"TestDeviceListsUpdateOverFederationOnRoomJoin"}
 {"Action":"fail","Test":"TestFederatedClientSpaces"}
-{"Action":"fail","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents"}
+{"Action":"fail","Test":"TestMSC4297StateResolutionV2_1_includes_conflicted_subgraph"}
 {"Action":"fail","Test":"TestMSC4297StateResolutionV2_1_starts_from_empty_set"}
 {"Action":"fail","Test":"TestNetworkPartitionOrdering"}
 {"Action":"fail","Test":"TestRestrictedRoomsRemoteJoinLocalUser"}
@@ -8,7 +8,6 @@
 {"Action":"fail","Test":"TestSyncTimelineGap"}
 {"Action":"fail","Test":"TestSyncTimelineGap/full"}
 {"Action":"fail","Test":"TestSyncTimelineGap/incremental"}
-{"Action":"fail","Test":"TestThreadReceiptsInSyncMSC4102"}
 {"Action":"pass","Test":"TestACLs"}
 {"Action":"pass","Test":"TestAddAccountData"}
 {"Action":"pass","Test":"TestAddAccountData/Can_add_global_account_data"}
@@ -91,6 +90,7 @@
 {"Action":"pass","Test":"TestContent"}
 {"Action":"pass","Test":"TestContentCSAPIMediaV1"}
 {"Action":"pass","Test":"TestContentMediaV1"}
+{"Action":"pass","Test":"TestCorruptedAuthChain"}
 {"Action":"pass","Test":"TestCumulativeJoinLeaveJoinSync"}
 {"Action":"pass","Test":"TestDeactivateAccount"}
 {"Action":"pass","Test":"TestDeactivateAccount/After_deactivating_account,_can't_log_in_with_password"}
@@ -101,7 +101,6 @@
 {"Action":"pass","Test":"TestDeviceListsUpdateOverFederation"}
 {"Action":"pass","Test":"TestDeviceListsUpdateOverFederation/good_connectivity"}
 {"Action":"pass","Test":"TestDeviceListsUpdateOverFederation/interrupted_connectivity"}
-{"Action":"pass","Test":"TestDeviceListsUpdateOverFederationOnRoomJoin"}
 {"Action":"pass","Test":"TestDeviceListsUpdateOverFederation/stopped_server"}
 {"Action":"pass","Test":"TestDeviceListUpdates"}
 {"Action":"pass","Test":"TestDeviceListUpdates/when_joining_a_room_with_a_local_user"}
@@ -177,6 +176,10 @@
 {"Action":"pass","Test":"TestInboundFederationProfile"}
 {"Action":"pass","Test":"TestInboundFederationProfile/Inbound_federation_can_query_profile_data"}
 {"Action":"pass","Test":"TestInboundFederationProfile/Non-numeric_ports_in_server_names_are_rejected"}
+{"Action":"pass","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents"}
+{"Action":"pass","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents/Outlier_should_be_rejected"}
+{"Action":"pass","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents/sent_event_1_should_be_rejected"}
+{"Action":"pass","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents/sent_event_2_should_be_rejected"}
 {"Action":"pass","Test":"TestInviteFromIgnoredUsersDoesNotAppearInSync"}
 {"Action":"pass","Test":"TestIsDirectFlagFederation"}
 {"Action":"pass","Test":"TestIsDirectFlagLocal"}
@@ -357,7 +360,6 @@
 {"Action":"pass","Test":"TestMSC4291RoomIDAsHashOfCreateEvent_CannotSendCreateEvent"}
 {"Action":"pass","Test":"TestMSC4291RoomIDAsHashOfCreateEvent_RoomIDIsOnCreateEvent"}
 {"Action":"pass","Test":"TestMSC4291RoomIDAsHashOfCreateEvent_UpgradedRooms"}
-{"Action":"pass","Test":"TestMSC4297StateResolutionV2_1_includes_conflicted_subgraph"}
 {"Action":"pass","Test":"TestMSC4311FullCreateEventOnStrippedState"}
 {"Action":"pass","Test":"TestNotPresentUserCannotBanOthers"}
 {"Action":"pass","Test":"TestOlderLeftRoomsNotInLeaveSection"}
@@ -598,6 +600,7 @@
 {"Action":"pass","Test":"TestSync/parallel/sync_should_succeed_even_if_the_sync_token_points_to_a_redaction_of_an_unknown_event"}
 {"Action":"pass","Test":"TestTentativeEventualJoiningAfterRejecting"}
 {"Action":"pass","Test":"TestThreadedReceipts"}
+{"Action":"pass","Test":"TestThreadReceiptsInSyncMSC4102"}
 {"Action":"pass","Test":"TestThreadsEndpoint"}
 {"Action":"pass","Test":"TestToDeviceMessages"}
 {"Action":"pass","Test":"TestToDeviceMessagesOverFederation"}

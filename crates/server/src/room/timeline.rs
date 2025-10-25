@@ -4,6 +4,7 @@ use std::iter::once;
 use std::sync::{LazyLock, Mutex};
 
 use diesel::prelude::*;
+use indexmap::IndexMap;
 use serde::Deserialize;
 use serde_json::value::to_raw_value;
 use ulid::Ulid;
@@ -26,7 +27,7 @@ use crate::core::serde::{
 };
 use crate::core::state::{Event, StateError, event_auth};
 use crate::core::{Direction, Seqnum, UnixMillis, user_id};
-use crate::data::room::{DbEventData, NewDbEvent};
+use crate::data::room::{DbEvent, DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::event::{EventHash, PduBuilder, PduEvent, handler};
@@ -51,7 +52,7 @@ pub fn first_pdu_in_room(room_id: &RoomId) -> AppResult<Option<PduEvent>> {
         .optional()?
         .map(|(event_id, json)| {
             PduEvent::from_json_value(room_id, &event_id, json)
-                .map_err(|_e| AppError::internal("Invalid PDU in db."))
+                .map_err(|_e| AppError::internal("invalid pdu in db"))
         })
         .transpose()
 }
@@ -75,7 +76,7 @@ pub fn get_pdu_json(event_id: &EventId) -> AppResult<Option<CanonicalJsonObject>
         .first::<JsonValue>(&mut connect()?)
         .optional()?
         .map(|json| {
-            serde_json::from_value(json).map_err(|_e| AppError::internal("Invalid PDU in db."))
+            serde_json::from_value(json).map_err(|_e| AppError::internal("invalid pdu in db"))
         })
         .transpose()
 }
@@ -93,16 +94,26 @@ pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<SnPduEvent>> 
     else {
         return Ok(None);
     };
-    event_datas::table
+    let mut pdu = event_datas::table
         .filter(event_datas::event_id.eq(event_id))
         .select(event_datas::json_data)
         .first::<JsonValue>(&mut connect()?)
         .optional()?
         .map(|json| {
             SnPduEvent::from_json_value(&room_id, event_id, event_sn, json)
-                .map_err(|_e| AppError::internal("Invalid PDU in db."))
+                .map_err(|_e| AppError::internal("invalid pdu in db"))
         })
-        .transpose()
+        .transpose()?;
+    if let Some(pdu) = pdu.as_mut() {
+        let event = events::table
+            .filter(events::id.eq(event_id))
+            .first::<DbEvent>(&mut connect()?)?;
+        pdu.is_rejected = event.is_rejected;
+        pdu.is_outlier = event.is_outlier;
+        pdu.soft_failed = event.soft_failed;
+        pdu.rejection_reason = event.rejection_reason;
+    }
+    Ok(pdu)
 }
 
 pub fn has_non_outlier_pdu(event_id: &EventId) -> AppResult<bool> {
@@ -116,6 +127,9 @@ pub fn has_non_outlier_pdu(event_id: &EventId) -> AppResult<bool> {
 }
 
 pub fn get_pdu(event_id: &EventId) -> AppResult<SnPduEvent> {
+    let event = events::table
+        .filter(events::id.eq(event_id))
+        .first::<DbEvent>(&mut connect()?)?;
     let (event_sn, room_id, json) = event_datas::table
         .filter(event_datas::event_id.eq(event_id))
         .select((
@@ -124,8 +138,12 @@ pub fn get_pdu(event_id: &EventId) -> AppResult<SnPduEvent> {
             event_datas::json_data,
         ))
         .first::<(Seqnum, OwnedRoomId, JsonValue)>(&mut connect()?)?;
-    let pdu = PduEvent::from_json_value(&room_id, event_id, json)
+    let mut pdu = PduEvent::from_json_value(&room_id, event_id, json)
         .map_err(|_e| AppError::internal("invalid pdu in db"))?;
+    pdu.is_rejected = event.is_rejected;
+    pdu.is_outlier = event.is_outlier;
+    pdu.soft_failed = event.soft_failed;
+    pdu.rejection_reason = event.rejection_reason;
     Ok(SnPduEvent::new(pdu, event_sn))
 }
 
@@ -148,12 +166,13 @@ pub fn get_may_missing_pdus(
     for (event_id, event_sn, json) in events {
         let mut pdu = SnPduEvent::from_json_value(room_id, &event_id, event_sn, json)
             .map_err(|_e| AppError::internal("invalid pdu in db"))?;
-        pdu.rejection_reason = events::table
+        let event = events::table
             .filter(events::id.eq(&event_id))
-            .select(events::rejection_reason)
-            .first::<Option<String>>(&mut connect()?)
-            .optional()?
-            .flatten();
+            .first::<DbEvent>(&mut connect()?)?;
+        pdu.is_outlier = event.is_outlier;
+        pdu.soft_failed = event.soft_failed;
+        pdu.is_rejected = event.is_rejected;
+        pdu.rejection_reason = event.rejection_reason;
         pdus.push(pdu);
         missing_ids.remove(&event_id);
     }
@@ -618,6 +637,9 @@ pub async fn hash_and_sign_event(
         },
         signatures: None,
         extra_data: Default::default(),
+        is_outlier: true,
+        soft_failed: false,
+        is_rejected: false,
         rejection_reason: None,
     };
 
@@ -722,6 +744,7 @@ pub async fn hash_and_sign_event(
         state_key: pdu.state_key.clone(),
         is_outlier: true,
         soft_failed: false,
+        is_rejected: false,
         rejection_reason: None,
     }
     .save()?;
@@ -889,7 +912,7 @@ pub fn all_pdus(
     user_id: &UserId,
     room_id: &RoomId,
     until_sn: Option<i64>,
-) -> AppResult<Vec<(i64, SnPduEvent)>> {
+) -> AppResult<IndexMap<i64, SnPduEvent>> {
     get_pdus_forward(user_id, room_id, 0, until_sn, None, usize::MAX)
 }
 pub fn get_pdus_forward(
@@ -899,7 +922,7 @@ pub fn get_pdus_forward(
     until_sn: Option<i64>,
     filter: Option<&RoomEventFilter>,
     limit: usize,
-) -> AppResult<Vec<(i64, SnPduEvent)>> {
+) -> AppResult<IndexMap<i64, SnPduEvent>> {
     get_pdus(
         user_id,
         room_id,
@@ -917,7 +940,7 @@ pub fn get_pdus_backward(
     until_sn: Option<i64>,
     filter: Option<&RoomEventFilter>,
     limit: usize,
-) -> AppResult<Vec<(i64, SnPduEvent)>> {
+) -> AppResult<IndexMap<i64, SnPduEvent>> {
     get_pdus(
         user_id,
         room_id,
@@ -931,6 +954,7 @@ pub fn get_pdus_backward(
 
 /// Returns an iterator over all events and their tokens in a room that happened before the
 /// event with id `until` in reverse-chronological order.
+/// Skips events before user joined the room.
 #[tracing::instrument]
 pub fn get_pdus(
     user_id: &UserId,
@@ -940,8 +964,8 @@ pub fn get_pdus(
     limit: usize,
     filter: Option<&RoomEventFilter>,
     dir: Direction,
-) -> AppResult<Vec<(Seqnum, SnPduEvent)>> {
-    let mut list: Vec<(Seqnum, SnPduEvent)> = Vec::with_capacity(limit.clamp(10, 100));
+) -> AppResult<IndexMap<Seqnum, SnPduEvent>> {
+    let mut list: IndexMap<Seqnum, SnPduEvent> = IndexMap::with_capacity(limit.clamp(10, 100));
     let mut start_sn = if dir == Direction::Forward {
         0
     } else {
@@ -1047,7 +1071,7 @@ pub fn get_pdus(
                 }
                 pdu.add_age()?;
                 pdu.add_unsigned_membership(user_id)?;
-                list.push((event_sn, pdu));
+                list.insert(event_sn, pdu);
                 if list.len() >= limit {
                     break;
                 }
@@ -1082,10 +1106,10 @@ pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<(
     let pdus = all_pdus(user_id!("@doesntmatter:palpo.im"), room_id, None)?;
     let first_pdu = pdus.first();
 
-    let Some(first_pdu) = first_pdu else {
+    let Some((first_sn, first_pdu)) = first_pdu else {
         return Ok(());
     };
-    if first_pdu.0 < from {
+    if *first_sn < from {
         // No backfill required, there are still events between them
         return Ok(());
     }
@@ -1112,7 +1136,7 @@ pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<(
             &backfill_server.origin().await,
             BackfillReqArgs {
                 room_id: room_id.to_owned(),
-                v: vec![(*first_pdu.1.event_id).to_owned()],
+                v: vec![(*first_pdu.event_id).to_owned()],
                 limit: 100,
             },
         )?

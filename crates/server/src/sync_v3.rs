@@ -1,6 +1,7 @@
-use indexmap::IndexMap;
 use std::collections::{BTreeMap, HashMap, HashSet, hash_map::Entry};
 
+use futures_util::future::Join;
+use indexmap::IndexMap;
 use state::DbRoomStateField;
 
 use crate::core::client::filter::{FilterDefinition, LazyLoadOptions, RoomEventFilter};
@@ -300,7 +301,9 @@ pub async fn sync_events(
         presence,
         account_data,
         device_lists,
-        device_one_time_keys_count: { data::user::count_one_time_keys(sender_id, device_id)? },
+        device_one_time_keys_count: {
+            data::user::count_one_time_keys(sender_id, device_id).unwrap_or_default()
+        },
         to_device,
         // Fallback keys are not yet supported
         device_unused_fallback_key_types: None,
@@ -335,7 +338,9 @@ async fn load_joined_room(
         _ => false,
     };
 
-    let current_frame_id = room::get_frame_id(room_id, None)?;
+    let Ok(current_frame_id) = room::get_frame_id(room_id, None) else {
+        return Ok(JoinedRoom::default());
+    };
     let since_frame_id = crate::event::get_last_frame_id(room_id, since_sn).ok();
 
     let (timeline_pdus, limited) = load_timeline(
@@ -388,7 +393,7 @@ async fn load_joined_room(
 
                             if let Some(state_key) = &pdu.state_key {
                                 let user_id = UserId::parse(state_key.clone()).map_err(|_| {
-                                    AppError::public("Invalid UserId in member PDU.")
+                                    AppError::public("invalid UserId in member PDU.")
                                 })?;
 
                                 // The membership was and still is invite or join
@@ -608,7 +613,7 @@ async fn load_joined_room(
 
                     if let Some(state_key) = &state_event.state_key {
                         let user_id = UserId::parse(state_key.clone())
-                            .map_err(|_| AppError::public("invalid UserId in member PDU."))?;
+                            .map_err(|_| AppError::public("invalid UserId in member pdu"))?;
 
                         if user_id == sender_id {
                             continue;
@@ -616,7 +621,7 @@ async fn load_joined_room(
 
                         let new_membership = state_event
                             .get_content::<RoomMemberEventContent>()
-                            .map_err(|_| AppError::public("invalid PDU in database."))?
+                            .map_err(|_| AppError::public("invalid pdu in database"))?
                             .membership;
 
                         match new_membership {
@@ -815,6 +820,9 @@ async fn load_left_room(
             },
             signatures: None,
             extra_data: Default::default(),
+            is_outlier: false,
+            soft_failed: false,
+            is_rejected: false,
             rejection_reason: None,
         };
         return Ok(LeftRoom {
@@ -834,7 +842,9 @@ async fn load_left_room(
         _ => IndexMap::new(),
     };
 
-    let curr_frame_id = room::get_frame_id(room_id, None)?;
+    let Ok(curr_frame_id) = room::get_frame_id(room_id, None) else {
+        return Ok(LeftRoom::default());
+    };
     let left_event_id = state::get_state_event_id(
         curr_frame_id,
         &StateEventType::RoomMember,
@@ -930,7 +940,7 @@ pub(crate) fn load_timeline(
     since_sn: Option<Seqnum>,
     until_sn: Option<Seqnum>,
     filter: Option<&RoomEventFilter>,
-) -> AppResult<(Vec<(i64, SnPduEvent)>, bool)> {
+) -> AppResult<(IndexMap<Seqnum, SnPduEvent>, bool)> {
     let limit = filter.and_then(|f| f.limit).unwrap_or(10);
     let mut timeline_pdus = if let Some(since_sn) = since_sn {
         if let Some(until_sn) = until_sn {
@@ -956,7 +966,9 @@ pub(crate) fn load_timeline(
     };
 
     if timeline_pdus.len() > limit {
-        timeline_pdus.remove(0);
+        if let Some(key) = timeline_pdus.first().map(|(key, _)| key.clone()) {
+            timeline_pdus.shift_remove(&key);
+        }
         Ok((timeline_pdus, true))
     } else {
         Ok((timeline_pdus, false))

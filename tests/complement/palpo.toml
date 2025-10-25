@@ -58,7 +58,8 @@ domain_contains_allowlist = ["*"]
 enable = true
 
 [client]
-federation_retries = 2
+federation_retries = 5
+federation_timeout = 2_500
 
 [logger]
 level = "warn,palpo=info,salvo=error"

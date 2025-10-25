@@ -487,8 +487,8 @@ pub(super) async fn force_set_room_state_from_server(
         };
 
         let pdu = PduEvent::from_id_val(&event_id, value.clone()).map_err(|e| {
-            error!("Invalid PDU in fetching remote room state PDUs response: {value:#?}");
-            AppError::public(format!("Invalid PDU in send_join response: {e:?}"))
+            error!("invalid pdu in fetching remote room state PDUs response: {value:#?}");
+            AppError::public(format!("invalid pdu in send_join response: {e:?}"))
         })?;
 
         // TODO: admin
