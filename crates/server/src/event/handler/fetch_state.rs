@@ -74,12 +74,10 @@ pub async fn fetch_state_ids(
         },
     )?
     .into_inner();
-    println!("=========fetch_state_ids  1");
     let res = crate::sending::send_federation_request(origin, request, None)
         .await?
         .json::<RoomStateIdsResBody>()
         .await?;
-    println!("=========fetch_state_ids  2");
     debug!("fetching state events at event: {event_id}");
 
     Ok(res.pdu_ids)

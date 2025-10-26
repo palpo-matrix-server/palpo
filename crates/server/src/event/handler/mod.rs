@@ -82,9 +82,7 @@ pub(crate) async fn process_incoming_pdu(
         if !event.is_outlier {
             return Ok(());
         }
-        println!("dddddddddddddddddddelete");
         if event.is_rejected || event.soft_failed {
-            println!("dddddddddddddddddddelete");
             diesel::delete(&event).execute(&mut connect()?).ok();
             diesel::delete(event_points::table.filter(event_points::event_id.eq(event_id)))
                 .execute(&mut connect()?)
@@ -126,7 +124,6 @@ pub(crate) async fn process_incoming_pdu(
         return Ok(());
     }
 
-    println!("==================oooooooooooo 0");
     let Some((incoming_pdu, val, event_guard)) = process_to_outlier_pdu(
         origin,
         event_id,
@@ -135,6 +132,7 @@ pub(crate) async fn process_incoming_pdu(
         value,
         &mut Default::default(),
         true,
+        false,
     )
     .await?
     else {
@@ -212,15 +210,12 @@ pub(crate) async fn process_pulled_pdu(
         value,
         known_events,
         false,
+        true
     )
     .await?
     else {
         return Ok(());
     };
-    println!(
-        "ASAaaaaaaaaaaaaaaaaaaaaa 222 is_rejected: {}",
-        incoming_pdu.is_rejected
-    );
     if incoming_pdu.is_rejected {
         return Ok(());
     }
@@ -256,6 +251,7 @@ fn process_to_outlier_pdu(
     mut value: BTreeMap<String, CanonicalJsonValue>,
     known_events: &mut HashSet<OwnedEventId>,
     fetch_missing_prev_events: bool,
+    fetch_state_for_missing: bool,
 ) -> Pin<
     Box<
         impl Future<
@@ -384,7 +380,6 @@ fn process_to_outlier_pdu(
 
         let mut soft_failed = false;
         let mut rejection_reason = None;
-        println!("========fetch_missing_prev_events:{fetch_missing_prev_events}");
         if fetch_missing_prev_events {
             // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
             if let Err(e) = fetch_and_process_missing_prev_events(
@@ -396,21 +391,13 @@ fn process_to_outlier_pdu(
             )
             .await
             {
-                println!(
-                    "==================oooooooooooo 3 failed to fetch missing prev events: {}",
-                    e.to_string()
-                );
                 if let AppError::Matrix(MatrixError { ref kind, .. }) = e {
-                    println!("=====cccccccc  0");
                     if *kind == core::error::ErrorKind::BadJson {
-                        println!("=====cccccccc  1");
                         rejection_reason = Some(format!("failed to bad prev events: {}", e));
                     } else {
-                        println!("=====cccccccc  2");
                         soft_failed = true;
                     }
                 } else {
-                    println!("=====cccccccc  3");
                     soft_failed = true;
                 }
             }
@@ -427,35 +414,29 @@ fn process_to_outlier_pdu(
                 Ok(s) => s,
                 Err(e) => {
                     soft_failed = true;
-                    println!("failed to fetch missing auth events: {}", e.to_string());
                     (vec![], vec![])
                 }
             };
 
         if !missing_auth_event_ids.is_empty() {
-            if let Err(_e) =
-                fetch_and_process_auth_chain(origin, room_id, &incoming_pdu.event_id, known_events)
-                    .await
-            {
-                soft_failed = true;
+            if fetch_state_for_missing {
+                if let Err(_e) =
+                    fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id).await
+                {
+                    soft_failed = true;
+                }
+            } else {
+                if let Err(_e) = fetch_and_process_auth_chain(
+                    origin,
+                    room_id,
+                    &incoming_pdu.event_id,
+                    known_events,
+                )
+                .await
+                {
+                    soft_failed = true;
+                }
             }
-            println!(
-                "==========missing_auth_event_ids: {:?}",
-                missing_auth_event_ids
-            );
-            println!("======incoming_pdu: {:?}", incoming_pdu);
-            // if fetch_state_for_missing_prev_events {
-            //     println!("LLLLLLLLllll ");
-            //     if let Err(_e) =
-            //         fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id).await
-            //     {
-            //         soft_failed = true;
-            //         // println!("failed to fetch state: {}", e.to_string());
-            //         // rejection_reason = Some(format!("failed to fetch state: {}", e.to_string()));
-            //     }
-            // } else {
-            //     soft_failed = true;
-            // }
         }
         let (auth_events, missing_auth_event_ids) =
             timeline::get_may_missing_pdus(room_id, &incoming_pdu.auth_events)?;
@@ -1145,6 +1126,7 @@ pub(crate) async fn fetch_and_process_outliers(
                 value,
                 &mut Default::default(),
                 false,
+                false
             )
             .await
             {
@@ -1161,7 +1143,6 @@ pub(crate) async fn fetch_and_process_outliers(
             }
         }
     }
-    println!("==================fetch_and_process_outliers 100");
     Ok(pdus)
 }
 
@@ -1193,7 +1174,9 @@ pub async fn fetch_and_process_missing_prev_events(
         let mut missing_events = Vec::with_capacity(prev_events.len());
         for prev_id in prev_events {
             let pdu = timeline::get_pdu(&prev_id);
-            if let Ok(pdu) = pdu && !pdu.is_rejected {
+            if let Ok(pdu) = pdu
+                && !pdu.is_rejected
+            {
                 known_events.insert(prev_id);
             } else if !earliest_events.contains(&prev_id) && !fetched_events.contains_key(&prev_id)
             {
@@ -1224,20 +1207,16 @@ pub async fn fetch_and_process_missing_prev_events(
             let (event_id, event_val, _room_id, _room_version_id) =
                 crate::parse_incoming_pdu(&event)?;
 
-            println!("================missing event responwse: {event_id}");
             if known_events.contains(&event_id) {
-                println!("=======0");
                 continue;
             }
 
-            println!("=======1");
             if fetched_events.contains_key(&event_id)
                 || missing_stack.contains_key(&event_id)
                 || incoming_pdu.event_id == event_id
                 || timeline::get_pdu(&event_id).is_ok()
             {
                 known_events.insert(event_id.clone());
-                println!("=======2");
                 continue;
             }
 
@@ -1253,7 +1232,6 @@ pub async fn fetch_and_process_missing_prev_events(
             fetched_events.insert(event_id.clone(), event_val);
             known_events.insert(event_id.clone());
 
-            println!("=======3");
             if !prev_events.contains(&incoming_pdu.event_id) {
                 let prev_events = prev_events
                     .into_iter()
@@ -1275,7 +1253,6 @@ pub async fn fetch_and_process_missing_prev_events(
                 }
             }
 
-            println!("=======4");
             missing_events.retain(|e| e != &event_id);
         }
 
@@ -1300,7 +1277,6 @@ pub async fn fetch_and_process_missing_prev_events(
                     .filter(events::room_id.eq(&room_id)),
                 &mut connect()?
             )? {
-                println!("=============process pull pdu: {event_id}");
                 process_pulled_pdu(
                     origin,
                     &event_id,
@@ -1349,6 +1325,7 @@ pub async fn fetch_and_process_auth_chain(
                     event_value,
                     known_events,
                     true,
+                    false
                 )
                 .await?;
             }
