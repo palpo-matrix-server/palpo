@@ -1,10 +1,5 @@
-{"Action":"fail","Test":"TestDeviceListsUpdateOverFederationOnRoomJoin"}
 {"Action":"fail","Test":"TestFederatedClientSpaces"}
-{"Action":"fail","Test":"TestMSC4297StateResolutionV2_1_includes_conflicted_subgraph"}
-{"Action":"fail","Test":"TestMSC4297StateResolutionV2_1_starts_from_empty_set"}
 {"Action":"fail","Test":"TestNetworkPartitionOrdering"}
-{"Action":"fail","Test":"TestRestrictedRoomsRemoteJoinLocalUser"}
-{"Action":"fail","Test":"TestRestrictedRoomsRemoteJoinLocalUserInMSC3787Room"}
 {"Action":"fail","Test":"TestSyncTimelineGap"}
 {"Action":"fail","Test":"TestSyncTimelineGap/full"}
 {"Action":"fail","Test":"TestSyncTimelineGap/incremental"}
@@ -101,6 +96,7 @@
 {"Action":"pass","Test":"TestDeviceListsUpdateOverFederation"}
 {"Action":"pass","Test":"TestDeviceListsUpdateOverFederation/good_connectivity"}
 {"Action":"pass","Test":"TestDeviceListsUpdateOverFederation/interrupted_connectivity"}
+{"Action":"pass","Test":"TestDeviceListsUpdateOverFederationOnRoomJoin"}
 {"Action":"pass","Test":"TestDeviceListsUpdateOverFederation/stopped_server"}
 {"Action":"pass","Test":"TestDeviceListUpdates"}
 {"Action":"pass","Test":"TestDeviceListUpdates/when_joining_a_room_with_a_local_user"}
@@ -360,6 +356,8 @@
 {"Action":"pass","Test":"TestMSC4291RoomIDAsHashOfCreateEvent_CannotSendCreateEvent"}
 {"Action":"pass","Test":"TestMSC4291RoomIDAsHashOfCreateEvent_RoomIDIsOnCreateEvent"}
 {"Action":"pass","Test":"TestMSC4291RoomIDAsHashOfCreateEvent_UpgradedRooms"}
+{"Action":"pass","Test":"TestMSC4297StateResolutionV2_1_includes_conflicted_subgraph"}
+{"Action":"pass","Test":"TestMSC4297StateResolutionV2_1_starts_from_empty_set"}
 {"Action":"pass","Test":"TestMSC4311FullCreateEventOnStrippedState"}
 {"Action":"pass","Test":"TestNotPresentUserCannotBanOthers"}
 {"Action":"pass","Test":"TestOlderLeftRoomsNotInLeaveSection"}
@@ -451,6 +449,8 @@
 {"Action":"pass","Test":"TestRestrictedRoomsRemoteJoin/Join_should_fail_with_mangled_join_rules"}
 {"Action":"pass","Test":"TestRestrictedRoomsRemoteJoin/Join_should_succeed_when_invited"}
 {"Action":"pass","Test":"TestRestrictedRoomsRemoteJoin/Join_should_succeed_when_joined_to_allowed_room"}
+{"Action":"pass","Test":"TestRestrictedRoomsRemoteJoinLocalUser"}
+{"Action":"pass","Test":"TestRestrictedRoomsRemoteJoinLocalUserInMSC3787Room"}
 {"Action":"pass","Test":"TestRestrictedRoomsSpacesSummaryFederation"}
 {"Action":"pass","Test":"TestRestrictedRoomsSpacesSummaryLocal"}
 {"Action":"pass","Test":"TestRoomAlias"}
