@@ -5,7 +5,7 @@
 use crate::macros::StringEnum;
 
 use super::{
-    Action, ConditionalPushRule, PatternedPushRule, PushCondition::*, RoomMemberCountIs, RuleKind,
+    Action, ConditionalPushRule, PushCondition::*, RoomMemberCountIs, RuleKind,
     Ruleset, Tweak,
 };
 use crate::{PrivOwnedStr, UserId};

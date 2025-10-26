@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::serde::{EqAsRefStr, OrdAsRefStr, StringEnum};
+use crate::serde::StringEnum;
 use crate::{MatrixVersion, PrivOwnedStr};
 
 /// The list of Matrix versions and features supported by a homeserver.

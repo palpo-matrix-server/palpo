@@ -10,14 +10,13 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use crate::macros::EventContent;
 use salvo::prelude::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+use crate::macros::EventContent;
 use crate::{
     EventId, IdParseError, OwnedEventId, OwnedRoomId, OwnedUserId, PrivOwnedStr, UnixMillis,
-    UserId,
-    serde::{EqAsRefStr, OrdAsRefStr, StringEnum},
+    UserId, serde::StringEnum,
 };
 
 /// The content of an `m.receipt` event.
