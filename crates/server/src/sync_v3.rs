@@ -1,6 +1,5 @@
 use std::collections::{BTreeMap, HashMap, HashSet, hash_map::Entry};
 
-use futures_util::future::Join;
 use indexmap::IndexMap;
 use state::DbRoomStateField;
 

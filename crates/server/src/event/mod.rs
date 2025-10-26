@@ -6,7 +6,7 @@ pub mod search;
 use diesel::prelude::*;
 
 use crate::core::identifiers::*;
-use crate::core::serde::{CanonicalJsonObject, JsonValue, RawJsonValue};
+use crate::core::serde::{CanonicalJsonObject, RawJsonValue};
 use crate::core::{Direction, Seqnum, UnixMillis, signatures};
 use crate::data::connect;
 use crate::data::room::DbEvent;
