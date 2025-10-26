@@ -5,6 +5,7 @@ use std::collections::{HashMap, HashSet};
 use state::DbRoomStateField;
 
 use crate::core::identifiers::*;
+use crate::core::room_version_rules::RoomVersionRules;
 use crate::core::room_version_rules::StateResolutionV2Rules;
 use crate::core::state::StateError;
 use crate::core::state::{StateMap, resolve};
