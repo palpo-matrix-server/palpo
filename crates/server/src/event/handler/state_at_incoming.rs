@@ -1,4 +1,5 @@
 use indexmap::IndexMap;
+use palpo_core::room_version_rules::RoomVersionRules;
 use std::collections::{HashMap, HashSet};
 
 use state::DbRoomStateField;

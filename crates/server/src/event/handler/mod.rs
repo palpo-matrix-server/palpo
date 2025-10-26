@@ -132,6 +132,7 @@ pub(crate) async fn process_incoming_pdu(
         value,
         &mut Default::default(),
         true,
+        false,
     )
     .await?
     else {
@@ -209,6 +210,7 @@ pub(crate) async fn process_pulled_pdu(
         value,
         known_events,
         false,
+        true
     )
     .await?
     else {
@@ -249,6 +251,7 @@ fn process_to_outlier_pdu(
     mut value: BTreeMap<String, CanonicalJsonValue>,
     known_events: &mut HashSet<OwnedEventId>,
     fetch_missing_prev_events: bool,
+    fetch_state_for_missing: bool,
 ) -> Pin<
     Box<
         impl Future<
@@ -416,22 +419,24 @@ fn process_to_outlier_pdu(
             };
 
         if !missing_auth_event_ids.is_empty() {
-            if let Err(_e) =
-                fetch_and_process_auth_chain(origin, room_id, &incoming_pdu.event_id, known_events)
-                    .await
-            {
-                soft_failed = true;
+            if fetch_state_for_missing {
+                if let Err(_e) =
+                    fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id).await
+                {
+                    soft_failed = true;
+                }
+            } else {
+                if let Err(_e) = fetch_and_process_auth_chain(
+                    origin,
+                    room_id,
+                    &incoming_pdu.event_id,
+                    known_events,
+                )
+                .await
+                {
+                    soft_failed = true;
+                }
             }
-            // if fetch_state_for_missing_prev_events {
-            //     if let Err(_e) =
-            //         fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id).await
-            //     {
-            //         soft_failed = true;
-            //         // rejection_reason = Some(format!("failed to fetch state: {}", e.to_string()));
-            //     }
-            // } else {
-            //     soft_failed = true;
-            // }
         }
         let (auth_events, missing_auth_event_ids) =
             timeline::get_may_missing_pdus(room_id, &incoming_pdu.auth_events)?;
@@ -1121,6 +1126,7 @@ pub(crate) async fn fetch_and_process_outliers(
                 value,
                 &mut Default::default(),
                 false,
+                false
             )
             .await
             {
@@ -1319,6 +1325,7 @@ pub async fn fetch_and_process_auth_chain(
                     event_value,
                     known_events,
                     true,
+                    false
                 )
                 .await?;
             }
