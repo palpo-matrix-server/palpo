@@ -65,7 +65,10 @@ impl ParsedEventField {
     /// Returns an error if an unknown `ruma_event` attribute is encountered, or if an attribute
     /// that accepts a single value appears several times.
     pub(super) fn parse(inner: Field) -> Result<Self, syn::Error> {
-        let mut parsed = Self { inner, default: false };
+        let mut parsed = Self {
+            inner,
+            default: false,
+        };
 
         for attr in &parsed.inner.attrs {
             if !attr.path().is_ident("ruma_event") {

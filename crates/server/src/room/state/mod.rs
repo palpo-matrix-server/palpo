@@ -139,8 +139,7 @@ pub fn set_room_state(room_id: &RoomId, frame_id: i64) -> AppResult<()> {
 
 /// Generates a new StateHash and associates it with the incoming event.
 ///
-/// This adds all current state events (not including the incoming event)
-/// to `stateid_pduid` and adds the incoming event to `eventid_statehash`.
+/// This adds all current state events (not including the incoming event).
 #[tracing::instrument(skip(state_ids_compressed), level = "debug")]
 pub fn set_event_state(
     event_id: &EventId,

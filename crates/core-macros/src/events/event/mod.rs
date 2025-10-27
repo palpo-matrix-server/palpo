@@ -2,9 +2,9 @@
 
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{parse_quote, Data, DataStruct, DeriveInput, Fields, FieldsNamed};
+use syn::{Data, DataStruct, DeriveInput, Fields, FieldsNamed, parse_quote};
 
-use self::parse::{parse_event_struct_ident_to_kind_variation, ParsedEventField};
+use self::parse::{ParsedEventField, parse_event_struct_ident_to_kind_variation};
 use super::{EventField, EventKind, EventVariation};
 use crate::{import_palpo_core, util::to_camel_case};
 
@@ -31,7 +31,11 @@ pub fn expand_event(input: DeriveInput) -> syn::Result<TokenStream> {
             ));
         }
 
-        named.iter().cloned().map(ParsedEventField::parse).collect::<Result<Vec<_>, _>>()?
+        named
+            .iter()
+            .cloned()
+            .map(ParsedEventField::parse)
+            .collect::<Result<Vec<_>, _>>()?
     } else {
         return Err(syn::Error::new_spanned(
             input.ident,
@@ -84,7 +88,10 @@ fn expand_deserialize_event(
     let (impl_generics, ty_gen, where_clause) = input.generics.split_for_impl();
     let is_generic = !input.generics.params.is_empty();
 
-    let enum_variants: Vec<_> = fields.iter().map(|field| to_camel_case(field.name())).collect();
+    let enum_variants: Vec<_> = fields
+        .iter()
+        .map(|field| to_camel_case(field.name()))
+        .collect();
 
     let deserialize_var_types: Vec<_> = fields
         .iter()

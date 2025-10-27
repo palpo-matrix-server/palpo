@@ -37,6 +37,7 @@ async fn history(
         None,
         None,
         limit,
+        crate::room::EventOrderBy::StreamOrdering,
     )?;
 
     let mut events = Vec::with_capacity(all_events.len());

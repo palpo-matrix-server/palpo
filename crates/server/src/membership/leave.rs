@@ -200,7 +200,7 @@ async fn leave_room_remote(
         unrecognized_keys: None,
         depth: 0,
         topological_ordering: 0,
-        stream_ordering: 0,
+        stream_ordering: event_sn,
         origin_server_ts: UnixMillis::now(),
         received_at: None,
         sender_id: Some(user_id.to_owned()),

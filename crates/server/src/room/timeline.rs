@@ -31,7 +31,7 @@ use crate::data::room::{DbEvent, DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::event::{EventHash, PduBuilder, PduEvent, handler};
-use crate::room::{push_action, state, timeline};
+use crate::room::{EventOrderBy, push_action, state};
 use crate::utils::SeqnumQueueGuard;
 use crate::{
     AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, SnPduEvent, config, data,
@@ -592,7 +592,7 @@ pub async fn hash_and_sign_event(
     // Our depth is the maximum depth of prev_events + 1
     let depth = prev_events
         .iter()
-        .filter_map(|event_id| Some(timeline::get_pdu(event_id).ok()?.depth))
+        .filter_map(|event_id| Some(get_pdu(event_id).ok()?.depth))
         .max()
         .unwrap_or(0)
         + 1;
@@ -644,7 +644,7 @@ pub async fn hash_and_sign_event(
     };
 
     let fetch_event = async |event_id: OwnedEventId| {
-        timeline::get_pdu(&event_id)
+        get_pdu(&event_id)
             .map(|s| s.pdu)
             .map_err(|_| StateError::other("missing PDU 6"))
     };
@@ -912,8 +912,9 @@ pub fn all_pdus(
     user_id: &UserId,
     room_id: &RoomId,
     until_sn: Option<i64>,
+    order_by: EventOrderBy,
 ) -> AppResult<IndexMap<i64, SnPduEvent>> {
-    get_pdus_forward(user_id, room_id, 0, until_sn, None, usize::MAX)
+    get_pdus_forward(user_id, room_id, 0, until_sn, None, usize::MAX, order_by)
 }
 pub fn get_pdus_forward(
     user_id: &UserId,
@@ -922,6 +923,7 @@ pub fn get_pdus_forward(
     until_sn: Option<i64>,
     filter: Option<&RoomEventFilter>,
     limit: usize,
+    order_by: EventOrderBy,
 ) -> AppResult<IndexMap<i64, SnPduEvent>> {
     get_pdus(
         user_id,
@@ -931,6 +933,7 @@ pub fn get_pdus_forward(
         limit,
         filter,
         Direction::Forward,
+        order_by,
     )
 }
 pub fn get_pdus_backward(
@@ -940,6 +943,7 @@ pub fn get_pdus_backward(
     until_sn: Option<i64>,
     filter: Option<&RoomEventFilter>,
     limit: usize,
+    order_by: EventOrderBy,
 ) -> AppResult<IndexMap<i64, SnPduEvent>> {
     get_pdus(
         user_id,
@@ -949,6 +953,7 @@ pub fn get_pdus_backward(
         limit,
         filter,
         Direction::Backward,
+        order_by,
     )
 }
 
@@ -964,6 +969,7 @@ pub fn get_pdus(
     limit: usize,
     filter: Option<&RoomEventFilter>,
     dir: Direction,
+    order_by: EventOrderBy,
 ) -> AppResult<IndexMap<Seqnum, SnPduEvent>> {
     let mut list: IndexMap<Seqnum, SnPduEvent> = IndexMap::with_capacity(limit.clamp(10, 100));
     let mut start_sn = if dir == Direction::Forward {
@@ -1024,29 +1030,41 @@ pub fn get_pdus(
             }
         }
         let events: Vec<(OwnedEventId, Seqnum)> = if dir == Direction::Forward {
-            query
-                .filter(events::sn.gt(start_sn))
-                .order((
-                    events::topological_ordering.asc(),
-                    events::stream_ordering.asc(),
-                ))
-                // .limit(utils::usize_to_i64(limit))
-                .select((events::id, events::sn))
-                .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
-                .into_iter()
-                .collect()
+            let query = query.filter(events::sn.gt(start_sn));
+            match order_by {
+                EventOrderBy::StreamOrdering => query
+                    .order((events::stream_ordering.asc(),))
+                    .limit(utils::usize_to_i64(limit))
+                    .select((events::id, events::sn))
+                    .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
+                    .into_iter()
+                    .collect(),
+                EventOrderBy::TopologicalOrdering => query
+                    .order((events::topological_ordering.asc(),))
+                    .limit(utils::usize_to_i64(limit))
+                    .select((events::id, events::sn))
+                    .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
+                    .into_iter()
+                    .collect(),
+            }
         } else {
-            query
-                .filter(events::sn.lt(start_sn))
-                .order((
-                    events::topological_ordering.desc(),
-                    events::stream_ordering.desc(),
-                ))
-                // .limit(utils::usize_to_i64(limit))
-                .select((events::id, events::sn))
-                .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
-                .into_iter()
-                .collect()
+            let query = query.filter(events::sn.lt(start_sn));
+            match order_by {
+                EventOrderBy::StreamOrdering => query
+                    .order((events::stream_ordering.desc(),))
+                    .limit(utils::usize_to_i64(limit))
+                    .select((events::id, events::sn))
+                    .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
+                    .into_iter()
+                    .collect(),
+                EventOrderBy::TopologicalOrdering => query
+                    .order((events::topological_ordering.desc(),))
+                    .limit(utils::usize_to_i64(limit))
+                    .select((events::id, events::sn))
+                    .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
+                    .into_iter()
+                    .collect(),
+            }
         };
         if events.is_empty() {
             break;
@@ -1062,13 +1080,15 @@ pub fn get_pdus(
         } else {
             break;
         };
+        println!("\n\n\n\n===========order_by: {order_by:?} dir: {dir:?}");
         for (event_id, event_sn) in events {
-            if let Ok(mut pdu) = timeline::get_pdu(&event_id)
+            if let Ok(mut pdu) = get_pdu(&event_id)
                 && pdu.user_can_see(user_id)?
             {
                 if pdu.sender != user_id {
                     pdu.remove_transaction_id()?;
                 }
+                println!("===========events: {event_id}   {event_sn}  {pdu:#?}");
                 pdu.add_age()?;
                 pdu.add_unsigned_membership(user_id)?;
                 list.insert(event_sn, pdu);
@@ -1103,7 +1123,12 @@ pub fn redact_pdu(event_id: &EventId, reason: &PduEvent) -> AppResult<()> {
 
 #[tracing::instrument(skip(room_id))]
 pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<()> {
-    let pdus = all_pdus(user_id!("@doesntmatter:palpo.im"), room_id, None)?;
+    let pdus = all_pdus(
+        user_id!("@doesntmatter:palpo.im"),
+        room_id,
+        None,
+        EventOrderBy::StreamOrdering,
+    )?;
     let first_pdu = pdus.first();
 
     let Some((first_sn, first_pdu)) = first_pdu else {
@@ -1170,7 +1195,7 @@ pub async fn backfill_pdu(origin: &ServerName, pdu: Box<RawJsonValue>) -> AppRes
     let (event_id, value, room_id, room_version_id) = crate::parse_incoming_pdu(&pdu)?;
 
     // Skip the PDU if we already have it as a timeline event
-    if timeline::get_pdu(&event_id).is_ok() {
+    if get_pdu(&event_id).is_ok() {
         info!("we already know {event_id}, skipping backfill");
         return Ok(());
     }

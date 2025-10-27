@@ -33,12 +33,12 @@ pub use error::{MatrixError, UnknownVersionError};
 pub mod sending;
 #[macro_use]
 extern crate tracing;
+pub mod auth_scheme;
 pub mod http_headers;
 pub mod media;
 pub mod state;
 pub mod user;
 pub mod utils;
-pub mod auth_scheme;
 
 pub use palpo_core_macros as macros;
 

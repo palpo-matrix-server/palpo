@@ -20,7 +20,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::core::{Seqnum, UnixMillis};
 use crate::event::{EventHash, PduEvent, SnPduEvent};
-use crate::room::{state, timeline};
+use crate::room::{EventOrderBy, state, timeline};
 use crate::{AppError, AppResult, config, data, extract_variant, room};
 
 pub const DEFAULT_BUMP_TYPES: &[TimelineEventType; 6] = &[
@@ -384,36 +384,40 @@ async fn load_joined_room(
                 if joined_member_count + invited_member_count <= 5 {
                     // Go through all PDUs and for each member event, check if the user is still joined or
                     // invited until we have 5 or we reach the end
-                    for hero in timeline::all_pdus(sender_id, room_id, until_sn)?
-                        .into_iter() // Ignore all broken pdus
-                        .filter(|(_, pdu)| pdu.event_ty == TimelineEventType::RoomMember)
-                        .map(|(_, pdu)| {
-                            let content = pdu.get_content::<RoomMemberEventContent>()?;
+                    for hero in timeline::all_pdus(
+                        sender_id,
+                        room_id,
+                        until_sn,
+                        EventOrderBy::StreamOrdering,
+                    )?
+                    .into_iter() // Ignore all broken pdus
+                    .filter(|(_, pdu)| pdu.event_ty == TimelineEventType::RoomMember)
+                    .map(|(_, pdu)| {
+                        let content = pdu.get_content::<RoomMemberEventContent>()?;
 
-                            if let Some(state_key) = &pdu.state_key {
-                                let user_id = UserId::parse(state_key.clone()).map_err(|_| {
-                                    AppError::public("invalid UserId in member PDU.")
-                                })?;
+                        if let Some(state_key) = &pdu.state_key {
+                            let user_id = UserId::parse(state_key.clone())
+                                .map_err(|_| AppError::public("invalid UserId in member PDU."))?;
 
-                                // The membership was and still is invite or join
-                                if matches!(
-                                    content.membership,
-                                    MembershipState::Join | MembershipState::Invite
-                                ) && (room::user::is_joined(&user_id, room_id)?
-                                    || room::user::is_invited(&user_id, room_id)?)
-                                {
-                                    Ok::<_, AppError>(Some(state_key.clone()))
-                                } else {
-                                    Ok(None)
-                                }
+                            // The membership was and still is invite or join
+                            if matches!(
+                                content.membership,
+                                MembershipState::Join | MembershipState::Invite
+                            ) && (room::user::is_joined(&user_id, room_id)?
+                                || room::user::is_invited(&user_id, room_id)?)
+                            {
+                                Ok::<_, AppError>(Some(state_key.clone()))
                             } else {
                                 Ok(None)
                             }
-                        })
-                        // Filter out buggy users
-                        .filter_map(|u| u.ok())
-                        // Filter for possible heroes
-                        .flatten()
+                        } else {
+                            Ok(None)
+                        }
+                    })
+                    // Filter out buggy users
+                    .filter_map(|u| u.ok())
+                    // Filter for possible heroes
+                    .flatten()
                     {
                         if heroes.contains(&hero) || hero == sender_id.as_str() {
                             continue;
@@ -949,7 +953,7 @@ pub(crate) fn load_timeline(
                 (until_sn, since_sn)
             };
 
-            timeline::get_pdus_backward(user_id, room_id, max_sn, Some(min_sn), filter, limit + 1)?
+            timeline::get_pdus_backward(user_id, room_id, max_sn, Some(min_sn), filter, limit + 1, EventOrderBy::StreamOrdering)?
         } else {
             timeline::get_pdus_backward(
                 user_id,
@@ -957,11 +961,11 @@ pub(crate) fn load_timeline(
                 i64::MAX,
                 Some(since_sn),
                 filter,
-                limit + 1,
+                limit + 1, EventOrderBy::StreamOrdering,
             )?
         }
     } else {
-        timeline::get_pdus_backward(user_id, room_id, i64::MAX, None, filter, limit + 1)?
+        timeline::get_pdus_backward(user_id, room_id, i64::MAX, None, filter, limit + 1, EventOrderBy::StreamOrdering)?
     };
 
     if timeline_pdus.len() > limit {
