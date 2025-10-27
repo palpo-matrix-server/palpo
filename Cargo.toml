@@ -4,6 +4,7 @@ resolver = "2"
 
 [workspace.package]
 version = "0.1.4"
+version = "0.1.4"
 authors = ["Chrislearn Young <chris@acroidea.com>"]
 edition = "2024"
 rust-version = "1.89"
@@ -19,6 +20,11 @@ keywords = ["http", "async", "web", "framework", "server"]
 license = "Apache-2.0"
 
 [workspace.dependencies]
+palpo-core = { version = "0.1.4", path = "crates/core" }
+palpo-core-macros = { version = "0.1.4", path = "crates/core-macros" }
+palpo-data = { version = "0.1.4", path = "crates/data" }
+palpo-identifiers-validation = { version = "0.1.4", path = "crates/identifiers-validation" }
+palpo-server-macros = { version = "0.1.4", path = "crates/server-macros" }
 palpo-core = { version = "0.1.4", path = "crates/core" }
 palpo-core-macros = { version = "0.1.4", path = "crates/core-macros" }
 palpo-data = { version = "0.1.4", path = "crates/data" }
@@ -48,6 +54,8 @@ data-encoding = "2.5.0"
 date_header = "1.0.5"
 diesel = { version = "2.3.1" }
 # diesel-async = { version = "0.6.1" }
+diesel = { version = "2.3.1" }
+# diesel-async = { version = "0.6.1" }
 # diesel_full_text_search = { version = "2.2.0" }
 diesel_migrations = "2.3.0"
 dotenvy = "0.15.0"
@@ -66,7 +74,11 @@ html5ever = "0.35.0"
 http = "1"
 image = "0.25.8"
 indexmap = "2.12.0"
+indexmap = "2.12.0"
 itertools = "0.14"
+jsonwebtoken = { version = "9.1", default-features = false, features = [
+    "use_pem",
+] }
 jsonwebtoken = { version = "9.1", default-features = false, features = [
     "use_pem",
 ] }
@@ -113,13 +125,22 @@ subslice = "0.2.3"
 syn = "2.0.108"
 tempfile = "3.23.0"
 termimad = { version = "0.34.0", default-features = false }
+syn = "2.0.108"
+tempfile = "3.23.0"
+termimad = { version = "0.34.0", default-features = false }
 textnonce = "1.0.0"
 thiserror = "2.0.17"
-tokio = { version = "1.48.0", features = ["macros", "parking_lot", "process"] }
+tokio = { version = "1.46.1", features = ["macros", "parking_lot", "process"] }
 tokio-stream = { version = "0.1.9", features = ["sync"] }
 tokio-util = { version = "0.7.16", features = ["io"] }
 toml = { version = "0.9.8", default-features = false }
+toml = { version = "0.9.8", default-features = false }
 tower-service = "0.3"
+tracing = { version = "0.1.41", features = [
+    "release_max_level_debug",
+    "attributes",
+    "max_level_debug",
+] }
 tracing = { version = "0.1.41", features = [
     "release_max_level_debug",
     "attributes",
@@ -140,3 +161,4 @@ result_large_err = "allow"
 type_complexity = "allow"
 too_many_arguments = "allow"
 large_enum_variant = "allow"
+
