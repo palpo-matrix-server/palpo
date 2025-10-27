@@ -2,9 +2,9 @@
 
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{Data, DataStruct, DeriveInput, Field, Fields, FieldsNamed, parse_quote};
+use syn::{parse_quote, Data, DataStruct, DeriveInput, Fields, FieldsNamed};
 
-use self::parse::parse_event_struct_ident_to_kind_variation;
+use self::parse::{parse_event_struct_ident_to_kind_variation, ParsedEventField};
 use super::{EventField, EventKind, EventVariation};
 use crate::{import_palpo_core, util::to_camel_case};
 
@@ -19,7 +19,7 @@ pub fn expand_event(input: DeriveInput) -> syn::Result<TokenStream> {
         syn::Error::new_spanned(ident, "not a valid palpo event struct identifier")
     })?;
 
-    let fields: Vec<_> = if let Data::Struct(DataStruct {
+    let fields = if let Data::Struct(DataStruct {
         fields: Fields::Named(FieldsNamed { named, .. }),
         ..
     }) = &input.data
@@ -31,7 +31,7 @@ pub fn expand_event(input: DeriveInput) -> syn::Result<TokenStream> {
             ));
         }
 
-        named.iter().cloned().collect()
+        named.iter().cloned().map(ParsedEventField::parse).collect::<Result<Vec<_>, _>>()?
     } else {
         return Err(syn::Error::new_spanned(
             input.ident,
@@ -66,7 +66,7 @@ pub fn expand_event(input: DeriveInput) -> syn::Result<TokenStream> {
 fn expand_deserialize_event(
     input: &DeriveInput,
     variation: EventVariation,
-    fields: &[Field],
+    fields: &[ParsedEventField],
     palpo_core: &TokenStream,
 ) -> syn::Result<TokenStream> {
     let serde = quote! { #palpo_core::__private::serde };
@@ -77,25 +77,19 @@ fn expand_deserialize_event(
     let content_type = &fields
         .iter()
         // we also know that the fields are named and have an ident
-        .find(|f| f.ident.as_ref().unwrap() == "content")
+        .find(|f| f.name() == "content")
         .unwrap()
-        .ty;
+        .ty();
 
     let (impl_generics, ty_gen, where_clause) = input.generics.split_for_impl();
     let is_generic = !input.generics.params.is_empty();
 
-    let enum_variants: Vec<_> = fields
-        .iter()
-        .map(|field| {
-            let name = field.ident.as_ref().unwrap();
-            to_camel_case(name)
-        })
-        .collect();
+    let enum_variants: Vec<_> = fields.iter().map(|field| to_camel_case(field.name())).collect();
 
     let deserialize_var_types: Vec<_> = fields
         .iter()
         .map(|field| {
-            let name = field.ident.as_ref().unwrap();
+            let name = field.name();
             if name == "content" {
                 if is_generic {
                     quote! { ::std::boxed::Box<#serde_json::value::RawValue> }
@@ -105,7 +99,7 @@ fn expand_deserialize_event(
             } else if name == "state_key" && variation == EventVariation::Initial {
                 quote! { ::std::string::String }
             } else {
-                let ty = &field.ty;
+                let ty = field.ty();
                 quote! { #ty }
             }
         })
@@ -114,7 +108,7 @@ fn expand_deserialize_event(
     let ok_or_else_fields: Vec<_> = fields
         .iter()
         .map(|field| {
-            let name = field.ident.as_ref().unwrap();
+            let name = field.name();
             Ok(if name == "content" && is_generic {
                 quote! {
                     let content = {
@@ -123,12 +117,12 @@ fn expand_deserialize_event(
                         C::from_parts(&event_type, &json).map_err(#serde::de::Error::custom)?
                     };
                 }
-            } else if name == "unsigned" && !variation.is_redacted() {
+            } else if field.default || (name == "unsigned" && !variation.is_redacted()) {
                 quote! {
                     let unsigned = unsigned.unwrap_or_default();
                 }
             } else if name == "state_key" && variation == EventVariation::Initial {
-                let ty = &field.ty;
+                let ty = field.ty();
                 quote! {
                     let state_key: ::std::string::String = state_key.unwrap_or_default();
                     let state_key: #ty = <#ty as #serde::de::Deserialize>::deserialize(
@@ -145,7 +139,7 @@ fn expand_deserialize_event(
         })
         .collect::<syn::Result<_>>()?;
 
-    let field_names: Vec<_> = fields.iter().flat_map(|f| &f.ident).collect();
+    let field_names: Vec<_> = fields.iter().map(ParsedEventField::name).collect();
 
     let deserialize_impl_gen = if is_generic {
         let gen_params = &input.generics.params;
@@ -256,13 +250,13 @@ fn expand_sync_from_into_full(
     input: &DeriveInput,
     kind: EventKind,
     variation: EventVariation,
-    fields: &[Field],
+    fields: &[ParsedEventField],
     palpo_core: &TokenStream,
 ) -> syn::Result<TokenStream> {
     let ident = &input.ident;
     let full_struct = kind.to_event_ident(variation.to_full())?;
     let (impl_generics, ty_gen, where_clause) = input.generics.split_for_impl();
-    let fields: Vec<_> = fields.iter().flat_map(|f| &f.ident).collect();
+    let fields: Vec<_> = fields.iter().map(ParsedEventField::name).collect();
 
     Ok(quote! {
         #[automatically_derived]
