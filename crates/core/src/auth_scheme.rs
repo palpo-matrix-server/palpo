@@ -4,7 +4,7 @@
 #![allow(clippy::exhaustive_structs)]
 
 use as_variant::as_variant;
-use http::{header, HeaderName, HeaderValue};
+use http::{HeaderName, HeaderMap, header};
 
 use crate::error::IntoHttpError;
 
@@ -13,13 +13,14 @@ pub trait AuthScheme: Sized {
     /// The input necessary to generate the authentication.
     type Input<'a>;
 
-    /// The `Authorization` HTTP header to add to an outgoing request with this scheme.
+    /// Add this authentication scheme to the given outgoing request, if necessary.
     ///
     /// Returns an error if the endpoint requires authentication but the input doesn't provide it,
-    /// or if the input can't be converted to a [`HeaderValue`].
-    fn authorization_header(
+    /// or if the input fails to serialize to the proper format.
+    fn add_authentication<T: AsRef<[u8]>>(
+        request: &mut http::Request<T>,
         input: Self::Input<'_>,
-    ) -> Result<Option<(HeaderName, HeaderValue)>, IntoHttpError>;
+    ) -> Result<(), IntoHttpError>;
 }
 
 /// No authentication is performed.
@@ -32,13 +33,15 @@ pub struct NoAuthentication;
 impl AuthScheme for NoAuthentication {
     type Input<'a> = SendAccessToken<'a>;
 
-    fn authorization_header(
+    fn add_authentication<T: AsRef<[u8]>>(
+        request: &mut http::Request<T>,
         access_token: SendAccessToken<'_>,
-    ) -> Result<Option<(HeaderName, HeaderValue)>, IntoHttpError> {
-        access_token
-            .get_not_required_for_endpoint()
-            .map(access_token_to_authorization_header)
-            .transpose()
+    ) -> Result<(), IntoHttpError> {
+        if let Some(access_token) = access_token.get_not_required_for_endpoint() {
+            add_access_token_as_authorization_header(request.headers_mut(), access_token)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -52,12 +55,17 @@ pub struct AccessToken;
 impl AuthScheme for AccessToken {
     type Input<'a> = SendAccessToken<'a>;
 
-    fn authorization_header(
+    fn add_authentication<T: AsRef<[u8]>>(
+        request: &mut http::Request<T>,
         access_token: SendAccessToken<'_>,
-    ) -> Result<Option<(HeaderName, HeaderValue)>, IntoHttpError> {
+    ) -> Result<(), IntoHttpError> {
         let token =
-            access_token.get_required_for_endpoint().ok_or(IntoHttpError::NeedsAuthentication)?;
-        access_token_to_authorization_header(token).map(Some)
+            access_token
+                .get_required_for_endpoint()
+                .ok_or(IntoHttpError::Authentication(
+                    "no access token given, but this endpoint requires one".into(),
+                ))?;
+        add_access_token_as_authorization_header(request.headers_mut(), token)
     }
 }
 
@@ -71,13 +79,15 @@ pub struct AccessTokenOptional;
 impl AuthScheme for AccessTokenOptional {
     type Input<'a> = SendAccessToken<'a>;
 
-    fn authorization_header(
+    fn add_authentication<T: AsRef<[u8]>>(
+        request: &mut http::Request<T>,
         access_token: SendAccessToken<'_>,
-    ) -> Result<Option<(HeaderName, HeaderValue)>, IntoHttpError> {
-        access_token
-            .get_required_for_endpoint()
-            .map(access_token_to_authorization_header)
-            .transpose()
+    ) -> Result<(), IntoHttpError> {
+        if let Some(access_token) = access_token.get_required_for_endpoint() {
+            add_access_token_as_authorization_header(request.headers_mut(), access_token)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -92,12 +102,17 @@ pub struct AppserviceToken;
 impl AuthScheme for AppserviceToken {
     type Input<'a> = SendAccessToken<'a>;
 
-    fn authorization_header(
+    fn add_authentication<T: AsRef<[u8]>>(
+        request: &mut http::Request<T>,
         access_token: SendAccessToken<'_>,
-    ) -> Result<Option<(HeaderName, HeaderValue)>, IntoHttpError> {
+    ) -> Result<(), IntoHttpError> {
         let token =
-            access_token.get_required_for_appservice().ok_or(IntoHttpError::NeedsAuthentication)?;
-        access_token_to_authorization_header(token).map(Some)
+            access_token
+                .get_required_for_appservice()
+                .ok_or(IntoHttpError::Authentication(
+                    "no access token given, but this endpoint requires one".into(),
+                ))?;
+        add_access_token_as_authorization_header(request.headers_mut(), token)
     }
 }
 
@@ -112,39 +127,25 @@ pub struct AppserviceTokenOptional;
 impl AuthScheme for AppserviceTokenOptional {
     type Input<'a> = SendAccessToken<'a>;
 
-    fn authorization_header(
+    fn add_authentication<T: AsRef<[u8]>>(
+        request: &mut http::Request<T>,
         access_token: SendAccessToken<'_>,
-    ) -> Result<Option<(HeaderName, HeaderValue)>, IntoHttpError> {
-        access_token
-            .get_required_for_appservice()
-            .map(access_token_to_authorization_header)
-            .transpose()
+    ) -> Result<(), IntoHttpError> {
+        if let Some(access_token) = access_token.get_required_for_appservice() {
+            add_access_token_as_authorization_header(request.headers_mut(), access_token)?;
+        }
+
+        Ok(())
     }
 }
 
-/// Authentication is performed by adding an `X-Matrix` header including a signature in the request
-/// headers, as defined in the federation API.
-///
-/// Currently the `add_authentication` implementation is a noop, and the header must be computed and
-/// added manually.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct ServerSignatures;
-
-impl AuthScheme for ServerSignatures {
-    type Input<'a> = ();
-
-    fn authorization_header(
-        _input: (),
-    ) -> Result<Option<(HeaderName, HeaderValue)>, IntoHttpError> {
-        Ok(None)
-    }
-}
-
-/// Convert the given access token to an `Authorization` HTTP header.
-fn access_token_to_authorization_header(
+/// Add the given access token as an `Authorization` HTTP header to the given map.
+fn add_access_token_as_authorization_header(
+    headers: &mut HeaderMap,
     token: &str,
-) -> Result<(HeaderName, HeaderValue), IntoHttpError> {
-    Ok((header::AUTHORIZATION, format!("Bearer {token}").try_into()?))
+) -> Result<(), IntoHttpError> {
+    headers.insert(header::AUTHORIZATION, format!("Bearer {token}").try_into()?);
+    Ok(())
 }
 
 /// An enum to control whether an access token should be added to outgoing requests
