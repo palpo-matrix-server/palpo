@@ -441,6 +441,8 @@ async fn load_joined_room(
                 let (joined_member_count, invited_member_count, heroes) = calculate_counts()?;
                 let current_state_ids =
                     state::get_full_state_ids(since_frame_id.unwrap_or(current_frame_id))?;
+                println!("=================current_frame_id: {current_frame_id:?}");
+                println!("=================current_state_ids: {current_state_ids:?}");
                 let mut state_events = Vec::new();
                 let mut lazy_loaded = HashSet::new();
 
