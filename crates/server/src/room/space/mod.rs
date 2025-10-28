@@ -112,7 +112,6 @@ async fn get_summary_and_children_federation(
         if let Ok(response) = crate::sending::send_federation_request(server, request, None).await
             && let Ok(body) = response.json::<HierarchyResBody>().await
         {
-            println!("==========HierarchyResBody=body: {:?}", body);
             ROOM_ID_SPACE_CHUNK_CACHE.lock().unwrap().insert(
                 (current_room.to_owned(), suggested_only),
                 Some(CachedSpaceHierarchySummary {
@@ -201,11 +200,9 @@ pub async fn get_summary_and_children_client(
     if let Ok(Some(response)) =
         get_summary_and_children_local(current_room, &identifier, suggested_only).await
     {
-        println!("====================get_summary_and_children_client local hit");
         return Ok(Some(response));
     }
 
-    println!("====================get_summary_and_children_client federated hit");
     get_summary_and_children_federation(current_room, suggested_only, user_id, via).await
 }
 

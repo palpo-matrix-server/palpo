@@ -326,7 +326,6 @@ async fn load_joined_room(
     joined_users: &mut HashSet<OwnedUserId>,
     left_users: &mut HashSet<OwnedUserId>,
 ) -> AppResult<JoinedRoom> {
-    println!("===============================since_sn: {since_sn:?}");
     if since_sn > Some(data::curr_sn()?) {
         return Ok(JoinedRoom::default());
     }
@@ -442,15 +441,11 @@ async fn load_joined_room(
                 let (joined_member_count, invited_member_count, heroes) = calculate_counts()?;
                 let current_state_ids =
                     state::get_full_state_ids(since_frame_id.unwrap_or(current_frame_id))?;
-                println!("=================filter: {:?}", filter.room.state);
-                println!("=================current_frame_id: {current_frame_id:?}");
-                println!("=================current_state_ids: {current_state_ids:?}");
                 let mut state_events = Vec::new();
                 let mut lazy_loaded = HashSet::new();
 
                 for (state_key_id, event_id) in current_state_ids {
                     if timeline_pdu_ids.contains(&event_id) {
-                        println!("==========contains event in tinmeline: {event_id}");
                         continue;
                     }
                     if let Some(state_limit) = filter.room.state.limit
@@ -469,9 +464,7 @@ async fn load_joined_room(
                             error!("pdu in state not found: {}", event_id);
                             continue;
                         };
-                        println!("=================state member pdu0: {:?}", pdu.event_id);
                         if pdu.can_pass_filter(&filter.room.state) {
-                            println!(">>>>>>>>>>>>>>2");
                             state_events.push(pdu);
                         }
                     } else if !lazy_load_enabled
@@ -489,9 +482,7 @@ async fn load_joined_room(
                         if let Ok(uid) = UserId::parse(&state_key) {
                             lazy_loaded.insert(uid);
                         }
-                        println!("=================state member pdu: {:?}", pdu.event_id);
                         if pdu.can_pass_filter(&filter.room.state) {
-                            println!(">>>>>>>>>>>>>>3");
                             state_events.push(pdu);
                         }
                     }

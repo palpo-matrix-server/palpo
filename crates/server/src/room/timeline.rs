@@ -1082,9 +1082,6 @@ pub fn get_pdus(
         } else {
             break;
         };
-        println!(
-            "\n\n\n\n===========order_by: {order_by:?} dir: {dir:?} limit: {limit} since_sn:{since_sn} {events:#?}"
-        );
         for (event_id, event_sn) in events {
             if let Ok(mut pdu) = get_pdu(&event_id)
                 && pdu.user_can_see(user_id)?
@@ -1092,7 +1089,6 @@ pub fn get_pdus(
                 if pdu.sender != user_id {
                     pdu.remove_transaction_id()?;
                 }
-                println!("===event {pdu:#?}");
                 pdu.add_age()?;
                 pdu.add_unsigned_membership(user_id)?;
                 list.insert(event_sn, pdu);
