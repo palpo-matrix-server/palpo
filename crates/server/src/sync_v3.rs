@@ -953,7 +953,15 @@ pub(crate) fn load_timeline(
                 (until_sn, since_sn)
             };
 
-            timeline::get_pdus_backward(user_id, room_id, max_sn, Some(min_sn), filter, limit + 1, EventOrderBy::StreamOrdering)?
+            timeline::get_pdus_backward(
+                user_id,
+                room_id,
+                max_sn,
+                Some(min_sn),
+                filter,
+                limit + 1,
+                EventOrderBy::StreamOrdering,
+            )?
         } else {
             timeline::get_pdus_backward(
                 user_id,
@@ -961,17 +969,24 @@ pub(crate) fn load_timeline(
                 i64::MAX,
                 Some(since_sn),
                 filter,
-                limit + 1, EventOrderBy::StreamOrdering,
+                limit + 1,
+                EventOrderBy::StreamOrdering,
             )?
         }
     } else {
-        timeline::get_pdus_backward(user_id, room_id, i64::MAX, None, filter, limit + 1, EventOrderBy::StreamOrdering)?
+        timeline::get_pdus_backward(
+            user_id,
+            room_id,
+            i64::MAX,
+            None,
+            filter,
+            limit + 1,
+            EventOrderBy::StreamOrdering,
+        )?
     };
 
     if timeline_pdus.len() > limit {
-        if let Some(key) = timeline_pdus.first().map(|(key, _)| key.clone()) {
-            timeline_pdus.shift_remove(&key);
-        }
+        timeline_pdus.pop();
         Ok((timeline_pdus, true))
     } else {
         Ok((timeline_pdus, false))
