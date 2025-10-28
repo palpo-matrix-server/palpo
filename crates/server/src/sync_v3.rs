@@ -93,6 +93,7 @@ pub async fn sync_events(
             next_batch,
             full_state,
             &filter,
+            args.use_state_after,
             &mut device_list_updates,
             &mut joined_users,
             &mut left_users,
@@ -320,6 +321,7 @@ async fn load_joined_room(
     next_batch: Seqnum,
     full_state: bool,
     filter: &FilterDefinition,
+    _use_state_after: bool, // TODO
     device_list_updates: &mut HashSet<OwnedUserId>,
     joined_users: &mut HashSet<OwnedUserId>,
     left_users: &mut HashSet<OwnedUserId>,
@@ -953,21 +955,21 @@ pub(crate) fn load_timeline(
                 (until_sn, since_sn)
             };
 
-            timeline::get_pdus_backward(
+            timeline::get_pdus_forward(
                 user_id,
                 room_id,
-                max_sn,
-                Some(min_sn),
+                min_sn,
+                Some(max_sn),
                 filter,
                 limit + 1,
                 EventOrderBy::StreamOrdering,
             )?
         } else {
-            timeline::get_pdus_backward(
+            timeline::get_pdus_forward(
                 user_id,
                 room_id,
-                i64::MAX,
-                Some(since_sn),
+                since_sn,
+                None,
                 filter,
                 limit + 1,
                 EventOrderBy::StreamOrdering,
@@ -986,7 +988,8 @@ pub(crate) fn load_timeline(
     };
 
     if timeline_pdus.len() > limit {
-        timeline_pdus.pop();
+        if 
+        timeline_pdus.shift_remove();
         Ok((timeline_pdus, true))
     } else {
         Ok((timeline_pdus, false))

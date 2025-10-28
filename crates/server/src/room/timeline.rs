@@ -1037,14 +1037,14 @@ pub fn get_pdus(
                     .limit(utils::usize_to_i64(limit))
                     .select((events::id, events::sn))
                     .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
-                    .into_iter()
+                    .into_iter().rev()
                     .collect(),
                 EventOrderBy::TopologicalOrdering => query
                     .order((events::topological_ordering.desc(),))
                     .limit(utils::usize_to_i64(limit))
                     .select((events::id, events::sn))
                     .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
-                    .into_iter()
+                    .into_iter().rev()
                     .collect(),
             }
         } else {
@@ -1080,7 +1080,7 @@ pub fn get_pdus(
         } else {
             break;
         };
-        println!("\n\n\n\n===========order_by: {order_by:?} dir: {dir:?} limit: {limit}");
+        println!("\n\n\n\n===========order_by: {order_by:?} dir: {dir:?} limit: {limit} since_sn:{since_sn} {events:#?}");
         for (event_id, event_sn) in events {
             if let Ok(mut pdu) = get_pdu(&event_id)
                 && pdu.user_can_see(user_id)?
@@ -1088,7 +1088,6 @@ pub fn get_pdus(
                 if pdu.sender != user_id {
                     pdu.remove_transaction_id()?;
                 }
-                println!("===========event: {event_id}   {event_sn}  {pdu:#?}");
                 pdu.add_age()?;
                 pdu.add_unsigned_membership(user_id)?;
                 list.insert(event_sn, pdu);
@@ -1097,9 +1096,6 @@ pub fn get_pdus(
                 }
             }
         }
-    }
-    if dir == Direction::Forward {
-        list.reverse();
     }
     Ok(list)
 }
