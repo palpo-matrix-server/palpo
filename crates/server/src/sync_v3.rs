@@ -955,7 +955,7 @@ pub(crate) fn load_timeline(
                 (until_sn, since_sn)
             };
 
-            timeline::get_pdus_forward(
+            timeline::get_pdus_backward(
                 user_id,
                 room_id,
                 min_sn,
@@ -965,7 +965,7 @@ pub(crate) fn load_timeline(
                 EventOrderBy::StreamOrdering,
             )?
         } else {
-            timeline::get_pdus_forward(
+            timeline::get_pdus_backward(
                 user_id,
                 room_id,
                 since_sn,
@@ -988,8 +988,9 @@ pub(crate) fn load_timeline(
     };
 
     if timeline_pdus.len() > limit {
-        if 
-        timeline_pdus.shift_remove();
+        if let Some(key) = timeline_pdus.first().map(|(key, _)| key.clone()) {
+            timeline_pdus.shift_remove(&key);
+        }
         Ok((timeline_pdus, true))
     } else {
         Ok((timeline_pdus, false))
