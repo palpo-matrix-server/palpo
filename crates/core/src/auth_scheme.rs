@@ -4,7 +4,7 @@
 #![allow(clippy::exhaustive_structs)]
 
 use as_variant::as_variant;
-use http::{HeaderName, HeaderMap, header};
+use http::{HeaderMap, header};
 
 use crate::error::IntoHttpError;
 

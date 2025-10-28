@@ -281,7 +281,7 @@ pub async fn knock_room(
         unrecognized_keys: None,
         depth: parsed_knock_pdu.depth as i64,
         topological_ordering: parsed_knock_pdu.depth as i64,
-        stream_ordering: 0,
+        stream_ordering: event_sn,
         origin_server_ts: UnixMillis::now(),
         received_at: None,
         sender_id: Some(sender_id.to_owned()),

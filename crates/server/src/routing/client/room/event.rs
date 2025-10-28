@@ -17,7 +17,7 @@ use crate::core::events::room::redaction::RoomRedactionEventContent;
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::room::RoomEventReqArgs;
 use crate::data::room::DbEvent;
-use crate::room::{state, timeline};
+use crate::room::{EventOrderBy, state, timeline};
 use crate::utils::HtmlEscape;
 use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, json_ok, room};
 
@@ -157,11 +157,18 @@ pub(super) fn get_context(
     // Use limit with maximum 100
     let limit = args.limit.min(100);
     let base_event = base_event.to_room_event();
-    let events_before =
-        timeline::get_pdus_backward(sender_id, &room_id, base_token, None, None, limit / 2)?
-            .into_iter()
-            .filter(|(_, pdu)| state::user_can_see_event(sender_id, &pdu.event_id).unwrap_or(false))
-            .collect::<Vec<_>>();
+    let events_before = timeline::get_pdus_backward(
+        sender_id,
+        &room_id,
+        base_token,
+        None,
+        None,
+        limit / 2,
+        EventOrderBy::StreamOrdering,
+    )?
+    .into_iter()
+    .filter(|(_, pdu)| state::user_can_see_event(sender_id, &pdu.event_id).unwrap_or(false))
+    .collect::<Vec<_>>();
 
     for (_, event) in &events_before {
         if !crate::room::lazy_loading::lazy_load_was_sent_before(
@@ -183,8 +190,15 @@ pub(super) fn get_context(
         .into_iter()
         .map(|(_, pdu)| pdu.to_room_event())
         .collect::<Vec<_>>();
-    let events_after =
-        timeline::get_pdus_forward(sender_id, &room_id, base_token, None, None, limit / 2)?;
+    let events_after = timeline::get_pdus_forward(
+        sender_id,
+        &room_id,
+        base_token,
+        None,
+        None,
+        limit / 2,
+        EventOrderBy::StreamOrdering,
+    )?;
 
     for (_, event) in &events_after {
         if !crate::room::lazy_loading::lazy_load_was_sent_before(

@@ -210,7 +210,7 @@ pub(crate) async fn process_pulled_pdu(
         value,
         known_events,
         false,
-        true
+        true,
     )
     .await?
     else {
@@ -353,7 +353,7 @@ fn process_to_outlier_pdu(
                 && state_key.ends_with(&*format!(":{}", crate::config::server_name()))
             {
                 let (event_sn, event_guard) = ensure_event_sn(room_id, event_id)?;
-                let mut db_event =
+                let mut db_event: NewDbEvent =
                     NewDbEvent::from_canonical_json(&incoming_pdu.event_id, event_sn, &val)?;
                 db_event.is_outlier = true;
                 db_event.rejection_reason = None;
@@ -1126,7 +1126,7 @@ pub(crate) async fn fetch_and_process_outliers(
                 value,
                 &mut Default::default(),
                 false,
-                false
+                false,
             )
             .await
             {
@@ -1325,7 +1325,7 @@ pub async fn fetch_and_process_auth_chain(
                     event_value,
                     known_events,
                     true,
-                    false
+                    false,
                 )
                 .await?;
             }

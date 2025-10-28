@@ -7,11 +7,11 @@ use salvo::http::{HeaderValue, headers::authorization::Credentials};
 use thiserror::Error;
 
 use crate::{
-    IdParseError, OwnedServerName, OwnedServerSigningKeyId,
+    IdParseError, OwnedServerName, OwnedServerSigningKeyId, ServerName,
     auth_scheme::AuthScheme,
-    error::IntoHttpError,ServerName,
+    error::IntoHttpError,
     http_headers::quote_ascii_string_if_required,
-    serde::{Base64, CanonicalJsonObject, Base64DecodeError},
+    serde::{Base64, Base64DecodeError, CanonicalJsonObject},
     signatures::{Ed25519KeyPair, KeyPair},
 };
 
@@ -180,7 +180,10 @@ impl XMatrix {
         destination: &ServerName,
     ) -> Result<CanonicalJsonObject, serde_json::Error> {
         let body = request.body().as_ref();
-        let uri = request.uri().path_and_query().expect("http::Request should have a path");
+        let uri = request
+            .uri()
+            .path_and_query()
+            .expect("http::Request should have a path");
 
         let mut request_object = CanonicalJsonObject::from([
             ("destination".to_owned(), destination.as_str().into()),
@@ -202,7 +205,11 @@ impl XMatrix {
         request: &http::Request<T>,
         input: ServerSignaturesInput<'_>,
     ) -> Result<Self, IntoHttpError> {
-        let ServerSignaturesInput { origin, destination, key_pair } = input;
+        let ServerSignaturesInput {
+            origin,
+            destination,
+            key_pair,
+        } = input;
 
         let request_object = Self::request_object(request, &origin, &destination)
             .map_err(|error| IntoHttpError::Authentication(error.into()))?;
@@ -218,7 +225,12 @@ impl XMatrix {
             .map_err(|error| IntoHttpError::Authentication(error.into()))?;
         let sig = Base64::new(signature);
 
-        Ok(Self { origin, destination: Some(destination), key, sig })
+        Ok(Self {
+            origin,
+            destination: Some(destination),
+            key,
+            sig,
+        })
     }
 }
 

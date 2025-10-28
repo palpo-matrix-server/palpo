@@ -13,7 +13,7 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::serde::JsonValue;
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::room::timeline;
+use crate::room::{EventOrderBy, timeline};
 use crate::{AuthArgs, JsonResult, MatrixError, PduBuilder, config, exts::*, json_ok, room};
 
 /// #GET /_matrix/client/r0/rooms/{room_id}/messages
@@ -86,6 +86,7 @@ pub(super) async fn get_messages(
                 until_sn,
                 Some(&args.filter),
                 limit,
+                EventOrderBy::TopologicalOrdering,
             )?;
 
             for (_, event) in &events {
@@ -129,6 +130,7 @@ pub(super) async fn get_messages(
                 None,
                 Some(&args.filter),
                 limit,
+                EventOrderBy::TopologicalOrdering,
             )?;
 
             for (_, event) in &events {
