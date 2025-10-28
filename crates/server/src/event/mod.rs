@@ -171,9 +171,9 @@ pub fn update_frame_id(event_id: &EventId, frame_id: i64) -> AppResult<()> {
     diesel::update(event_points::table.find(event_id))
         .set(event_points::frame_id.eq(frame_id))
         .execute(&mut connect()?)?;
-    diesel::update(events::table.find(event_id))
-        .set(events::stream_ordering.eq(frame_id))
-        .execute(&mut connect()?)?;
+    // diesel::update(events::table.find(event_id))
+    //     .set(events::stream_ordering.eq(frame_id))
+    //     .execute(&mut connect()?)?;
     Ok(())
 }
 
@@ -181,9 +181,9 @@ pub fn update_frame_id_by_sn(event_sn: Seqnum, frame_id: i64) -> AppResult<()> {
     diesel::update(event_points::table.filter(event_points::event_sn.eq(event_sn)))
         .set(event_points::frame_id.eq(frame_id))
         .execute(&mut connect()?)?;
-    diesel::update(events::table.filter(events::sn.eq(event_sn)))
-        .set(events::stream_ordering.eq(frame_id))
-        .execute(&mut connect()?)?;
+    // diesel::update(events::table.filter(events::sn.eq(event_sn)))
+    //     .set(events::stream_ordering.eq(frame_id))
+    //     .execute(&mut connect()?)?;
     Ok(())
 }
 

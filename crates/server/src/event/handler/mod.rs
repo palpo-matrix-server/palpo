@@ -357,8 +357,6 @@ fn process_to_outlier_pdu(
                     NewDbEvent::from_canonical_json(&incoming_pdu.event_id, event_sn, &val)?;
                 db_event.is_outlier = true;
                 db_event.rejection_reason = None;
-                db_event.stream_ordering = event_sn;
-                db_event.topological_ordering = incoming_pdu.depth as i64;
                 db_event.save()?;
                 DbEventData {
                     event_id: incoming_pdu.event_id.clone(),
