@@ -1033,32 +1033,34 @@ pub fn get_pdus(
             let query = query.filter(events::sn.gt(start_sn));
             match order_by {
                 EventOrderBy::StreamOrdering => query
-                    .order((events::stream_ordering.desc(),))
+                    .order(events::stream_ordering.desc())
                     .limit(utils::usize_to_i64(limit))
                     .select((events::id, events::sn))
                     .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
-                    .into_iter().rev()
+                    .into_iter()
+                    .rev()
                     .collect(),
                 EventOrderBy::TopologicalOrdering => query
                     .order((events::topological_ordering.desc(),))
                     .limit(utils::usize_to_i64(limit))
                     .select((events::id, events::sn))
                     .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
-                    .into_iter().rev()
+                    .into_iter()
+                    .rev()
                     .collect(),
             }
         } else {
             let query = query.filter(events::sn.lt(start_sn));
             match order_by {
                 EventOrderBy::StreamOrdering => query
-                    .order((events::stream_ordering.desc(),))
+                    .order(events::stream_ordering.desc())
                     .limit(utils::usize_to_i64(limit))
                     .select((events::id, events::sn))
                     .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
                     .into_iter()
                     .collect(),
                 EventOrderBy::TopologicalOrdering => query
-                    .order((events::topological_ordering.desc(),))
+                    .order(events::topological_ordering.desc())
                     .limit(utils::usize_to_i64(limit))
                     .select((events::id, events::sn))
                     .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
@@ -1080,7 +1082,9 @@ pub fn get_pdus(
         } else {
             break;
         };
-        println!("\n\n\n\n===========order_by: {order_by:?} dir: {dir:?} limit: {limit} since_sn:{since_sn} {events:#?}");
+        println!(
+            "\n\n\n\n===========order_by: {order_by:?} dir: {dir:?} limit: {limit} since_sn:{since_sn} {events:#?}"
+        );
         for (event_id, event_sn) in events {
             if let Ok(mut pdu) = get_pdu(&event_id)
                 && pdu.user_can_see(user_id)?
@@ -1088,6 +1092,7 @@ pub fn get_pdus(
                 if pdu.sender != user_id {
                     pdu.remove_transaction_id()?;
                 }
+                println!("===event {pdu:#?}");
                 pdu.add_age()?;
                 pdu.add_unsigned_membership(user_id)?;
                 list.insert(event_sn, pdu);

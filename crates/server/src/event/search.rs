@@ -158,7 +158,6 @@ fn calc_event_context(
         end: after_pdus.last().map(|(sn, _)| sn.to_string()),
         events_before: before_pdus
             .into_iter()
-            .rev()
             .map(|(_, pdu)| pdu.to_room_event())
             .collect(),
         events_after: after_pdus
