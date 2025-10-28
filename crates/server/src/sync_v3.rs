@@ -947,19 +947,21 @@ pub(crate) fn load_timeline(
     filter: Option<&RoomEventFilter>,
 ) -> AppResult<(IndexMap<Seqnum, SnPduEvent>, bool)> {
     let limit = filter.and_then(|f| f.limit).unwrap_or(10);
+    let mut is_backward = false;
     let mut timeline_pdus = if let Some(since_sn) = since_sn {
         if let Some(until_sn) = until_sn {
             let (min_sn, max_sn) = if until_sn > since_sn {
                 (since_sn, until_sn)
             } else {
+                is_backward = true;
                 (until_sn, since_sn)
             };
 
             timeline::get_pdus_backward(
                 user_id,
                 room_id,
-                min_sn,
-                Some(max_sn),
+                max_sn,
+                Some(min_sn),
                 filter,
                 limit + 1,
                 EventOrderBy::StreamOrdering,
@@ -968,8 +970,8 @@ pub(crate) fn load_timeline(
             timeline::get_pdus_backward(
                 user_id,
                 room_id,
-                since_sn,
-                None,
+                i64::MAX,
+                Some(since_sn),
                 filter,
                 limit + 1,
                 EventOrderBy::StreamOrdering,
@@ -988,11 +990,17 @@ pub(crate) fn load_timeline(
     };
 
     if timeline_pdus.len() > limit {
-        if let Some(key) = timeline_pdus.first().map(|(key, _)| key.clone()) {
+        if !is_backward {
+            timeline_pdus.pop();
+            timeline_pdus = timeline_pdus.into_iter().rev().collect();
+        } else if let Some(key) = timeline_pdus.first().map(|(key, _)| key.clone()) {
             timeline_pdus.shift_remove(&key);
         }
         Ok((timeline_pdus, true))
     } else {
+        if !is_backward {
+            timeline_pdus = timeline_pdus.into_iter().rev().collect();
+        }
         Ok((timeline_pdus, false))
     }
 }
