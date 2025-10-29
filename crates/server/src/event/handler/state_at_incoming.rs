@@ -49,6 +49,7 @@ pub(super) async fn state_at_incoming_resolved(
     let mut extremity_state_hashes = HashMap::new();
 
     let Ok(curr_frame_id) = room::get_frame_id(room_id, None) else {
+        println!("=======state_at_incoming_resolved  0");
         return Ok(IndexMap::new());
     };
     for prev_event_id in &incoming_pdu.prev_events {
@@ -68,6 +69,7 @@ pub(super) async fn state_at_incoming_resolved(
     let mut fork_states = Vec::with_capacity(extremity_state_hashes.len());
     let mut auth_chain_sets = Vec::with_capacity(extremity_state_hashes.len());
 
+    println!("========extremity_state_hashes: {extremity_state_hashes:#?}");
     for (sstate_hash, prev_event) in extremity_state_hashes {
         let mut leaf_state = state::get_full_state_ids(sstate_hash)?;
 
@@ -139,6 +141,7 @@ pub(super) async fn state_at_incoming_resolved(
     )
     .await;
     drop(state_lock);
+    println!("=======state_at_incoming_resolved  result: {result:?}");
 
     match result {
         Ok(new_state) => Ok(new_state

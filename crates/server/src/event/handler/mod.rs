@@ -140,6 +140,10 @@ pub(crate) async fn process_incoming_pdu(
     };
 
     if incoming_pdu.is_rejected || incoming_pdu.soft_failed {
+        println!(
+            "process_incoming_pdu  {event_id}       10 {:#?}",
+            incoming_pdu
+        );
         return Ok(());
     }
     check_room_id(room_id, &incoming_pdu)?;
@@ -197,6 +201,7 @@ pub(crate) async fn process_pulled_pdu(
         handler::acl_check(sender.server_name(), room_id)?;
     }
 
+    println!("======process_pulled_pdu 0");
     // 1. Skip the PDU if we already have it as a timeline event
     if state::get_pdu_frame_id(event_id).is_ok() {
         return Ok(());
@@ -216,6 +221,7 @@ pub(crate) async fn process_pulled_pdu(
     else {
         return Ok(());
     };
+    println!("======process_pulled_pdu 1");
     if incoming_pdu.is_rejected {
         return Ok(());
     }
@@ -227,13 +233,16 @@ pub(crate) async fn process_pulled_pdu(
         return Ok(());
     }
 
+    println!("======process_pulled_pdu 2");
     // Done with prev events, now handling the incoming event
     let start_time = Instant::now();
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
+    println!("======process_pulled_pdu 3");
     handler::process_to_timeline_pdu(incoming_pdu, val, origin, room_id).await?;
+    println!("======process_pulled_pdu 4");
     drop(event_guard);
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
@@ -395,9 +404,11 @@ fn process_to_outlier_pdu(
                     if *kind == core::error::ErrorKind::BadJson {
                         rejection_reason = Some(format!("failed to bad prev events: {}", e));
                     } else {
+                        println!("============  {event_id}  soft_failed true  4");
                         soft_failed = true;
                     }
                 } else {
+                    println!("============  {event_id}  soft_failed true  5  {e}");
                     soft_failed = true;
                 }
             }
@@ -413,6 +424,7 @@ fn process_to_outlier_pdu(
             match timeline::get_may_missing_pdus(room_id, &incoming_pdu.auth_events) {
                 Ok(s) => s,
                 Err(e) => {
+                    println!("============  {event_id}  soft_failed true  6");
                     soft_failed = true;
                     (vec![], vec![])
                 }
@@ -423,6 +435,7 @@ fn process_to_outlier_pdu(
                 if let Err(_e) =
                     fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id).await
                 {
+                    println!("============  {event_id}  soft_failed true  7");
                     soft_failed = true;
                 }
             } else {
@@ -434,6 +447,7 @@ fn process_to_outlier_pdu(
                 )
                 .await
                 {
+                    println!("============  {event_id}  soft_failed true  8");
                     soft_failed = true;
                 }
             }
@@ -528,6 +542,7 @@ fn process_to_outlier_pdu(
         .await
             && rejection_reason.is_none()
         {
+                    println!("============  {event_id}  soft_failed true  8");
             soft_failed = true;
             // rejection_reason = Some(e.to_string())
         };
@@ -591,6 +606,7 @@ pub async fn process_to_timeline_pdu(
     debug!("resolving state at event");
     let server_joined = crate::room::is_server_joined(crate::config::server_name(), room_id)?;
     if !server_joined {
+        println!("===========process_to_timeline_pdu  not joined 0");
         if let Some(state_key) = incoming_pdu.state_key.as_deref()
             && incoming_pdu.event_ty == TimelineEventType::RoomMember
             && state_key != incoming_pdu.sender().as_str() //????
@@ -647,21 +663,26 @@ pub async fn process_to_timeline_pdu(
                 disposed,
             } = state::save_state(room_id, Arc::new(new_room_state))?;
 
+            println!("===========process_to_timeline_pdu  not joined 2");
             state::force_state(room_id, frame_id, appended, disposed)?;
 
             debug!("appended incoming pdu");
+            println!("===========process_to_timeline_pdu  not joined 3");
             timeline::append_pdu(&incoming_pdu, json_data, extremities, &state_lock).await?;
+            println!("===========process_to_timeline_pdu  not joined 4");
             state::set_event_state(
                 &incoming_pdu.event_id,
                 incoming_pdu.event_sn,
                 &incoming_pdu.room_id,
                 compressed_state_ids,
             )?;
+            println!("===========process_to_timeline_pdu  not joined 5");
             drop(state_lock);
         }
         return Ok(());
     }
 
+    println!("===========process_to_timeline_pdu   joined 1");
     // let state_at_incoming_event = if incoming_pdu.prev_events.len() == 1 {
     //     state_at_incoming_degree_one(&incoming_pdu).await?
     // } else {
@@ -669,6 +690,7 @@ pub async fn process_to_timeline_pdu(
     // };
     let state_at_incoming_event =
         state_at_incoming_resolved(&incoming_pdu, room_id, &version_rules).await?;
+    println!("=========state_at_incoming_event: {state_at_incoming_event:#?}");
 
     // let state_at_incoming_event = match state_at_incoming_event {
     //     None => fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id)
@@ -680,46 +702,49 @@ pub async fn process_to_timeline_pdu(
     // };
 
     debug!("performing auth check");
-    // 11. Check the auth of the event passes based on the state of the event
-    event_auth::auth_check(
-        auth_rules,
-        &incoming_pdu,
-        &async |event_id| {
-            timeline::get_pdu(&event_id)
-                .map_err(|_| StateError::other("missing pdu in auth check event fetch"))
-        },
-        &async |k, s| {
-            let Ok(state_key_id) = state::get_field_id(&k.to_string().into(), &s) else {
-                error!("missing field id for state type: {k}, state_key: {s}");
-                return Err(StateError::other(format!(
-                    "missing field id for state type: {k}, state_key: {s}"
-                )));
-            };
+    if !state_at_incoming_event.is_empty() {
+        // 11. Check the auth of the event passes based on the state of the event
+        event_auth::auth_check(
+            auth_rules,
+            &incoming_pdu,
+            &async |event_id| {
+                timeline::get_pdu(&event_id)
+                    .map_err(|_| StateError::other("missing pdu in auth check event fetch"))
+            },
+            &async |k, s| {
+                let Ok(state_key_id) = state::get_field_id(&k.to_string().into(), &s) else {
+                    error!("missing field id for state type: {k}, state_key: {s}");
+                    return Err(StateError::other(format!(
+                        "missing field id for state type: {k}, state_key: {s}"
+                    )));
+                };
 
-            match state_at_incoming_event.get(&state_key_id) {
-                Some(event_id) => match timeline::get_pdu(event_id) {
-                    Ok(pdu) => Ok(pdu),
-                    Err(e) => {
-                        error!("failed to get pdu for state resolution: {}", e);
+                match state_at_incoming_event.get(&state_key_id) {
+                    Some(event_id) => match timeline::get_pdu(event_id) {
+                        Ok(pdu) => Ok(pdu),
+                        Err(e) => {
+                            error!("failed to get pdu for state resolution: {}", e);
+                            Err(StateError::other(format!(
+                                "failed to get pdu for state resolution: {}",
+                                e
+                            )))
+                        }
+                    },
+                    None => {
+                        error!(
+                            "missing state key id {state_key_id} for state type: {k}, state_key: {s}, room: {room_id}"
+                        );
                         Err(StateError::other(format!(
-                            "failed to get pdu for state resolution: {}",
-                            e
+                            "missing state key id {state_key_id} for state type: {k}, state_key: {s}, room: {room_id}"
                         )))
                     }
-                },
-                None => {
-                    error!(
-                        "missing state key id {state_key_id} for state type: {k}, state_key: {s}, room: {room_id}"
-                    );
-                    Err(StateError::other(format!(
-                        "missing state key id {state_key_id} for state type: {k}, state_key: {s}, room: {room_id}"
-                    )))
                 }
-            }
-        },
-    )
-    .await?;
-    debug!("auth check succeeded");
+            },
+        )
+        .await?;
+        println!("===========process_to_timeline_pdu   joined 2");
+        debug!("auth check succeeded");
+    }
 
     debug!("gathering auth events");
     let auth_events = state::get_auth_events(
@@ -730,11 +755,12 @@ pub async fn process_to_timeline_pdu(
         &incoming_pdu.content,
         auth_rules,
     )?;
+    println!("===========process_to_timeline_pdu   joined 3");
     event_auth::auth_check(
         auth_rules,
         &incoming_pdu,
         &async |event_id| {
-            timeline::get_pdu(&event_id).map_err(|_| StateError::other("missing PDU 3"))
+            timeline::get_pdu(&event_id).map_err(|_| StateError::other("missing pdu 3"))
         },
         &async |k, s| {
             if let Some(pdu) = auth_events.get(&(k.clone(), s.to_string())).cloned() {
@@ -757,6 +783,7 @@ pub async fn process_to_timeline_pdu(
     )
     .await?;
 
+    println!("===========process_to_timeline_pdu   joined 4");
     // Soft fail check before doing state res
     debug!("performing soft-fail check");
     let soft_fail = match incoming_pdu.redacts_id(room_version_id) {
@@ -772,6 +799,7 @@ pub async fn process_to_timeline_pdu(
         }
     };
 
+    println!("===========process_to_timeline_pdu   joined 5");
     // 13. Use state resolution to find new room state
     let state_lock = crate::room::lock_state(room_id).await;
 
@@ -790,6 +818,7 @@ pub async fn process_to_timeline_pdu(
         }
     }
 
+    println!("===========process_to_timeline_pdu   joined 6");
     // Only keep those extremities were not referenced yet
     // extremities.retain(|id| !matches!(crate::room::pdu_metadata::is_event_referenced(room_id, id), Ok(true)));
 
@@ -807,7 +836,9 @@ pub async fn process_to_timeline_pdu(
             .collect::<AppResult<_>>()?,
     );
 
+    println!("===========process_to_timeline_pdu   joined 7");
     let guards = if let Some(state_key) = &incoming_pdu.state_key {
+        println!("===========process_to_timeline_pdu   joined 7.1");
         debug!("preparing for stateres to derive new room state");
 
         // We also add state after incoming event to the fork states
@@ -829,9 +860,11 @@ pub async fn process_to_timeline_pdu(
         state::force_state(room_id, frame_id, appended, disposed)?;
         guards
     } else {
+        println!("===========process_to_timeline_pdu   joined 7.2");
         vec![]
     };
 
+    println!("===========process_to_timeline_pdu   joined 8");
     // Now that the event has passed all auth it is added into the timeline.
     // We use the `state_at_event` instead of `state_after` so we accurately
     // represent the state for this event.
@@ -858,6 +891,7 @@ pub async fn process_to_timeline_pdu(
             compressed_state_ids,
         )?;
     }
+    println!("===========process_to_timeline_pdu   joined 9");
     drop(guards);
 
     // Event has passed all auth/stateres checks
@@ -1159,6 +1193,7 @@ pub async fn fetch_and_process_missing_prev_events(
         .ok()
         .and_then(|pdu| pdu.map(|p| p.depth))
         .unwrap_or(0);
+    println!("==============min depth: {min_depth}");
     let forward_extremities = room::state::get_forward_extremities(room_id)?;
     let mut fetched_events = IndexMap::with_capacity(10);
 
@@ -1187,6 +1222,7 @@ pub async fn fetch_and_process_missing_prev_events(
             continue;
         }
 
+        println!("==============missing_events: {missing_events:?}");
         let request = missing_events_request(
             &origin.origin().await,
             room_id,
@@ -1211,6 +1247,7 @@ pub async fn fetch_and_process_missing_prev_events(
                 continue;
             }
 
+            println!("====event_id 0 {event_id:?}");
             if fetched_events.contains_key(&event_id)
                 || missing_stack.contains_key(&event_id)
                 || incoming_pdu.event_id == event_id
@@ -1257,6 +1294,7 @@ pub async fn fetch_and_process_missing_prev_events(
         }
 
         for event_id in missing_events {
+            println!("====event_id 1 {event_id:?}");
             if let Ok(state) = fetch_state(origin, room_id, &room_version_id, &event_id).await {
                 known_events.extend(state.into_values());
             }
@@ -1271,6 +1309,7 @@ pub async fn fetch_and_process_missing_prev_events(
     });
     Box::pin(async move {
         for (event_id, event_val) in fetched_events {
+            println!("====event_id 2 {event_id:?}");
             if !diesel_exists!(
                 events::table
                     .filter(events::id.eq(&event_id))
