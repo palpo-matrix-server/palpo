@@ -1032,22 +1032,38 @@ pub(crate) fn load_timeline(
             );
             timeline_pdus = timeline_pdus
                 .into_iter()
-                .filter(|(sn, _)| sn > &gap_sn)
+                .filter(|(sn, _)| sn >= &gap_sn)
                 .collect();
-            limited = true;
+            if timeline_pdus.len() > 1 {
+                timeline_pdus.pop();
+                limited = false;
+            } else {
+                limited = true;
+            }
             prev_batch = Some(gap_sn);
             next_batch = timeline_pdus.first().map(|(sn, _)| *sn + 1);
+            tokio::spawn(async move {
+                let _ = crate::event::handler::fill_timeline_gap(gap_sn).await;
+            });
         }
     } else {
         let min_sn = pdu_sns.iter().min().cloned().unwrap_or_default();
         if let Ok(Some(gap_sn)) = data::room::get_timeline_forward_gap(room_id, min_sn) {
             timeline_pdus = timeline_pdus
                 .into_iter()
-                .filter(|(sn, _)| sn < &gap_sn)
+                .filter(|(sn, _)| sn <= &gap_sn)
                 .collect();
-            limited = true;
+            if timeline_pdus.len() > 1 {
+                timeline_pdus.pop();
+                limited = false;
+            } else {
+                limited = true;
+            }
             prev_batch = Some(gap_sn);
             next_batch = timeline_pdus.last().map(|(sn, _)| *sn + 1);
+            tokio::spawn(async move {
+                let _ = crate::event::handler::fill_timeline_gap(gap_sn).await;
+            });
         }
     }
     if prev_batch.is_none() {

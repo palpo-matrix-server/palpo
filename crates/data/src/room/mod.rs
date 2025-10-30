@@ -428,16 +428,14 @@ pub fn add_timeline_gaps(room_id: &RoomId, event_sns: &[Seqnum]) -> DataResult<(
         .execute(&mut connect()?)?;
     Ok(())
 }
-pub fn remove_timeline_gap(room_id: &RoomId, event_sn: Seqnum) -> DataResult<()> {
+pub fn remove_timeline_gap(event_sn: Seqnum) -> DataResult<()> {
     diesel::delete(timeline_gaps::table)
-        .filter(timeline_gaps::room_id.eq(room_id))
         .filter(timeline_gaps::event_sn.eq(event_sn))
         .execute(&mut connect()?)?;
     Ok(())
 }
-pub fn remove_timeline_gaps(room_id: &RoomId, event_sns: &[Seqnum]) -> DataResult<()> {
+pub fn remove_timeline_gaps(event_sns: &[Seqnum]) -> DataResult<()> {
     diesel::delete(timeline_gaps::table)
-        .filter(timeline_gaps::room_id.eq(room_id))
         .filter(timeline_gaps::event_sn.eq_any(event_sns))
         .execute(&mut connect()?)?;
     Ok(())

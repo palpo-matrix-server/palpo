@@ -13,6 +13,7 @@ use diesel::prelude::*;
 pub use fetch_state::{fetch_state, fetch_state_ids};
 use indexmap::IndexMap;
 use palpo_core::state::Event;
+use palpo_data::schema::banned_rooms::room_id;
 use state_at_incoming::state_at_incoming_resolved;
 
 use crate::core::events::StateEventType;
@@ -904,6 +905,32 @@ pub async fn process_to_timeline_pdu(
 
     // Event has passed all auth/stateres checks
     drop(state_lock);
+    Ok(())
+}
+
+pub async fn fill_timeline_gap(event_sn: Seqnum) -> AppResult<()> {
+    let (room_id, event_id) = events::table
+        .filter(events::event_sn.eq(event_sn))
+        .select((events::room_id, events::id))
+        .first::<(OwnedRoomId, OwnedEventId)>(&mut connect()?)?;
+    let room_version_id = &room::get_version(&room_id)?;
+    let server_name = crate::room::server_name(&room_id)?;
+    if let Ok(pdu) = timeline::get_pdu(&event_id) {
+        info!("filling timeline gap with {}", event_id);
+        if let Err(e) = fetch_and_process_missing_prev_events(
+            &server_name,
+            &room_id,
+            room_version_id,
+            &pdu,
+            &mut Default::default(),
+        )
+        .await
+        {
+            error!("failed to fill timeline gap: {}", e);
+        } else {
+            data::room::remove_timeline_gap(event_sn)?;
+        }
+    }
     Ok(())
 }
 
