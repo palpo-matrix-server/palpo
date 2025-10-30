@@ -108,6 +108,7 @@ pub enum PushCondition {
     },
 
     /// Apply the rule only to rooms that support a given feature.
+    #[cfg(feature = "unstable-msc3931")]
     RoomVersionSupports {
         /// The feature the room must support for the push rule to apply.
         feature: RoomVersionFeature,
@@ -223,6 +224,7 @@ impl PushCondition {
                 }
             }
 
+            #[cfg(feature = "unstable-msc3931")]
             Self::RoomVersionSupports { feature } => match feature {
                 RoomVersionFeature::ExtensibleEvents => context
                     .supported_features
@@ -302,6 +304,7 @@ pub struct PushConditionRoomCtx {
     pub power_levels: Option<PushConditionPowerLevelsCtx>,
 
     /// The list of features this room's version or the room itself supports.
+    #[cfg(feature = "unstable-msc3931")]
     pub supported_features: Vec<RoomVersionFeature>,
 
     /// A closure that returns a future indicating if the given thread (represented by its thread

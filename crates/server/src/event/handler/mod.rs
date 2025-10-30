@@ -32,7 +32,7 @@ use crate::core::state::{StateError, StateMap, event_auth};
 use crate::core::{self, Seqnum, UnixMillis};
 use crate::data::room::{DbEvent, DbEventData, NewDbEvent};
 use crate::data::schema::*;
-use crate::data::{connect, diesel_exists};
+use crate::data::{self, connect, diesel_exists};
 use crate::event::{PduEvent, SnPduEvent, ensure_event_sn, handler};
 use crate::room::state::{CompressedState, DbRoomStateField, DeltaInfo};
 use crate::room::{state, timeline};
@@ -201,7 +201,6 @@ pub(crate) async fn process_pulled_pdu(
         handler::acl_check(sender.server_name(), room_id)?;
     }
 
-    println!("======process_pulled_pdu 0");
     // 1. Skip the PDU if we already have it as a timeline event
     if state::get_pdu_frame_id(event_id).is_ok() {
         return Ok(());
@@ -221,7 +220,6 @@ pub(crate) async fn process_pulled_pdu(
     else {
         return Ok(());
     };
-    println!("======process_pulled_pdu 1");
     if incoming_pdu.is_rejected {
         return Ok(());
     }
@@ -233,16 +231,13 @@ pub(crate) async fn process_pulled_pdu(
         return Ok(());
     }
 
-    println!("======process_pulled_pdu 2");
     // Done with prev events, now handling the incoming event
     let start_time = Instant::now();
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
-    println!("======process_pulled_pdu 3");
     handler::process_to_timeline_pdu(incoming_pdu, val, origin, room_id).await?;
-    println!("======process_pulled_pdu 4");
     drop(event_guard);
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
@@ -404,11 +399,9 @@ fn process_to_outlier_pdu(
                     if *kind == core::error::ErrorKind::BadJson {
                         rejection_reason = Some(format!("failed to bad prev events: {}", e));
                     } else {
-                        println!("============  {event_id}  soft_failed true  4");
                         soft_failed = true;
                     }
                 } else {
-                    println!("============  {event_id}  soft_failed true  5  {e}");
                     soft_failed = true;
                 }
             }
@@ -424,7 +417,6 @@ fn process_to_outlier_pdu(
             match timeline::get_may_missing_pdus(room_id, &incoming_pdu.auth_events) {
                 Ok(s) => s,
                 Err(e) => {
-                    println!("============  {event_id}  soft_failed true  6");
                     soft_failed = true;
                     (vec![], vec![])
                 }
@@ -435,7 +427,6 @@ fn process_to_outlier_pdu(
                 if let Err(_e) =
                     fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id).await
                 {
-                    println!("============  {event_id}  soft_failed true  7");
                     soft_failed = true;
                 }
             } else {
@@ -447,7 +438,6 @@ fn process_to_outlier_pdu(
                 )
                 .await
                 {
-                    println!("============  {event_id}  soft_failed true  8");
                     soft_failed = true;
                 }
             }
@@ -542,7 +532,6 @@ fn process_to_outlier_pdu(
         .await
             && rejection_reason.is_none()
         {
-                    println!("============  {event_id}  soft_failed true  8");
             soft_failed = true;
             // rejection_reason = Some(e.to_string())
         };
@@ -566,6 +555,25 @@ fn process_to_outlier_pdu(
             format_version: None,
         }
         .save()?;
+
+        if !fetch_missing_prev_events {
+            let existed_events = events::table
+                .filter(events::id.eq_any(&incoming_pdu.prev_events))
+                .select(events::id)
+                .load::<OwnedEventId>(&mut connect()?)?;
+            let missing_events = incoming_pdu
+                .prev_events
+                .iter()
+                .filter(|id| !known_events.contains(*id) && !existed_events.contains(id))
+                .collect::<Vec<_>>();
+            if !missing_events.is_empty() {
+                data::room::add_timeline_gap(&incoming_pdu.room_id, event_sn)?;
+            }
+        }
+        //  else {
+        //TODO: how to remove timeline gap?
+        //     data::room::remove_timeline_gap(&incoming_pdu.room_id, event_sn)?;
+        // }
 
         incoming_pdu.soft_failed = soft_failed;
         incoming_pdu.is_rejected = rejection_reason.is_some();
@@ -1193,7 +1201,6 @@ pub async fn fetch_and_process_missing_prev_events(
         .ok()
         .and_then(|pdu| pdu.map(|p| p.depth))
         .unwrap_or(0);
-    println!("==============min depth: {min_depth}");
     let forward_extremities = room::state::get_forward_extremities(room_id)?;
     let mut fetched_events = IndexMap::with_capacity(10);
 
@@ -1222,7 +1229,6 @@ pub async fn fetch_and_process_missing_prev_events(
             continue;
         }
 
-        println!("==============missing_events: {missing_events:?}");
         let request = missing_events_request(
             &origin.origin().await,
             room_id,
@@ -1247,7 +1253,6 @@ pub async fn fetch_and_process_missing_prev_events(
                 continue;
             }
 
-            println!("====event_id 0 {event_id:?}");
             if fetched_events.contains_key(&event_id)
                 || missing_stack.contains_key(&event_id)
                 || incoming_pdu.event_id == event_id
@@ -1294,7 +1299,6 @@ pub async fn fetch_and_process_missing_prev_events(
         }
 
         for event_id in missing_events {
-            println!("====event_id 1 {event_id:?}");
             if let Ok(state) = fetch_state(origin, room_id, &room_version_id, &event_id).await {
                 known_events.extend(state.into_values());
             }
@@ -1309,7 +1313,6 @@ pub async fn fetch_and_process_missing_prev_events(
     });
     Box::pin(async move {
         for (event_id, event_val) in fetched_events {
-            println!("====event_id 2 {event_id:?}");
             if !diesel_exists!(
                 events::table
                     .filter(events::id.eq(&event_id))

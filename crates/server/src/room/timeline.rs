@@ -1083,11 +1083,9 @@ pub fn get_pdus(
             break;
         };
         for (event_id, event_sn) in events {
-            println!("==============get event_id: {}  {:?}", event_id, get_pdu(&event_id));
             if let Ok(mut pdu) = get_pdu(&event_id)
                 && pdu.user_can_see(user_id)?
             {
-                println!("mmmmmmmmmmmmmmmm");
                 if pdu.sender != user_id {
                     pdu.remove_transaction_id()?;
                 }

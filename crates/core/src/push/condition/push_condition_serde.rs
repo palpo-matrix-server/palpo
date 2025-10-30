@@ -91,7 +91,7 @@ enum PushConditionSerDeHelper {
     },
 
     /// Apply the rule only to rooms that support a given feature.
-
+    #[cfg(feature = "unstable-msc3931")]
     #[serde(rename = "org.matrix.msc3931.room_version_supports")]
     RoomVersionSupports {
         /// The feature the room must support for the push rule to apply.
@@ -132,7 +132,7 @@ impl From<PushConditionSerDeHelper> for PushCondition {
             PushConditionSerDeHelper::SenderNotificationPermission { key } => {
                 Self::SenderNotificationPermission { key }
             }
-
+            #[cfg(feature = "unstable-msc3931")]
             PushConditionSerDeHelper::RoomVersionSupports { feature } => {
                 Self::RoomVersionSupports { feature }
             }
@@ -160,7 +160,7 @@ impl From<PushCondition> for PushConditionSerDeHelper {
             PushCondition::SenderNotificationPermission { key } => {
                 Self::SenderNotificationPermission { key }
             }
-
+            #[cfg(feature = "unstable-msc3931")]
             PushCondition::RoomVersionSupports { feature } => Self::RoomVersionSupports { feature },
             PushCondition::EventPropertyIs { key, value } => Self::EventPropertyIs { key, value },
             PushCondition::EventPropertyContains { key, value } => {

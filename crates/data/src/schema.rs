@@ -750,6 +750,17 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
+    timeline_gaps (id) {
+        id -> Int8,
+        room_id -> Text,
+        event_sn -> Int8,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     user_access_tokens (id) {
         id -> Int8,
         user_id -> Text,
@@ -1074,6 +1085,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     threepid_id_servers,
     threepid_validation_sessions,
     threepid_validation_tokens,
+    timeline_gaps,
     user_access_tokens,
     user_datas,
     user_dehydrated_devices,
