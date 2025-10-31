@@ -427,6 +427,7 @@ pub fn public_room_ids() -> AppResult<Vec<OwnedRoomId>> {
     rooms::table
         .filter(rooms::is_public.eq(true))
         .select(rooms::id)
+        .order_by(rooms::sn.desc())
         .load(&mut connect()?)
         .map_err(Into::into)
 }

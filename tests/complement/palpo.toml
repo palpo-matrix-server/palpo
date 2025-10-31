@@ -61,7 +61,7 @@ federation_retries = 4
 federation_timeout = 2_500
 
 [logger]
-level = "warn,palpo=info,salvo=error"
+level = "warn,palpo=warn,salvo=error"
 format = "pretty" # pretty, json
 ansi_colors = false
 
