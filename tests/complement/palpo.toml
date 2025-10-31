@@ -43,10 +43,9 @@ appservice_registration_dir = "/complement/appservice"
 
 ip_range_denylist = []
 
-
 [db]
 url = "postgres://postgres:postgres@127.0.0.1:5432/palpo"
-pool_size = 1
+pool_size = 10
 
 [presence]
 allow_local = true

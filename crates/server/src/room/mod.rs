@@ -19,6 +19,7 @@ use crate::core::events::room::join_rule::RoomJoinRulesEventContent;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::room::name::RoomNameEventContent;
 use crate::core::events::room::power_levels::{RoomPowerLevels, RoomPowerLevelsEventContent};
+use crate::core::events::room::topic::RoomTopicEventContent;
 use crate::core::identifiers::*;
 use crate::core::room::{JoinRule, RoomType};
 use crate::core::room_version_rules::RoomVersionRules;
@@ -547,8 +548,10 @@ pub fn get_member(room_id: &RoomId, user_id: &UserId) -> AppResult<RoomMemberEve
     )
 }
 pub fn get_topic(room_id: &RoomId) -> AppResult<String> {
-    get_state_content::<RoomNameEventContent>(room_id, &StateEventType::RoomTopic, "", None)
-        .map(|c| c.name)
+    get_topic_content(room_id).map(|c| c.topic)
+}
+pub fn get_topic_content(room_id: &RoomId) -> AppResult<RoomTopicEventContent> {
+    get_state_content::<RoomTopicEventContent>(room_id, &StateEventType::RoomTopic, "", None)
 }
 pub fn get_canonical_alias(room_id: &RoomId) -> AppResult<Option<OwnedRoomAliasId>> {
     get_state_content::<RoomCanonicalAliasEventContent>(

@@ -149,7 +149,6 @@ pub fn set_event_state(
 ) -> AppResult<i64> {
     let prev_frame_id = get_room_frame_id(room_id, None).ok();
     let hash_data = utils::hash_keys(state_ids_compressed.iter().map(|s| &s[..]));
-    println!("============set event state for event: {} ", event_id);
     if let Ok(frame_id) = get_frame_id(room_id, &hash_data) {
         update_frame_id(event_id, frame_id)?;
         Ok(frame_id)
@@ -197,7 +196,6 @@ pub fn set_event_state(
 /// to `stateid_pduid` and adds the incoming event to `eventid_state_hash`.
 #[tracing::instrument(skip(new_pdu))]
 pub fn append_to_state(new_pdu: &SnPduEvent) -> AppResult<i64> {
-    println!("=========append_to_state : {}", new_pdu.event_id);
     let prev_frame_id = get_room_frame_id(&new_pdu.room_id, None).ok();
 
     if let Some(state_key) = &new_pdu.state_key {
@@ -624,11 +622,6 @@ pub fn save_state(
         (frame_id, false)
     };
 
-    println!(
-        "===========save_state  0  {new_frame_id}  prev_frame_id: {:?} ",
-        prev_frame_id
-    );
-
     if Some(new_frame_id) == prev_frame_id {
         return Ok(DeltaInfo {
             frame_id: new_frame_id,
@@ -637,7 +630,6 @@ pub fn save_state(
         });
     }
     for new_compressed_event in new_compressed_events.iter() {
-        println!("============new_compressed_event   {:?} ", new_frame_id);
         update_frame_id_by_sn(new_compressed_event.event_sn(), new_frame_id)?;
     }
 
@@ -660,9 +652,7 @@ pub fn save_state(
         (new_compressed_events, Arc::new(CompressedState::new()))
     };
 
-    println!("?================frame_existed: {} ", frame_existed);
     if !frame_existed {
-        println!("zzzzzzzzzzzzz");
         calc_and_save_state_delta(
             room_id,
             new_frame_id,
