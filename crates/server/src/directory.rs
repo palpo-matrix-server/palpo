@@ -67,7 +67,12 @@ fn get_local_public_rooms(
         }
     }
 
-    let mut all_rooms: Vec<_> = room::public_room_ids()?
+    let search_term = filter
+        .generic_search_term
+        .as_ref()
+        .map(|q| q.to_lowercase());
+    let public_room_ids = room::public_room_ids()?;
+    let mut all_rooms: Vec<_> = public_room_ids
         .into_iter()
         .map(|room_id| {
             let chunk = PublicRoomsChunk {
@@ -101,25 +106,26 @@ fn get_local_public_rooms(
         })
         .filter_map(|r: AppResult<_>| r.ok()) // Filter out buggy rooms
         .filter(|chunk| {
-            if let Some(query) = filter
-                .generic_search_term
-                .as_ref()
-                .map(|q| q.to_lowercase())
-            {
+            println!("Searching chunk: {:?}", chunk);
+            if let Some(search_term) = &search_term {
+                println!("Searching for term: {:?}", search_term);
                 if let Some(name) = &chunk.name
-                    && name.as_str().to_lowercase().contains(&query)
+                    && name.as_str().to_lowercase().contains(search_term)
                 {
                     return true;
                 }
 
                 if let Some(topic) = &chunk.topic
-                    && topic.to_lowercase().contains(&query)
+                    && topic.to_lowercase().contains(search_term)
                 {
                     return true;
                 }
 
                 if let Some(canonical_alias) = &chunk.canonical_alias
-                    && canonical_alias.as_str().to_lowercase().contains(&query)
+                    && canonical_alias
+                        .as_str()
+                        .to_lowercase()
+                        .contains(search_term)
                 {
                     return true;
                 }

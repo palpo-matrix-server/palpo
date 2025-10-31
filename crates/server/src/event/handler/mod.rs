@@ -680,46 +680,48 @@ pub async fn process_to_timeline_pdu(
     // };
 
     debug!("performing auth check");
-    // 11. Check the auth of the event passes based on the state of the event
-    event_auth::auth_check(
-        auth_rules,
-        &incoming_pdu,
-        &async |event_id| {
-            timeline::get_pdu(&event_id)
-                .map_err(|_| StateError::other("missing pdu in auth check event fetch"))
-        },
-        &async |k, s| {
-            let Ok(state_key_id) = state::get_field_id(&k.to_string().into(), &s) else {
-                error!("missing field id for state type: {k}, state_key: {s}");
-                return Err(StateError::other(format!(
-                    "missing field id for state type: {k}, state_key: {s}"
-                )));
-            };
+    if !state_at_incoming_event.is_empty() {
+        // 11. Check the auth of the event passes based on the state of the event
+        event_auth::auth_check(
+            auth_rules,
+            &incoming_pdu,
+            &async |event_id| {
+                timeline::get_pdu(&event_id)
+                    .map_err(|_| StateError::other("missing pdu in auth check event fetch"))
+            },
+            &async |k, s| {
+                let Ok(state_key_id) = state::get_field_id(&k.to_string().into(), &s) else {
+                    error!("missing field id for state type: {k}, state_key: {s}");
+                    return Err(StateError::other(format!(
+                        "missing field id for state type: {k}, state_key: {s}"
+                    )));
+                };
 
-            match state_at_incoming_event.get(&state_key_id) {
-                Some(event_id) => match timeline::get_pdu(event_id) {
-                    Ok(pdu) => Ok(pdu),
-                    Err(e) => {
-                        error!("failed to get pdu for state resolution: {}", e);
+                match state_at_incoming_event.get(&state_key_id) {
+                    Some(event_id) => match timeline::get_pdu(event_id) {
+                        Ok(pdu) => Ok(pdu),
+                        Err(e) => {
+                            error!("failed to get pdu for state resolution: {}", e);
+                            Err(StateError::other(format!(
+                                "failed to get pdu for state resolution: {}",
+                                e
+                            )))
+                        }
+                    },
+                    None => {
+                        error!(
+                            "missing state key id {state_key_id} for state type: {k}, state_key: {s}, room: {room_id}"
+                        );
                         Err(StateError::other(format!(
-                            "failed to get pdu for state resolution: {}",
-                            e
+                            "missing state key id {state_key_id} for state type: {k}, state_key: {s}, room: {room_id}"
                         )))
                     }
-                },
-                None => {
-                    error!(
-                        "missing state key id {state_key_id} for state type: {k}, state_key: {s}, room: {room_id}"
-                    );
-                    Err(StateError::other(format!(
-                        "missing state key id {state_key_id} for state type: {k}, state_key: {s}, room: {room_id}"
-                    )))
                 }
-            }
-        },
-    )
-    .await?;
-    debug!("auth check succeeded");
+            },
+        )
+        .await?;
+        debug!("auth check succeeded");
+    }
 
     debug!("gathering auth events");
     let auth_events = state::get_auth_events(
@@ -734,7 +736,7 @@ pub async fn process_to_timeline_pdu(
         auth_rules,
         &incoming_pdu,
         &async |event_id| {
-            timeline::get_pdu(&event_id).map_err(|_| StateError::other("missing PDU 3"))
+            timeline::get_pdu(&event_id).map_err(|_| StateError::other("missing pdu 3"))
         },
         &async |k, s| {
             if let Some(pdu) = auth_events.get(&(k.clone(), s.to_string())).cloned() {
