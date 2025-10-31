@@ -50,6 +50,10 @@ test_packages=(
     # ./tests/msc4306
 )
 
+export COMPLEMENT_ENABLE_DIRTY_RUNS=1
+export COMPLEMENT_ALWAYS_PRINT_SERVER_LOGS=0
+export COMPLEMENT_BASE_IMAGE="$TEST_IMAGE"
+
 # env \
 #     -C "$COMPLEMENT_SRC" \
 #     COMPLEMENT_ALWAYS_PRINT_SERVER_LOGS=1 \
@@ -57,9 +61,7 @@ test_packages=(
 #     go test -tags="palpo_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 2h -json "${test_packages[@]}"| tee "$LOG_FILE.jsonl"
 # set -o pipefail
 
-env \
-    -C "$COMPLEMENT_SRC" \
-    COMPLEMENT_BASE_IMAGE="$TEST_IMAGE" \
+env -C "$COMPLEMENT_SRC" \
     go test -tags="palpo_blacklist" -count=1 "$SKIPPED_COMPLEMENT_TESTS" -timeout 2h -json "${test_packages[@]}"| tee "$LOG_FILE.jsonl"
 set -o pipefail
 

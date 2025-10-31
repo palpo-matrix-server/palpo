@@ -152,7 +152,8 @@ async fn set_avatar_url(
     let query = user_profiles::table
         .filter(user_profiles::user_id.eq(&user_id))
         .filter(user_profiles::room_id.is_null());
-    if diesel_exists!(query, &mut connect()?)? {
+    let profile_exists = diesel_exists!(query, &mut connect()?)?;
+    if profile_exists {
         #[derive(AsChangeset, Debug)]
         #[diesel(table_name = user_profiles, treat_none_as_null = true)]
         struct UpdateParams {
