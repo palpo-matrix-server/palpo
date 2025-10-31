@@ -1039,12 +1039,12 @@ pub(crate) fn load_timeline(
                 limited = false;
             } else {
                 limited = true;
+                tokio::spawn(async move {
+                    let _ = crate::event::handler::fill_timeline_gap(gap_sn).await;
+                });
             }
             prev_batch = Some(gap_sn);
             next_batch = timeline_pdus.first().map(|(sn, _)| *sn + 1);
-            tokio::spawn(async move {
-                let _ = crate::event::handler::fill_timeline_gap(gap_sn).await;
-            });
         }
     } else {
         let min_sn = pdu_sns.iter().min().cloned().unwrap_or_default();
@@ -1058,12 +1058,12 @@ pub(crate) fn load_timeline(
                 limited = false;
             } else {
                 limited = true;
+                tokio::spawn(async move {
+                    let _ = crate::event::handler::fill_timeline_gap(gap_sn).await;
+                });
             }
             prev_batch = Some(gap_sn);
             next_batch = timeline_pdus.last().map(|(sn, _)| *sn + 1);
-            tokio::spawn(async move {
-                let _ = crate::event::handler::fill_timeline_gap(gap_sn).await;
-            });
         }
     }
     if prev_batch.is_none() {
