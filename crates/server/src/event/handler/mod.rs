@@ -907,30 +907,6 @@ pub async fn process_to_timeline_pdu(
     Ok(())
 }
 
-pub async fn fill_timeline_gap(event_sn: Seqnum) -> AppResult<()> {
-    let (room_id, event_id) = events::table
-        .filter(events::sn.eq(event_sn))
-        .select((events::room_id, events::id))
-        .first::<(OwnedRoomId, OwnedEventId)>(&mut connect()?)?;
-    let room_version_id = &room::get_version(&room_id)?;
-    if let Ok(pdu) = timeline::get_pdu(&event_id) {
-        info!("filling timeline gap with {}", event_id);
-        if let Err(e) = fetch_and_process_missing_prev_events(
-            pdu.sender().server_name(),
-            &room_id,
-            room_version_id,
-            &pdu,
-            &mut Default::default(),
-        )
-        .await
-        {
-            error!("failed to fill timeline gap: {}", e);
-        } else {
-            data::room::remove_timeline_gap(event_sn)?;
-        }
-    }
-    Ok(())
-}
 
 async fn resolve_state(
     room_id: &RoomId,

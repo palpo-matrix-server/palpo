@@ -1039,11 +1039,8 @@ pub(crate) fn load_timeline(
                 limited = false;
             } else {
                 limited = true;
-                tokio::spawn(async move {
-                    let _ = crate::event::handler::fill_timeline_gap(gap_sn).await;
-                });
             }
-            prev_batch = Some(gap_sn);
+            prev_batch = timeline_pdus.last().map(|(sn, _)| *sn);
             next_batch = timeline_pdus.first().map(|(sn, _)| *sn + 1);
         }
     } else {
@@ -1058,11 +1055,8 @@ pub(crate) fn load_timeline(
                 limited = false;
             } else {
                 limited = true;
-                tokio::spawn(async move {
-                    let _ = crate::event::handler::fill_timeline_gap(gap_sn).await;
-                });
             }
-            prev_batch = Some(gap_sn);
+            prev_batch = timeline_pdus.first().map(|(sn, _)| *sn);
             next_batch = timeline_pdus.last().map(|(sn, _)| *sn + 1);
         }
     }
