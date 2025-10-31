@@ -46,7 +46,6 @@ fn get_local_public_rooms(
     filter: &PublicRoomFilter,
     _network: &RoomNetwork,
 ) -> AppResult<PublicRoomsResBody> {
-    println!("===============get_local_public_rooms");
     let limit = limit.unwrap_or(10);
     let mut num_since = 0_u64;
 
