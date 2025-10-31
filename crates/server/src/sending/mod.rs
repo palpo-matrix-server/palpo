@@ -537,9 +537,10 @@ where
 }
 
 fn active_requests() -> AppResult<Vec<(i64, OutgoingKind, SendingEventType)>> {
-    Ok(outgoing_requests::table
+    let outgoing_requests = outgoing_requests::table
         .filter(outgoing_requests::state.eq("pending"))
-        .load::<DbOutgoingRequest>(&mut connect()?)?
+        .load::<DbOutgoingRequest>(&mut connect()?)?;
+    Ok(outgoing_requests
         .into_iter()
         .filter_map(|item| {
             let kind = match item.kind.as_str() {

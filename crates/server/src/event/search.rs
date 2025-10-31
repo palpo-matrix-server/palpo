@@ -15,7 +15,7 @@ use crate::core::serde::canonical_json::CanonicalJsonValue;
 use crate::data::full_text_search::*;
 use crate::data::schema::*;
 use crate::data::{self, connect};
-use crate::room::{state, EventOrderBy, timeline};
+use crate::room::{EventOrderBy, state, timeline};
 use crate::{AppResult, MatrixError, SnPduEvent};
 
 pub fn search_pdus(
@@ -77,9 +77,9 @@ pub fn search_pdus(
             .then_order_by(event_searches::event_sn.desc())
             .load::<(f32, OwnedEventId, i64, i64)>(&mut connect()?)?
     };
-    let _ids: Vec<i64> = event_searches::table
-        .select(event_searches::id)
-        .load(&mut connect()?)?;
+    // let _ids: Vec<i64> = event_searches::table
+    //     .select(event_searches::id)
+    //     .load(&mut connect()?)?;
     let count: i64 = base_query.count().first(&mut connect()?)?;
     let next_batch = if items.len() < limit {
         None
@@ -134,10 +134,24 @@ fn calc_event_context(
     after_limit: usize,
     include_profile: bool,
 ) -> AppResult<EventContextResult> {
-    let before_pdus =
-        timeline::get_pdus_backward(user_id, room_id, event_sn - 1, None, None, before_limit, EventOrderBy::StreamOrdering)?;
-    let after_pdus =
-        timeline::get_pdus_forward(user_id, room_id, event_sn + 1, None, None, after_limit, EventOrderBy::StreamOrdering)?;
+    let before_pdus = timeline::get_pdus_backward(
+        user_id,
+        room_id,
+        event_sn - 1,
+        None,
+        None,
+        before_limit,
+        EventOrderBy::StreamOrdering,
+    )?;
+    let after_pdus = timeline::get_pdus_forward(
+        user_id,
+        room_id,
+        event_sn + 1,
+        None,
+        None,
+        after_limit,
+        EventOrderBy::StreamOrdering,
+    )?;
     let mut profile = BTreeMap::new();
     if include_profile && let Ok(frame_id) = crate::event::get_frame_id(room_id, event_sn) {
         let RoomMemberEventContent {

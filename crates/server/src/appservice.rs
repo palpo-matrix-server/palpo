@@ -306,8 +306,8 @@ pub async fn is_exclusive_room_id(room_id: &RoomId) -> AppResult<bool> {
 }
 
 pub fn all() -> AppResult<BTreeMap<String, RegistrationInfo>> {
-    Ok(appservice_registrations::table
-        .load::<DbRegistration>(&mut connect()?)?
+    let registrations = appservice_registrations::table.load::<DbRegistration>(&mut connect()?)?;
+    Ok(registrations
         .into_iter()
         .filter_map(|db_registration| {
             println!("db_registration: {db_registration:?}");
