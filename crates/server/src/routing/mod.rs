@@ -3,7 +3,6 @@ mod client;
 mod federation;
 mod identity;
 mod media;
-mod push;
 
 use salvo::prelude::*;
 use salvo::serve_static::StaticDir;
@@ -39,8 +38,7 @@ pub fn root() -> Router {
                 .push(federation::router())
                 .push(federation::key::router())
                 .push(identity::router())
-                .push(appservice::router())
-                .push(push::router()),
+                .push(appservice::router()),
         )
         .push(
             Router::with_path(".well-known/matrix")
