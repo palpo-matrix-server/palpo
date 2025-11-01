@@ -1069,8 +1069,8 @@ pub(crate) fn load_timeline(
     }
 
     println!(
-        "==========limited: {limited}, prev_batch: {:#?}",
-        prev_batch
+        "==========limited: {limited}, prev_batch: {:#?}   {:?}    {:?}",
+        prev_batch, timeline_pdus.first().map(|v|v.0), timeline_pdus.last().map(|v|v.0)
     );
     Ok(TimelineData {
         events: timeline_pdus,
