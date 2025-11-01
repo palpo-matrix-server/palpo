@@ -731,7 +731,7 @@ impl PduBuilder {
         Self {
             event_type: content.event_type().into(),
             content: to_raw_value(content)
-                .expect("Builder failed to serialize state event content to RawValue"),
+                .expect("builder failed to serialize state event content to RawValue"),
             state_key: Some(state_key),
             ..Self::default()
         }
@@ -744,7 +744,7 @@ impl PduBuilder {
         Self {
             event_type: content.event_type().into(),
             content: to_raw_value(content)
-                .expect("Builder failed to serialize timeline event content to RawValue"),
+                .expect("builder failed to serialize timeline event content to RawValue"),
             ..Self::default()
         }
     }

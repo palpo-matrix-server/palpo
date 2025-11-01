@@ -247,7 +247,7 @@ async fn send_knock(
     data::room::add_joined_server(&args.room_id, &origin)?;
 
     let knock_room_state = state::summary_stripped(&pdu)?;
-    if let Err(e) = crate::sending::send_pdu_room(&args.room_id, &event_id, &[]) {
+    if let Err(e) = crate::sending::send_pdu_room(&args.room_id, &event_id, &[], &[]) {
         error!("failed to notify knock event: {e}");
     }
     json_ok(SendKnockResBody { knock_room_state })

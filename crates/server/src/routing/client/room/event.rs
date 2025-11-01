@@ -134,7 +134,7 @@ pub(super) fn get_context(
 
     let mut lazy_loaded = HashSet::new();
     let base_token = crate::event::get_event_sn(&args.event_id)
-        .map_err(|_| MatrixError::not_found("Base event id not found."))?;
+        .map_err(|_| MatrixError::not_found("base event id not found"))?;
     let base_event = timeline::get_pdu(&args.event_id)?;
     let room_id = base_event.room_id.clone();
 

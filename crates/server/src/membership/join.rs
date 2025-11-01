@@ -118,7 +118,7 @@ pub async fn join_room(
                     )?;
                 }
 
-                if let Err(e) = sending::send_pdu_room(&room_id, &pdu.event_id, &[]) {
+                if let Err(e) = sending::send_pdu_room(&room_id, &pdu.event_id, &[], &[]) {
                     error!("failed to notify banned user server: {e}");
                 }
                 return Ok(JoinRoomResBody::new(room_id.to_owned()));

@@ -133,12 +133,12 @@ fn get_event_auth_chain(room_id: &RoomId, event_id: &EventId) -> AppResult<Vec<S
             return Err(MatrixError::forbidden("auth event for incorrect room", None).into());
         }
 
-        for (auth_event_id, auth_event_sn) in events::table
+        let auth_events = events::table
             .filter(events::sn.is_not_null())
             .filter(events::id.eq_any(pdu.auth_events.iter().map(|e| &**e)))
             .select((events::id, events::sn))
-            .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
-        {
+            .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?;
+        for (auth_event_id, auth_event_sn) in auth_events {
             if found.insert(auth_event_sn) {
                 tracing::trace!(
                     ?auth_event_id,

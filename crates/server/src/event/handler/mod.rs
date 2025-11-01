@@ -750,7 +750,6 @@ pub async fn process_to_timeline_pdu(
             },
         )
         .await?;
-        println!("===========process_to_timeline_pdu   joined 2");
         debug!("auth check succeeded");
     }
 

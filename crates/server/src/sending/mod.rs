@@ -24,7 +24,7 @@ use crate::core::{UnixMillis, push};
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::sending::{DbOutgoingRequest, NewDbOutgoingRequest};
-use crate::room::timeline;
+use crate::room::timeline::{self, get_pdu};
 use crate::{AppError, AppResult, GetUrlOrigin, ServerConfig, TlsNameMap, config, data, utils};
 
 mod dest;
@@ -167,6 +167,7 @@ pub fn send_pdu_room(
     room_id: &RoomId,
     pdu_id: &EventId,
     extra_servers: &[OwnedServerName],
+    ignore_servers: &[OwnedServerName],
 ) -> AppResult<()> {
     let servers = room_joined_servers::table
         .filter(room_joined_servers::room_id.eq(room_id))
@@ -180,7 +181,8 @@ pub fn send_pdu_room(
         .collect::<Vec<_>>();
     servers.sort_unstable();
     servers.dedup();
-    send_pdu_servers(servers.into_iter(), pdu_id)
+    let servers = servers.into_iter().filter(|s| !ignore_servers.contains(s));
+    send_pdu_servers(servers, pdu_id)
 }
 
 #[tracing::instrument(skip(servers, pdu_id), level = "debug")]
@@ -537,9 +539,10 @@ where
 }
 
 fn active_requests() -> AppResult<Vec<(i64, OutgoingKind, SendingEventType)>> {
-    Ok(outgoing_requests::table
+    let outgoing_requests = outgoing_requests::table
         .filter(outgoing_requests::state.eq("pending"))
-        .load::<DbOutgoingRequest>(&mut connect()?)?
+        .load::<DbOutgoingRequest>(&mut connect()?)?;
+    Ok(outgoing_requests
         .into_iter()
         .filter_map(|item| {
             let kind = match item.kind.as_str() {

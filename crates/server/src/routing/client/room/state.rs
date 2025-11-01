@@ -52,6 +52,7 @@ pub(super) fn get_state(
         .collect();
     json_ok(StateEventsResBody::new(room_state))
 }
+
 /// #POST /_matrix/client/r0/rooms/{room_id}/report/{event_id}
 /// Reports an inappropriate event to homeserver admins
 #[endpoint]

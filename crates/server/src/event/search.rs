@@ -77,9 +77,9 @@ pub fn search_pdus(
             .then_order_by(event_searches::event_sn.desc())
             .load::<(f32, OwnedEventId, i64, i64)>(&mut connect()?)?
     };
-    let _ids: Vec<i64> = event_searches::table
-        .select(event_searches::id)
-        .load(&mut connect()?)?;
+    // let _ids: Vec<i64> = event_searches::table
+    //     .select(event_searches::id)
+    //     .load(&mut connect()?)?;
     let count: i64 = base_query.count().first(&mut connect()?)?;
     let next_batch = if items.len() < limit {
         None
