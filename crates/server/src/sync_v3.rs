@@ -928,7 +928,7 @@ async fn load_left_room(
     Ok(LeftRoom {
         account_data: RoomAccountData { events: Vec::new() },
         timeline: Timeline {
-            limited: timeline.limited,
+            limited,
             prev_batch,
             events: timeline
                 .events
