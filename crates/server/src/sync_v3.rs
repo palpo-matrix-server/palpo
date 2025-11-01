@@ -1021,7 +1021,7 @@ pub(crate) fn load_timeline(
     }
 
     let pdu_sns = timeline_pdus.keys().cloned().collect::<Vec<_>>();
-    let mut prev_batch = None;
+    // let mut prev_batch = None;
     let mut next_batch = None;
     if is_backward {
         let max_sn = pdu_sns.iter().max().cloned().unwrap_or_default();
@@ -1040,7 +1040,7 @@ pub(crate) fn load_timeline(
             } else {
                 limited = true;
             }
-            prev_batch = timeline_pdus.last().map(|(sn, _)| *sn);
+            // prev_batch = timeline_pdus.last().map(|(sn, _)| *sn);
             next_batch = timeline_pdus.first().map(|(sn, _)| *sn + 1);
         }
     } else {
@@ -1056,18 +1056,22 @@ pub(crate) fn load_timeline(
             } else {
                 limited = true;
             }
-            prev_batch = timeline_pdus.first().map(|(sn, _)| *sn);
+            // prev_batch = timeline_pdus.first().map(|(sn, _)| *sn);
             next_batch = timeline_pdus.last().map(|(sn, _)| *sn + 1);
         }
     }
-    if prev_batch.is_none() {
-        if is_backward && let Some((sn, _)) = timeline_pdus.last() {
-            prev_batch = Some(*sn);
-        } else if let Some((sn, _)) = timeline_pdus.first() {
-            prev_batch = Some(*sn);
-        }
-    }
-
+    // if prev_batch.is_none() {
+    //     if is_backward && let Some((sn, _)) = timeline_pdus.last() {
+    //         prev_batch = Some(*sn);
+    //     } else if let Some((sn, _)) = timeline_pdus.first() {
+    //         prev_batch = Some(*sn);
+    //     }
+    // }
+    let prev_batch = if limited {
+        timeline_pdus.first().map(|(sn, _)| *sn)
+    } else {
+        timeline_pdus.last().map(|(sn, _)| *sn)
+    };
     println!(
         "==========limited: {limited}, prev_batch: {:#?}   {:?}    {:?}",
         prev_batch, timeline_pdus.first().map(|v|v.0), timeline_pdus.last().map(|v|v.0)
