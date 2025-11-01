@@ -1,4 +1,3 @@
-{"Action":"fail","Test":"TestFederatedClientSpaces"}
 {"Action":"fail","Test":"TestSyncTimelineGap"}
 {"Action":"fail","Test":"TestSyncTimelineGap/full"}
 {"Action":"fail","Test":"TestSyncTimelineGap/incremental"}
@@ -128,6 +127,7 @@
 {"Action":"pass","Test":"TestEvent/Parallel"}
 {"Action":"pass","Test":"TestEvent/Parallel/Large_Event"}
 {"Action":"pass","Test":"TestEvent/Parallel/Large_State_Event"}
+{"Action":"pass","Test":"TestFederatedClientSpaces"}
 {"Action":"pass","Test":"TestFederationKeyUploadQuery"}
 {"Action":"pass","Test":"TestFederationKeyUploadQuery/Can_claim_remote_one_time_key_using_POST"}
 {"Action":"pass","Test":"TestFederationKeyUploadQuery/Can_query_remote_device_keys_using_POST"}

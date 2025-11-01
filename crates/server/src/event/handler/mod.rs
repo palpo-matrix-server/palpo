@@ -751,7 +751,6 @@ pub async fn process_to_timeline_pdu(
                     Ok(pdu.into_inner())
                 }
             } else {
-                println!("==============create event: {:?}", crate::room::get_create(room_id));
                 Err(StateError::other(format!(
                     "failed auth check when process to timeline, missing state event, event_type: {k}, state_key:{s}"
                 )))

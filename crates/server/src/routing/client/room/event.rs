@@ -139,7 +139,6 @@ pub(super) fn get_context(
     let room_id = base_event.room_id.clone();
 
     if !state::user_can_see_event(sender_id, &args.event_id)? {
-        println!("XXXXXXXXXXXXXXXXXXXXx");
         return Err(
             MatrixError::forbidden("you don't have permission to view this event", None).into(),
         );

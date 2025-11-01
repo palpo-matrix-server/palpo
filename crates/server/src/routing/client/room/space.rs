@@ -89,7 +89,6 @@ pub(super) async fn get_hierarchy(
                         .into_iter()
                         .filter(|(room, _)| !parents.contains(room))
                         .collect::<Vec<Entry>>();
-                    println!("============found children: {:?}", children);
                 }
 
                 if populate {
@@ -105,11 +104,9 @@ pub(super) async fn get_hierarchy(
                 parents.insert(current_room.clone());
 
                 if parents.len() > max_depth {
-                    println!("llllllllllllllllmax depth reached: {}", max_depth);
                     continue;
                 }
 
-                println!("============children: {:?}", children);
                 for child in children.into_iter().rev() {
                     queue.push_front(child);
                 }

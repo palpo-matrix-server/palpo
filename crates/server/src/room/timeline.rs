@@ -475,7 +475,6 @@ where
     crate::event::search::save_pdu(pdu, &pdu_json)?;
 
     let frame_id = state::append_to_state(&pdu)?;
-    println!("===================frame_id: {frame_id},   pdu: {}", pdu.event_id);
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
     state::set_room_state(&pdu.room_id, frame_id)?;
