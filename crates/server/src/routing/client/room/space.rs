@@ -83,26 +83,13 @@ pub(super) async fn get_hierarchy(
                 let populate = parents.len() >= room_sns.len();
 
                 let mut children = Vec::new();
-                if crate::room::get_room_type(&current_room).ok().flatten() == Some(RoomType::Space)
-                {
+                let room_type = crate::room::get_room_type(&current_room).ok();
+                if room_type.is_none() || Some(Some(RoomType::Space)) == room_type {
                     children = get_parent_children_via(&summary, suggested_only)
                         .into_iter()
                         .filter(|(room, _)| !parents.contains(room))
                         .collect::<Vec<Entry>>();
-
-                    // if !populate {
-                    //     children = children
-                    //         .iter()
-                    //         .skip_while(|(room, _)| {
-                    //             crate::room::get_room_sn(room)
-                    //                 .map(|room_sn| Some(&room_sn) != room_sns.get(parents.len()))
-                    //                 .unwrap_or_else(|_| false)
-                    //         })
-                    //         .map(Clone::clone)
-                    //         .collect::<Vec<_>>()
-                    //         .into_iter()
-                    //         .collect::<Vec<Entry>>();
-                    // }
+                    println!("============found children: {:?}", children);
                 }
 
                 if populate {
@@ -118,9 +105,11 @@ pub(super) async fn get_hierarchy(
                 parents.insert(current_room.clone());
 
                 if parents.len() > max_depth {
+                    println!("llllllllllllllllmax depth reached: {}", max_depth);
                     continue;
                 }
 
+                println!("============children: {:?}", children);
                 for child in children.into_iter().rev() {
                     queue.push_front(child);
                 }

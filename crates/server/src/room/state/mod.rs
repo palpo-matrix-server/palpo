@@ -192,8 +192,7 @@ pub fn set_event_state(
 
 /// Generates a new StateHash and associates it with the incoming event.
 ///
-/// This adds all current state events (not including the incoming event)
-/// to `stateid_pduid` and adds the incoming event to `eventid_state_hash`.
+/// This adds all current state events (not including the incoming event).
 #[tracing::instrument(skip(new_pdu))]
 pub fn append_to_state(new_pdu: &SnPduEvent) -> AppResult<i64> {
     let prev_frame_id = get_room_frame_id(&new_pdu.room_id, None).ok();

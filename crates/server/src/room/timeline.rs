@@ -5,6 +5,7 @@ use std::sync::{LazyLock, Mutex};
 
 use diesel::prelude::*;
 use indexmap::IndexMap;
+use palpo_core::events::space::child::SpaceChildEventContent;
 use serde::Deserialize;
 use serde_json::value::to_raw_value;
 use ulid::Ulid;
@@ -473,6 +474,12 @@ where
 
     crate::event::search::save_pdu(pdu, &pdu_json)?;
 
+    let frame_id = state::append_to_state(&pdu)?;
+    println!("===================frame_id: {frame_id},   pdu: {}", pdu.event_id);
+    // We set the room state after inserting the pdu, so that we never have a moment in time
+    // where events in the current room state do not exist
+    state::set_room_state(&pdu.room_id, frame_id)?;
+
     if let Err(e) = push_action::increment_notification_counts(&pdu.event_id, notifies, highlights)
     {
         error!("failed to increment notification counts: {}", e);
@@ -888,11 +895,6 @@ pub async fn build_and_append_pdu(
         state_lock,
     )
     .await?;
-    let frame_id = state::append_to_state(&pdu)?;
-
-    // We set the room state after inserting the pdu, so that we never have a moment in time
-    // where events in the current room state do not exist
-    state::set_room_state(room_id, frame_id)?;
 
     // In case we are kicking or banning a user, we need to inform their server of the change
     // move to append pdu

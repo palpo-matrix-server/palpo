@@ -299,7 +299,7 @@ async fn get_access_token(
 
     if !conf.login_via_existing_session {
         return Err(
-            MatrixError::forbidden("Login via an existing session is not enabled", None).into(),
+            MatrixError::forbidden("login via an existing session is not enabled", None).into(),
         );
     }
 

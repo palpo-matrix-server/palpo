@@ -551,7 +551,7 @@ pub(super) async fn ban_user(
     if let Err(e) = sending::send_pdu_room(
         &room_id,
         &pdu.event_id,
-        &[body.user_id.server_name().to_owned()],
+        &[body.user_id.server_name().to_owned()], &[]
     ) {
         error!("failed to notify banned user server: {e}");
     }
@@ -606,7 +606,7 @@ pub(super) async fn unban_user(
     if let Err(e) = sending::send_pdu_room(
         &room_id,
         &pdu.event_id,
-        &[body.user_id.server_name().to_owned()],
+        &[body.user_id.server_name().to_owned()], &[]
     ) {
         error!("failed to notify banned user server: {e}");
     }
@@ -681,7 +681,7 @@ pub(super) async fn kick_user(
     if let Err(e) = sending::send_pdu_room(
         &room_id,
         &pdu.event_id,
-        &[body.user_id.server_name().to_owned()],
+        &[body.user_id.server_name().to_owned()], &[]
     ) {
         error!("failed to notify banned user server: {e}");
     }

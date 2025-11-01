@@ -45,6 +45,7 @@ impl SnPduEvent {
     }
 
     pub fn user_can_see(&self, user_id: &UserId) -> AppResult<bool> {
+        println!("=====user can see   0");
         if self.event_ty == TimelineEventType::RoomMember
             && self.state_key.as_deref() == Some(user_id.as_str())
         {
@@ -52,12 +53,14 @@ impl SnPduEvent {
         }
         if self.is_room_state() {
             if room::is_world_readable(&self.room_id) {
+        println!("=====user can see   1");
                 return Ok(!room::user::is_banned(user_id, &self.room_id)?);
             } else if room::user::is_joined(user_id, &self.room_id)? {
                 return Ok(true);
             }
         }
         let Ok(frame_id) = state::get_pdu_frame_id(&self.event_id) else {
+        println!("=====user can see   2  {}", self.event_id);
             return Ok(false);
         };
 
@@ -66,6 +69,7 @@ impl SnPduEvent {
             .unwrap()
             .get_mut(&(user_id.to_owned(), frame_id))
         {
+        println!("=====user can see   3");
             return Ok(*visibility);
         }
 
@@ -79,25 +83,30 @@ impl SnPduEvent {
             |c: RoomHistoryVisibilityEventContent| c.history_visibility,
         );
 
+        println!("=====user can see   4");
         let visibility = match history_visibility {
             HistoryVisibility::WorldReadable => true,
             HistoryVisibility::Shared => {
                 let Ok(membership) = state::user_membership(frame_id, user_id) else {
+        println!("=====user can see   5");
                     return crate::room::user::is_joined(user_id, &self.room_id);
                 };
                 membership == MembershipState::Join
                     || crate::room::user::is_joined(user_id, &self.room_id)?
             }
             HistoryVisibility::Invited => {
+        println!("=====user can see   6");
                 // Allow if any member on requesting server was AT LEAST invited, else deny
                 state::user_was_invited(frame_id, user_id)
             }
             HistoryVisibility::Joined => {
+        println!("=====user can see   7");
                 // Allow if any member on requested server was joined, else deny
                 state::user_was_joined(frame_id, user_id)
                     || state::user_was_joined(frame_id - 1, user_id)
             }
             _ => {
+        println!("=====user can see   8");
                 error!("unknown history visibility {history_visibility}");
                 false
             }
@@ -107,6 +116,7 @@ impl SnPduEvent {
             .lock()
             .expect("should locked")
             .insert((user_id.to_owned(), frame_id), visibility);
+        println!("=====user can see   9");
         Ok(visibility)
     }
 
@@ -726,7 +736,7 @@ impl PduBuilder {
         Self {
             event_type: content.event_type().into(),
             content: to_raw_value(content)
-                .expect("Builder failed to serialize state event content to RawValue"),
+                .expect("builder failed to serialize state event content to RawValue"),
             state_key: Some(state_key),
             ..Self::default()
         }
@@ -739,7 +749,7 @@ impl PduBuilder {
         Self {
             event_type: content.event_type().into(),
             content: to_raw_value(content)
-                .expect("Builder failed to serialize timeline event content to RawValue"),
+                .expect("builder failed to serialize timeline event content to RawValue"),
             ..Self::default()
         }
     }

@@ -48,6 +48,7 @@ pub async fn join_room(
     appservice: Option<&RegistrationInfo>,
     extra_data: BTreeMap<String, JsonValue>,
 ) -> AppResult<JoinRoomResBody> {
+    println!("=============join_room  0");
     if sender.is_guest && appservice.is_none() && !room::guest_can_join(room_id) {
         return Err(
             MatrixError::forbidden("guests are not allowed to join this room", None).into(),
@@ -60,6 +61,7 @@ pub async fn join_room(
         });
     }
 
+    println!("=============join_room  1");
     if let Ok(membership) = room::get_member(room_id, sender_id)
         && membership.membership == MembershipState::Ban
     {
@@ -118,7 +120,7 @@ pub async fn join_room(
                     )?;
                 }
 
-                if let Err(e) = sending::send_pdu_room(&room_id, &pdu.event_id, &[]) {
+                if let Err(e) = sending::send_pdu_room(&room_id, &pdu.event_id, &[], &[]) {
                     error!("failed to notify banned user server: {e}");
                 }
                 return Ok(JoinRoomResBody::new(room_id.to_owned()));
@@ -133,6 +135,7 @@ pub async fn join_room(
     }
 
     info!("joining {room_id} over federation");
+    println!("=============join_room  2");
     let (make_join_response, remote_server) =
         make_join_request(sender_id, room_id, &servers).await?;
 
@@ -157,6 +160,7 @@ pub async fn join_room(
         })
         .and_then(|s| OwnedUserId::try_from(s.unwrap_or_default()).ok());
 
+    println!("=============join_room  3");
     // TODO: Is origin needed?
     join_event_stub.insert(
         "origin".to_owned(),
@@ -185,6 +189,7 @@ pub async fn join_room(
     // We keep the "event_id" in the pdu only in v1 or v2 rooms
     maybe_strip_event_id(&mut join_event_stub, &room_version_id);
 
+    println!("=============join_room  4");
     // In order to create a compatible ref hash (EventID) the `hashes` field needs to be present
     crate::server_key::hash_and_sign_event(&mut join_event_stub, &room_version_id)
         .expect("event is valid, we just created it");
@@ -198,6 +203,7 @@ pub async fn join_room(
         CanonicalJsonValue::String(event_id.as_str().to_owned()),
     );
 
+    println!("=============join_room  5");
     // It has enough fields to be called a proper event now
     let mut join_event = join_event_stub;
     let body = SendJoinReqBody(crate::sending::convert_to_outgoing_federation_event(
@@ -223,6 +229,7 @@ pub async fn join_room(
 
     info!("send_join finished");
 
+    println!("=============join_room  6");
     if let Some(signed_raw) = &send_join_body.0.event {
         info!(
             "there is a signed event. this room is probably using restricted joins. adding signature to our event"
@@ -270,6 +277,7 @@ pub async fn join_room(
         }
     }
 
+    println!("=============join_room  7");
     room::ensure_room(room_id, &room_version_id)?;
 
     let parsed_join_pdu = PduEvent::from_canonical_object(room_id, &event_id, join_event.clone())
@@ -289,6 +297,7 @@ pub async fn join_room(
     let resp_auth = &resp_events.auth_chain;
     crate::server_key::acquire_events_pubkeys(resp_auth.iter().chain(resp_state.iter())).await;
 
+    println!("=============join_room  8");
     super::update_membership(
         &join_event_id,
         join_event_sn,
@@ -323,6 +332,7 @@ pub async fn join_room(
             error!("failed to process incoming events for join: {e}");
         }
     }
+    println!("=============join_room  9");
     if let Err(e) = fetch_and_process_missing_prev_events(
         &remote_server,
         room_id,
@@ -385,6 +395,7 @@ pub async fn join_room(
             state.insert(state_key_id, (pdu.event_id.clone(), pdu.event_sn));
         }
     }
+    println!("=============join_room  10");
 
     info!("going through send_join response auth_chain");
     for result in send_join_body
@@ -414,6 +425,7 @@ pub async fn join_room(
         }
     }
 
+    println!("=============join_room  11");
     info!("running send_join auth check");
     // TODO: Authcheck
     // if !event_auth::auth_check(
@@ -449,6 +461,7 @@ pub async fn join_room(
         ),
     )?;
 
+    println!("=============join_room  12");
     state::force_state(room_id, frame_id, appended, disposed)?;
 
     // info!("Updating joined counts for new room");
@@ -477,6 +490,7 @@ pub async fn join_room(
     let frame_id_after_join = state::append_to_state(&join_pdu)?;
     drop(event_guard);
 
+    println!("=============join_room  13");
     info!("setting final room state for new room");
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
@@ -500,6 +514,7 @@ pub async fn join_room(
             send_edu_server(room_server_id, &edu)?;
         }
     }
+    println!("=============join_room  14");
 
     Ok(JoinRoomResBody::new(room_id.to_owned()))
 }
