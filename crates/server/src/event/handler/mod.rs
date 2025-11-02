@@ -618,6 +618,13 @@ pub async fn process_to_timeline_pdu(
             // let state_at_incoming_event = state_at_incoming_degree_one(&incoming_pdu).await?;
             let state_at_incoming_event =
                 state_at_incoming_resolved(&incoming_pdu, room_id, &version_rules).await?;
+            let state_at_incoming_event = match state_at_incoming_event {
+                None => fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id)
+                    .await
+                    .unwrap_or_default(),
+                Some(state) => state,
+            };
+
             // 13. Use state resolution to find new room state
             let state_lock = crate::room::lock_state(room_id).await;
             // Now that the event has passed all auth it is added into the timeline.
@@ -692,8 +699,6 @@ pub async fn process_to_timeline_pdu(
     let state_at_incoming_event = match state_at_incoming_event {
         None => fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id)
             .await
-            .ok()
-            .flatten()
             .unwrap_or_default(),
         Some(state) => state,
     };
