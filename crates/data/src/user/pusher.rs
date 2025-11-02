@@ -122,7 +122,9 @@ pub async fn get_actions<'a>(
             .flatten()
             .unwrap_or_else(|| user.localpart().to_owned()),
         power_levels: Some(power_levels),
+        // #[cfg(feature = "unstable-msc3931")]
         supported_features: vec![],
+        // #[cfg(feature = "unstable-msc4306")]
         has_thread_subscription_fn: None,
     };
 

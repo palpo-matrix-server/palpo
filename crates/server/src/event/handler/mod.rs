@@ -32,7 +32,7 @@ use crate::core::state::{StateError, StateMap, event_auth};
 use crate::core::{self, Seqnum, UnixMillis};
 use crate::data::room::{DbEvent, DbEventData, NewDbEvent};
 use crate::data::schema::*;
-use crate::data::{connect, diesel_exists};
+use crate::data::{self, connect, diesel_exists};
 use crate::event::{PduEvent, SnPduEvent, ensure_event_sn, handler};
 use crate::room::state::{CompressedState, DbRoomStateField, DeltaInfo};
 use crate::room::{state, timeline};
@@ -552,6 +552,25 @@ fn process_to_outlier_pdu(
         }
         .save()?;
 
+        if !fetch_missing_prev_events {
+            let existed_events = events::table
+                .filter(events::id.eq_any(&incoming_pdu.prev_events))
+                .select(events::id)
+                .load::<OwnedEventId>(&mut connect()?)?;
+            let missing_events = incoming_pdu
+                .prev_events
+                .iter()
+                .filter(|id| !known_events.contains(*id) && !existed_events.contains(id))
+                .collect::<Vec<_>>();
+            if !missing_events.is_empty() {
+                data::room::add_timeline_gap(&incoming_pdu.room_id, event_sn)?;
+            }
+        }
+        //  else {
+        //TODO: how to remove timeline gap?
+        //     data::room::remove_timeline_gap(&incoming_pdu.room_id, event_sn)?;
+        // }
+
         incoming_pdu.soft_failed = soft_failed;
         incoming_pdu.is_rejected = rejection_reason.is_some();
         incoming_pdu.rejection_reason = rejection_reason;
@@ -866,6 +885,7 @@ pub async fn process_to_timeline_pdu(
     drop(state_lock);
     Ok(())
 }
+
 
 async fn resolve_state(
     room_id: &RoomId,

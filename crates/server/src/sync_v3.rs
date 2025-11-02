@@ -21,6 +21,8 @@ use crate::core::serde::RawJson;
 use crate::core::{Seqnum, UnixMillis};
 use crate::event::{EventHash, PduEvent, SnPduEvent};
 use crate::room::{EventOrderBy, state, timeline};
+use crate::routing::prelude;
+use crate::utils::time;
 use crate::{AppError, AppResult, config, data, extract_variant, room};
 
 pub const DEFAULT_BUMP_TYPES: &[TimelineEventType; 6] = &[
@@ -51,7 +53,7 @@ pub async fn sync_events(
     } else {
         None
     };
-    let next_batch = curr_sn + 1;
+    let mut next_batch = curr_sn + 1;
 
     // Load filter
     let filter = match &args.filter {
@@ -100,7 +102,12 @@ pub async fn sync_events(
         )
         .await
         {
-            Ok(joined_room) => joined_room,
+            Ok((joined_room, nb)) => {
+                if let Some(nb) = nb {
+                    next_batch = next_batch.min(nb);
+                }
+                joined_room
+            }
             Err(e) => {
                 tracing::error!(error = ?e, "load joined room failed");
                 continue;
@@ -325,9 +332,9 @@ async fn load_joined_room(
     device_list_updates: &mut HashSet<OwnedUserId>,
     joined_users: &mut HashSet<OwnedUserId>,
     left_users: &mut HashSet<OwnedUserId>,
-) -> AppResult<JoinedRoom> {
+) -> AppResult<(JoinedRoom, Option<Seqnum>)> {
     if since_sn > Some(data::curr_sn()?) {
-        return Ok(JoinedRoom::default());
+        return Ok((JoinedRoom::default(), None));
     }
     let lazy_load_enabled = filter.room.state.lazy_load_options.is_enabled()
         || filter.room.timeline.lazy_load_options.is_enabled();
@@ -340,11 +347,11 @@ async fn load_joined_room(
     };
 
     let Ok(current_frame_id) = room::get_frame_id(room_id, None) else {
-        return Ok(JoinedRoom::default());
+        return Ok((JoinedRoom::default(), None));
     };
     let since_frame_id = crate::event::get_last_frame_id(room_id, since_sn).ok();
 
-    let (timeline_pdus, limited) = load_timeline(
+    let timeline = load_timeline(
         sender_id,
         room_id,
         since_sn,
@@ -358,18 +365,17 @@ async fn load_joined_room(
         crate::room::user::join_sn(sender_id, room_id).unwrap_or_default()
     };
 
-    let send_notification_counts = !timeline_pdus.is_empty()
+    let send_notification_counts = !timeline.events.is_empty()
         || room::user::last_read_notification(sender_id, room_id)? >= since_sn;
     let mut timeline_users = HashSet::new();
     let mut timeline_pdu_ids = HashSet::new();
-    for (_, event) in &timeline_pdus {
+    for (_, event) in &timeline.events {
         timeline_users.insert(event.sender.as_str().to_owned());
         timeline_pdu_ids.insert(event.event_id.clone());
     }
     room::lazy_loading::lazy_load_confirm_delivery(sender_id, device_id, room_id, since_sn)?;
-
     let (heroes, joined_member_count, invited_member_count, joined_since_last_sync, state_events) =
-        if timeline_pdus.is_empty()
+        if timeline.events.is_empty()
             && (since_frame_id == Some(current_frame_id) || since_frame_id.is_none())
         {
             // No state changes
@@ -566,7 +572,7 @@ async fn load_joined_room(
                     }
                 }
 
-                for (_, event) in &timeline_pdus {
+                for (_, event) in &timeline.events {
                     if let Some(state_limit) = filter.room.state.limit
                         && state_events.len() >= state_limit
                     {
@@ -696,17 +702,12 @@ async fn load_joined_room(
     // Look for device list updates in this room
     device_list_updates.extend(room::keys_changed_users(room_id, since_sn, None)?);
 
-    let mut limited = limited || joined_since_last_sync;
-    if let Some((_, first_event)) = timeline_pdus.first()
+    let mut limited = timeline.limited || joined_since_last_sync;
+    if let Some((_, first_event)) = timeline.events.first()
         && first_event.event_ty == TimelineEventType::RoomCreate
     {
         limited = false;
     }
-    let prev_batch = if limited {
-        timeline_pdus.first().map(|(sn, _)| sn.to_string())
-    } else {
-        timeline_pdus.last().map(|(sn, _)| sn.to_string())
-    };
 
     let mut edus: Vec<RawJson<AnySyncEphemeralRoomEvent>> = Vec::new();
     for (_, content) in data::room::receipt::read_receipts(room_id, since_sn)? {
@@ -741,7 +742,7 @@ async fn load_joined_room(
         unread_count = Some(notify_summary.all_unread_count())
     }
 
-    Ok(JoinedRoom {
+    let joined_room = JoinedRoom {
         account_data: RoomAccountData {
             events: account_events,
         },
@@ -756,8 +757,9 @@ async fn load_joined_room(
         },
         timeline: Timeline {
             limited,
-            prev_batch,
-            events: timeline_pdus
+            prev_batch: timeline.prev_batch.map(|sn| sn.to_string()),
+            events: timeline
+                .events
                 .iter()
                 .map(|(_, pdu)| pdu.to_sync_room_event())
                 .collect(),
@@ -788,7 +790,8 @@ async fn load_joined_room(
             BTreeMap::new()
         },
         unread_count,
-    })
+    };
+    Ok((joined_room, timeline.next_batch))
 }
 
 #[tracing::instrument(skip_all)]
@@ -858,21 +861,21 @@ async fn load_left_room(
         sender_id.as_str(),
     )?;
     let left_frame_id = state::get_pdu_frame_id(&left_event_id)?;
-    let (timeline_pdus, mut limited) = load_timeline(
+    let timeline = load_timeline(
         sender_id,
         room_id,
         since_sn,
         None,
         Some(&filter.room.timeline),
     )?;
-
+    let mut limited = timeline.limited;
     let since_sn = since_sn.unwrap_or_default();
 
-    let _send_notification_counts = !timeline_pdus.is_empty()
+    let _send_notification_counts = !timeline.events.is_empty()
         || room::user::last_read_notification(sender_id, room_id)? >= since_sn;
     let mut timeline_users = HashSet::new();
     let mut timeline_pdu_ids = HashSet::new();
-    for (_, event) in &timeline_pdus {
+    for (_, event) in &timeline.events {
         timeline_users.insert(event.sender.as_str().to_owned());
         timeline_pdu_ids.insert(event.event_id.clone());
     }
@@ -909,15 +912,15 @@ async fn load_left_room(
         }
     }
 
-    if let Some((_, first_event)) = timeline_pdus.first()
+    if let Some((_, first_event)) = timeline.events.first()
         && first_event.event_ty == TimelineEventType::RoomCreate
     {
         limited = false;
     }
     let prev_batch = if limited {
-        timeline_pdus.first().map(|(sn, _)| sn.to_string())
+        timeline.events.first().map(|(sn, _)| sn.to_string())
     } else {
-        timeline_pdus.last().map(|(sn, _)| sn.to_string())
+        timeline.events.last().map(|(sn, _)| sn.to_string())
     };
 
     // let left_event = timeline::get_pdu(&left_event_id).map(|pdu| pdu.to_sync_room_event());
@@ -926,7 +929,8 @@ async fn load_left_room(
         timeline: Timeline {
             limited,
             prev_batch,
-            events: timeline_pdus
+            events: timeline
+                .events
                 .iter()
                 .map(|(_, pdu)| pdu.to_sync_room_event())
                 .collect(),
@@ -940,6 +944,13 @@ async fn load_left_room(
         ),
     })
 }
+
+pub struct TimelineData {
+    pub events: IndexMap<Seqnum, SnPduEvent>,
+    pub limited: bool,
+    pub prev_batch: Option<Seqnum>,
+    pub next_batch: Option<Seqnum>,
+}
 #[tracing::instrument]
 pub(crate) fn load_timeline(
     user_id: &UserId,
@@ -947,7 +958,7 @@ pub(crate) fn load_timeline(
     since_sn: Option<Seqnum>,
     until_sn: Option<Seqnum>,
     filter: Option<&RoomEventFilter>,
-) -> AppResult<(IndexMap<Seqnum, SnPduEvent>, bool)> {
+) -> AppResult<TimelineData> {
     let limit = filter.and_then(|f| f.limit).unwrap_or(10);
     let mut is_backward = false;
     let mut timeline_pdus = if let Some(since_sn) = since_sn {
@@ -991,6 +1002,7 @@ pub(crate) fn load_timeline(
         )?
     };
 
+    let mut limited = false;
     if timeline_pdus.len() > limit {
         if !is_backward {
             timeline_pdus.pop();
@@ -998,13 +1010,65 @@ pub(crate) fn load_timeline(
         } else if let Some(key) = timeline_pdus.first().map(|(key, _)| key.clone()) {
             timeline_pdus.shift_remove(&key);
         }
-        Ok((timeline_pdus, true))
-    } else {
-        if !is_backward {
-            timeline_pdus = timeline_pdus.into_iter().rev().collect();
-        }
-        Ok((timeline_pdus, false))
+        limited = true;
+    } else if !is_backward {
+        timeline_pdus = timeline_pdus.into_iter().rev().collect();
     }
+
+    let pdu_sns = timeline_pdus.keys().cloned().collect::<Vec<_>>();
+    // let mut prev_batch = None;
+    let mut next_batch = None;
+    if is_backward {
+        let max_sn = pdu_sns.iter().max().cloned().unwrap_or_default();
+        if let Ok(Some(gap_sn)) = data::room::get_timeline_backward_gap(room_id, max_sn) {
+            timeline_pdus = timeline_pdus
+                .into_iter()
+                .filter(|(sn, _)| sn >= &gap_sn)
+                .collect();
+            if timeline_pdus.len() > 1 {
+                timeline_pdus.pop();
+                limited = false;
+            } else {
+                limited = true;
+            }
+            // prev_batch = timeline_pdus.last().map(|(sn, _)| *sn);
+            next_batch = timeline_pdus.first().map(|(sn, _)| *sn + 1);
+        }
+    } else {
+        let min_sn = pdu_sns.iter().min().cloned().unwrap_or_default();
+        if let Ok(Some(gap_sn)) = data::room::get_timeline_forward_gap(room_id, min_sn) {
+            timeline_pdus = timeline_pdus
+                .into_iter()
+                .filter(|(sn, _)| sn <= &gap_sn)
+                .collect();
+            if timeline_pdus.len() > 1 {
+                timeline_pdus.pop();
+                limited = false;
+            } else {
+                limited = true;
+            }
+            // prev_batch = timeline_pdus.first().map(|(sn, _)| *sn);
+            next_batch = timeline_pdus.last().map(|(sn, _)| *sn + 1);
+        }
+    }
+    // if prev_batch.is_none() {
+    //     if is_backward && let Some((sn, _)) = timeline_pdus.last() {
+    //         prev_batch = Some(*sn);
+    //     } else if let Some((sn, _)) = timeline_pdus.first() {
+    //         prev_batch = Some(*sn);
+    //     }
+    // }
+    let prev_batch = if limited {
+        timeline_pdus.first().map(|(sn, _)| *sn)
+    } else {
+        timeline_pdus.last().map(|(sn, _)| *sn)
+    };
+    Ok(TimelineData {
+        events: timeline_pdus,
+        limited,
+        prev_batch,
+        next_batch,
+    })
 }
 
 #[tracing::instrument]
