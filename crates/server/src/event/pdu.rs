@@ -52,14 +52,12 @@ impl SnPduEvent {
         }
         if self.is_room_state() {
             if room::is_world_readable(&self.room_id) {
-                println!("aaaaaaaaaaaaaa user can see 0");
                 return Ok(!room::user::is_banned(user_id, &self.room_id)?);
             } else if room::user::is_joined(user_id, &self.room_id)? {
                 return Ok(true);
             }
         }
         let Ok(frame_id) = state::get_pdu_frame_id(&self.event_id) else {
-            println!("aaaaaaaaaaaaaa user can see 1  {:?}", self.event_id);
             return Ok(false);
         };
 
@@ -68,7 +66,6 @@ impl SnPduEvent {
             .unwrap()
             .get_mut(&(user_id.to_owned(), frame_id))
         {
-            println!("aaaaaaaaaaaaaa user can see 2 {:?}", visibility);
             return Ok(*visibility);
         }
 
@@ -101,7 +98,6 @@ impl SnPduEvent {
                     || state::user_was_joined(frame_id - 1, user_id)
             }
             _ => {
-                println!("aaaaaaaaaaaaaa user can see 3");
                 error!("unknown history visibility {history_visibility}");
                 false
             }
@@ -111,7 +107,6 @@ impl SnPduEvent {
             .lock()
             .expect("should locked")
             .insert((user_id.to_owned(), frame_id), visibility);
-        println!("aaaaaaaaaaaaaa user can see 4 {:?}", visibility);
         Ok(visibility)
     }
 

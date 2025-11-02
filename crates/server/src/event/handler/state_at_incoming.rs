@@ -49,7 +49,6 @@ pub(super) async fn state_at_incoming_resolved(
     let mut extremity_state_hashes = HashMap::new();
 
     let Ok(curr_frame_id) = room::get_frame_id(room_id, None) else {
-        println!("=======state_at_incoming_resolved  0");
         return Ok(IndexMap::new());
     };
     for prev_event_id in &incoming_pdu.prev_events {
@@ -140,7 +139,6 @@ pub(super) async fn state_at_incoming_resolved(
     )
     .await;
     drop(state_lock);
-    println!("=======state_at_incoming_resolved  result: {result:?}");
 
     match result {
         Ok(new_state) => Ok(new_state

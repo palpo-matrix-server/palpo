@@ -1014,7 +1014,7 @@ CREATE TABLE IF NOT EXISTS banned_rooms
 --     ON public.sliding_sync_required_states USING btree
 --     (connection_id ASC NULLS LAST);
 
-DROP TABLE IF EXISTS banned_rooms;
+DROP TABLE IF EXISTS timeline_gaps;
 CREATE TABLE IF NOT EXISTS timeline_gaps (
     id bigserial NOT NULL PRIMARY KEY,
     room_id TEXT NOT NULL,

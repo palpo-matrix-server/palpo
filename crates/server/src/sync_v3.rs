@@ -104,7 +104,6 @@ pub async fn sync_events(
         {
             Ok((joined_room, nb)) => {
                 if let Some(nb) = nb {
-                    println!("=============next_batch: {next_batch}   nb: {nb}");
                     next_batch = next_batch.min(nb);
                 }
                 joined_room
@@ -960,10 +959,6 @@ pub(crate) fn load_timeline(
     until_sn: Option<Seqnum>,
     filter: Option<&RoomEventFilter>,
 ) -> AppResult<TimelineData> {
-    println!(
-        "LLLLLLLLLLLLLLoad timeline  since_sn: {:?}, until_sn: {:?}",
-        since_sn, until_sn
-    );
     let limit = filter.and_then(|f| f.limit).unwrap_or(10);
     let mut is_backward = false;
     let mut timeline_pdus = if let Some(since_sn) = since_sn {
@@ -1026,10 +1021,6 @@ pub(crate) fn load_timeline(
     if is_backward {
         let max_sn = pdu_sns.iter().max().cloned().unwrap_or_default();
         if let Ok(Some(gap_sn)) = data::room::get_timeline_backward_gap(room_id, max_sn) {
-            println!(
-                "====================is backward gap_sn: {}  {:#?}",
-                gap_sn, timeline_pdus
-            );
             timeline_pdus = timeline_pdus
                 .into_iter()
                 .filter(|(sn, _)| sn >= &gap_sn)
@@ -1072,10 +1063,6 @@ pub(crate) fn load_timeline(
     } else {
         timeline_pdus.last().map(|(sn, _)| *sn)
     };
-    println!(
-        "==========limited: {limited}, prev_batch: {:#?}   {:?}    {:?}",
-        prev_batch, timeline_pdus.first().map(|v|v.0), timeline_pdus.last().map(|v|v.0)
-    );
     Ok(TimelineData {
         events: timeline_pdus,
         limited,
