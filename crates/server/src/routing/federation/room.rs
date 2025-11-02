@@ -296,7 +296,7 @@ async fn make_knock(
     // }
 
     let state_lock = room::lock_state(&args.room_id).await;
-    if let Ok(member) = room::get_member(&args.room_id, &args.user_id)
+    if let Ok(member) = room::get_member(&args.room_id, &args.user_id, None)
         && member.membership == MembershipState::Ban
     {
         warn!(

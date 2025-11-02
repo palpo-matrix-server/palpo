@@ -118,6 +118,7 @@ impl SnPduEvent {
         let membership = if self.event_ty == TimelineEventType::RoomMember
             && self.state_key == Some(user_id.to_string())
         {
+            println!(">>>>>>>>>>>>>MMMMMMMMMMMMMMMM  0");
             self.get_content::<ExtractMemebership>()
                 .map(|m| m.membership)
                 .ok()
@@ -126,14 +127,20 @@ impl SnPduEvent {
                 .ok()
                 .map(|m| m.to_string())
         } else {
+            println!(">>>>>>>>>>>>>MMMMMMMMMMMMMMMM  2");
             None
         };
         if let Some(membership) = membership {
+            println!(
+                "========{user_id} ==membership: {membership}  {}",
+                self.event_sn
+            );
             self.unsigned.insert(
                 "membership".to_owned(),
                 to_raw_value(&membership).expect("should always work"),
             );
         } else {
+            println!("====xx none ===={user_id} ==  {}", self.event_sn);
             self.unsigned.insert(
                 "membership".to_owned(),
                 to_raw_value("leave").expect("should always work"),

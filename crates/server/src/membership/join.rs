@@ -60,7 +60,7 @@ pub async fn join_room(
         });
     }
 
-    if let Ok(membership) = room::get_member(room_id, sender_id)
+    if let Ok(membership) = room::get_member(room_id, sender_id, None)
         && membership.membership == MembershipState::Ban
     {
         tracing::warn!(

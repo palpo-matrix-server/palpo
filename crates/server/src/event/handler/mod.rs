@@ -689,19 +689,18 @@ pub async fn process_to_timeline_pdu(
     let state_at_incoming_event =
         state_at_incoming_resolved(&incoming_pdu, room_id, &version_rules).await?;
 
-    // let state_at_incoming_event = match state_at_incoming_event {
-    //     None => fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id)
-    //         .await
-    //         .ok()
-    //         .flatten()
-    //         .unwrap_or_default(),
-    //     Some(state) => state,
-    // };
+    let state_at_incoming_event = match state_at_incoming_event {
+        None => fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id)
+            .await
+            .ok()
+            .flatten()
+            .unwrap_or_default(),
+        Some(state) => state,
+    };
 
     debug!("performing auth check");
-    if !state_at_incoming_event.is_empty() {
-        // 11. Check the auth of the event passes based on the state of the event
-        event_auth::auth_check(
+    // 11. Check the auth of the event passes based on the state of the event
+    event_auth::auth_check(
             auth_rules,
             &incoming_pdu,
             &async |event_id| {
@@ -739,8 +738,7 @@ pub async fn process_to_timeline_pdu(
             },
         )
         .await?;
-        debug!("auth check succeeded");
-    }
+    debug!("auth check succeeded");
 
     debug!("gathering auth events");
     let auth_events = state::get_auth_events(
@@ -885,7 +883,6 @@ pub async fn process_to_timeline_pdu(
     drop(state_lock);
     Ok(())
 }
-
 
 async fn resolve_state(
     room_id: &RoomId,

@@ -54,7 +54,7 @@ pub async fn knock_room(
         return Ok(None);
     }
 
-    if let Ok(memeber) = room::get_member(room_id, sender_id)
+    if let Ok(memeber) = room::get_member(room_id, sender_id, None)
         && memeber.membership == MembershipState::Ban
     {
         warn!("{sender_id} is banned from {room_id} but attempted to knock");
