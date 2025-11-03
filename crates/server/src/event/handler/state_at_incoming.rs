@@ -54,12 +54,14 @@ pub(super) async fn state_at_incoming_resolved(
         };
 
         if prev_event.is_rejected {
+            println!("======rejected prev event: {:?}", prev_event.event_id);
             continue;
         }
 
         if let Ok(frame_id) = state::get_pdu_frame_id(prev_event_id) {
             extremity_state_hashes.insert(frame_id, prev_event);
         } else {
+            println!(">>>>>>>>>>>>>>>>>>>>>> NONE NOT FOUND PREV EVENT FRAME ID: {:?}", prev_event.event_id);
             return Ok(None);
         }
     }
