@@ -1,13 +1,25 @@
+use std::collections::HashSet;
+
+use diesel::prelude::*;
 use indexmap::IndexMap;
 
 use crate::core::ServerName;
 use crate::core::federation::event::{
-    RoomStateAtEventReqArgs, RoomStateIdsResBody, room_state_ids_request,
+    RoomStateAtEventReqArgs, RoomStateIdsResBody, RoomStateReqArgs, RoomStateResBody,
+    room_state_ids_request, room_state_request,
 };
 use crate::core::identifiers::*;
-use crate::room::state;
+use crate::data::schema::*;
+use crate::data::{connect, diesel_exists};
+use crate::event::handler::process_pulled_pdu;
+use crate::room::state::ensure_field_id;
+use crate::room::{state, timeline};
 use crate::{AppError, AppResult, exts::*};
 
+pub struct FetchedState {
+    pub state_events: IndexMap<i64, OwnedEventId>,
+    pub auth_events: IndexMap<i64, OwnedEventId>,
+}
 /// Call /state_ids to find out what the state at this pdu is. We trust the
 /// server's response to some extend (sic), but we still do a lot of checks
 /// on the events
@@ -16,35 +28,67 @@ pub async fn fetch_state(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
     event_id: &EventId,
-) -> AppResult<IndexMap<i64, OwnedEventId>> {
-    debug!("calling /state_ids");
-    let pdu_ids = fetch_state_ids(origin, room_id, event_id).await?;
-    let state_vec =
-        super::fetch_and_process_outliers(origin, &pdu_ids, room_id, room_version_id).await?;
+) -> AppResult<FetchedState> {
+    debug!("fetching state events at event: {event_id}");
+    let request = room_state_request(
+        &origin.origin().await,
+        RoomStateReqArgs {
+            room_id: room_id.to_owned(),
+            event_id: event_id.to_owned(),
+        },
+    )?
+    .into_inner();
+    let res = crate::sending::send_federation_request(origin, request, None)
+        .await?
+        .json::<RoomStateResBody>()
+        .await?;
 
-    let mut state: IndexMap<_, OwnedEventId> = IndexMap::new();
-    for (pdu, _, _event_guard) in state_vec {
-        let state_key = pdu
-            .state_key
-            .clone()
-            .ok_or_else(|| AppError::internal("found non-state pdu in state events"))?;
-
-        let state_key_id = state::ensure_field_id(&pdu.event_ty.to_string().into(), &state_key)?;
-
-        match state.entry(state_key_id) {
-            indexmap::map::Entry::Vacant(v) => {
-                v.insert(pdu.event_id.clone());
+    let mut known_events = HashSet::new();
+    let mut state_events: IndexMap<_, OwnedEventId> = IndexMap::new();
+    let mut auth_events: IndexMap<_, OwnedEventId> = IndexMap::new();
+    for pdu in &res.pdus {
+        let (event_id, event_val, _room_id, _room_version_id) = crate::parse_incoming_pdu(pdu)?;
+        let pdu = match timeline::get_pdu(&event_id) {
+            Ok(pdu) => pdu,
+            Err(_e) => {
+                process_pulled_pdu(
+                    origin,
+                    &event_id,
+                    room_id,
+                    room_version_id,
+                    event_val.clone(),
+                    &mut known_events,
+                )
+                .await?;
+                timeline::get_pdu(&event_id)?
             }
-            indexmap::map::Entry::Occupied(entry) => {
-                error!(
-                    "state event's type `{}` and state_key `{}` combination exists multiple times, entry: {entry:?}",
-                    pdu.event_ty, state_key
-                );
-                // return Err(AppError::internal(format!(
-                //     "state event's type `{}` and state_key `{}` combination exists multiple times",
-                //     pdu.event_ty, state_key
-                // )));
+        };
+        if let Some(state_key) = &pdu.state_key {
+            let field_id = ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
+            state_events.insert(field_id, event_id);
+        }
+    }
+
+    for event in &res.auth_chain {
+        let (event_id, event_val, _room_id, _room_version_id) = crate::parse_incoming_pdu(event)?;
+        let pdu = match timeline::get_pdu(&event_id) {
+            Ok(pdu) => pdu,
+            Err(_e) => {
+                process_pulled_pdu(
+                    origin,
+                    &event_id,
+                    room_id,
+                    room_version_id,
+                    event_val.clone(),
+                    &mut known_events,
+                )
+                .await?;
+                timeline::get_pdu(&event_id)?
             }
+        };
+        if let Some(state_key) = &pdu.state_key {
+            let field_id = ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
+            auth_events.insert(field_id, event_id);
         }
     }
 
@@ -55,7 +99,13 @@ pub async fn fetch_state(
     //     return Err(AppError::internal("Incoming event refers to wrong create event."));
     // }
 
-    Ok(state)
+    println!("====================state_events: {:#?}", state_events);
+    println!("====================auth_events: {:#?}", auth_events);
+
+    Ok(FetchedState {
+        state_events,
+        auth_events,
+    })
 }
 
 pub async fn fetch_state_ids(

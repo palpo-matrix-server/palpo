@@ -179,7 +179,11 @@ pub(crate) async fn process_pulled_pdu(
     room_version_id: &RoomVersionId,
     value: BTreeMap<String, CanonicalJsonValue>,
     known_events: &mut HashSet<OwnedEventId>,
-) -> AppResult<()> {
+) -> AppResult<Option<(
+    SnPduEvent,
+    BTreeMap<String, CanonicalJsonValue>,
+    Option<SeqnumQueueGuard>,
+)>> {
     // 1.3.1 Check room ACL on origin field/server
     handler::acl_check(origin, room_id)?;
 
@@ -199,10 +203,10 @@ pub(crate) async fn process_pulled_pdu(
 
     // 1. Skip the PDU if we already have it as a timeline event
     if state::get_pdu_frame_id(event_id).is_ok() {
-        return Ok(());
+        return Ok(None);
     }
 
-    let Some((incoming_pdu, val, event_guard)) = process_to_outlier_pdu(
+    process_to_outlier_pdu(
         origin,
         event_id,
         room_id,
@@ -212,34 +216,7 @@ pub(crate) async fn process_pulled_pdu(
         false,
         true,
     )
-    .await?
-    else {
-        return Ok(());
-    };
-    if incoming_pdu.is_rejected {
-        return Ok(());
-    }
-
-    // Skip old events
-    let first_pdu_in_room = timeline::first_pdu_in_room(room_id)?
-        .ok_or_else(|| AppError::internal("failed to find first pdu in database"))?;
-    if incoming_pdu.origin_server_ts < first_pdu_in_room.origin_server_ts {
-        return Ok(());
-    }
-
-    // Done with prev events, now handling the incoming event
-    let start_time = Instant::now();
-    crate::ROOM_ID_FEDERATION_HANDLE_TIME
-        .write()
-        .unwrap()
-        .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
-    handler::process_to_timeline_pdu(incoming_pdu, val, origin, room_id).await?;
-    drop(event_guard);
-    crate::ROOM_ID_FEDERATION_HANDLE_TIME
-        .write()
-        .unwrap()
-        .remove(&room_id.to_owned());
-    Ok(())
+    .await
 }
 
 #[tracing::instrument(skip_all)]
@@ -426,13 +403,8 @@ fn process_to_outlier_pdu(
                     soft_failed = true;
                 }
             } else {
-                if let Err(_e) = fetch_and_process_auth_chain(
-                    origin,
-                    room_id,
-                    &incoming_pdu.event_id,
-                    known_events,
-                )
-                .await
+                if let Err(_e) =
+                    fetch_and_process_auth_chain(origin, room_id, &incoming_pdu.event_id).await
                 {
                     soft_failed = true;
                 }
@@ -618,10 +590,16 @@ pub async fn process_to_timeline_pdu(
             // let state_at_incoming_event = state_at_incoming_degree_one(&incoming_pdu).await?;
             let state_at_incoming_event =
                 state_at_incoming_resolved(&incoming_pdu, room_id, &version_rules).await?;
+            println!(
+                "===========state_at_incoming_event  1\n{:#?}",
+                state_at_incoming_event
+            );
             let state_at_incoming_event = match state_at_incoming_event {
-                None => fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id)
-                    .await
-                    .unwrap_or_default(),
+                None => {
+                    fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id)
+                        .await?
+                        .state_events
+                }
                 Some(state) => state,
             };
 
@@ -696,10 +674,17 @@ pub async fn process_to_timeline_pdu(
     let state_at_incoming_event =
         state_at_incoming_resolved(&incoming_pdu, room_id, &version_rules).await?;
 
+    println!(
+        "===========state_at_incoming_event  0\n{:#?}",
+        state_at_incoming_event
+    );
+
     let state_at_incoming_event = match state_at_incoming_event {
-        None => fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id)
-            .await
-            .unwrap_or_default(),
+        None => {
+            fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id)
+                .await?
+                .state_events
+        }
         Some(state) => state,
     };
 
@@ -1281,7 +1266,10 @@ pub async fn fetch_and_process_missing_prev_events(
         }
 
         for event_id in missing_events {
-            if let Ok(state) = fetch_state(origin, room_id, &room_version_id, &event_id).await {
+            if let Ok(state) = fetch_state(origin, room_id, &room_version_id, &event_id)
+                .await
+                .map(|s| s.state_events)
+            {
                 known_events.extend(state.into_values());
             }
         }
@@ -1295,12 +1283,13 @@ pub async fn fetch_and_process_missing_prev_events(
     });
     Box::pin(async move {
         for (event_id, event_val) in fetched_events {
-            if !diesel_exists!(
+            let is_exists = diesel_exists!(
                 events::table
                     .filter(events::id.eq(&event_id))
                     .filter(events::room_id.eq(&room_id)),
                 &mut connect()?
-            )? {
+            )?;
+            if !is_exists {
                 process_pulled_pdu(
                     origin,
                     &event_id,
@@ -1323,8 +1312,7 @@ pub async fn fetch_and_process_auth_chain(
     origin: &ServerName,
     room_id: &RoomId,
     event_id: &EventId,
-    known_events: &mut HashSet<OwnedEventId>,
-) -> AppResult<()> {
+) -> AppResult<Vec<SnPduEvent>> {
     let request =
         event_authorization_request(&origin.origin().await, room_id, event_id)?.into_inner();
     let res_body = crate::sending::send_federation_request(origin, request, None)
@@ -1332,32 +1320,42 @@ pub async fn fetch_and_process_auth_chain(
         .json::<EventAuthorizationResBody>()
         .await?;
     Box::pin(async move {
+        let mut auth_events = Vec::new();
+        let mut known_events = HashSet::new();
         for event in res_body.auth_chain {
             let (event_id, event_value, room_id, room_version_id) =
                 crate::parse_incoming_pdu(&event)?;
+            if let Ok(pdu) = timeline::get_pdu(&event_id) {
+                auth_events.push(pdu);
+                known_events.insert(event_id);
+                continue;
+            }
             if !diesel_exists!(
                 events::table
                     .filter(events::id.eq(&event_id))
                     .filter(events::room_id.eq(&room_id)),
                 &mut connect()?
             )? {
-                process_to_outlier_pdu(
+                if let Some((event, _, _)) = process_to_outlier_pdu(
                     origin,
                     &event_id,
                     &room_id,
                     &room_version_id,
                     event_value,
-                    known_events,
+                    &mut known_events,
                     true,
                     false,
                 )
-                .await?;
+                .await?
+                {
+                    auth_events.push(event);
+                    known_events.insert(event_id);
+                }
             }
         }
-        Ok::<_, AppError>(())
+        Ok(auth_events)
     })
-    .await?;
-    Ok(())
+    .await
 }
 
 /// Returns Ok if the acl allows the server

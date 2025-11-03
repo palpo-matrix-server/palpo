@@ -48,16 +48,12 @@ pub(super) async fn state_at_incoming_resolved(
     debug!("calculating state at event using state resolve");
     let mut extremity_state_hashes = HashMap::new();
 
-    let Ok(curr_frame_id) = room::get_frame_id(room_id, None) else {
-        return Ok(None);
-    };
     for prev_event_id in &incoming_pdu.prev_events {
         let Ok(prev_event) = timeline::get_pdu(prev_event_id) else {
             continue;
         };
 
         if prev_event.is_rejected {
-            extremity_state_hashes.insert(curr_frame_id, prev_event);
             continue;
         }
 
@@ -144,14 +140,16 @@ pub(super) async fn state_at_incoming_resolved(
     drop(state_lock);
 
     match result {
-        Ok(new_state) => Ok(new_state
-            .into_iter()
-            .map(|((event_type, state_key), event_id)| {
-                let state_key_id =
-                    state::ensure_field_id(&event_type.to_string().into(), &state_key)?;
-                Ok((state_key_id, event_id))
-            })
-            .collect::<AppResult<_>>()?),
+        Ok(new_state) => Ok(Some(
+            new_state
+                .into_iter()
+                .map(|((event_type, state_key), event_id)| {
+                    let state_key_id =
+                        state::ensure_field_id(&event_type.to_string().into(), &state_key)?;
+                    Ok((state_key_id, event_id))
+                })
+                .collect::<AppResult<_>>()?,
+        )),
         Err(e) => {
             warn!(
                 "state resolution on prev events failed, either an event could not be found or deserialization: {}",
