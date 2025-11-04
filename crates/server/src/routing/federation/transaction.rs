@@ -60,9 +60,14 @@ async fn send_message(
         .into());
     }
 
+    println!("xxxxxxxxxxxxxxxx  0");
     let txn_start_time = Instant::now();
     let resolved_map = process_pdus(&body.pdus, &body.origin, &txn_start_time).await?;
+    println!("xxxxxxxxxxxxxxxx  1");
     process_edus(body.edus, &body.origin).await;
+
+    println!("xxxxxxxxxxxxxxxx  2 {resolved_map:#?}");
+
 
     json_ok(SendMessageResBody {
         pdus: resolved_map

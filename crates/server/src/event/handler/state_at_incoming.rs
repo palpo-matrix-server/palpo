@@ -60,9 +60,10 @@ pub(super) async fn state_at_incoming_resolved(
 
         if let Ok(frame_id) = state::get_pdu_frame_id(prev_event_id) {
             extremity_state_hashes.insert(frame_id, prev_event);
-        } else {
-            println!(">>>>>>>>>>>>>>>>>>>>>> NONE NOT FOUND PREV EVENT FRAME ID: {:?}", prev_event.event_id);
-            return Ok(None);
+        }
+        else {
+            println!(">>>>>>>>>>>>>>>>>>>>>> incoming_pdu: {:#?}", incoming_pdu);
+            println!(">>>>>>>>>>>>>>>>>>>>>> NONE NOT FOUND PREV EVENT FRAME ID: {:#?}", prev_event);
         }
     }
 
@@ -123,7 +124,7 @@ pub(super) async fn state_at_incoming_resolved(
         &async |event_id| {
             timeline::get_pdu(&event_id)
                 .map(|s| s.pdu)
-                .map_err(|_| StateError::other("missing PDU 5"))
+                .map_err(|_| StateError::other("missing pdu 5"))
         },
         |map| {
             let mut subgraph = HashSet::new();

@@ -310,6 +310,8 @@ pub async fn join_room(
         parsed_pdus.insert(event_id, event_value);
     }
     for (event_id, event_value) in parsed_pdus {
+        println!("======event id: {event_id}");
+        println!("======event value: {event_value:#?}");
         if let Err(e) = process_incoming_pdu(
             &remote_server,
             &event_id,

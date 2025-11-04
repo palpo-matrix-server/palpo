@@ -11,7 +11,7 @@ use crate::core::federation::event::{
 use crate::core::identifiers::*;
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::event::handler::process_pulled_pdu;
+use crate::event::handler::{process_pulled_pdu, process_to_outlier_pdu};
 use crate::room::state::ensure_field_id;
 use crate::room::{state, timeline};
 use crate::{AppError, AppResult, exts::*};
@@ -38,58 +38,41 @@ pub async fn fetch_state(
         },
     )?
     .into_inner();
-    let res = crate::sending::send_federation_request(origin, request, None)
+    let res_body = crate::sending::send_federation_request(origin, request, None)
         .await?
         .json::<RoomStateResBody>()
         .await?;
 
-    let mut known_events = HashSet::new();
     let mut state_events: IndexMap<_, OwnedEventId> = IndexMap::new();
     let mut auth_events: IndexMap<_, OwnedEventId> = IndexMap::new();
-    for pdu in &res.pdus {
+    for pdu in &res_body.pdus {
         let (event_id, event_val, _room_id, _room_version_id) = crate::parse_incoming_pdu(pdu)?;
-        let pdu = match timeline::get_pdu(&event_id) {
-            Ok(pdu) => pdu,
-            Err(_e) => {
-                process_pulled_pdu(
-                    origin,
-                    &event_id,
-                    room_id,
-                    room_version_id,
-                    event_val.clone(),
-                    &mut known_events,
-                )
-                .await?;
-                timeline::get_pdu(&event_id)?
-            }
+        println!("====event_val: {:#?}", event_val);
+          let event_type = match event_val.get("type") {
+            Some(v) => v.as_str().unwrap_or(""),
+            None => continue,
         };
-        if let Some(state_key) = &pdu.state_key {
-            let field_id = ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
-            state_events.insert(field_id, event_id);
-        }
+        let state_key = match event_val.get("state_key") {
+            Some(v) => v.as_str().unwrap_or(""),
+            None => continue,
+        };
+        let field_id = ensure_field_id(&event_type.into(), state_key)?;
+        state_events.insert(field_id, event_id);
     }
 
-    for event in &res.auth_chain {
+    for event in &res_body.auth_chain {
         let (event_id, event_val, _room_id, _room_version_id) = crate::parse_incoming_pdu(event)?;
-        let pdu = match timeline::get_pdu(&event_id) {
-            Ok(pdu) => pdu,
-            Err(_e) => {
-                process_pulled_pdu(
-                    origin,
-                    &event_id,
-                    room_id,
-                    room_version_id,
-                    event_val.clone(),
-                    &mut known_events,
-                )
-                .await?;
-                timeline::get_pdu(&event_id)?
-            }
+        println!("====event_xval: {:#?}", event_val);
+        let event_type = match event_val.get("type") {
+            Some(v) => v.as_str().unwrap_or(""),
+            None => continue,
         };
-        if let Some(state_key) = &pdu.state_key {
-            let field_id = ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
-            auth_events.insert(field_id, event_id);
-        }
+        let state_key = match event_val.get("state_key") {
+            Some(v) => v.as_str().unwrap_or(""),
+            None => continue,
+        };
+        let field_id = ensure_field_id(&event_type.into(), state_key)?;
+        auth_events.insert(field_id, event_id);
     }
 
     // // The original create event must still be in the state
@@ -124,11 +107,11 @@ pub async fn fetch_state_ids(
         },
     )?
     .into_inner();
-    let res = crate::sending::send_federation_request(origin, request, None)
+    let res_body = crate::sending::send_federation_request(origin, request, None)
         .await?
         .json::<RoomStateIdsResBody>()
         .await?;
     debug!("fetching state events at event: {event_id}");
 
-    Ok(res.pdu_ids)
+    Ok(res_body.pdu_ids)
 }
