@@ -1,6 +1,3 @@
-mod fetch_state;
-mod state_at_incoming;
-
 use std::borrow::Borrow;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque, hash_map};
 use std::future::Future;
@@ -10,17 +7,17 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use diesel::prelude::*;
-pub use fetch_state::{fetch_state, fetch_state_ids};
 use indexmap::IndexMap;
-use palpo_core::state::Event;
-use state_at_incoming::state_at_incoming_resolved;
 
+use super::fetching::{fetch_and_process_events, fetch_and_process_state, fetch_state_ids};
+use super::resolver::state_at_incoming_resolved;
 use crate::core::events::StateEventType;
 use crate::core::events::TimelineEventType;
 use crate::core::events::room::server_acl::RoomServerAclEventContent;
 use crate::core::federation::authorization::{
     EventAuthorizationResBody, event_authorization_request,
 };
+use crate::core::federation::event::RoomStateIdsResBody;
 use crate::core::federation::event::{
     EventReqArgs, EventResBody, MissingEventsReqBody, MissingEventsResBody, event_request,
     missing_events_request,
@@ -28,7 +25,7 @@ use crate::core::federation::event::{
 use crate::core::identifiers::*;
 use crate::core::room_version_rules::StateResolutionV2Rules;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonValue, canonical_json};
-use crate::core::state::{StateError, StateMap, event_auth};
+use crate::core::state::{Event, StateError, StateMap, event_auth};
 use crate::core::{self, Seqnum, UnixMillis};
 use crate::data::room::{DbEvent, DbEventData, NewDbEvent};
 use crate::data::schema::*;
@@ -234,7 +231,7 @@ pub(crate) async fn process_pulled_pdu(
 }
 
 #[tracing::instrument(skip_all)]
-fn process_to_outlier_pdu(
+pub fn process_to_outlier_pdu(
     origin: &ServerName,
     event_id: &EventId,
     room_id: &RoomId,
@@ -376,28 +373,28 @@ fn process_to_outlier_pdu(
         println!("=================process_to_outlier_pdu  4 xxx");
         let mut soft_failed = false;
         let mut rejection_reason = None;
-        // if fetch_missing_prev_events {
-        // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
-        if let Err(e) = fetch_and_process_missing_prev_events(
-            origin,
-            room_id,
-            room_version_id,
-            &incoming_pdu,
-            known_events,
-        )
-        .await
-        {
-            if let AppError::Matrix(MatrixError { ref kind, .. }) = e {
-                if *kind == core::error::ErrorKind::BadJson {
-                    rejection_reason = Some(format!("failed to bad prev events: {}", e));
+        if fetch_missing_prev_events {
+            // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
+            if let Err(e) = fetch_and_process_missing_prev_events(
+                origin,
+                room_id,
+                room_version_id,
+                &incoming_pdu,
+                known_events,
+            )
+            .await
+            {
+                if let AppError::Matrix(MatrixError { ref kind, .. }) = e {
+                    if *kind == core::error::ErrorKind::BadJson {
+                        rejection_reason = Some(format!("failed to bad prev events: {}", e));
+                    } else {
+                        soft_failed = true;
+                    }
                 } else {
                     soft_failed = true;
                 }
-            } else {
-                soft_failed = true;
             }
         }
-        // }
 
         println!("=================process_to_outlier_pdu  5");
         // 6. Reject "due to auth events" if the event doesn't pass auth based on the auth events
@@ -418,8 +415,13 @@ fn process_to_outlier_pdu(
         if !missing_auth_event_ids.is_empty() {
             if fetch_state_for_missing {
                 println!(">>>>>>>>>>>>>>>>.  a  0");
-                if let Err(_e) =
-                    fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id).await
+                if let Err(_e) = fetch_and_process_state(
+                    origin,
+                    room_id,
+                    room_version_id,
+                    &incoming_pdu.event_id,
+                )
+                .await
                 {
                     soft_failed = true;
                 }
@@ -624,14 +626,15 @@ pub async fn process_to_timeline_pdu(
                 "===========state_at_incoming_event  1\n{:#?}",
                 state_at_incoming_event
             );
-            let state_at_incoming_event =
-                if let Some(state_at_incoming_event) = state_at_incoming_event {
-                    state_at_incoming_event
-                } else {
-                    fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id)
-                        .await?
-                        .state_events
-                };
+            let state_at_incoming_event = if let Some(state_at_incoming_event) =
+                state_at_incoming_event
+            {
+                state_at_incoming_event
+            } else {
+                fetch_and_process_state(origin, room_id, room_version_id, &incoming_pdu.event_id)
+                    .await?
+                    .state_events
+            };
 
             // 13. Use state resolution to find new room state
             let state_lock = crate::room::lock_state(room_id).await;
@@ -710,7 +713,7 @@ pub async fn process_to_timeline_pdu(
     let state_at_incoming_event = if let Some(state_at_incoming_event) = state_at_incoming_event {
         state_at_incoming_event
     } else {
-        fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id)
+        fetch_and_process_state(origin, room_id, room_version_id, &incoming_pdu.event_id)
             .await?
             .state_events
     };
@@ -770,7 +773,9 @@ pub async fn process_to_timeline_pdu(
         &incoming_pdu.content,
         auth_rules,
     )?;
-    println!("========state_at_incoming_event: {state_at_incoming_event:?}   auth_events:{auth_events:?}");
+    println!(
+        "========state_at_incoming_event: {state_at_incoming_event:?}   auth_events:{auth_events:?}"
+    );
     event_auth::auth_check(
         auth_rules,
         &incoming_pdu,
@@ -1302,13 +1307,47 @@ pub async fn fetch_and_process_missing_prev_events(
             missing_events.retain(|e| e != &event_id);
         }
 
+        println!(
+            "============={}   ==missing_events: {missing_events:#?}",
+            incoming_pdu.event_id
+        );
         for event_id in missing_events {
-            if let Ok(state) = fetch_state(origin, room_id, &room_version_id, &event_id)
-                .await
-                .map(|s| s.state_events)
+            let mut desired_events = HashSet::new();
+            if let Ok(RoomStateIdsResBody {
+                auth_chain_ids,
+                pdu_ids,
+            }) = fetch_state_ids(origin, room_id, &event_id).await
             {
-                known_events.extend(state.into_values());
+                desired_events.extend(pdu_ids.into_iter());
+                desired_events.extend(auth_chain_ids.into_iter());
             }
+            desired_events.insert(event_id.clone());
+            let desired_count = desired_events.len();
+
+            let exist_events = events::table
+                .filter(events::id.eq_any(&desired_events))
+                .select(events::id)
+                .load::<OwnedEventId>(&mut connect()?)?;
+            known_events.extend(exist_events.iter().cloned());
+            let missing_events = desired_events
+                .into_iter()
+                .filter(|id| !exist_events.contains(id))
+                .collect::<Vec<_>>();
+            //  Same as synapse
+            // Making an individual request for each of 1000s of events has a lot of
+            // overhead. On the other hand, we don't really want to fetch all of the events
+            // if we already have most of them.
+            //
+            // As an arbitrary heuristic, if we are missing more than 10% of the events, then
+            // we fetch the whole state.
+            //
+            // Same as synapse
+            if missing_events.len() * 10 >= desired_count {
+                fetch_and_process_state(origin, room_id, room_version_id, &event_id).await?;
+            } else {
+                fetch_and_process_events(origin, room_id, room_version_id, &missing_events).await?;
+            }
+            known_events.extend(missing_events.into_iter());
         }
     }
 
