@@ -244,7 +244,7 @@ pub(crate) async fn process_pulled_pdu(
             && state_key.ends_with(&*format!(":{}", crate::config::server_name()))
         {
             // let state_at_incoming_event = state_at_incoming_degree_one(&incoming_pdu).await?;
-            let  state_at_event = state_at_incoming_resolved(&pdu, room_id, &version_rules)
+            let state_at_event = state_at_incoming_resolved(&pdu, room_id, &version_rules)
                 .await?
                 .unwrap_or_default();
             println!(
@@ -1617,6 +1617,14 @@ pub async fn fetch_and_process_missing_prev_events(
     Ok(())
 }
 
+async fn fetch_state_or_missing_events(
+    origin: &ServerName,
+    room_id: &RoomId,
+    _room_version_id: &RoomVersionId,
+    pdu: &PduEvent,
+) -> AppResult<FetchedState> {
+    
+}
 pub async fn fetch_and_process_auth_chain(
     origin: &ServerName,
     room_id: &RoomId,

@@ -26,7 +26,7 @@ pub struct FetchedState {
 pub async fn fetch_state(
     origin: &ServerName,
     room_id: &RoomId,
-    room_version_id: &RoomVersionId,
+    _room_version_id: &RoomVersionId,
     event_id: &EventId,
 ) -> AppResult<FetchedState> {
     debug!("fetching state events at event: {event_id}");
@@ -47,7 +47,6 @@ pub async fn fetch_state(
     let mut auth_events: IndexMap<_, OwnedEventId> = IndexMap::new();
     for pdu in &res_body.pdus {
         let (event_id, event_val, _room_id, _room_version_id) = crate::parse_incoming_pdu(pdu)?;
-        println!("====event_val: {:#?}", event_val);
           let event_type = match event_val.get("type") {
             Some(v) => v.as_str().unwrap_or(""),
             None => continue,
@@ -62,7 +61,6 @@ pub async fn fetch_state(
 
     for event in &res_body.auth_chain {
         let (event_id, event_val, _room_id, _room_version_id) = crate::parse_incoming_pdu(event)?;
-        println!("====event_xval: {:#?}", event_val);
         let event_type = match event_val.get("type") {
             Some(v) => v.as_str().unwrap_or(""),
             None => continue,
