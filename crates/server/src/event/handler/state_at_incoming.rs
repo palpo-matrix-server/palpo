@@ -50,7 +50,8 @@ pub(super) async fn state_at_incoming_resolved(
 
     for prev_event_id in &incoming_pdu.prev_events {
         let Ok(prev_event) = timeline::get_pdu(prev_event_id) else {
-            continue;
+            println!(">>>>>>>>>>>>>>>>prev event not found: {prev_event_id}");
+            return Ok(None);
         };
 
         if prev_event.is_rejected {
@@ -59,14 +60,22 @@ pub(super) async fn state_at_incoming_resolved(
         }
 
         if let Ok(frame_id) = state::get_pdu_frame_id(prev_event_id) {
+            println!(">>>>>>>>>>>>>>>>frame id: {frame_id}");
             extremity_state_hashes.insert(frame_id, prev_event);
-        }
-        else {
+        } else {
             println!(">>>>>>>>>>>>>>>>>>>>>> incoming_pdu: {:#?}", incoming_pdu);
-            println!(">>>>>>>>>>>>>>>>>>>>>> NONE NOT FOUND PREV EVENT FRAME ID: {:#?}", prev_event);
+            println!(
+                ">>>>>>>>>>>>>>>>>>>>>> NONE NOT FOUND PREV EVENT FRAME ID: {:#?}",
+                prev_event
+            );
+            return Ok(None);
         }
     }
 
+    println!(
+        ">>>>>>>>>>>>>>>>>>>>>> extremity_state_hashes: {:#?}  {incoming_pdu:#?}",
+        extremity_state_hashes
+    );
     let mut fork_states = Vec::with_capacity(extremity_state_hashes.len());
     let mut auth_chain_sets = Vec::with_capacity(extremity_state_hashes.len());
 

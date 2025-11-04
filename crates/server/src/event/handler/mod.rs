@@ -163,7 +163,7 @@ pub(crate) async fn process_incoming_pdu(
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
-    handler::process_to_timeline_pdu(incoming_pdu, val, origin, room_id).await?;
+    handler::process_to_timeline_pdu(incoming_pdu, val, origin, room_id, true).await?;
     drop(event_guard);
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
@@ -230,282 +230,7 @@ pub(crate) async fn process_pulled_pdu(
         return Ok(());
     }
 
-    let version_rules = crate::room::get_version_rules(room_version_id)?;
-    let auth_rules = &version_rules.authorization;
-
-    // 10. Fetch missing state and auth chain events by calling /state_ids at backwards extremities
-    //     doing all the checks in this list starting at 1. These are not timeline events.
-    debug!("resolving state at event");
-    let server_joined = crate::room::is_server_joined(crate::config::server_name(), room_id)?;
-    if !server_joined {
-        if let Some(state_key) = pdu.state_key.as_deref()
-            && pdu.event_ty == TimelineEventType::RoomMember
-            && state_key != pdu.sender().as_str() //????
-            && state_key.ends_with(&*format!(":{}", crate::config::server_name()))
-        {
-            // let state_at_incoming_event = state_at_incoming_degree_one(&incoming_pdu).await?;
-            let state_at_event = state_at_incoming_resolved(&pdu, room_id, &version_rules)
-                .await?
-                .unwrap_or_default();
-            println!(
-                "===========state_at_incoming_event  3\n{:#?}",
-                state_at_event
-            );
-            if state_at_event.is_empty() {
-                error!("state at incoming event is empty, cannot process join event for server");
-                return Ok(());
-            }
-
-            // 13. Use state resolution to find new room state
-            let state_lock = crate::room::lock_state(room_id).await;
-            // Now that the event has passed all auth it is added into the timeline.
-            // We use the `state_at_event` instead of `state_after` so we accurately
-            // represent the state for this event.
-            debug!("calculating extremities");
-            let extremities: BTreeSet<_> = state::get_forward_extremities(room_id)?
-                .into_iter()
-                .collect();
-            let extremities = extremities.iter().map(Borrow::borrow).chain(once(event_id));
-            debug!("compressing state at event");
-            let compressed_state_ids = Arc::new(
-                state_at_event
-                    .iter()
-                    .map(|(field_id, event_id)| {
-                        state::compress_event(
-                            room_id,
-                            *field_id,
-                            crate::event::ensure_event_sn(room_id, event_id)?.0,
-                        )
-                    })
-                    .collect::<AppResult<_>>()?,
-            );
-            debug!("preparing for stateres to derive new room state");
-
-            // We also add state after incoming event to the fork states
-            // let mut state_after = state_at_event.clone();
-
-            let state_key_id = state::ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
-
-            let compressed_event = state::compress_event(room_id, state_key_id, pdu.event_sn)?;
-            let mut new_room_state = CompressedState::new();
-            new_room_state.insert(compressed_event);
-
-            // Set the new room state to the resolved state
-            debug!("forcing new room state");
-            let DeltaInfo {
-                frame_id,
-                appended,
-                disposed,
-            } = state::save_state(room_id, Arc::new(new_room_state))?;
-
-            state::force_state(room_id, frame_id, appended, disposed)?;
-
-            debug!("appended pulled pdu");
-            timeline::append_pdu(&pdu, json_data, extremities, &state_lock).await?;
-            state::set_event_state(
-                &pdu.event_id,
-                pdu.event_sn,
-                &pdu.room_id,
-                compressed_state_ids,
-            )?;
-            drop(state_lock);
-        }
-        return Ok(());
-    }
-
-    // let state_at_incoming_event = if incoming_pdu.prev_events.len() == 1 {
-    //     state_at_incoming_degree_one(&incoming_pdu).await?
-    // } else {
-    //     state_at_incoming_resolved(&incoming_pdu, room_id, room_version_id).await?
-    // };
-    let mut state_at_event = state_at_incoming_resolved(&pdu, room_id, &version_rules)
-        .await?
-        .unwrap_or_default();
-    println!("===========state_at_event  0 {:#?}", state_at_event);
-    if state_at_event.is_empty() {
-        error!("state at event is empty, cannot process pulled event");
-        return Ok(());
-    }
-
-    println!("zzzzzzzzzzzzzzzzzzz 0");
-    debug!("performing auth check");
-    // 11. Check the auth of the event passes based on the state of the event
-    event_auth::auth_check(
-            auth_rules,
-            &pdu,
-            &async |event_id| {
-                timeline::get_pdu(&event_id)
-                    .map_err(|_| StateError::other("missing pdu in auth check event fetch"))
-            },
-            &async |k, s| {
-                let Ok(state_key_id) = state::get_field_id(&k.to_string().into(), &s) else {
-                    error!("missing field id for state type: {k}, state_key: {s}");
-                    return Err(StateError::other(format!(
-                        "missing field id for state type: {k}, state_key: {s}"
-                    )));
-                };
-
-                match state_at_event.get(&state_key_id) {
-                    Some(event_id) => match timeline::get_pdu(event_id) {
-                        Ok(pdu) => Ok(pdu),
-                        Err(e) => {
-                            error!("failed to get pdu for state resolution: {}", e);
-                            Err(StateError::other(format!(
-                                "failed to get pdu for state resolution: {}",
-                                e
-                            )))
-                        }
-                    },
-                    None => {
-                        error!(
-                            "missing state key id {state_key_id} for state type: {k}, state_key: {s}, room: {room_id}"
-                        );
-                        Err(StateError::other(format!(
-                            "missing state key id {state_key_id} for state type: {k}, state_key: {s}, room: {room_id}"
-                        )))
-                    }
-                }
-            },
-        )
-        .await?;
-    println!("zzzzzzzzzzzzzzzzzzz 1");
-    debug!("auth check succeeded");
-
-    debug!("gathering auth events");
-    let auth_events = state::get_auth_events(
-        room_id,
-        &pdu.event_ty,
-        &pdu.sender,
-        pdu.state_key.as_deref(),
-        &pdu.content,
-        auth_rules,
-    )?;
-    event_auth::auth_check(
-        auth_rules,
-        &pdu,
-        &async |event_id| {
-            timeline::get_pdu(&event_id).map_err(|_| StateError::other("missing pdu 3"))
-        },
-        &async |k, s| {
-            if let Some(pdu) = auth_events.get(&(k.clone(), s.to_string())).cloned() {
-                return Ok(pdu);
-            }
-            if auth_rules.room_create_event_id_as_room_id && k == StateEventType::RoomCreate {
-                let pdu = crate::room::get_create(room_id)
-                    .map_err(|_| StateError::other("missing create event"))?;
-                if pdu.room_id != *room_id {
-                    Err(StateError::other("mismatched room id in create event"))
-                } else {
-                    Ok(pdu.into_inner())
-                }
-            } else {
-                Err(StateError::other(format!(
-                    "failed auth check when process to timeline, missing state event, event_type: {k}, state_key:{s}"
-                )))
-            }
-        },
-    )
-    .await?;
-    println!("zzzzzzzzzzzzzzzzzzz 2");
-
-    // Soft fail check before doing state res
-    debug!("performing soft-fail check");
-    let soft_fail = match pdu.redacts_id(room_version_id) {
-        None => false,
-        Some(redact_id) => {
-            !state::user_can_redact(&redact_id, &pdu.sender, &pdu.room_id, true).await?
-        }
-    };
-    println!("zzzzzzzzzzzzzzzzzzz 3");
-
-    // 13. Use state resolution to find new room state
-    let state_lock = crate::room::lock_state(room_id).await;
-
-    // We start looking at current room state now, so lets lock the room
-    // Now we calculate the set of extremities this room has after the incoming event has been
-    // applied. We start with the previous extremities (aka leaves)
-    debug!("calculating extremities");
-    let mut extremities: BTreeSet<_> = state::get_forward_extremities(room_id)?
-        .into_iter()
-        .collect();
-
-    // Remove any forward extremities that are referenced by this incoming event's prev_events
-    for prev_event in &pdu.prev_events {
-        if extremities.contains(prev_event) {
-            extremities.remove(prev_event);
-        }
-    }
-
-    println!("zzzzzzzzzzzzzzzzzzz 4");
-    // Only keep those extremities were not referenced yet
-    // extremities.retain(|id| !matches!(crate::room::pdu_metadata::is_event_referenced(room_id, id), Ok(true)));
-
-    debug!("compressing state at event");
-    let compressed_state_ids = Arc::new(
-        state_at_event
-            .iter()
-            .map(|(field_id, event_id)| {
-                state::compress_event(
-                    room_id,
-                    *field_id,
-                    crate::event::ensure_event_sn(room_id, event_id)?.0,
-                )
-            })
-            .collect::<AppResult<_>>()?,
-    );
-
-    let guards = if let Some(state_key) = &pdu.state_key {
-        debug!("preparing for stateres to derive new room state");
-
-        // We also add state after incoming event to the fork states
-        let mut state_after = state_at_event.clone();
-        let state_key_id = state::ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
-        state_after.insert(state_key_id, pdu.event_id.clone());
-        let (new_room_state, guards) = resolve_state(room_id, room_version_id, state_after).await?;
-
-        // Set the new room state to the resolved state
-        debug!("Forcing new room state");
-
-        let DeltaInfo {
-            frame_id,
-            appended,
-            disposed,
-        } = state::save_state(room_id, new_room_state)?;
-
-        state::force_state(room_id, frame_id, appended, disposed)?;
-        guards
-    } else {
-        vec![]
-    };
-    println!("zzzzzzzzzzzzzzzzzzz 5");
-
-    // Now that the event has passed all auth it is added into the timeline.
-    // We use the `state_at_event` instead of `state_after` so we accurately
-    // represent the state for this event.
-    let extremities = extremities
-        .iter()
-        .map(Borrow::borrow)
-        .chain(once(event_id.borrow()));
-    // 14. Check if the event passes auth based on the "current state" of the room, if not soft fail it
-    if soft_fail {
-        debug!("starting soft fail auth check");
-        state::set_forward_extremities(&pdu.room_id, extremities, &state_lock)?;
-        // Soft fail, we keep the event as an outlier but don't add it to the timeline
-        warn!("event was soft failed: {:?}", pdu);
-        crate::room::pdu_metadata::mark_event_soft_failed(&pdu.event_id)?;
-        return Err(MatrixError::invalid_param("event has been soft failed").into());
-    } else {
-        debug!("appended incoming pdu");
-        timeline::append_pdu(&pdu, json_data, extremities, &state_lock).await?;
-        state::set_event_state(
-            &pdu.event_id,
-            pdu.event_sn,
-            &pdu.room_id,
-            compressed_state_ids,
-        )?;
-    }
-    drop(guard);
-    Ok(())
+    process_to_timeline_pdu(pdu, json_data, origin, room_id, false).await
 }
 
 #[tracing::instrument(skip_all)]
@@ -651,28 +376,28 @@ fn process_to_outlier_pdu(
         println!("=================process_to_outlier_pdu  4 xxx");
         let mut soft_failed = false;
         let mut rejection_reason = None;
-        if fetch_missing_prev_events {
-            // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
-            if let Err(e) = fetch_and_process_missing_prev_events(
-                origin,
-                room_id,
-                room_version_id,
-                &incoming_pdu,
-                known_events,
-            )
-            .await
-            {
-                if let AppError::Matrix(MatrixError { ref kind, .. }) = e {
-                    if *kind == core::error::ErrorKind::BadJson {
-                        rejection_reason = Some(format!("failed to bad prev events: {}", e));
-                    } else {
-                        soft_failed = true;
-                    }
+        // if fetch_missing_prev_events {
+        // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
+        if let Err(e) = fetch_and_process_missing_prev_events(
+            origin,
+            room_id,
+            room_version_id,
+            &incoming_pdu,
+            known_events,
+        )
+        .await
+        {
+            if let AppError::Matrix(MatrixError { ref kind, .. }) = e {
+                if *kind == core::error::ErrorKind::BadJson {
+                    rejection_reason = Some(format!("failed to bad prev events: {}", e));
                 } else {
                     soft_failed = true;
                 }
+            } else {
+                soft_failed = true;
             }
         }
+        // }
 
         println!("=================process_to_outlier_pdu  5");
         // 6. Reject "due to auth events" if the event doesn't pass auth based on the auth events
@@ -866,6 +591,7 @@ pub async fn process_to_timeline_pdu(
     json_data: BTreeMap<String, CanonicalJsonValue>,
     origin: &ServerName,
     room_id: &RoomId,
+    fetch_missing: bool,
 ) -> AppResult<()> {
     // Skip the PDU if we already have it as a timeline event
     if timeline::has_non_outlier_pdu(&incoming_pdu.event_id)? {
@@ -893,19 +619,19 @@ pub async fn process_to_timeline_pdu(
         {
             // let state_at_incoming_event = state_at_incoming_degree_one(&incoming_pdu).await?;
             let mut state_at_incoming_event =
-                state_at_incoming_resolved(&incoming_pdu, room_id, &version_rules)
-                    .await?
-                    .unwrap_or_default();
+                state_at_incoming_resolved(&incoming_pdu, room_id, &version_rules).await?;
             println!(
                 "===========state_at_incoming_event  1\n{:#?}",
                 state_at_incoming_event
             );
-            if state_at_incoming_event.is_empty() {
-                state_at_incoming_event =
+            let state_at_incoming_event =
+                if let Some(state_at_incoming_event) = state_at_incoming_event {
+                    state_at_incoming_event
+                } else {
                     fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id)
                         .await?
-                        .state_events;
-            }
+                        .state_events
+                };
 
             // 13. Use state resolution to find new room state
             let state_lock = crate::room::lock_state(room_id).await;
@@ -976,24 +702,24 @@ pub async fn process_to_timeline_pdu(
     //     state_at_incoming_resolved(&incoming_pdu, room_id, room_version_id).await?
     // };
     let mut state_at_incoming_event =
-        state_at_incoming_resolved(&incoming_pdu, room_id, &version_rules)
-            .await?
-            .unwrap_or_default();
+        state_at_incoming_resolved(&incoming_pdu, room_id, &version_rules).await?;
     println!(
         "===========state_at_incoming_event  0 {:#?}",
         state_at_incoming_event
     );
-    if state_at_incoming_event.is_empty() {
-        state_at_incoming_event =
-            fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id)
-                .await?
-                .state_events;
-    }
+    let state_at_incoming_event = if let Some(state_at_incoming_event) = state_at_incoming_event {
+        state_at_incoming_event
+    } else {
+        fetch_state(origin, room_id, room_version_id, &incoming_pdu.event_id)
+            .await?
+            .state_events
+    };
 
     println!("zzzzzzzzzzzzzzzzzzz 0");
-    debug!("performing auth check");
-    // 11. Check the auth of the event passes based on the state of the event
-    event_auth::auth_check(
+    if !state_at_incoming_event.is_empty() {
+        debug!("performing auth check");
+        // 11. Check the auth of the event passes based on the state of the event
+        event_auth::auth_check(
             auth_rules,
             &incoming_pdu,
             &async |event_id| {
@@ -1031,8 +757,9 @@ pub async fn process_to_timeline_pdu(
             },
         )
         .await?;
-    println!("zzzzzzzzzzzzzzzzzzz 1");
-    debug!("auth check succeeded");
+        println!("zzzzzzzzzzzzzzzzzzz 1");
+        debug!("auth check succeeded");
+    }
 
     debug!("gathering auth events");
     let auth_events = state::get_auth_events(
@@ -1043,6 +770,7 @@ pub async fn process_to_timeline_pdu(
         &incoming_pdu.content,
         auth_rules,
     )?;
+    println!("========state_at_incoming_event: {state_at_incoming_event:?}   auth_events:{auth_events:?}");
     event_auth::auth_check(
         auth_rules,
         &incoming_pdu,
@@ -1617,14 +1345,6 @@ pub async fn fetch_and_process_missing_prev_events(
     Ok(())
 }
 
-async fn fetch_state_or_missing_events(
-    origin: &ServerName,
-    room_id: &RoomId,
-    _room_version_id: &RoomVersionId,
-    pdu: &PduEvent,
-) -> AppResult<FetchedState> {
-    
-}
 pub async fn fetch_and_process_auth_chain(
     origin: &ServerName,
     room_id: &RoomId,
