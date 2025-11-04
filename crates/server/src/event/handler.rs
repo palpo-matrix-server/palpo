@@ -137,7 +137,7 @@ pub(crate) async fn process_incoming_pdu(
         return Ok(());
     };
 
-    if incoming_pdu.is_rejected || incoming_pdu.soft_failed {
+    if incoming_pdu.is_rejected {
         return Ok(());
     }
     check_room_id(room_id, &incoming_pdu)?;
@@ -595,15 +595,18 @@ pub async fn process_to_timeline_pdu(
     room_id: &RoomId,
     fetch_missing: bool,
 ) -> AppResult<()> {
+    println!("==============incoming_pdu  to timeline  0 {}", incoming_pdu.event_id);
     // Skip the PDU if we already have it as a timeline event
     if timeline::has_non_outlier_pdu(&incoming_pdu.event_id)? {
+    println!("==============incoming_pdu  to timeline  1 {}", incoming_pdu.event_id);
         return Ok(());
     }
+    println!("==============incoming_pdu  to timeline  2 {}", incoming_pdu.event_id);
     let _event_sn = crate::event::ensure_event_sn(&incoming_pdu.room_id, &incoming_pdu.event_id)?;
 
-    if crate::room::pdu_metadata::is_event_soft_failed(&incoming_pdu.event_id).unwrap_or(false) {
-        return Err(MatrixError::invalid_param("event has been soft failed").into());
-    }
+    // if crate::room::pdu_metadata::is_event_soft_failed(&incoming_pdu.event_id).unwrap_or(false) {
+    //     return Err(MatrixError::invalid_param("event has been soft failed").into());
+    // }
     info!("upgrading {} to timeline pdu", incoming_pdu.event_id);
     let room_version_id = &room::get_version(room_id)?;
     let version_rules = crate::room::get_version_rules(room_version_id)?;
@@ -620,7 +623,7 @@ pub async fn process_to_timeline_pdu(
             && state_key.ends_with(&*format!(":{}", crate::config::server_name()))
         {
             // let state_at_incoming_event = state_at_incoming_degree_one(&incoming_pdu).await?;
-            let mut state_at_incoming_event =
+            let state_at_incoming_event =
                 state_at_incoming_resolved(&incoming_pdu, room_id, &version_rules).await?;
             println!(
                 "===========state_at_incoming_event  1\n{:#?}",
@@ -704,7 +707,7 @@ pub async fn process_to_timeline_pdu(
     // } else {
     //     state_at_incoming_resolved(&incoming_pdu, room_id, room_version_id).await?
     // };
-    let mut state_at_incoming_event =
+    let state_at_incoming_event =
         state_at_incoming_resolved(&incoming_pdu, room_id, &version_rules).await?;
     println!(
         "===========state_at_incoming_event  0 {:#?}",

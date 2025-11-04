@@ -68,7 +68,7 @@ pub(super) async fn state_at_incoming_resolved(
                 ">>>>>>>>>>>>>>>>>>>>>> NONE NOT FOUND PREV EVENT FRAME ID: {:#?}",
                 prev_event
             );
-            return Ok(None);
+            // return Ok(None);
         }
     }
 

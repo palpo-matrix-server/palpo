@@ -1,5 +1,11 @@
+{"Action":"fail","Test":"TestFederationRoomsInvite"}
+{"Action":"fail","Test":"TestFederationRoomsInvite/Parallel"}
+{"Action":"fail","Test":"TestFederationRoomsInvite/Parallel/Inviter_user_can_rescind_invite_over_federation"}
+{"Action":"fail","Test":"TestMSC4297StateResolutionV2_1_includes_conflicted_subgraph"}
+{"Action":"fail","Test":"TestMSC4297StateResolutionV2_1_starts_from_empty_set"}
 {"Action":"fail","Test":"TestSyncTimelineGap"}
 {"Action":"fail","Test":"TestSyncTimelineGap/full"}
+{"Action":"fail","Test":"TestSyncTimelineGap/incremental"}
 {"Action":"pass","Test":"TestACLs"}
 {"Action":"pass","Test":"TestAddAccountData"}
 {"Action":"pass","Test":"TestAddAccountData/Can_add_global_account_data"}
@@ -132,13 +138,10 @@
 {"Action":"pass","Test":"TestFederationKeyUploadQuery/Can_query_remote_device_keys_using_POST"}
 {"Action":"pass","Test":"TestFederationRedactSendsWithoutEvent"}
 {"Action":"pass","Test":"TestFederationRejectInvite"}
-{"Action":"pass","Test":"TestFederationRoomsInvite"}
-{"Action":"pass","Test":"TestFederationRoomsInvite/Parallel"}
 {"Action":"pass","Test":"TestFederationRoomsInvite/Parallel/Invited_user_can_reject_invite_over_federation"}
 {"Action":"pass","Test":"TestFederationRoomsInvite/Parallel/Invited_user_can_reject_invite_over_federation_for_empty_room"}
 {"Action":"pass","Test":"TestFederationRoomsInvite/Parallel/Invited_user_can_reject_invite_over_federation_several_times"}
 {"Action":"pass","Test":"TestFederationRoomsInvite/Parallel/Invited_user_has_'is_direct'_flag_in_prev_content_after_joining"}
-{"Action":"pass","Test":"TestFederationRoomsInvite/Parallel/Inviter_user_can_rescind_invite_over_federation"}
 {"Action":"pass","Test":"TestFederationRoomsInvite/Parallel/Non-invitee_user_cannot_rescind_invite_over_federation"}
 {"Action":"pass","Test":"TestFederationRoomsInvite/Parallel/Remote_invited_user_can_join_the_room_when_homeserver_is_already_participating_in_the_room"}
 {"Action":"pass","Test":"TestFederationRoomsInvite/Parallel/Remote_invited_user_can_reject_invite_when_homeserver_is_already_participating_in_the_room"}
@@ -354,8 +357,6 @@
 {"Action":"pass","Test":"TestMSC4291RoomIDAsHashOfCreateEvent_CannotSendCreateEvent"}
 {"Action":"pass","Test":"TestMSC4291RoomIDAsHashOfCreateEvent_RoomIDIsOnCreateEvent"}
 {"Action":"pass","Test":"TestMSC4291RoomIDAsHashOfCreateEvent_UpgradedRooms"}
-{"Action":"pass","Test":"TestMSC4297StateResolutionV2_1_includes_conflicted_subgraph"}
-{"Action":"pass","Test":"TestMSC4297StateResolutionV2_1_starts_from_empty_set"}
 {"Action":"pass","Test":"TestMSC4311FullCreateEventOnStrippedState"}
 {"Action":"pass","Test":"TestNetworkPartitionOrdering"}
 {"Action":"pass","Test":"TestNotPresentUserCannotBanOthers"}
@@ -600,7 +601,6 @@
 {"Action":"pass","Test":"TestSync/parallel/Newly_joined_room_includes_presence_in_incremental_sync"}
 {"Action":"pass","Test":"TestSync/parallel/Newly_joined_room_is_included_in_an_incremental_sync"}
 {"Action":"pass","Test":"TestSync/parallel/sync_should_succeed_even_if_the_sync_token_points_to_a_redaction_of_an_unknown_event"}
-{"Action":"pass","Test":"TestSyncTimelineGap/incremental"}
 {"Action":"pass","Test":"TestTentativeEventualJoiningAfterRejecting"}
 {"Action":"pass","Test":"TestThreadedReceipts"}
 {"Action":"pass","Test":"TestThreadReceiptsInSyncMSC4102"}
