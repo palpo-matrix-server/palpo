@@ -595,13 +595,22 @@ pub async fn process_to_timeline_pdu(
     room_id: &RoomId,
     fetch_missing: bool,
 ) -> AppResult<()> {
-    println!("==============incoming_pdu  to timeline  0 {}", incoming_pdu.event_id);
+    println!(
+        "==============incoming_pdu  to timeline  0 {}",
+        incoming_pdu.event_id
+    );
     // Skip the PDU if we already have it as a timeline event
     if timeline::has_non_outlier_pdu(&incoming_pdu.event_id)? {
-    println!("==============incoming_pdu  to timeline  1 {}", incoming_pdu.event_id);
+        println!(
+            "==============incoming_pdu  to timeline  1 {}",
+            incoming_pdu.event_id
+        );
         return Ok(());
     }
-    println!("==============incoming_pdu  to timeline  2 {}", incoming_pdu.event_id);
+    println!(
+        "==============incoming_pdu  to timeline  2 {}",
+        incoming_pdu.event_id
+    );
     let _event_sn = crate::event::ensure_event_sn(&incoming_pdu.room_id, &incoming_pdu.event_id)?;
 
     // if crate::room::pdu_metadata::is_event_soft_failed(&incoming_pdu.event_id).unwrap_or(false) {
@@ -624,20 +633,21 @@ pub async fn process_to_timeline_pdu(
         {
             // let state_at_incoming_event = state_at_incoming_degree_one(&incoming_pdu).await?;
             let state_at_incoming_event =
-                state_at_incoming_resolved(&incoming_pdu, room_id, &version_rules).await?;
-            println!(
-                "===========state_at_incoming_event  1\n{:#?}",
-                state_at_incoming_event
-            );
-            let state_at_incoming_event = if let Some(state_at_incoming_event) =
-                state_at_incoming_event
-            {
-                state_at_incoming_event
-            } else {
-                fetch_and_process_state(origin, room_id, room_version_id, &incoming_pdu.event_id)
-                    .await?
-                    .state_events
-            };
+                state_at_incoming_resolved(&incoming_pdu, room_id, &version_rules)
+                    .await
+                    .ok()
+                    .flatten()
+                    .unwrap_or_default();
+
+            // let state_at_incoming_event = if let Some(state_at_incoming_event) =
+            //     state_at_incoming_event
+            // {
+            //     state_at_incoming_event
+            // } else {
+            //     fetch_and_process_state(origin, room_id, room_version_id, &incoming_pdu.event_id)
+            //         .await?
+            //         .state_events
+            // };
 
             // 13. Use state resolution to find new room state
             let state_lock = crate::room::lock_state(room_id).await;
