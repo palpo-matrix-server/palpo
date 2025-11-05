@@ -130,7 +130,7 @@ pub(crate) async fn process_incoming_pdu(
         value,
         &mut Default::default(),
         true,
-        false,
+        true,
     )
     .await?
     else {
@@ -370,7 +370,7 @@ pub fn process_to_outlier_pdu(
             return Ok(None);
         }
 
-        println!("=================process_to_outlier_pdu  4 xxx");
+        println!("=================process_to_outlier_pdu  4 xxx  {fetch_missing_prev_events}");
         let mut soft_failed = false;
         let mut rejection_reason = None;
         if fetch_missing_prev_events {
@@ -396,7 +396,10 @@ pub fn process_to_outlier_pdu(
             }
         }
 
-        println!("=================process_to_outlier_pdu  5");
+        println!(
+            "=================process_to_outlier_pdu  5  {}",
+            incoming_pdu.event_id
+        );
         // 6. Reject "due to auth events" if the event doesn't pass auth based on the auth events
         debug!(
             "auth check for {} based on auth events",
@@ -1217,6 +1220,9 @@ pub async fn fetch_and_process_missing_prev_events(
     incoming_pdu: &PduEvent,
     known_events: &mut HashSet<OwnedEventId>,
 ) -> AppResult<()> {
+    println!(
+        "====================fetch_and_process_missing_prev_events known events: {known_events:#?}"
+    );
     let room_version_id = &room::get_version(room_id)?;
 
     let min_depth = timeline::first_pdu_in_room(room_id)
@@ -1226,142 +1232,142 @@ pub async fn fetch_and_process_missing_prev_events(
     let forward_extremities = room::state::get_forward_extremities(room_id)?;
     let mut fetched_events = IndexMap::with_capacity(10);
 
-    let mut missing_stack = IndexMap::new();
-    missing_stack.insert(
-        incoming_pdu.event_id.clone(),
-        incoming_pdu.prev_events.clone(),
-    );
-    while let Some((event_id, prev_events)) = missing_stack.pop() {
-        let mut earliest_events = forward_extremities.clone();
-        earliest_events.extend(known_events.iter().cloned());
+    let mut earliest_events = forward_extremities.clone();
+    earliest_events.extend(known_events.iter().cloned());
 
-        let mut missing_events = Vec::with_capacity(prev_events.len());
-        for prev_id in prev_events {
-            let pdu = timeline::get_pdu(&prev_id);
-            if let Ok(pdu) = pdu
-                && !pdu.is_rejected
-            {
-                known_events.insert(prev_id);
-            } else if !earliest_events.contains(&prev_id) && !fetched_events.contains_key(&prev_id)
-            {
-                missing_events.push(prev_id);
-            }
+    let mut missing_events = Vec::with_capacity(incoming_pdu.prev_events.len());
+    for prev_id in &incoming_pdu.prev_events {
+        let pdu = timeline::get_pdu(&prev_id);
+        if let Ok(pdu) = &pdu
+            && !pdu.is_rejected
+        {
+            println!("================= already have prev event: {}", prev_id);
+            known_events.insert(prev_id.to_owned());
+        } else if !earliest_events.contains(&prev_id) && !fetched_events.contains_key(prev_id) {
+            println!(
+                "================= missing prev event: {}   {:?}",
+                prev_id, pdu
+            );
+            missing_events.push(prev_id);
         }
-        if missing_events.is_empty() {
+    }
+    if missing_events.is_empty() {
+        return Ok(());
+    }
+
+    let request = missing_events_request(
+        &origin.origin().await,
+        room_id,
+        MissingEventsReqBody {
+            limit: 10,
+            min_depth,
+            earliest_events,
+            latest_events: vec![incoming_pdu.event_id.clone()],
+        },
+    )?
+    .into_inner();
+
+    known_events.insert(incoming_pdu.event_id.clone());
+    let response = crate::sending::send_federation_request(origin, request, None).await?;
+    let res_body = response.json::<MissingEventsResBody>().await?;
+
+    println!("res_body.events: {:#?}", res_body.events);
+    for event in res_body.events {
+        let (event_id, event_val, _room_id, _room_version_id) = crate::parse_incoming_pdu(&event)?;
+
+        if known_events.contains(&event_id) {
             continue;
         }
 
-        let request = missing_events_request(
-            &origin.origin().await,
-            room_id,
-            MissingEventsReqBody {
-                limit: 10,
-                min_depth,
-                earliest_events,
-                latest_events: vec![incoming_pdu.event_id.clone()],
-            },
-        )?
-        .into_inner();
-
-        known_events.insert(event_id.clone());
-        let response = crate::sending::send_federation_request(origin, request, None).await?;
-        let res_body = response.json::<MissingEventsResBody>().await?;
-
-        for event in res_body.events {
-            let (event_id, event_val, _room_id, _room_version_id) =
-                crate::parse_incoming_pdu(&event)?;
-
-            if known_events.contains(&event_id) {
-                continue;
-            }
-
-            if fetched_events.contains_key(&event_id)
-                || missing_stack.contains_key(&event_id)
-                || incoming_pdu.event_id == event_id
-                || timeline::get_pdu(&event_id).is_ok()
-            {
-                known_events.insert(event_id.clone());
-                continue;
-            }
-
-            let prev_events = event_val
-                .get("prev_events")
-                .and_then(|v| v.as_array())
-                .map(|a| {
-                    a.iter()
-                        .filter_map(|v| v.as_str().and_then(|id| OwnedEventId::try_from(id).ok()))
-                        .collect::<Vec<_>>()
-                })
-                .unwrap_or_default();
-            fetched_events.insert(event_id.clone(), event_val);
+        if fetched_events.contains_key(&event_id)
+            || timeline::get_pdu(&event_id).is_ok()
+        {
             known_events.insert(event_id.clone());
-
-            if !prev_events.contains(&incoming_pdu.event_id) {
-                let prev_events = prev_events
-                    .into_iter()
-                    .filter_map(|id| {
-                        if !fetched_events.contains_key(&id)
-                            && !missing_stack.contains_key(&id)
-                            && incoming_pdu.event_id != id
-                            && !known_events.contains(&id)
-                            && !missing_events.contains(&id)
-                        {
-                            Some(id)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect::<Vec<_>>();
-                if !prev_events.is_empty() {
-                    missing_stack.insert(event_id.clone(), prev_events);
-                }
-            }
-
-            missing_events.retain(|e| e != &event_id);
+            continue;
         }
+
+        let prev_events = event_val
+            .get("prev_events")
+            .and_then(|v| v.as_array())
+            .map(|a| {
+                a.iter()
+                    .filter_map(|v| v.as_str().and_then(|id| OwnedEventId::try_from(id).ok()))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        fetched_events.insert(event_id.clone(), event_val);
+        known_events.insert(event_id.clone());
+
+        if !prev_events.contains(&incoming_pdu.event_id) {
+            let prev_events = prev_events
+                .into_iter()
+                .filter_map(|id| {
+                    if !fetched_events.contains_key(&id)
+                        && incoming_pdu.event_id != id
+                        && !known_events.contains(&id)
+                        && !missing_events.contains(&&id)
+                    {
+                        Some(id)
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>();
+            // if !prev_events.is_empty() {
+            //     missing_stack.insert(event_id.clone(), prev_events);
+            // }
+        }
+
+        missing_events.retain(|e| *e != &event_id);
+    }
+
+    println!(
+        "==========current event id==={}   ==missing_events: {missing_events:#?}",
+        incoming_pdu.event_id
+    );
+    for missing_id in missing_events {
+        let mut desired_events = HashSet::new();
+        if let Ok(RoomStateIdsResBody {
+            auth_chain_ids,
+            pdu_ids,
+        }) = fetch_state_ids(origin, room_id, &missing_id).await
+        {
+            desired_events.extend(pdu_ids.into_iter());
+            desired_events.extend(auth_chain_ids.into_iter());
+        }
+        desired_events.insert(missing_id.clone());
+        let desired_count = desired_events.len();
+
+        let exist_events = events::table
+            .filter(events::id.eq_any(&desired_events))
+            .select(events::id)
+            .load::<OwnedEventId>(&mut connect()?)?;
+        known_events.extend(exist_events.iter().cloned());
+        let missing_events = desired_events
+            .into_iter()
+            .filter(|id| !exist_events.contains(id))
+            .collect::<Vec<_>>();
+        // Same as synapse
+        // Making an individual request for each of 1000s of events has a lot of
+        // overhead. On the other hand, we don't really want to fetch all of the events
+        // if we already have most of them.
+        //
+        // As an arbitrary heuristic, if we are missing more than 10% of the events, then
+        // we fetch the whole state.
 
         println!(
-            "============={}   ==missing_events: {missing_events:#?}",
-            incoming_pdu.event_id
+            ">..............missing_events: {}  desired_count: {}",
+            missing_events.len(),
+            desired_count
         );
-        for event_id in missing_events {
-            let mut desired_events = HashSet::new();
-            if let Ok(RoomStateIdsResBody {
-                auth_chain_ids,
-                pdu_ids,
-            }) = fetch_state_ids(origin, room_id, &event_id).await
-            {
-                desired_events.extend(pdu_ids.into_iter());
-                desired_events.extend(auth_chain_ids.into_iter());
-            }
-            desired_events.insert(event_id.clone());
-            let desired_count = desired_events.len();
-
-            let exist_events = events::table
-                .filter(events::id.eq_any(&desired_events))
-                .select(events::id)
-                .load::<OwnedEventId>(&mut connect()?)?;
-            known_events.extend(exist_events.iter().cloned());
-            let missing_events = desired_events
-                .into_iter()
-                .filter(|id| !exist_events.contains(id))
-                .collect::<Vec<_>>();
-            //  Same as synapse
-            // Making an individual request for each of 1000s of events has a lot of
-            // overhead. On the other hand, we don't really want to fetch all of the events
-            // if we already have most of them.
-            //
-            // As an arbitrary heuristic, if we are missing more than 10% of the events, then
-            // we fetch the whole state.
-            //
-            // Same as synapse
-            if missing_events.len() * 10 >= desired_count {
-                fetch_and_process_state(origin, room_id, room_version_id, &event_id).await?;
-            } else {
-                fetch_and_process_events(origin, room_id, room_version_id, &missing_events).await?;
-            }
-            known_events.extend(missing_events.into_iter());
+        if missing_events.len() * 10 >= desired_count {
+            println!(">..............0");
+            fetch_and_process_state(origin, room_id, room_version_id, &incoming_pdu.event_id).await?;
+        } else {
+            println!(">..............1");
+            fetch_and_process_events(origin, room_id, room_version_id, &missing_events).await?;
         }
+        known_events.extend(missing_events.into_iter());
     }
 
     known_events.insert(incoming_pdu.event_id.clone());
