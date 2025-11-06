@@ -166,7 +166,7 @@ pub async fn send_join_v1(
     )
     .map_err(|_| MatrixError::invalid_param("origin field is invalid"))?;
 
-    handler::process_incoming_pdu(
+    handler::process_received_pdu(
         &origin,
         &event_id,
         room_id,

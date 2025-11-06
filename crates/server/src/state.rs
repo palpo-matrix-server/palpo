@@ -34,7 +34,8 @@ pub async fn send_state_event_for_key(
         room_version,
         &room::lock_state(room_id).await,
     )
-    .await?.pdu;
+    .await?
+    .pdu;
 
     Ok(pdu.event_id)
 }

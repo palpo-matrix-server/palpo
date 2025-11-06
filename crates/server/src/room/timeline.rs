@@ -1198,7 +1198,7 @@ pub async fn backfill_pdu(origin: &ServerName, pdu: Box<RawJsonValue>) -> AppRes
         return Ok(());
     }
 
-    handler::process_incoming_pdu(origin, &event_id, &room_id, &room_version_id, value, false)
+    handler::process_received_pdu(origin, &event_id, &room_id, &room_version_id, value, false)
         .await?;
 
     let _value = get_pdu_json(&event_id)?.expect("we just created it");

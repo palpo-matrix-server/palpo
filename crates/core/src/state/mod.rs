@@ -690,10 +690,13 @@ where
 
     trace!(list = ?events, "events to check");
 
+    println!("Checking events {:#?}", events);
     for event_id in events {
         let event_id: &EventId = event_id.borrow();
         let event = fetch_event(event_id.to_owned()).await?;
+        println!("error event {:#?}", event);
         let state_key = event.state_key().ok_or(StateError::MissingStateKey)?;
+        println!("state key {:#?}", state_key);
 
         let mut auth_events = StateMap::new();
         for auth_event_id in event.auth_events() {

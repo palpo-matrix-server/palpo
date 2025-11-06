@@ -60,14 +60,12 @@ async fn send_message(
         .into());
     }
 
-    println!("xxxxxxxxxxxxxxxx  0");
     let txn_start_time = Instant::now();
+    println!("xxxxxxxxxxxxxxxx  1 {:#?}", body.pdus);
     let resolved_map = process_pdus(&body.pdus, &body.origin, &txn_start_time).await?;
-    println!("xxxxxxxxxxxxxxxx  1");
     process_edus(body.edus, &body.origin).await;
 
     println!("xxxxxxxxxxxxxxxx  2 {resolved_map:#?}");
-
 
     json_ok(SendMessageResBody {
         pdus: resolved_map
@@ -98,7 +96,7 @@ async fn process_pdus(
     for (event_id, value, room_id, room_version_id) in parsed_pdus {
         // crate::server::check_running()?;
         let pdu_start_time = Instant::now();
-        let result = handler::process_incoming_pdu(
+        let result = handler::process_received_pdu(
             origin,
             &event_id,
             &room_id,

@@ -232,6 +232,7 @@ where
     if join_rule == JoinRuleKind::Public {
         Ok(())
     } else {
+        println!("===========joine rule: {join_rule:?}");
         Err(StateError::forbidden(
             "cannot join a room that is not `public`",
         ))

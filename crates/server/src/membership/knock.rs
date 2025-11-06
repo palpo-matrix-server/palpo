@@ -249,7 +249,7 @@ pub async fn knock_room(
                 .await?
                 .json::<EventResBody>()
                 .await?;
-            if let Err(e) = handler::process_incoming_pdu(
+            if let Err(e) = handler::process_received_pdu(
                 &remote_server,
                 &event_id,
                 room_id,
