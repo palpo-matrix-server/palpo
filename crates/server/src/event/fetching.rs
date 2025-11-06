@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use diesel::prelude::*;
 use indexmap::IndexMap;
 
 use crate::core::ServerName;
@@ -8,9 +9,11 @@ use crate::core::federation::event::{
     RoomStateResBody, event_request, room_state_ids_request, room_state_request,
 };
 use crate::core::identifiers::*;
+use crate::data::schema::*;
 use crate::event::handler::{process_pulled_pdu, process_to_outlier_pdu};
 use crate::room::state::ensure_field_id;
-use crate::{AppResult, exts::*};
+use crate::room::{state, timeline};
+use crate::{AppError, AppResult, exts::*};
 
 pub struct FetchedState {
     pub state_events: IndexMap<i64, OwnedEventId>,
