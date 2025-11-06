@@ -108,6 +108,7 @@ where
 
     info!(count = conflicted_state_set.len(), "conflicted events");
     trace!(map = ?conflicted_state_set, "conflicted events");
+    println!("=========conflicted_state_set: {conflicted_state_set:#?}");
 
     // Since v12, fetch the conflicted state subgraph.
     let conflicted_state_subgraph = if state_res_rules.consider_conflicted_state_subgraph {
@@ -124,6 +125,7 @@ where
     } else {
         HashSet::new()
     };
+    println!("=========conflicted_state_subgraph: {conflicted_state_subgraph:#?}");
 
     // The full conflicted set is the union of the conflicted state set and the auth difference,
     // and since v12, the conflicted state subgraph.
@@ -134,8 +136,6 @@ where
     )
     // Don't honor events we cannot "verify"
     .filter_map(|id| {
-        let id: &EventId = id.borrow();
-        let id = id.to_owned();
         async move {
             if fetch_event(id.clone()).await.is_ok() {
                 Some(id)
@@ -149,6 +149,7 @@ where
 
     info!(count = full_conflicted_set.len(), "full conflicted set");
     trace!(set = ?full_conflicted_set, "full conflicted set");
+    println!("======full_conflicted_set: {full_conflicted_set:#?}");
 
     // 1. Select the set X of all power events that appear in the full conflicted set. For each such
     //    power event P, enlarge X by adding the events in the auth chain of P which also belong to
@@ -180,6 +181,7 @@ where
         unconflicted_state_map.clone()
     };
 
+    println!("======iterative_auth_check 0 sorted_power_events:{sorted_power_events:#?} {initial_state_map:?}");
     let partially_resolved_state = iterative_auth_check(
         auth_rules,
         &sorted_power_events,
@@ -218,6 +220,7 @@ where
 
     // 4. Apply the iterative auth checks algorithm on the partial resolved state and the list of
     //    events from the previous step.
+    println!("======iterative_auth_check 1 sorted_remaining_events: {sorted_remaining_events:#?} {partially_resolved_state:?}");
     let mut resolved_state = iterative_auth_check(
         auth_rules,
         &sorted_remaining_events,

@@ -593,7 +593,10 @@ pub fn process_to_outlier_pdu(
         incoming_pdu.is_rejected = rejection_reason.is_some();
         incoming_pdu.rejection_reason = rejection_reason;
 
-        println!("=================process_to_outlier_pdu  12  {:#?}", incoming_pdu);
+        println!(
+            "=================process_to_outlier_pdu  12  {:#?}",
+            incoming_pdu
+        );
         debug!("added pdu as outlier");
         Ok(Some((
             SnPduEvent::new(incoming_pdu, event_sn),
@@ -995,6 +998,7 @@ async fn resolve_state(
         .collect();
     debug!("resolving state");
 
+    println!("===========fork_states: {fork_states:#?}");
     let version_rules = crate::room::get_version_rules(room_version_id)?;
     let state = match crate::core::state::resolve(
         &version_rules.authorization,
@@ -1005,9 +1009,15 @@ async fn resolve_state(
         &fork_states,
         auth_chain_sets
             .iter()
-            .map(|set| set.iter().map(|id| id.to_owned()).collect::<HashSet<_>>())
+            .map(|set| {
+                println!("===========auth_chain_set: {set:#?}");
+                set.iter().map(|id| id.to_owned()).collect::<HashSet<_>>()
+            })
             .collect::<Vec<_>>(),
-        &async |id| timeline::get_pdu(&id).map_err(|_| StateError::other("missing PDU 4")),
+        &async |id| {
+            println!("========fetch event get_pdu 2: {id}");
+            timeline::get_pdu(&id).map_err(|_| StateError::other("missing pdu 4"))
+        },
         |map| {
             let mut subgraph = HashSet::new();
             for event_ids in map.values() {
@@ -1018,6 +1028,14 @@ async fn resolve_state(
                     }
                 }
             }
+            let subgraph = events::table
+                .filter(events::id.eq_any(subgraph))
+                .filter(events::state_key.is_not_null())
+                .select(events::id)
+                .load::<OwnedEventId>(&mut connect().unwrap())
+                .unwrap()
+                .into_iter()
+                .collect::<HashSet<_>>();
             Some(subgraph)
         },
     )
