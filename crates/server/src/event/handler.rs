@@ -178,6 +178,7 @@ pub(crate) async fn process_pulled_pdu(
     value: BTreeMap<String, CanonicalJsonValue>,
     known_events: &mut HashSet<OwnedEventId>,
 ) -> AppResult<()> {
+    println!("===========process_pulled_pdu  0");
     // 1.3.1 Check room ACL on origin field/server
     handler::acl_check(origin, room_id)?;
 
@@ -417,7 +418,7 @@ pub fn process_to_outlier_pdu(
 
         if !missing_auth_event_ids.is_empty() {
             if fetch_state_for_missing {
-                println!(">>>>>>>>>>>>>>>>.  a  0");
+                println!("call fetch_and_process_state 3: {}", incoming_pdu.event_id);
                 if let Err(_e) = fetch_and_process_state(
                     origin,
                     room_id,
@@ -441,7 +442,7 @@ pub fn process_to_outlier_pdu(
         let (auth_events, missing_auth_event_ids) =
             timeline::get_may_missing_pdus(room_id, &incoming_pdu.auth_events)?;
         if !missing_auth_event_ids.is_empty() {
-            error!(
+            warn!(
                 "missing auth events for {}: {:?}",
                 incoming_pdu.event_id, missing_auth_event_ids
             );
@@ -729,6 +730,7 @@ pub async fn process_to_timeline_pdu(
     let state_at_incoming_event = if let Some(state_at_incoming_event) = state_at_incoming_event {
         state_at_incoming_event
     } else {
+        println!("call fetch_and_process_state 0: {}", incoming_pdu.event_id);
         fetch_and_process_state(origin, room_id, room_version_id, &incoming_pdu.event_id)
             .await?
             .state_events
@@ -1273,7 +1275,6 @@ pub async fn fetch_and_process_missing_prev_events(
     let response = crate::sending::send_federation_request(origin, request, None).await?;
     let res_body = response.json::<MissingEventsResBody>().await?;
 
-    println!("res_body.events: {:#?}", res_body.events);
     for event in res_body.events {
         let (event_id, event_val, _room_id, _room_version_id) = crate::parse_incoming_pdu(&event)?;
 
@@ -1332,17 +1333,6 @@ pub async fn fetch_and_process_missing_prev_events(
         incoming_pdu.event_id
     );
     for missing_id in missing_events {
-        println!("MMMMMMMMMMMMMMMissing id: {}", missing_id);
-        println!(
-            "MMMMMMMMMMMMMMMdb event: {:?}",
-            events::table
-                .filter(events::id.eq(&missing_id))
-                .load::<DbEvent>(&mut connect()?)
-        );
-        println!(
-            "MMMMMMMMMMMMMMMdb pdu: {:?}",
-            timeline::get_pdu(&missing_id)
-        );
         let mut desired_events = HashSet::new();
         if let Ok(RoomStateIdsResBody {
             auth_chain_ids,
@@ -1373,14 +1363,13 @@ pub async fn fetch_and_process_missing_prev_events(
         // we fetch the whole state.
 
         println!(
-            ">..............missing_events: {}  desired_count: {}",
+            ">..............missing_events: {}  desired_count: {}  {missing_id}",
             missing_events.len(),
             desired_count
         );
         if missing_events.len() * 10 >= desired_count {
-            println!(">..............0");
-            fetch_and_process_state(origin, room_id, room_version_id, &incoming_pdu.event_id)
-                .await?;
+            println!("call fetch_and_process_state 1: {}", missing_id);
+            fetch_and_process_state(origin, room_id, room_version_id, &missing_id).await?;
         } else {
             println!(">..............1");
             fetch_and_process_events(origin, room_id, room_version_id, &missing_events).await?;
@@ -1401,7 +1390,11 @@ pub async fn fetch_and_process_missing_prev_events(
                 .filter(events::room_id.eq(&room_id)),
             &mut connect()?
         )?;
+        println!("======event id: {}   is_exists: {}", event_id, is_exists);
         if !is_exists {
+            println!(
+                "=================processing fetched missing prev event: {event_id}  known_events:{known_events:?}"
+            );
             process_pulled_pdu(
                 origin,
                 &event_id,

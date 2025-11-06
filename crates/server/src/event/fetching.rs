@@ -29,6 +29,7 @@ pub async fn fetch_and_process_state(
     event_id: &EventId,
 ) -> AppResult<FetchedState> {
     debug!("fetching state events at event: {event_id}");
+    println!("fetching state events at event: {event_id}");
     let request = room_state_request(
         &origin.origin().await,
         RoomStateReqArgs {
@@ -78,9 +79,6 @@ pub async fn fetch_and_process_state(
     // if state.get(&create_state_key_id).map(|id| id.as_ref()) != Some(&create_event.event_id) {
     //     return Err(AppError::internal("Incoming event refers to wrong create event."));
     // }
-
-    println!("====================state_events: {:#?}", state_events);
-    println!("====================auth_events: {:#?}", auth_events);
 
     Ok(FetchedState {
         state_events,
