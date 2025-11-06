@@ -217,7 +217,6 @@ pub(super) async fn send_message(
     // Ensure it's valid JSON.
     let content: JsonValue =
         serde_json::from_slice(payload).map_err(|_| MatrixError::bad_json("invalid json body"))?;
-    println!("ppppppppppppost message content: {content:#?}");
 
     let state_lock = room::lock_state(&args.room_id).await;
     // Check if this is a new transaction id
@@ -301,7 +300,6 @@ pub(super) async fn post_message(
         return Err(MatrixError::bad_json("JSON body is not object.").into());
     }
 
-    println!("ppppppppppppost message content: {content:#?}");
     let event_id = timeline::build_and_append_pdu(
         PduBuilder {
             event_type: args.event_type.to_string().into(),

@@ -61,11 +61,8 @@ async fn send_message(
     }
 
     let txn_start_time = Instant::now();
-    println!("xxxxxxxxxxxxxxxx  1 {:#?}", body.pdus);
     let resolved_map = process_pdus(&body.pdus, &body.origin, &txn_start_time).await?;
     process_edus(body.edus, &body.origin).await;
-
-    println!("xxxxxxxxxxxxxxxx  2 {resolved_map:#?}");
 
     json_ok(SendMessageResBody {
         pdus: resolved_map
