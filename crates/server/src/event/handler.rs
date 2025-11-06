@@ -121,7 +121,7 @@ pub(crate) async fn process_incoming_pdu(
         return Ok(());
     }
 
-    println!("===========process_incoming_pdu  0");
+    println!("\n\n\n===========process_incoming_pdu  0");
     let Some((incoming_pdu, val, event_guard)) = process_to_outlier_pdu(
         origin,
         event_id,
@@ -1221,8 +1221,9 @@ pub async fn fetch_and_process_missing_prev_events(
     known_events: &mut HashSet<OwnedEventId>,
 ) -> AppResult<()> {
     println!(
-        "====================fetch_and_process_missing_prev_events known events: {known_events:#?}"
+        "===============fetch_and_process_missing_prev_events known events: {known_events:#?}"
     );
+    println!("-------incoming pdu: {:?}", incoming_pdu.event_id);
     let room_version_id = &room::get_version(room_id)?;
 
     let min_depth = timeline::first_pdu_in_room(room_id)
@@ -1248,13 +1249,14 @@ pub async fn fetch_and_process_missing_prev_events(
                 "================= missing prev event: {}   {:?}",
                 prev_id, pdu
             );
-            missing_events.push(prev_id);
+            missing_events.push(prev_id.to_owned());
         }
     }
     if missing_events.is_empty() {
         return Ok(());
     }
 
+    println!("llllllllllllllll");
     let request = missing_events_request(
         &origin.origin().await,
         room_id,
@@ -1279,9 +1281,7 @@ pub async fn fetch_and_process_missing_prev_events(
             continue;
         }
 
-        if fetched_events.contains_key(&event_id)
-            || timeline::get_pdu(&event_id).is_ok()
-        {
+        if fetched_events.contains_key(&event_id) || timeline::get_pdu(&event_id).is_ok() {
             known_events.insert(event_id.clone());
             continue;
         }
@@ -1305,7 +1305,7 @@ pub async fn fetch_and_process_missing_prev_events(
                     if !fetched_events.contains_key(&id)
                         && incoming_pdu.event_id != id
                         && !known_events.contains(&id)
-                        && !missing_events.contains(&&id)
+                        && !missing_events.contains(&id)
                     {
                         Some(id)
                     } else {
@@ -1313,19 +1313,36 @@ pub async fn fetch_and_process_missing_prev_events(
                     }
                 })
                 .collect::<Vec<_>>();
-            // if !prev_events.is_empty() {
-            //     missing_stack.insert(event_id.clone(), prev_events);
-            // }
+            let exists_events = events::table
+                .filter(events::id.eq_any(&prev_events))
+                .select(events::id)
+                .load::<OwnedEventId>(&mut connect()?)?;
+            missing_events.extend(
+                prev_events
+                    .into_iter()
+                    .filter(|id| !exists_events.contains(id)),
+            );
         }
 
-        missing_events.retain(|e| *e != &event_id);
+        missing_events.retain(|e| e != &event_id);
     }
 
     println!(
-        "==========current event id==={}   ==missing_events: {missing_events:#?}",
+        "==========current event id==={}    ==missing_events: {missing_events:#?}",
         incoming_pdu.event_id
     );
     for missing_id in missing_events {
+        println!("MMMMMMMMMMMMMMMissing id: {}", missing_id);
+        println!(
+            "MMMMMMMMMMMMMMMdb event: {:?}",
+            events::table
+                .filter(events::id.eq(&missing_id))
+                .load::<DbEvent>(&mut connect()?)
+        );
+        println!(
+            "MMMMMMMMMMMMMMMdb pdu: {:?}",
+            timeline::get_pdu(&missing_id)
+        );
         let mut desired_events = HashSet::new();
         if let Ok(RoomStateIdsResBody {
             auth_chain_ids,
@@ -1362,7 +1379,8 @@ pub async fn fetch_and_process_missing_prev_events(
         );
         if missing_events.len() * 10 >= desired_count {
             println!(">..............0");
-            fetch_and_process_state(origin, room_id, room_version_id, &incoming_pdu.event_id).await?;
+            fetch_and_process_state(origin, room_id, room_version_id, &incoming_pdu.event_id)
+                .await?;
         } else {
             println!(">..............1");
             fetch_and_process_events(origin, room_id, room_version_id, &missing_events).await?;
@@ -1376,30 +1394,25 @@ pub async fn fetch_and_process_missing_prev_events(
         let depth2 = v2.get("depth").and_then(|v| v.as_integer()).unwrap_or(0);
         depth1.cmp(&depth2)
     });
-    Box::pin(async move {
-        for (event_id, event_val) in fetched_events {
-            let is_exists = diesel_exists!(
-                events::table
-                    .filter(events::id.eq(&event_id))
-                    .filter(events::room_id.eq(&room_id)),
-                &mut connect()?
-            )?;
-            if !is_exists {
-                process_pulled_pdu(
-                    origin,
-                    &event_id,
-                    room_id,
-                    room_version_id,
-                    event_val.clone(),
-                    known_events,
-                )
-                .await?;
-            }
+    for (event_id, event_val) in fetched_events {
+        let is_exists = diesel_exists!(
+            events::table
+                .filter(events::id.eq(&event_id))
+                .filter(events::room_id.eq(&room_id)),
+            &mut connect()?
+        )?;
+        if !is_exists {
+            process_pulled_pdu(
+                origin,
+                &event_id,
+                room_id,
+                room_version_id,
+                event_val.clone(),
+                known_events,
+            )
+            .await?;
         }
-        Ok::<_, AppError>(())
-    })
-    .await?;
-
+    }
     Ok(())
 }
 
