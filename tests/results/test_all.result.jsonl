@@ -1,3 +1,6 @@
+{"Action":"fail","Test":"TestCorruptedAuthChain"}
+{"Action":"fail","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents"}
+{"Action":"fail","Test":"TestOutboundFederationIgnoresMissingEventWithBadJSONForRoomVersion6"}
 {"Action":"fail","Test":"TestSyncTimelineGap"}
 {"Action":"fail","Test":"TestSyncTimelineGap/full"}
 {"Action":"pass","Test":"TestACLs"}
@@ -82,7 +85,6 @@
 {"Action":"pass","Test":"TestContent"}
 {"Action":"pass","Test":"TestContentCSAPIMediaV1"}
 {"Action":"pass","Test":"TestContentMediaV1"}
-{"Action":"pass","Test":"TestCorruptedAuthChain"}
 {"Action":"pass","Test":"TestCumulativeJoinLeaveJoinSync"}
 {"Action":"pass","Test":"TestDeactivateAccount"}
 {"Action":"pass","Test":"TestDeactivateAccount/After_deactivating_account,_can't_log_in_with_password"}
@@ -170,7 +172,6 @@
 {"Action":"pass","Test":"TestInboundFederationProfile"}
 {"Action":"pass","Test":"TestInboundFederationProfile/Inbound_federation_can_query_profile_data"}
 {"Action":"pass","Test":"TestInboundFederationProfile/Non-numeric_ports_in_server_names_are_rejected"}
-{"Action":"pass","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents"}
 {"Action":"pass","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents/Outlier_should_be_rejected"}
 {"Action":"pass","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents/sent_event_1_should_be_rejected"}
 {"Action":"pass","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents/sent_event_2_should_be_rejected"}
@@ -361,7 +362,6 @@
 {"Action":"pass","Test":"TestNotPresentUserCannotBanOthers"}
 {"Action":"pass","Test":"TestOlderLeftRoomsNotInLeaveSection"}
 {"Action":"pass","Test":"TestOutboundFederationEventSizeGetMissingEvents"}
-{"Action":"pass","Test":"TestOutboundFederationIgnoresMissingEventWithBadJSONForRoomVersion6"}
 {"Action":"pass","Test":"TestOutboundFederationProfile"}
 {"Action":"pass","Test":"TestOutboundFederationProfile/Outbound_federation_can_query_profile_data"}
 {"Action":"pass","Test":"TestOutboundFederationSend"}

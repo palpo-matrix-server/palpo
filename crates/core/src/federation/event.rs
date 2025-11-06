@@ -297,6 +297,18 @@ impl RoomStateIdsResBody {
 //     }
 // };
 
+pub fn room_state_request(
+    origin: &str,
+    args: RoomStateReqArgs,
+) -> SendResult<SendRequest> {
+    let mut url = Url::parse(&format!(
+        "{origin}/_matrix/federation/v1/state/{}",
+        args.room_id
+    ))?;
+    url.query_pairs_mut()
+        .append_pair("event_id", args.event_id.as_str());
+    Ok(crate::sending::get(url))
+}
 /// Request type for the `get_state` endpoint.
 #[derive(ToParameters, Deserialize, Debug)]
 pub struct RoomStateReqArgs {
@@ -310,7 +322,7 @@ pub struct RoomStateReqArgs {
 }
 
 /// Response type for the `get_state` endpoint.
-#[derive(ToSchema, Serialize, Debug)]
+#[derive(ToSchema, Serialize, Deserialize,Debug)]
 pub struct RoomStateResBody {
     /// The full set of authorization events that make up the state of the
     /// room, and their authorization events, recursively.

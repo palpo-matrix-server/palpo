@@ -27,7 +27,7 @@ use crate::core::serde::{
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::event::handler::{fetch_and_process_missing_prev_events, process_incoming_pdu};
+use crate::event::handler::{fetch_and_process_missing_prev_events, process_received_pdu};
 use crate::event::{PduBuilder, PduEvent, ensure_event_sn, gen_event_id_canonical_json};
 use crate::federation::maybe_strip_event_id;
 use crate::room::state::{CompressedEvent, DeltaInfo};
@@ -60,7 +60,7 @@ pub async fn join_room(
         });
     }
 
-    if let Ok(membership) = room::get_member(room_id, sender_id)
+    if let Ok(membership) = room::get_member(room_id, sender_id, None)
         && membership.membership == MembershipState::Ban
     {
         tracing::warn!(
@@ -310,7 +310,7 @@ pub async fn join_room(
         parsed_pdus.insert(event_id, event_value);
     }
     for (event_id, event_value) in parsed_pdus {
-        if let Err(e) = process_incoming_pdu(
+        if let Err(e) = process_received_pdu(
             &remote_server,
             &event_id,
             room_id,

@@ -93,7 +93,7 @@ async fn process_pdus(
     for (event_id, value, room_id, room_version_id) in parsed_pdus {
         // crate::server::check_running()?;
         let pdu_start_time = Instant::now();
-        let result = handler::process_incoming_pdu(
+        let result = handler::process_received_pdu(
             origin,
             &event_id,
             &room_id,

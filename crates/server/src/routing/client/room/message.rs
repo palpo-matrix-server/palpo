@@ -215,8 +215,8 @@ pub(super) async fn send_message(
 
     let payload = req.payload().await?;
     // Ensure it's valid JSON.
-    let _content: JsonValue =
-        serde_json::from_slice(payload).map_err(|_| MatrixError::bad_json("Invalid JSON body."))?;
+    let content: JsonValue =
+        serde_json::from_slice(payload).map_err(|_| MatrixError::bad_json("invalid json body"))?;
 
     let state_lock = room::lock_state(&args.room_id).await;
     // Check if this is a new transaction id
@@ -239,7 +239,7 @@ pub(super) async fn send_message(
         PduBuilder {
             event_type: args.event_type.to_string().into(),
             content: serde_json::from_slice(payload)
-                .map_err(|_| MatrixError::bad_json("Invalid JSON body."))?,
+                .map_err(|_| MatrixError::bad_json("iInvalid json body"))?,
             unsigned,
             timestamp: if authed.appservice().is_some() {
                 args.timestamp

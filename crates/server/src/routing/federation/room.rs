@@ -233,7 +233,7 @@ async fn send_knock(
     let pdu: PduEvent = PduEvent::from_json_value(&args.room_id, &event_id, event.into())
         .map_err(|e| MatrixError::invalid_param(format!("invalid knock event PDU: {e}")))?;
 
-    handler::process_incoming_pdu(
+    handler::process_received_pdu(
         &origin,
         &event_id,
         &args.room_id,
@@ -296,7 +296,7 @@ async fn make_knock(
     // }
 
     let state_lock = room::lock_state(&args.room_id).await;
-    if let Ok(member) = room::get_member(&args.room_id, &args.user_id)
+    if let Ok(member) = room::get_member(&args.room_id, &args.user_id, None)
         && member.membership == MembershipState::Ban
     {
         warn!(

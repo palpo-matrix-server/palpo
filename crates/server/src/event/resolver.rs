@@ -44,32 +44,29 @@ pub(super) async fn state_at_incoming_resolved(
     incoming_pdu: &PduEvent,
     room_id: &RoomId,
     version_rules: &RoomVersionRules,
-) -> AppResult<IndexMap<i64, OwnedEventId>> {
+) -> AppResult<Option<IndexMap<i64, OwnedEventId>>> {
     debug!("calculating state at event using state resolve");
     let mut extremity_state_hashes = HashMap::new();
 
-    let Ok(curr_frame_id) = room::get_frame_id(room_id, None) else {
-        return Ok(IndexMap::new());
-    };
     for prev_event_id in &incoming_pdu.prev_events {
         let Ok(prev_event) = timeline::get_pdu(prev_event_id) else {
-            continue;
+            return Ok(None);
         };
 
         if prev_event.is_rejected {
-            extremity_state_hashes.insert(curr_frame_id, prev_event);
             continue;
         }
 
-        let frame_id = state::get_pdu_frame_id(prev_event_id).unwrap_or(curr_frame_id);
-        extremity_state_hashes.insert(frame_id, prev_event);
+        if let Ok(frame_id) = state::get_pdu_frame_id(prev_event_id) {
+            extremity_state_hashes.insert(frame_id, prev_event);
+        }
     }
 
     let mut fork_states = Vec::with_capacity(extremity_state_hashes.len());
     let mut auth_chain_sets = Vec::with_capacity(extremity_state_hashes.len());
 
-    for (sstate_hash, prev_event) in extremity_state_hashes {
-        let mut leaf_state = state::get_full_state_ids(sstate_hash)?;
+    for (frame_id, prev_event) in extremity_state_hashes {
+        let mut leaf_state = state::get_full_state_ids(frame_id)?;
 
         if let Some(state_key) = &prev_event.state_key {
             let state_key_id =
@@ -122,7 +119,7 @@ pub(super) async fn state_at_incoming_resolved(
         &async |event_id| {
             timeline::get_pdu(&event_id)
                 .map(|s| s.pdu)
-                .map_err(|_| StateError::other("missing PDU 5"))
+                .map_err(|_| StateError::other("missing pdu 5"))
         },
         |map| {
             let mut subgraph = HashSet::new();
@@ -141,20 +138,22 @@ pub(super) async fn state_at_incoming_resolved(
     drop(state_lock);
 
     match result {
-        Ok(new_state) => Ok(new_state
-            .into_iter()
-            .map(|((event_type, state_key), event_id)| {
-                let state_key_id =
-                    state::ensure_field_id(&event_type.to_string().into(), &state_key)?;
-                Ok((state_key_id, event_id))
-            })
-            .collect::<AppResult<_>>()?),
+        Ok(new_state) => Ok(Some(
+            new_state
+                .into_iter()
+                .map(|((event_type, state_key), event_id)| {
+                    let state_key_id =
+                        state::ensure_field_id(&event_type.to_string().into(), &state_key)?;
+                    Ok((state_key_id, event_id))
+                })
+                .collect::<AppResult<_>>()?,
+        )),
         Err(e) => {
             warn!(
                 "state resolution on prev events failed, either an event could not be found or deserialization: {}",
                 e
             );
-            Ok(IndexMap::new())
+            Ok(None)
         }
     }
 }

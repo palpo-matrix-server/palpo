@@ -439,7 +439,7 @@ async fn send_leave(
         return Err(MatrixError::bad_json("state_key does not match sender user.").into());
     }
 
-    handler::process_incoming_pdu(
+    handler::process_received_pdu(
         origin,
         &event_id,
         &args.room_id,

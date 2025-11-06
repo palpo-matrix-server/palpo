@@ -1,5 +1,7 @@
+pub mod fetching;
 pub mod handler;
 mod pdu;
+pub mod resolver;
 pub use pdu::*;
 pub mod search;
 
@@ -194,7 +196,6 @@ pub fn ignored_filter(item: PdusIterItem, user_id: &UserId) -> bool {
     !is_ignored_pdu(pdu, user_id)
 }
 
-#[inline]
 pub fn is_ignored_pdu(pdu: &SnPduEvent, _user_id: &UserId) -> bool {
     // exclude Synapse's dummy events from bloating up response bodies. clients
     // don't need to see this.
