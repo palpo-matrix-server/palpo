@@ -9,10 +9,9 @@ use thiserror::Error;
 use crate::{
     IdParseError, OwnedServerName, OwnedServerSigningKeyId, ServerName,
     auth_scheme::AuthScheme,
-    error::IntoHttpError,
     http_headers::quote_ascii_string_if_required,
     serde::{Base64, Base64DecodeError, CanonicalJsonObject},
-    signatures::{Ed25519KeyPair, KeyPair},
+    signatures::{self, Ed25519KeyPair, KeyPair},
 };
 
 /// Authentication is performed by adding an `X-Matrix` header including a signature in the request
@@ -25,17 +24,30 @@ pub struct ServerSignatures;
 
 impl AuthScheme for ServerSignatures {
     type Input<'a> = ServerSignaturesInput<'a>;
+    type AddAuthenticationError = XMatrixFromRequestError;
+    type Output = XMatrix;
+    type ExtractAuthenticationError = XMatrixExtractError;
 
     fn add_authentication<T: AsRef<[u8]>>(
         request: &mut http::Request<T>,
         input: ServerSignaturesInput<'_>,
-    ) -> Result<(), IntoHttpError> {
+    ) -> Result<(), Self::AddAuthenticationError> {
         let authorization = HeaderValue::from(&XMatrix::try_from_http_request(request, input)?);
         request
             .headers_mut()
             .insert(http::header::AUTHORIZATION, authorization);
 
         Ok(())
+    }
+
+    fn extract_authentication<T: AsRef<[u8]>>(
+        request: &http::Request<T>,
+    ) -> Result<Self::Output, Self::ExtractAuthenticationError> {
+        let value = request
+            .headers()
+            .get(http::header::AUTHORIZATION)
+            .ok_or(XMatrixExtractError::MissingAuthorizationHeader)?;
+        Ok(value.try_into()?)
     }
 }
 
@@ -204,25 +216,23 @@ impl XMatrix {
     pub fn try_from_http_request<T: AsRef<[u8]>>(
         request: &http::Request<T>,
         input: ServerSignaturesInput<'_>,
-    ) -> Result<Self, IntoHttpError> {
+    ) -> Result<Self, XMatrixFromRequestError> {
         let ServerSignaturesInput {
             origin,
             destination,
             key_pair,
         } = input;
 
-        let request_object = Self::request_object(request, &origin, &destination)
-            .map_err(|error| IntoHttpError::Authentication(error.into()))?;
+        let request_object = Self::request_object(request, &origin, &destination)?;
 
         // The spec says to use the algorithm to sign JSON, so we could use
         // ruma_signatures::sign_json, however since we would need to extract the signature from the
         // JSON afterwards let's be a bit more efficient about it.
-        let serialized_request_object = serde_json::to_vec(&request_object)
-            .map_err(|error| IntoHttpError::Authentication(error.into()))?;
+        let serialized_request_object = serde_json::to_vec(&request_object)?;
         let (key_id, signature) = key_pair.sign(&serialized_request_object).into_parts();
 
         let key = OwnedServerSigningKeyId::try_from(key_id.as_str())
-            .map_err(|error| IntoHttpError::Authentication(error.into()))?;
+            .map_err(XMatrixFromRequestError::SigningKeyId)?;
         let sig = Base64::new(signature);
 
         Ok(Self {
@@ -306,6 +316,19 @@ impl Credentials for XMatrix {
     }
 }
 
+/// An error when trying to construct an [`XMatrix`] from a [`http::Request`].
+#[derive(Debug, Error)]
+#[non_exhaustive]
+pub enum XMatrixFromRequestError {
+    /// Failed to construct the request object to sign.
+    #[error("failed to construct request object to sign: {0}")]
+    IntoJson(#[from] serde_json::Error),
+
+    /// The signing key ID is invalid.
+    #[error("invalid signing key ID: {0}")]
+    SigningKeyId(IdParseError),
+}
+
 /// An error when trying to parse an X-Matrix Authorization header.
 #[derive(Debug, Error)]
 #[non_exhaustive]
@@ -343,6 +366,32 @@ impl<'a> From<http_auth::parser::Error<'a>> for XMatrixParseError {
     fn from(value: http_auth::parser::Error<'a>) -> Self {
         Self::ParseStr(value.to_string())
     }
+}
+
+/// An error when trying to extract an [`XMatrix`] from an HTTP request.
+#[derive(Debug, Error)]
+#[non_exhaustive]
+pub enum XMatrixExtractError {
+    /// No Authorization HTTP header was found, but the endpoint requires a server signature.
+    #[error("no Authorization HTTP header found, but this endpoint requires a server signature")]
+    MissingAuthorizationHeader,
+
+    /// Failed to convert the header value to an [`XMatrix`].
+    #[error("failed to parse header value: {0}")]
+    Parse(#[from] XMatrixParseError),
+}
+
+/// An error when trying to verify the signature in an [`XMatrix`] for an HTTP request.
+#[derive(Debug, Error)]
+#[non_exhaustive]
+pub enum XMatrixVerificationError {
+    /// The `destination` in [`XMatrix`] doesn't match the one to verify.
+    #[error("destination in XMatrix doesn't match the one to verify")]
+    DestinationMismatch,
+
+    /// The signature verification failed.
+    #[error("signature verification failed: {0}")]
+    Signature(#[from] signatures::Error),
 }
 
 // #[cfg(test)]
