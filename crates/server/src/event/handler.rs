@@ -324,6 +324,18 @@ pub async fn process_pdu_missing_deps(
             ))
         }
     }
+    let auth_events = auth_events
+        .into_iter()
+        .map(|auth_event| {
+            (
+                (
+                    auth_event.event_ty.to_string().into(),
+                    auth_event.state_key.clone().unwrap_or_default(),
+                ),
+                auth_event,
+            )
+        })
+        .collect::<HashMap<_, _>>();
 
     if let Err(_e) = event_auth::auth_check(
             &auth_rules,
