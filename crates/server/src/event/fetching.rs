@@ -102,38 +102,61 @@ pub(super) async fn fetch_and_process_missing_state_by_ids(
         .await?;
     debug!("fetching state events at event");
 
-    let mut state_events: IndexMap<_, OwnedEventId> = IndexMap::new();
-    let mut auth_events: IndexMap<_, OwnedEventId> = IndexMap::new();
+    let mut state_events: IndexMap<i64, OwnedEventId> = IndexMap::new();
+    let mut auth_events: IndexMap<i64, OwnedEventId> = IndexMap::new();
     for pdu_id in &res.pdu_ids {
         let Ok(body) = fetch_event(origin, pdu_id).await else {
             continue;
         };
-        let (event_id, event_val, _room_id, _room_version_id) = parse_incoming_pdu(&body.pdu)?;
-        let event_type = match event_val.get("type") {
-            Some(v) => v.as_str().unwrap_or(""),
+        let (event_id, event_value, _room_id, _room_version_id) = parse_incoming_pdu(&body.pdu)?;
+
+        if let Ok(pdu) = timeline::get_pdu(&event_id) {
+            let state_key = match &pdu.state_key {
+                Some(s) => s,
+                None => continue,
+            };
+            let field_id = ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
+            state_events.insert(field_id, event_id);
+            continue;
+        }
+        let Some((pdu, _, _)) =
+            process_to_outlier_pdu(origin, &event_id, &room_id, &room_version_id, event_value)
+                .await?
+        else {
+            continue;
+        };
+        let state_key = match &pdu.state_key {
+            Some(s) => s,
             None => continue,
         };
-        let state_key = match event_val.get("state_key") {
-            Some(v) => v.as_str().unwrap_or(""),
-            None => continue,
-        };
-        let field_id = ensure_field_id(&event_type.into(), state_key)?;
+        let field_id = ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
         state_events.insert(field_id, event_id);
     }
     for pdu_id in &res.auth_chain_ids {
         let Ok(body) = fetch_event(origin, pdu_id).await else {
             continue;
         };
-        let (event_id, event_val, _room_id, _room_version_id) = parse_incoming_pdu(&body.pdu)?;
-        let event_type = match event_val.get("type") {
-            Some(v) => v.as_str().unwrap_or(""),
+        let (event_id, event_value, _room_id, _room_version_id) = parse_incoming_pdu(&body.pdu)?;
+        if let Ok(pdu) = timeline::get_pdu(&event_id) {
+            let state_key = match &pdu.state_key {
+                Some(s) => s,
+                None => continue,
+            };
+            let field_id = ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
+            auth_events.insert(field_id, event_id);
+            continue;
+        }
+        let Some((pdu, _, _)) =
+            process_to_outlier_pdu(origin, &event_id, &room_id, &room_version_id, event_value)
+                .await?
+        else {
+            continue;
+        };
+        let state_key = match &pdu.state_key {
+            Some(s) => s,
             None => continue,
         };
-        let state_key = match event_val.get("state_key") {
-            Some(v) => v.as_str().unwrap_or(""),
-            None => continue,
-        };
-        let field_id = ensure_field_id(&event_type.into(), state_key)?;
+        let field_id = ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
         auth_events.insert(field_id, event_id);
     }
     Ok(FetchedState {
