@@ -569,7 +569,7 @@ pub async fn process_to_outlier_pdu(
                 auth_event,
             )
         })
-        .collect::<HashMap<_, _>>();
+        .collect::<HashMap<(StateEventType, _), _>>();
 
     // // The original create event must be in the auth events
     // if !matches!(
