@@ -324,6 +324,7 @@ pub async fn process_pdu_missing_deps(
             ))
         }
     }
+
     let auth_events = auth_events
         .into_iter()
         .map(|auth_event| {
@@ -336,6 +337,14 @@ pub async fn process_pdu_missing_deps(
             )
         })
         .collect::<HashMap<_, _>>();
+
+    // The original create event must be in the auth events
+    if !matches!(
+        auth_events.get(&(StateEventType::RoomCreate, "".to_owned())),
+        Some(_) | None
+    ) {
+        rejection_reason = Some(format!("incoming event refers to wrong create event"));
+    }
 
     if let Err(_e) = event_auth::auth_check(
             &auth_rules,
@@ -562,13 +571,13 @@ pub async fn process_to_outlier_pdu(
         })
         .collect::<HashMap<_, _>>();
 
-    // The original create event must be in the auth events
-    if !matches!(
-        auth_events.get(&(StateEventType::RoomCreate, "".to_owned())),
-        Some(_) | None
-    ) {
-        rejection_reason = Some(format!("incoming event refers to wrong create event"));
-    }
+    // // The original create event must be in the auth events
+    // if !matches!(
+    //     auth_events.get(&(StateEventType::RoomCreate, "".to_owned())),
+    //     Some(_) | None
+    // ) {
+    //     rejection_reason = Some(format!("incoming event refers to wrong create event"));
+    // }
 
     if let Err(_e) = event_auth::auth_check(
             &auth_rules,
