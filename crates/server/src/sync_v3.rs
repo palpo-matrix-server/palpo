@@ -21,8 +21,6 @@ use crate::core::serde::RawJson;
 use crate::core::{Seqnum, UnixMillis};
 use crate::event::{EventHash, PduEvent, SnPduEvent};
 use crate::room::{EventOrderBy, state, timeline};
-use crate::routing::prelude;
-use crate::utils::time;
 use crate::{AppError, AppResult, config, data, extract_variant, room};
 
 pub const DEFAULT_BUMP_TYPES: &[TimelineEventType; 6] = &[

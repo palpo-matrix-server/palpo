@@ -2,9 +2,6 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::sync::{Arc, LazyLock, Mutex};
 
-use cookie::time::Time;
-use indexmap::IndexMap;
-
 use crate::core::Seqnum;
 use crate::core::client::filter::RoomEventFilter;
 use crate::core::client::sync_events::{self, v5::*};
@@ -16,7 +13,6 @@ use crate::core::identifiers::*;
 use crate::event::ignored_filter;
 use crate::room::{self, filter_rooms, state, timeline};
 use crate::sync_v3::{DEFAULT_BUMP_TYPES, TimelineData, share_encrypted_room};
-use crate::utils::time;
 use crate::{AppResult, data, extract_variant};
 
 #[derive(Debug, Default)]
