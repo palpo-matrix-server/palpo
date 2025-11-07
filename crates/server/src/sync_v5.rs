@@ -411,13 +411,13 @@ async fn process_rooms(
             .into_iter()
             .filter(|member| *member != sender_id)
             .filter_map(|user_id| {
-                room::get_member(room_id, &user_id, None).ok().map(|member| {
-                    sync_events::v5::SyncRoomHero {
+                room::get_member(room_id, &user_id, None)
+                    .ok()
+                    .map(|member| sync_events::v5::SyncRoomHero {
                         user_id,
                         name: member.display_name,
                         avatar: member.avatar_url,
-                    }
-                })
+                    })
             })
             .take(5)
             .collect();

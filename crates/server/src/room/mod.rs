@@ -540,7 +540,11 @@ pub fn get_avatar_url(room_id: &RoomId) -> AppResult<Option<OwnedMxcUri>> {
         .map(|c| c.url)
 }
 
-pub fn get_member(room_id: &RoomId, user_id: &UserId, until_sn: Option<Seqnum>) -> AppResult<RoomMemberEventContent> {
+pub fn get_member(
+    room_id: &RoomId,
+    user_id: &UserId,
+    until_sn: Option<Seqnum>,
+) -> AppResult<RoomMemberEventContent> {
     get_state_content::<RoomMemberEventContent>(
         room_id,
         &StateEventType::RoomMember,

@@ -213,7 +213,7 @@ impl DbEventData {
     }
 }
 
-#[derive(Identifiable, Insertable, Queryable, Debug, Clone)]
+#[derive(Identifiable, Insertable, Queryable, AsChangeset, Debug, Clone)]
 #[diesel(table_name = events, primary_key(id))]
 pub struct DbEvent {
     pub id: OwnedEventId,

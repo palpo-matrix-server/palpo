@@ -127,9 +127,14 @@ pub async fn invite_user(
             ))
         })?;
 
-        handler::process_received_pdu(&origin, &event_id, room_id, &room_version_id, value, true)
+        handler::process_incoming_pdu(&origin, &event_id, room_id, &room_version_id, value, true)
             .await?;
-        return sending::send_pdu_room(room_id, &event_id, &[invitee_id.server_name().to_owned()], &[]);
+        return sending::send_pdu_room(
+            room_id,
+            &event_id,
+            &[invitee_id.server_name().to_owned()],
+            &[],
+        );
     }
 
     timeline::build_and_append_pdu(

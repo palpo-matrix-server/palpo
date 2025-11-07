@@ -108,7 +108,8 @@ pub async fn knock_room(
                 if let Err(e) = sending::send_pdu_room(
                     &room_id,
                     &pdu.event_id,
-                    &[sender_id.server_name().to_owned()], &[]
+                    &[sender_id.server_name().to_owned()],
+                    &[],
                 ) {
                     error!("failed to notify banned user server: {e}");
                 }
@@ -249,7 +250,7 @@ pub async fn knock_room(
                 .await?
                 .json::<EventResBody>()
                 .await?;
-            if let Err(e) = handler::process_received_pdu(
+            if let Err(e) = handler::process_incoming_pdu(
                 &remote_server,
                 &event_id,
                 room_id,

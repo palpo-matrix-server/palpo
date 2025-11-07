@@ -133,13 +133,11 @@ where
             .chain(conflicted_state_subgraph),
     )
     // Don't honor events we cannot "verify"
-    .filter_map(|id| {
-        async move {
-            if fetch_event(id.clone()).await.is_ok() {
-                Some(id)
-            } else {
-                None
-            }
+    .filter_map(|id| async move {
+        if fetch_event(id.clone()).await.is_ok() {
+            Some(id)
+        } else {
+            None
         }
     })
     .collect()
