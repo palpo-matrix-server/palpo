@@ -5,8 +5,7 @@ use state::DbRoomStateField;
 
 use crate::core::identifiers::*;
 use crate::core::room_version_rules::{RoomVersionRules, StateResolutionV2Rules};
-use crate::core::state::StateError;
-use crate::core::state::{StateMap, resolve};
+use crate::core::state::{Event, StateError, StateMap, resolve};
 use crate::event::PduEvent;
 use crate::room::{state, timeline};
 use crate::{AppResult, room};
@@ -53,7 +52,7 @@ pub(super) async fn state_at_incoming_resolved(
             return Ok(None);
         };
 
-        if prev_event.is_rejected {
+        if prev_event.rejected() {
             continue;
         }
 

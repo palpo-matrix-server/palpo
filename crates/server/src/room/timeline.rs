@@ -101,7 +101,7 @@ pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<SnPduEvent>> 
         .first::<JsonValue>(&mut connect()?)
         .optional()?
         .map(|json| {
-            SnPduEvent::from_json_value(&room_id, event_id, event_sn, json)
+            SnPduEvent::from_json_value(&room_id, event_id, event_sn, json, false, false)
                 .map_err(|_e| AppError::internal("invalid pdu in db"))
         })
         .transpose()?;
@@ -109,7 +109,6 @@ pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<SnPduEvent>> 
         let event = events::table
             .filter(events::id.eq(event_id))
             .first::<DbEvent>(&mut connect()?)?;
-        pdu.is_rejected = event.is_rejected;
         pdu.is_outlier = event.is_outlier;
         pdu.soft_failed = event.soft_failed;
         pdu.rejection_reason = event.rejection_reason;
@@ -141,11 +140,13 @@ pub fn get_pdu(event_id: &EventId) -> AppResult<SnPduEvent> {
         .first::<(Seqnum, OwnedRoomId, JsonValue)>(&mut connect()?)?;
     let mut pdu = PduEvent::from_json_value(&room_id, event_id, json)
         .map_err(|_e| AppError::internal("invalid pdu in db"))?;
-    pdu.is_rejected = event.is_rejected;
-    pdu.is_outlier = event.is_outlier;
-    pdu.soft_failed = event.soft_failed;
     pdu.rejection_reason = event.rejection_reason;
-    Ok(SnPduEvent::new(pdu, event_sn))
+    Ok(SnPduEvent {
+        pdu,
+        event_sn,
+        is_outlier: event.is_outlier,
+        soft_failed: event.soft_failed,
+    })
 }
 
 pub fn get_may_missing_pdus(
@@ -165,15 +166,13 @@ pub fn get_may_missing_pdus(
     let mut pdus = Vec::with_capacity(events.len());
     let mut missing_ids = event_ids.iter().cloned().collect::<HashSet<_>>();
     for (event_id, event_sn, json) in events {
-        let mut pdu = SnPduEvent::from_json_value(room_id, &event_id, event_sn, json)
+        let mut pdu = SnPduEvent::from_json_value(room_id, &event_id, event_sn, json, true, false)
             .map_err(|_e| AppError::internal("invalid pdu in db"))?;
         let event = events::table
             .filter(events::id.eq(&event_id))
             .first::<DbEvent>(&mut connect()?)?;
         pdu.is_outlier = event.is_outlier;
         pdu.soft_failed = event.soft_failed;
-        pdu.is_rejected = event.is_rejected;
-        pdu.rejection_reason = event.rejection_reason;
         pdus.push(pdu);
         missing_ids.remove(&event_id);
     }
@@ -643,9 +642,6 @@ pub async fn hash_and_sign_event(
         },
         signatures: None,
         extra_data: Default::default(),
-        is_outlier: true,
-        soft_failed: false,
-        is_rejected: false,
         rejection_reason: None,
     };
 
@@ -764,7 +760,16 @@ pub async fn hash_and_sign_event(
     }
     .save()?;
 
-    Ok((SnPduEvent::new(pdu, event_sn), pdu_json, event_guard))
+    Ok((
+        SnPduEvent {
+            pdu: pdu,
+            event_sn,
+            is_outlier: true,
+            soft_failed: false,
+        },
+        pdu_json,
+        event_guard,
+    ))
 }
 
 fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
@@ -1198,7 +1203,7 @@ pub async fn backfill_pdu(origin: &ServerName, pdu: Box<RawJsonValue>) -> AppRes
         return Ok(());
     }
 
-    handler::process_received_pdu(origin, &event_id, &room_id, &room_version_id, value, false)
+    handler::process_incoming_pdu(origin, &event_id, &room_id, &room_version_id, value, false)
         .await?;
 
     let _value = get_pdu_json(&event_id)?.expect("we just created it");

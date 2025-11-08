@@ -189,7 +189,7 @@ where
             return Ok(());
         }
 
-         // Since v8, if the join_authorised_via_users_server key in content is not a user with
+        // Since v8, if the join_authorised_via_users_server key in content is not a user with
         // sufficient permission to invite other users or is not a joined member of the room,
         // reject.
         //

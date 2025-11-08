@@ -106,9 +106,7 @@ fn get_local_public_rooms(
         })
         .filter_map(|r: AppResult<_>| r.ok()) // Filter out buggy rooms
         .filter(|chunk| {
-            println!("Searching chunk: {:?}", chunk);
             if let Some(search_term) = &search_term {
-                println!("Searching for term: {:?}", search_term);
                 if let Some(name) = &chunk.name
                     && name.as_str().to_lowercase().contains(search_term)
                 {

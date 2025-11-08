@@ -105,7 +105,8 @@ async fn leave_room_local(
         let _ = crate::sending::send_pdu_room(
             room_id,
             &pdu.event_id,
-            &[member_event.sender.server_name().to_owned()], &[]
+            &[member_event.sender.server_name().to_owned()],
+            &[],
         );
     } else {
         let _ = crate::sending::send_pdu_room(room_id, &pdu.event_id, &[], &[]);

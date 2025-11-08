@@ -828,9 +828,6 @@ async fn load_left_room(
             },
             signatures: None,
             extra_data: Default::default(),
-            is_outlier: false,
-            soft_failed: false,
-            is_rejected: false,
             rejection_reason: None,
         };
         return Ok(LeftRoom {

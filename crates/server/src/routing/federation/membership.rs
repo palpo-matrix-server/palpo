@@ -217,11 +217,18 @@ async fn invite_user(
     event.insert("event_id".to_owned(), event_id.to_string().into());
 
     let (event_sn, event_guard) = crate::event::ensure_event_sn(&args.room_id, &event_id)?;
-    let pdu = SnPduEvent::from_canonical_object(&args.room_id, &event_id, event_sn, event.clone())
-        .map_err(|e| {
-            warn!("invalid invite event: {}", e);
-            MatrixError::invalid_param("invalid invite event")
-        })?;
+    let pdu = SnPduEvent::from_canonical_object(
+        &args.room_id,
+        &event_id,
+        event_sn,
+        event.clone(),
+        false,
+        false,
+    )
+    .map_err(|e| {
+        warn!("invalid invite event: {}", e);
+        MatrixError::invalid_param("invalid invite event")
+    })?;
     invite_state.push(pdu.to_stripped_state_event());
 
     timeline::append_pdu(&pdu, event, once(event_id.borrow()), &state_lock).await?;
@@ -439,7 +446,7 @@ async fn send_leave(
         return Err(MatrixError::bad_json("state_key does not match sender user.").into());
     }
 
-    handler::process_received_pdu(
+    handler::process_incoming_pdu(
         origin,
         &event_id,
         &args.room_id,

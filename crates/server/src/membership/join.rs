@@ -27,7 +27,7 @@ use crate::core::serde::{
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::event::handler::{fetch_and_process_missing_prev_events, process_received_pdu};
+use crate::event::handler::{fetch_and_process_missing_prev_events, process_incoming_pdu};
 use crate::event::{PduBuilder, PduEvent, ensure_event_sn, gen_event_id_canonical_json};
 use crate::federation::maybe_strip_event_id;
 use crate::room::state::{CompressedEvent, DeltaInfo};
@@ -310,7 +310,7 @@ pub async fn join_room(
         parsed_pdus.insert(event_id, event_value);
     }
     for (event_id, event_value) in parsed_pdus {
-        if let Err(e) = process_received_pdu(
+        if let Err(e) = process_incoming_pdu(
             &remote_server,
             &event_id,
             room_id,
@@ -358,12 +358,18 @@ pub async fn join_room(
             pdu
         } else {
             let (event_sn, event_guard) = ensure_event_sn(room_id, &event_id)?;
-            let pdu =
-                SnPduEvent::from_canonical_object(room_id, &event_id, event_sn, value.clone())
-                    .map_err(|e| {
-                        warn!("invalid pdu in send_join response: {} {:?}", e, value);
-                        AppError::public("invalid pdu in send_join response.")
-                    })?;
+            let pdu = SnPduEvent::from_canonical_object(
+                room_id,
+                &event_id,
+                event_sn,
+                value.clone(),
+                false,
+                false,
+            )
+            .map_err(|e| {
+                warn!("invalid pdu in send_join response: {} {:?}", e, value);
+                AppError::public("invalid pdu in send_join response.")
+            })?;
 
             NewDbEvent::from_canonical_json(&event_id, event_sn, &value)?.save()?;
             DbEventData {
@@ -466,7 +472,12 @@ pub async fn join_room(
         .on_conflict_do_nothing()
         .execute(&mut connect()?)?;
 
-    let join_pdu = SnPduEvent::new(parsed_join_pdu, join_event_sn);
+    let join_pdu = SnPduEvent {
+        pdu: parsed_join_pdu,
+        event_sn: join_event_sn,
+        is_outlier: false,
+        soft_failed: false,
+    };
     timeline::append_pdu(
         &join_pdu,
         join_event,

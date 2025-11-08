@@ -38,10 +38,20 @@ pub struct SnPduEvent {
     pub pdu: PduEvent,
     #[serde(skip_serializing)]
     pub event_sn: Seqnum,
+
+    #[serde(skip, default)]
+    pub is_outlier: bool,
+    #[serde(skip, default = "default_false")]
+    pub soft_failed: bool,
 }
 impl SnPduEvent {
-    pub fn new(pdu: PduEvent, event_sn: Seqnum) -> Self {
-        Self { pdu, event_sn }
+    pub fn new(pdu: PduEvent, event_sn: Seqnum, is_outlier: bool, soft_failed: bool) -> Self {
+        Self {
+            pdu,
+            event_sn,
+            is_outlier,
+            soft_failed,
+        }
     }
 
     pub fn user_can_see(&self, user_id: &UserId) -> AppResult<bool> {
@@ -147,9 +157,11 @@ impl SnPduEvent {
         event_id: &EventId,
         event_sn: Seqnum,
         json: CanonicalJsonObject,
+        is_outlier: bool,
+        soft_failed: bool,
     ) -> Result<Self, serde_json::Error> {
         let pdu = PduEvent::from_canonical_object(room_id, event_id, json)?;
-        Ok(Self::new(pdu, event_sn))
+        Ok(Self::new(pdu, event_sn, is_outlier, soft_failed))
     }
 
     pub fn from_json_value(
@@ -157,9 +169,11 @@ impl SnPduEvent {
         event_id: &EventId,
         event_sn: Seqnum,
         json: JsonValue,
+        is_outlier: bool,
+        soft_failed: bool,
     ) -> AppResult<Self> {
         let pdu = PduEvent::from_json_value(room_id, event_id, json)?;
-        Ok(Self::new(pdu, event_sn))
+        Ok(Self::new(pdu, event_sn, is_outlier, soft_failed))
     }
 
     pub fn into_inner(self) -> PduEvent {
@@ -188,19 +202,19 @@ impl Deref for SnPduEvent {
         &self.pdu
     }
 }
-impl TryFrom<(PduEvent, Option<Seqnum>)> for SnPduEvent {
-    type Error = AppError;
+// impl TryFrom<(PduEvent, Option<Seqnum>)> for SnPduEvent {
+//     type Error = AppError;
 
-    fn try_from((pdu, event_sn): (PduEvent, Option<Seqnum>)) -> Result<Self, Self::Error> {
-        if let Some(sn) = event_sn {
-            Ok(SnPduEvent::new(pdu, sn))
-        } else {
-            Err(AppError::internal(
-                "Cannot convert PDU without event_sn to SnPduEvent.",
-            ))
-        }
-    }
-}
+//     fn try_from((pdu, event_sn): (PduEvent, Option<Seqnum>)) -> Result<Self, Self::Error> {
+//         if let Some(sn) = event_sn {
+//             Ok(SnPduEvent::new(pdu, sn))
+//         } else {
+//             Err(AppError::internal(
+//                 "Cannot convert PDU without event_sn to SnPduEvent.",
+//             ))
+//         }
+//     }
+// }
 impl crate::core::state::Event for SnPduEvent {
     type Id = OwnedEventId;
 
@@ -245,7 +259,7 @@ impl crate::core::state::Event for SnPduEvent {
     }
 
     fn rejected(&self) -> bool {
-        self.is_rejected
+        self.pdu.rejected()
     }
 }
 
@@ -294,12 +308,6 @@ pub struct PduEvent {
     pub extra_data: BTreeMap<String, JsonValue>,
 
     #[serde(skip, default)]
-    pub is_outlier: bool,
-    #[serde(skip, default = "default_false")]
-    pub soft_failed: bool,
-    #[serde(skip, default = "default_false")]
-    pub is_rejected: bool,
-    #[serde(skip)]
     pub rejection_reason: Option<String>,
 }
 
@@ -681,7 +689,7 @@ impl crate::core::state::Event for PduEvent {
     }
 
     fn rejected(&self) -> bool {
-        self.is_rejected
+        self.rejection_reason.is_some()
     }
 }
 
