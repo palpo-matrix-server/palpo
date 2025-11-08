@@ -3,7 +3,9 @@ pub mod handler;
 mod pdu;
 pub mod resolver;
 pub use pdu::*;
+mod outlier;
 pub mod search;
+pub use outlier::*;
 
 use diesel::prelude::*;
 

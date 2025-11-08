@@ -13,7 +13,7 @@ use super::fetching::{
     fetch_and_process_auth_chain, fetch_and_process_missing_events,
     fetch_and_process_missing_state, fetch_and_process_missing_state_by_ids, fetch_state_ids,
 };
-use super::resolver::state_at_incoming_resolved;
+use super::resolver::{resolve_state, state_at_incoming_resolved};
 use crate::core::events::StateEventType;
 use crate::core::events::TimelineEventType;
 use crate::core::events::room::server_acl::RoomServerAclEventContent;
@@ -34,7 +34,7 @@ use crate::core::{self, Seqnum, UnixMillis};
 use crate::data::room::{DbEvent, DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{self, connect, diesel_exists};
-use crate::event::{PduEvent, SnPduEvent, ensure_event_sn, handler};
+use crate::event::{OutlierContext, PduEvent, SnPduEvent, ensure_event_sn, handler};
 use crate::room::state::{CompressedState, DbRoomStateField, DeltaInfo};
 use crate::room::{state, timeline};
 use crate::utils::SeqnumQueueGuard;
@@ -125,17 +125,18 @@ pub(crate) async fn process_incoming_pdu(
         return Ok(());
     }
 
-    let Some((mut incoming_pdu, val, event_guard)) =
+    let Some(outlier_context) =
         process_to_outlier_pdu(event_id, room_id, room_version_id, value).await?
     else {
         return Ok(());
     };
 
-    if let Err(e) =
-        process_pdu_missing_deps(&mut incoming_pdu, origin, room_id, room_version_id).await
-    {
-        error!("error processing missing deps for {}: {}", event_id, e);
-    }
+    let (mut incoming_pdu, val, event_guard) = match outlier_context.save(rue).await {
+        Ok(r) => r,
+        Err(e) => {
+            error!("error processing missing deps for {}: {}", event_id, e);
+        }
+    };
 
     if incoming_pdu.rejected() {
         return Ok(());
@@ -606,33 +607,14 @@ pub async fn process_to_outlier_pdu(
             // rejection_reason = Some(e.to_string())
         };
 
-    // 7. Persist the event as an outlier.
-    let (event_sn, event_guard) = ensure_event_sn(room_id, event_id)?;
-    let mut db_event = NewDbEvent::from_canonical_json(&incoming_pdu.event_id, event_sn, &val)?;
-    db_event.is_outlier = true;
-    db_event.soft_failed = soft_failed;
-    db_event.is_rejected = rejection_reason.is_some();
-    db_event.rejection_reason = rejection_reason.clone();
-    db_event.save()?;
-    DbEventData {
-        event_id: incoming_pdu.event_id.clone(),
-        event_sn,
-        room_id: incoming_pdu.room_id.clone(),
-        internal_metadata: None,
-        json_data: serde_json::to_value(&val)?,
-        format_version: None,
-    }
-    .save()?;
-    Ok(Some((
-        SnPduEvent {
-            pdu: incoming_pdu,
-            event_sn,
-            is_outlier: true,
-            soft_failed,
-        },
-        val,
-        event_guard,
-    )))
+    Ok(Some(OutlierContext {
+        pdu: incoming_pdu,
+        soft_failed,
+        json_data: val,
+        origin,
+        room_id,
+        room_version_id,
+    }))
 }
 
 #[tracing::instrument(skip(incoming_pdu, json_data))]
@@ -945,111 +927,6 @@ pub async fn process_to_timeline_pdu(
     // Event has passed all auth/stateres checks
     drop(state_lock);
     Ok(())
-}
-
-async fn resolve_state(
-    room_id: &RoomId,
-    room_version_id: &RoomVersionId,
-    incoming_state: IndexMap<i64, OwnedEventId>,
-) -> AppResult<(Arc<CompressedState>, Vec<SeqnumQueueGuard>)> {
-    debug!("loading current room state ids");
-    let current_state_ids = if let Ok(current_frame_id) = crate::room::get_frame_id(room_id, None) {
-        state::get_full_state_ids(current_frame_id)?
-    } else {
-        IndexMap::new()
-    };
-
-    debug!("loading fork states");
-    let fork_states = [current_state_ids, incoming_state];
-
-    let mut auth_chain_sets = Vec::new();
-    for state in &fork_states {
-        auth_chain_sets.push(crate::room::auth_chain::get_auth_chain_ids(
-            room_id,
-            state.values().map(|e| &**e),
-        )?);
-    }
-
-    let fork_states: Vec<_> = fork_states
-        .into_iter()
-        .map(|map| {
-            map.into_iter()
-                .filter_map(|(k, event_id)| {
-                    state::get_field(k)
-                        .map(
-                            |DbRoomStateField {
-                                 event_ty,
-                                 state_key,
-                                 ..
-                             }| {
-                                ((event_ty.to_string().into(), state_key), event_id)
-                            },
-                        )
-                        .ok()
-                })
-                .collect::<StateMap<_>>()
-        })
-        .collect();
-    debug!("resolving state");
-
-    let version_rules = crate::room::get_version_rules(room_version_id)?;
-    let state = match crate::core::state::resolve(
-        &version_rules.authorization,
-        version_rules
-            .state_resolution
-            .v2_rules()
-            .unwrap_or(StateResolutionV2Rules::V2_0),
-        &fork_states,
-        auth_chain_sets
-            .iter()
-            .map(|set| set.iter().map(|id| id.to_owned()).collect::<HashSet<_>>())
-            .collect::<Vec<_>>(),
-        &async |id| timeline::get_pdu(&id).map_err(|_| StateError::other("missing pdu 4")),
-        |map| {
-            let mut subgraph = HashSet::new();
-            for event_ids in map.values() {
-                for event_id in event_ids {
-                    if let Ok(pdu) = timeline::get_pdu(event_id) {
-                        subgraph.extend(pdu.auth_events.iter().cloned());
-                        subgraph.extend(pdu.prev_events.iter().cloned());
-                    }
-                }
-            }
-            let subgraph = events::table
-                .filter(events::id.eq_any(subgraph))
-                .filter(events::state_key.is_not_null())
-                .select(events::id)
-                .load::<OwnedEventId>(&mut connect().unwrap())
-                .unwrap()
-                .into_iter()
-                .collect::<HashSet<_>>();
-            Some(subgraph)
-        },
-    )
-    .await
-    {
-        Ok(new_state) => new_state,
-        Err(e) => {
-            error!("state resolution failed: {}", e);
-            return Err(AppError::internal(
-                "state resolution failed, either an event could not be found or deserialization",
-            ));
-        }
-    };
-
-    debug!("state resolution done, compressing state");
-    let mut new_room_state = BTreeSet::new();
-    let mut guards = Vec::new();
-    for ((event_type, state_key), event_id) in state {
-        let state_key_id = state::ensure_field_id(&event_type.to_string().into(), &state_key)?;
-        let (event_sn, guard) = crate::event::ensure_event_sn(room_id, &event_id)?;
-        if let Some(guard) = guard {
-            guards.push(guard);
-        }
-        new_room_state.insert(state::compress_event(room_id, state_key_id, event_sn)?);
-    }
-
-    Ok((Arc::new(new_room_state), guards))
 }
 
 /// Find the event and auth it. Once the event is validated (steps 1 - 8)
