@@ -38,17 +38,16 @@ pub struct SnPduEvent {
     pub pdu: PduEvent,
     #[serde(skip_serializing)]
     pub event_sn: Seqnum,
+
     #[serde(skip, default)]
     pub is_outlier: bool,
-
     #[serde(skip, default = "default_false")]
     pub soft_failed: bool,
-    #[serde(skip, default = "default_false")]
-    pub is_rejected: bool,
     #[serde(skip)]
     pub rejection_reason: Option<String>,
 }
 impl SnPduEvent {
+    pub fn 
     pub fn user_can_see(&self, user_id: &UserId) -> AppResult<bool> {
         if self.event_ty == TimelineEventType::RoomMember
             && self.state_key.as_deref() == Some(user_id.as_str())
@@ -250,7 +249,7 @@ impl crate::core::state::Event for SnPduEvent {
     }
 
     fn rejected(&self) -> bool {
-        self.is_rejected
+        self.pdu.rejected()
     }
 }
 
@@ -297,6 +296,9 @@ pub struct PduEvent {
     pub signatures: Option<Box<RawJsonValue>>, // BTreeMap<Box<ServerName>, BTreeMap<ServerSigningKeyId, String>>
     #[serde(default, flatten, skip_serializing_if = "BTreeMap::is_empty")]
     pub extra_data: BTreeMap<String, JsonValue>,
+
+    #[serde(skip, default)]
+    pub rejection_reason: Option<String>,
 }
 
 impl PduEvent {
@@ -677,7 +679,7 @@ impl crate::core::state::Event for PduEvent {
     }
 
     fn rejected(&self) -> bool {
-        self.is_rejected
+        self.rejection_reason.is_some()
     }
 }
 

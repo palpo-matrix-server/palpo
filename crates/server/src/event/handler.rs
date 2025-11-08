@@ -149,7 +149,7 @@ pub(crate) async fn process_incoming_pdu(
     }
     println!("================================process_incoming_pdu 2  {incoming_pdu:#?}");
 
-    if incoming_pdu.is_rejected {
+    if incoming_pdu.rejected() {
         return Ok(());
     }
     println!("====================process_incoming_pdu 3");
@@ -330,7 +330,7 @@ pub async fn process_pdu_missing_deps(
         let rejected_auth_events = auth_events
             .iter()
             .filter_map(|pdu| {
-                if pdu.is_rejected {
+                if pdu.rejected() {
                     Some(pdu.event_id.clone())
                 } else {
                     None
@@ -430,7 +430,6 @@ pub async fn process_pdu_missing_deps(
 
     println!("===================process_pdu_missing_deps 8");
     incoming_pdu.soft_failed = soft_failed;
-    incoming_pdu.is_rejected = rejection_reason.is_some();
     incoming_pdu.rejection_reason = rejection_reason;
     Ok(())
 }
@@ -550,7 +549,6 @@ pub async fn process_to_outlier_pdu(
                     event_sn,
                     is_outlier: true,
                     soft_failed: false,
-                    is_rejected: false,
                     rejection_reason: None,
                 },
                 val,
@@ -574,7 +572,7 @@ pub async fn process_to_outlier_pdu(
         let rejected_auth_events = auth_events
             .iter()
             .filter_map(|pdu| {
-                if pdu.is_rejected {
+                if pdu.rejected() {
                     Some(pdu.event_id.clone())
                 } else {
                     None
@@ -670,7 +668,6 @@ pub async fn process_to_outlier_pdu(
             event_sn,
             is_outlier: true,
             soft_failed,
-            is_rejected: rejection_reason.is_some(),
             rejection_reason,
         },
         val,
@@ -1299,7 +1296,7 @@ pub async fn fetch_and_process_missing_prev_events(
     for prev_id in &incoming_pdu.prev_events {
         let pdu = timeline::get_pdu(&prev_id);
         if let Ok(pdu) = &pdu
-            && !pdu.is_rejected
+            && !pdu.rejected()
         {
             println!("====found pdu: {pdu:?}");
             known_events.insert(prev_id.to_owned());

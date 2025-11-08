@@ -109,7 +109,6 @@ pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<SnPduEvent>> 
         let event = events::table
             .filter(events::id.eq(event_id))
             .first::<DbEvent>(&mut connect()?)?;
-        pdu.is_rejected = event.is_rejected;
         pdu.is_outlier = event.is_outlier;
         pdu.soft_failed = event.soft_failed;
         pdu.rejection_reason = event.rejection_reason;
@@ -146,7 +145,6 @@ pub fn get_pdu(event_id: &EventId) -> AppResult<SnPduEvent> {
         event_sn,
         is_outlier: event.is_outlier,
         soft_failed: event.soft_failed,
-        is_rejected: event.is_rejected,
         rejection_reason: event.rejection_reason,
     })
 }
@@ -175,7 +173,6 @@ pub fn get_may_missing_pdus(
             .first::<DbEvent>(&mut connect()?)?;
         pdu.is_outlier = event.is_outlier;
         pdu.soft_failed = event.soft_failed;
-        pdu.is_rejected = event.is_rejected;
         pdu.rejection_reason = event.rejection_reason;
         pdus.push(pdu);
         missing_ids.remove(&event_id);
@@ -646,6 +643,7 @@ pub async fn hash_and_sign_event(
         },
         signatures: None,
         extra_data: Default::default(),
+        rejection_reason: None,
     };
 
     let fetch_event = async |event_id: OwnedEventId| {
@@ -769,7 +767,6 @@ pub async fn hash_and_sign_event(
             event_sn,
             is_outlier: true,
             soft_failed: false,
-            is_rejected: false,
             rejection_reason: None,
         },
         pdu_json,

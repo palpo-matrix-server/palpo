@@ -828,6 +828,7 @@ async fn load_left_room(
             },
             signatures: None,
             extra_data: Default::default(),
+            rejection_reason: None,
         };
         return Ok(LeftRoom {
             account_data: RoomAccountData::default(),

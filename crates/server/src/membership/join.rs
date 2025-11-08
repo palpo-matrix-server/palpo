@@ -471,7 +471,6 @@ pub async fn join_room(
         event_sn: join_event_sn,
         is_outlier: false,
         soft_failed: false,
-        is_rejected: false,
         rejection_reason: None,
     };
     timeline::append_pdu(
