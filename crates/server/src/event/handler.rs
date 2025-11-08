@@ -72,7 +72,6 @@ pub(crate) async fn process_incoming_pdu(
     value: BTreeMap<String, CanonicalJsonValue>,
     is_timeline_event: bool,
 ) -> AppResult<()> {
-    println!("==========process_incoming_pdu  {event_id}");
     if !crate::room::room_exists(room_id)? {
         return Err(MatrixError::not_found("room is unknown to this server").into());
     }
@@ -308,8 +307,6 @@ pub async fn process_pdu_missing_deps(
                 }
             })
             .collect::<Vec<_>>();
-        println!("==========auth_events: {auth_events:#?}");
-        println!("=============rejected_auth_events: {rejected_auth_events:#?}");
         if !rejected_auth_events.is_empty() {
             rejection_reason = Some(format!(
                 "event's auth events rejected: {rejected_auth_events:?}"
@@ -398,7 +395,6 @@ pub async fn process_pdu_missing_deps(
 
     incoming_pdu.soft_failed = soft_failed;
     incoming_pdu.rejection_reason = rejection_reason;
-    println!("===================process_pdu_missing_deps 8 {incoming_pdu:#?}");
     Ok(())
 }
 
@@ -1245,21 +1241,17 @@ pub async fn fetch_and_process_missing_prev_events(
     let mut earliest_events = forward_extremities.clone();
     earliest_events.extend(known_events.iter().cloned());
 
-    println!("========known_events:{known_events:?}");
     let mut missing_events = Vec::with_capacity(incoming_pdu.prev_events.len());
     for prev_id in &incoming_pdu.prev_events {
         let pdu = timeline::get_pdu(&prev_id);
         if let Ok(pdu) = &pdu
             && !pdu.rejected()
         {
-    println!("========xxdd pdu:{pdu:?}");
             known_events.insert(prev_id.to_owned());
         } else if !earliest_events.contains(&prev_id) && !fetched_events.contains_key(prev_id) {
             missing_events.push(prev_id.to_owned());
         }
     }
-    println!("========missing_events:{missing_events:#?}");
-    println!("========known_events22:{known_events:?}");
     if missing_events.is_empty() {
         return Ok(());
     }
@@ -1319,7 +1311,6 @@ pub async fn fetch_and_process_missing_prev_events(
                     }
                 })
                 .collect::<Vec<_>>();
-            println!("AAAAAA Adding missing prev events: {prev_events:?}");
             let exists_events = events::table
                 .filter(events::id.eq_any(&prev_events))
                 .select(events::id)
@@ -1364,7 +1355,6 @@ pub async fn fetch_and_process_missing_prev_events(
         // As an arbitrary heuristic, if we are missing more than 10% of the events, then
         // we fetch the whole state.
         if missing_events.len() * 10 >= desired_count {
-            println!("call fetch_and_process_state 1: {}", missing_id);
             fetch_and_process_missing_state(origin, room_id, room_version_id, &missing_id).await?;
         } else {
             fetch_and_process_missing_events(origin, room_id, room_version_id, &missing_events)

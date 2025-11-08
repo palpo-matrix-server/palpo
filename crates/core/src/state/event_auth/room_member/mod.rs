@@ -434,10 +434,6 @@ where
     let sender_membership = fetch_state
         .user_membership(room_member_event.sender())
         .await?;
-    println!(
-        "====================sender membership: {:?}",
-        sender_membership
-    );
 
     // v1-v6, if the sender matches state_key, allow if and only if that user’s current
     // membership state is invite or join.

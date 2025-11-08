@@ -165,7 +165,6 @@ pub async fn fetch_and_process_missing_state(
     event_id: &EventId,
 ) -> AppResult<FetchedState> {
     debug!("fetching state events at event: {event_id}");
-    println!("fetching state events at event: {event_id}");
     let request = room_state_request(
         &origin.origin().await,
         RoomStateReqArgs {
@@ -267,7 +266,6 @@ pub async fn fetch_and_process_missing_events(
     room_version_id: &RoomVersionId,
     event_ids: &[OwnedEventId],
 ) -> AppResult<Vec<OwnedEventId>> {
-    println!("fetching events: {event_ids:?}");
     let mut done_ids = Vec::new();
     for event_id in event_ids {
         match fetch_and_process_missing_event(remote_server, room_id, room_version_id, event_id)
@@ -289,7 +287,6 @@ pub async fn fetch_and_process_missing_event(
     room_version_id: &RoomVersionId,
     event_id: &EventId,
 ) -> AppResult<()> {
-    println!("fetching event: {event_id}");
     let request =
         event_request(&remote_server.origin().await, EventReqArgs::new(event_id))?.into_inner();
     let res_body = send_federation_request(&remote_server, request, None)
