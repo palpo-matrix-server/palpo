@@ -1,14 +1,137 @@
+use std::borrow::Borrow;
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque, hash_map};
+use std::future::Future;
+use std::iter::once;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+
+use diesel::prelude::*;
 use indexmap::IndexMap;
-use std::collections::{HashMap, HashSet};
 
-use state::DbRoomStateField;
-
+use crate::core::federation::authorization::{
+    EventAuthorizationResBody, event_authorization_request,
+};
+use crate::core::federation::event::RoomStateIdsResBody;
+use crate::core::federation::event::{
+    EventReqArgs, EventResBody, MissingEventsReqBody, MissingEventsResBody, event_request,
+    missing_events_request,
+};
 use crate::core::identifiers::*;
 use crate::core::room_version_rules::{RoomVersionRules, StateResolutionV2Rules};
 use crate::core::state::{Event, StateError, StateMap, resolve};
+use crate::data::{self, connect, diesel_exists};
 use crate::event::PduEvent;
+use crate::data::schema::*;
+use crate::room::state::{CompressedState, DbRoomStateField, DeltaInfo};
 use crate::room::{state, timeline};
-use crate::{AppResult, room};
+use crate::utils::SeqnumQueueGuard;
+use crate::{AppError, AppResult, MatrixError, exts::*, room};
+
+pub async fn resolve_state(
+    room_id: &RoomId,
+    room_version_id: &RoomVersionId,
+    incoming_state: IndexMap<i64, OwnedEventId>,
+) -> AppResult<(Arc<CompressedState>, Vec<SeqnumQueueGuard>)> {
+    debug!("loading current room state ids");
+    let current_state_ids = if let Ok(current_frame_id) = crate::room::get_frame_id(room_id, None) {
+        state::get_full_state_ids(current_frame_id)?
+    } else {
+        IndexMap::new()
+    };
+
+    debug!("loading fork states");
+    let fork_states = [current_state_ids, incoming_state];
+
+    let mut auth_chain_sets = Vec::new();
+    for state in &fork_states {
+        auth_chain_sets.push(crate::room::auth_chain::get_auth_chain_ids(
+            room_id,
+            state.values().map(|e| &**e),
+        )?);
+    }
+
+    let fork_states: Vec<_> = fork_states
+        .into_iter()
+        .map(|map| {
+            map.into_iter()
+                .filter_map(|(k, event_id)| {
+                    state::get_field(k)
+                        .map(
+                            |DbRoomStateField {
+                                 event_ty,
+                                 state_key,
+                                 ..
+                             }| {
+                                ((event_ty.to_string().into(), state_key), event_id)
+                            },
+                        )
+                        .ok()
+                })
+                .collect::<StateMap<_>>()
+        })
+        .collect();
+    debug!("resolving state");
+
+    let version_rules = crate::room::get_version_rules(room_version_id)?;
+    let state = match crate::core::state::resolve(
+        &version_rules.authorization,
+        version_rules
+            .state_resolution
+            .v2_rules()
+            .unwrap_or(StateResolutionV2Rules::V2_0),
+        &fork_states,
+        auth_chain_sets
+            .iter()
+            .map(|set| set.iter().map(|id| id.to_owned()).collect::<HashSet<_>>())
+            .collect::<Vec<_>>(),
+        &async |id| timeline::get_pdu(&id).map_err(|_| StateError::other("missing pdu 4")),
+        |map| {
+            let mut subgraph = HashSet::new();
+            for event_ids in map.values() {
+                for event_id in event_ids {
+                    if let Ok(pdu) = timeline::get_pdu(event_id) {
+                        subgraph.extend(pdu.auth_events.iter().cloned());
+                        subgraph.extend(pdu.prev_events.iter().cloned());
+                    }
+                }
+            }
+            let subgraph = events::table
+                .filter(events::id.eq_any(subgraph))
+                .filter(events::state_key.is_not_null())
+                .select(events::id)
+                .load::<OwnedEventId>(&mut connect().unwrap())
+                .unwrap()
+                .into_iter()
+                .collect::<HashSet<_>>();
+            Some(subgraph)
+        },
+    )
+    .await
+    {
+        Ok(new_state) => new_state,
+        Err(e) => {
+            error!("state resolution failed: {}", e);
+            return Err(AppError::internal(
+                "state resolution failed, either an event could not be found or deserialization",
+            ));
+        }
+    };
+
+    debug!("state resolution done, compressing state");
+    let mut new_room_state = BTreeSet::new();
+    let mut guards = Vec::new();
+    for ((event_type, state_key), event_id) in state {
+        let state_key_id = state::ensure_field_id(&event_type.to_string().into(), &state_key)?;
+        let (event_sn, guard) = crate::event::ensure_event_sn(room_id, &event_id)?;
+        if let Some(guard) = guard {
+            guards.push(guard);
+        }
+        new_room_state.insert(state::compress_event(room_id, state_key_id, event_sn)?);
+    }
+
+    Ok((Arc::new(new_room_state), guards))
+}
 
 // pub(super) async fn state_at_incoming_degree_one(
 //     incoming_pdu: &PduEvent,

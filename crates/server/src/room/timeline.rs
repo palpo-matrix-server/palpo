@@ -116,16 +116,6 @@ pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<SnPduEvent>> 
     Ok(pdu)
 }
 
-pub fn has_non_outlier_pdu(event_id: &EventId) -> AppResult<bool> {
-    diesel_exists!(
-        events::table
-            .filter(events::id.eq(event_id))
-            .filter(events::is_outlier.eq(false)),
-        &mut connect()?
-    )
-    .map_err(Into::into)
-}
-
 pub fn get_pdu(event_id: &EventId) -> AppResult<SnPduEvent> {
     let event = events::table
         .filter(events::id.eq(event_id))
