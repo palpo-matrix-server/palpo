@@ -2,6 +2,7 @@ use std::borrow::Borrow;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque, hash_map};
 use std::future::Future;
 use std::iter::once;
+use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -34,13 +35,15 @@ use crate::core::{self, Seqnum, UnixMillis};
 use crate::data::room::{DbEvent, DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{self, connect, diesel_exists};
+use crate::event::handler::fetch_and_process_missing_prev_events;
 use crate::event::{PduEvent, SnPduEvent, ensure_event_sn, handler};
 use crate::room::state::{CompressedState, DbRoomStateField, DeltaInfo};
 use crate::room::{state, timeline};
 use crate::utils::SeqnumQueueGuard;
 use crate::{AppError, AppResult, MatrixError, exts::*, room};
 
-pub struct OutlierContext {
+#[derive(Clone, Debug)]
+pub struct OutlierPdu {
     pub pdu: PduEvent,
     pub json_data: CanonicalJsonObject,
     pub soft_failed: bool,
@@ -49,22 +52,22 @@ pub struct OutlierContext {
     pub room_id: OwnedRoomId,
     pub room_version_id: RoomVersionId,
 }
-impl AsRef<PduEvent> for OutlierContext {
+impl AsRef<PduEvent> for OutlierPdu {
     fn as_ref(&self) -> &PduEvent {
         &self.pdu
     }
 }
-impl AsMut<PduEvent> for OutlierContext {
+impl AsMut<PduEvent> for OutlierPdu {
     fn as_mut(&mut self) -> &mut PduEvent {
         &mut self.pdu
     }
 }
-impl DerefMut for OutlierContext {
+impl DerefMut for OutlierPdu {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.pdu
     }
 }
-impl Deref for OutlierContext {
+impl Deref for OutlierPdu {
     type Target = PduEvent;
 
     fn deref(&self) -> &Self::Target {
@@ -72,7 +75,55 @@ impl Deref for OutlierContext {
     }
 }
 
-impl OutlierContext {
+impl crate::core::state::Event for OutlierPdu {
+    type Id = OwnedEventId;
+
+    fn event_id(&self) -> &Self::Id {
+        &self.event_id
+    }
+
+    fn room_id(&self) -> &RoomId {
+        &self.room_id
+    }
+
+    fn sender(&self) -> &UserId {
+        &self.sender
+    }
+
+    fn event_type(&self) -> &TimelineEventType {
+        &self.event_ty
+    }
+
+    fn content(&self) -> &RawJsonValue {
+        &self.content
+    }
+
+    fn origin_server_ts(&self) -> UnixMillis {
+        self.origin_server_ts
+    }
+
+    fn state_key(&self) -> Option<&str> {
+        self.state_key.as_deref()
+    }
+
+    fn prev_events(&self) -> &[Self::Id] {
+        self.prev_events.deref()
+    }
+
+    fn auth_events(&self) -> &[Self::Id] {
+        self.auth_events.deref()
+    }
+
+    fn redacts(&self) -> Option<&Self::Id> {
+        self.redacts.as_ref()
+    }
+
+    fn rejected(&self) -> bool {
+        self.pdu.rejected()
+    }
+}
+
+impl OutlierPdu {
     pub async fn save(
         self,
         fill_missing: bool,
@@ -87,7 +138,7 @@ impl OutlierContext {
             room_id,
             ..
         } = self;
-        let (event_sn, event_guard) = ensure_event_sn(room_id, &pdu.event_id)?;
+        let (event_sn, event_guard) = ensure_event_sn(&room_id, &pdu.event_id)?;
         let mut db_event = NewDbEvent::from_canonical_json(&pdu.event_id, event_sn, &json_data)?;
         db_event.is_outlier = true;
         db_event.soft_failed = soft_failed;
@@ -103,6 +154,20 @@ impl OutlierContext {
             format_version: None,
         }
         .save()?;
+
+        let existed_events = events::table
+            .filter(events::id.eq_any(&self.prev_events))
+            .select(events::id)
+            .load::<OwnedEventId>(&mut connect()?)?;
+        let missing_events = self
+            .prev_events
+            .iter()
+            .filter(|id| !known_events.contains(*id) && !existed_events.contains(id))
+            .collect::<Vec<_>>();
+        if !missing_events.is_empty() {
+            data::room::add_timeline_gap(&self.room_id, event_sn)?;
+        }
+
         Ok((
             SnPduEvent {
                 pdu,
@@ -146,10 +211,7 @@ impl OutlierContext {
             match timeline::get_may_missing_pdus(&self.room_id, &self.auth_events) {
                 Ok(s) => s,
                 Err(e) => {
-                    info!(
-                        "error getting auth events for {}: {}",
-                        incoming_pdu.event_id, e
-                    );
+                    info!("error getting auth events for {}: {}", self.event_id, e);
                     soft_failed = true;
                     (vec![], vec![])
                 }
@@ -161,7 +223,7 @@ impl OutlierContext {
                 &self.origin,
                 &self.room_id,
                 &self.room_version_id,
-                &incoming_pdu.event_id,
+                &self.event_id,
             )
             .await
             {
@@ -176,7 +238,7 @@ impl OutlierContext {
             // }
         }
         let (auth_events, missing_auth_event_ids) =
-            timeline::get_may_missing_pdus(room_id, &incoming_pdu.auth_events)?;
+            timeline::get_may_missing_pdus(&self.room_id, &self.auth_events)?;
         if !missing_auth_event_ids.is_empty() {
             warn!(
                 "missing auth events for {}: {:?}",
@@ -236,10 +298,10 @@ impl OutlierContext {
                     return Ok(pdu.to_owned());
                 }
                 if auth_rules.room_create_event_id_as_room_id && k == StateEventType::RoomCreate {
-                    let pdu = crate::room::get_create(room_id)
+                    let pdu = crate::room::get_create(&self.room_id)
                         .map_err(|_| StateError::other("missing create event"))?
                         .into_inner();
-                    if pdu.room_id != *room_id {
+                    if pdu.room_id != *self.room_id {
                         Err(StateError::other("mismatched room id in create event"))
                     } else {
                         Ok(pdu)
@@ -258,19 +320,6 @@ impl OutlierContext {
             // rejection_reason = Some(e.to_string())
         };
         debug!("validation successful");
-
-        let existed_events = events::table
-            .filter(events::id.eq_any(&self.prev_events))
-            .select(events::id)
-            .load::<OwnedEventId>(&mut connect()?)?;
-        let missing_events = self
-            .prev_events
-            .iter()
-            .filter(|id| !known_events.contains(*id) && !existed_events.contains(id))
-            .collect::<Vec<_>>();
-        if !missing_events.is_empty() {
-            data::room::add_timeline_gap(&self.room_id, self.event_sn)?;
-        }
 
         self.soft_failed = soft_failed;
         self.rejection_reason = rejection_reason;

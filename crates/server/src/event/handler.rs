@@ -34,7 +34,7 @@ use crate::core::{self, Seqnum, UnixMillis};
 use crate::data::room::{DbEvent, DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{self, connect, diesel_exists};
-use crate::event::{OutlierContext, PduEvent, SnPduEvent, ensure_event_sn, handler};
+use crate::event::{OutlierPdu, PduEvent, SnPduEvent, ensure_event_sn, handler};
 use crate::room::state::{CompressedState, DbRoomStateField, DeltaInfo};
 use crate::room::{state, timeline};
 use crate::utils::SeqnumQueueGuard;
@@ -131,7 +131,7 @@ pub(crate) async fn process_incoming_pdu(
         return Ok(());
     };
 
-    let (mut incoming_pdu, val, event_guard) = match outlier_context.save(rue).await {
+    let (mut incoming_pdu, val, event_guard) = match outlier_context.save(true).await {
         Ok(r) => r,
         Err(e) => {
             error!("error processing missing deps for {}: {}", event_id, e);
@@ -405,7 +405,7 @@ pub async fn process_to_outlier_pdu(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
     mut value: CanonicalJsonObject,
-) -> AppResult<Option<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)>> {
+) -> AppResult<Option<OutlierPdu>> {
     if let Some((room_id, event_sn, event_data)) = event_datas::table
         .filter(event_datas::event_id.eq(event_id))
         .select((
@@ -506,16 +506,11 @@ pub async fn process_to_outlier_pdu(
             .save()?;
 
             debug!("added pdu as outlier");
-            return Ok(Some((
-                SnPduEvent {
-                    pdu: incoming_pdu,
-                    event_sn,
-                    is_outlier: true,
-                    soft_failed: false,
-                },
-                val,
-                event_guard,
-            )));
+            return Ok(Some(OutlierPdu {
+                pdu: incoming_pdu,
+                json_data: val,
+                soft_failed: false,
+            }));
         }
         return Ok(None);
     }
@@ -607,13 +602,13 @@ pub async fn process_to_outlier_pdu(
             // rejection_reason = Some(e.to_string())
         };
 
-    Ok(Some(OutlierContext {
+    Ok(Some(OutlierPdu {
         pdu: incoming_pdu,
         soft_failed,
         json_data: val,
         origin,
         room_id,
-        room_version_id,
+        room_version_id: room_version_id.to_owned(),
     }))
 }
 
@@ -1085,9 +1080,16 @@ pub(crate) async fn fetch_and_process_outliers(
                 continue;
             }
             match process_to_outlier_pdu(&next_id, room_id, room_version_id, value).await {
-                Ok(Some((pdu, json, guard))) => {
+                Ok(Some(outlier_pdu)) => {
                     if next_id == *event_id {
-                        pdus.push((pdu, Some(json), guard));
+                        match outlier_pdu.save(false).await {
+                            Ok((pdu, json, guard)) => {
+                                pdus.push((pdu, Some(json), guard));
+                            }
+                            Err(e) => {
+                                error!("failed to save outlier pdu {}: {}", next_id, e);
+                            }
+                        }
                     }
                 }
                 Ok(None) => {}
