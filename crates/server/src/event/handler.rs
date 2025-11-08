@@ -132,6 +132,7 @@ pub(crate) async fn process_incoming_pdu(
     else {
         return Ok(());
     };
+    println!("xxxxxxxxxxxxxx incoming_pdu: {incoming_pdu:?}");
 
     println!("after  process_to_outlier_pdu before process_pdu_missing_deps: {incoming_pdu:#?}");
     if let Err(e) = process_pdu_missing_deps(
@@ -544,7 +545,14 @@ pub async fn process_to_outlier_pdu(
 
             debug!("added pdu as outlier");
             return Ok(Some((
-                SnPduEvent::new(incoming_pdu, event_sn),
+                SnPduEvent {
+                    pdu: incoming_pdu,
+                    event_sn,
+                    is_outlier: true,
+                    soft_failed: false,
+                    is_rejected: false,
+                    rejection_reason: None,
+                },
                 val,
                 event_guard,
             )));
@@ -656,13 +664,15 @@ pub async fn process_to_outlier_pdu(
         format_version: None,
     }
     .save()?;
-
-    incoming_pdu.is_outlier = true;
-    incoming_pdu.soft_failed = soft_failed;
-    incoming_pdu.is_rejected = rejection_reason.is_some();
-    incoming_pdu.rejection_reason = rejection_reason;
     Ok(Some((
-        SnPduEvent::new(incoming_pdu, event_sn),
+        SnPduEvent {
+            pdu: incoming_pdu,
+            event_sn,
+            is_outlier: true,
+            soft_failed,
+            is_rejected: rejection_reason.is_some(),
+            rejection_reason,
+        },
         val,
         event_guard,
     )))
@@ -676,11 +686,14 @@ pub async fn process_to_timeline_pdu(
     room_id: &RoomId,
     fetch_missing: bool,
 ) -> AppResult<()> {
+    println!(">>>>>>>>>process_to_timeline_pdu 0");
     // Skip the PDU if we already have it as a timeline event
     if !incoming_pdu.is_outlier {
+        println!(">>>>>>>>>process_to_timeline_pdu 1");
         return Ok(());
     }
 
+    println!(">>>>>>>>>process_to_timeline_pdu 2");
     info!("upgrading {} to timeline pdu", incoming_pdu.event_id);
     let room_version_id = &room::get_version(room_id)?;
     let version_rules = crate::room::get_version_rules(room_version_id)?;
@@ -691,6 +704,7 @@ pub async fn process_to_timeline_pdu(
     debug!("resolving state at event");
     let server_joined = crate::room::is_server_joined(crate::config::server_name(), room_id)?;
     if !server_joined {
+        println!(">>>>>>>>>process_to_timeline_pdu 3");
         if let Some(state_key) = incoming_pdu.state_key.as_deref()
             && incoming_pdu.event_ty == TimelineEventType::RoomMember
             && state_key != incoming_pdu.sender().as_str() //????
@@ -741,6 +755,7 @@ pub async fn process_to_timeline_pdu(
                     })
                     .collect::<AppResult<_>>()?,
             );
+            println!(">>>>>>>>>process_to_timeline_pdu 4");
             debug!("preparing for stateres to derive new room state");
 
             // We also add state after incoming event to the fork states
@@ -754,6 +769,7 @@ pub async fn process_to_timeline_pdu(
             let mut new_room_state = CompressedState::new();
             new_room_state.insert(compressed_event);
 
+            println!(">>>>>>>>>process_to_timeline_pdu 5");
             // Set the new room state to the resolved state
             debug!("forcing new room state");
             let DeltaInfo {
@@ -765,6 +781,7 @@ pub async fn process_to_timeline_pdu(
             state::force_state(room_id, frame_id, appended, disposed)?;
 
             debug!("appended incoming pdu");
+            println!(">>>>>>>>>process_to_timeline_pdu 6");
             timeline::append_pdu(&incoming_pdu, json_data, extremities, &state_lock).await?;
             state::set_event_state(
                 &incoming_pdu.event_id,
@@ -774,6 +791,7 @@ pub async fn process_to_timeline_pdu(
             )?;
             drop(state_lock);
         }
+        println!(">>>>>>>>>process_to_timeline_pdu 7");
         return Ok(());
     }
 

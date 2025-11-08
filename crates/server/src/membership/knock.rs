@@ -295,7 +295,14 @@ pub async fn knock_room(
         rejection_reason: None,
     }
     .save()?;
-    let knock_pdu = SnPduEvent::new(parsed_knock_pdu, event_sn);
+    let knock_pdu = SnPduEvent {
+        pdu: parsed_knock_pdu,
+        event_sn,
+        is_outlier: false,
+        soft_failed: false,
+        is_rejected: false,
+        rejection_reason: None,
+    };
     timeline::append_pdu(
         &knock_pdu,
         knock_event,

@@ -466,7 +466,14 @@ pub async fn join_room(
         .on_conflict_do_nothing()
         .execute(&mut connect()?)?;
 
-    let join_pdu = SnPduEvent::new(parsed_join_pdu, join_event_sn);
+    let join_pdu = SnPduEvent {
+        pdu: parsed_join_pdu,
+        event_sn: join_event_sn,
+        is_outlier: false,
+        soft_failed: false,
+        is_rejected: false,
+        rejection_reason: None,
+    };
     timeline::append_pdu(
         &join_pdu,
         join_event,
