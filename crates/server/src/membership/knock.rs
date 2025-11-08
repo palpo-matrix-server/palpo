@@ -300,7 +300,6 @@ pub async fn knock_room(
         event_sn,
         is_outlier: false,
         soft_failed: false,
-        rejection_reason: None,
     };
     timeline::append_pdu(
         &knock_pdu,

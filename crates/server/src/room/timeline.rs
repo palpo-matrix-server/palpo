@@ -101,7 +101,7 @@ pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<SnPduEvent>> 
         .first::<JsonValue>(&mut connect()?)
         .optional()?
         .map(|json| {
-            SnPduEvent::from_json_value(&room_id, event_id, event_sn, json)
+            SnPduEvent::from_json_value(&room_id, event_id, event_sn, json, false, false)
                 .map_err(|_e| AppError::internal("invalid pdu in db"))
         })
         .transpose()?;
@@ -140,12 +140,12 @@ pub fn get_pdu(event_id: &EventId) -> AppResult<SnPduEvent> {
         .first::<(Seqnum, OwnedRoomId, JsonValue)>(&mut connect()?)?;
     let mut pdu = PduEvent::from_json_value(&room_id, event_id, json)
         .map_err(|_e| AppError::internal("invalid pdu in db"))?;
+    pdu.rejection_reason = event.rejection_reason;
     Ok(SnPduEvent {
         pdu,
         event_sn,
         is_outlier: event.is_outlier,
         soft_failed: event.soft_failed,
-        rejection_reason: event.rejection_reason,
     })
 }
 
@@ -166,14 +166,13 @@ pub fn get_may_missing_pdus(
     let mut pdus = Vec::with_capacity(events.len());
     let mut missing_ids = event_ids.iter().cloned().collect::<HashSet<_>>();
     for (event_id, event_sn, json) in events {
-        let mut pdu = SnPduEvent::from_json_value(room_id, &event_id, event_sn, json)
+        let mut pdu = SnPduEvent::from_json_value(room_id, &event_id, event_sn, json, true, false)
             .map_err(|_e| AppError::internal("invalid pdu in db"))?;
         let event = events::table
             .filter(events::id.eq(&event_id))
             .first::<DbEvent>(&mut connect()?)?;
         pdu.is_outlier = event.is_outlier;
         pdu.soft_failed = event.soft_failed;
-        pdu.rejection_reason = event.rejection_reason;
         pdus.push(pdu);
         missing_ids.remove(&event_id);
     }
@@ -767,7 +766,6 @@ pub async fn hash_and_sign_event(
             event_sn,
             is_outlier: true,
             soft_failed: false,
-            rejection_reason: None,
         },
         pdu_json,
         event_guard,

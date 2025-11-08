@@ -56,13 +56,9 @@ pub async fn fetch_and_process_auth_chain(
                     .filter(events::room_id.eq(&room_id)),
                 &mut connect()?
             )? {
-                let Some((event, _, _)) = process_to_outlier_pdu(
-                    &event_id,
-                    &room_id,
-                    &room_version_id,
-                    event_value,
-                )
-                .await?
+                let Some((event, _, _)) =
+                    process_to_outlier_pdu(&event_id, &room_id, &room_version_id, event_value)
+                        .await?
                 else {
                     continue;
                 };
@@ -119,8 +115,7 @@ pub(super) async fn fetch_and_process_missing_state_by_ids(
             continue;
         }
         let Some((pdu, _, _)) =
-            process_to_outlier_pdu(&event_id, &room_id, &room_version_id, event_value)
-                .await?
+            process_to_outlier_pdu(&event_id, &room_id, &room_version_id, event_value).await?
         else {
             continue;
         };
@@ -146,8 +141,7 @@ pub(super) async fn fetch_and_process_missing_state_by_ids(
             continue;
         }
         let Some((pdu, _, _)) =
-            process_to_outlier_pdu( &event_id, &room_id, &room_version_id, event_value)
-                .await?
+            process_to_outlier_pdu(&event_id, &room_id, &room_version_id, event_value).await?
         else {
             continue;
         };

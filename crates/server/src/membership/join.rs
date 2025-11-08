@@ -358,12 +358,18 @@ pub async fn join_room(
             pdu
         } else {
             let (event_sn, event_guard) = ensure_event_sn(room_id, &event_id)?;
-            let pdu =
-                SnPduEvent::from_canonical_object(room_id, &event_id, event_sn, value.clone())
-                    .map_err(|e| {
-                        warn!("invalid pdu in send_join response: {} {:?}", e, value);
-                        AppError::public("invalid pdu in send_join response.")
-                    })?;
+            let pdu = SnPduEvent::from_canonical_object(
+                room_id,
+                &event_id,
+                event_sn,
+                value.clone(),
+                false,
+                false,
+            )
+            .map_err(|e| {
+                warn!("invalid pdu in send_join response: {} {:?}", e, value);
+                AppError::public("invalid pdu in send_join response.")
+            })?;
 
             NewDbEvent::from_canonical_json(&event_id, event_sn, &value)?.save()?;
             DbEventData {
@@ -471,7 +477,6 @@ pub async fn join_room(
         event_sn: join_event_sn,
         is_outlier: false,
         soft_failed: false,
-        rejection_reason: None,
     };
     timeline::append_pdu(
         &join_pdu,
