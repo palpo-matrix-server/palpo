@@ -29,13 +29,13 @@ pub struct FetchedState {
 }
 
 pub async fn fetch_and_process_auth_chain(
-    origin: &ServerName,
+    remote_server: &ServerName,
     room_id: &RoomId,
     event_id: &EventId,
 ) -> AppResult<Vec<SnPduEvent>> {
     let request =
-        event_authorization_request(&origin.origin().await, room_id, event_id)?.into_inner();
-    let res_body = crate::sending::send_federation_request(origin, request, None)
+        event_authorization_request(&remote_server.origin().await, room_id, event_id)?.into_inner();
+    let res_body = crate::sending::send_federation_request(remote_server, request, None)
         .await?
         .json::<EventAuthorizationResBody>()
         .await?;
@@ -56,13 +56,14 @@ pub async fn fetch_and_process_auth_chain(
                     .filter(events::room_id.eq(&room_id)),
                 &mut connect()?
             )? {
-                let Some((event, _, _)) =
-                    process_to_outlier_pdu(&event_id, &room_id, &room_version_id, event_value)
+                let Some(outlier_pdu) =
+                    process_to_outlier_pdu(remote_server, &event_id, &room_id, &room_version_id, event_value)
                         .await?
                 else {
                     continue;
                 };
-                auth_events.push(event);
+                let pdu = outlier_pdu.save_without_fill_missing(&mut known_events)?.0;
+                auth_events.push(pdu);
                 known_events.insert(event_id);
             }
         }
@@ -75,7 +76,7 @@ pub async fn fetch_and_process_auth_chain(
 /// server's response to some extend (sic), but we still do a lot of checks
 /// on the events
 pub(super) async fn fetch_and_process_missing_state_by_ids(
-    origin: &ServerName,
+    remote_server: &ServerName,
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
     event_id: &EventId,
@@ -84,14 +85,14 @@ pub(super) async fn fetch_and_process_missing_state_by_ids(
     // Call /state_ids to find out what the state at this pdu is. We trust the server's
     // response to some extend, but we still do a lot of checks on the events
     let request = room_state_ids_request(
-        &origin.origin().await,
+        &remote_server.origin().await,
         RoomStateAtEventReqArgs {
             room_id: room_id.to_owned(),
             event_id: event_id.to_owned(),
         },
     )?
     .into_inner();
-    let res = send_federation_request(origin, request, None)
+    let res = send_federation_request(remote_server, request, None)
         .await?
         .json::<RoomStateIdsResBody>()
         .await?;
@@ -99,8 +100,9 @@ pub(super) async fn fetch_and_process_missing_state_by_ids(
 
     let mut state_events: IndexMap<i64, OwnedEventId> = IndexMap::new();
     let mut auth_events: IndexMap<i64, OwnedEventId> = IndexMap::new();
+    let mut known_events = HashSet::new();
     for pdu_id in &res.pdu_ids {
-        let Ok(body) = fetch_event(origin, pdu_id).await else {
+        let Ok(body) = fetch_event(remote_server, pdu_id).await else {
             continue;
         };
         let (event_id, event_value, _room_id, _room_version_id) = parse_incoming_pdu(&body.pdu)?;
@@ -114,11 +116,12 @@ pub(super) async fn fetch_and_process_missing_state_by_ids(
             state_events.insert(field_id, event_id);
             continue;
         }
-        let Some((pdu, _, _)) =
-            process_to_outlier_pdu(&event_id, &room_id, &room_version_id, event_value).await?
+        let Some(outlier_pdu) =
+            process_to_outlier_pdu(remote_server, &event_id, &room_id, &room_version_id, event_value).await?
         else {
             continue;
         };
+        let pdu = outlier_pdu.save_without_fill_missing( &mut known_events)?.0;
         let state_key = match &pdu.state_key {
             Some(s) => s,
             None => continue,
@@ -127,7 +130,7 @@ pub(super) async fn fetch_and_process_missing_state_by_ids(
         state_events.insert(field_id, event_id);
     }
     for pdu_id in &res.auth_chain_ids {
-        let Ok(body) = fetch_event(origin, pdu_id).await else {
+        let Ok(body) = fetch_event(remote_server, pdu_id).await else {
             continue;
         };
         let (event_id, event_value, _room_id, _room_version_id) = parse_incoming_pdu(&body.pdu)?;
@@ -140,11 +143,12 @@ pub(super) async fn fetch_and_process_missing_state_by_ids(
             auth_events.insert(field_id, event_id);
             continue;
         }
-        let Some((pdu, _, _)) =
-            process_to_outlier_pdu(&event_id, &room_id, &room_version_id, event_value).await?
+        let Some(outlier_pdu) =
+            process_to_outlier_pdu(remote_server, &event_id, &room_id, &room_version_id, event_value).await?
         else {
             continue;
         };
+        let pdu = outlier_pdu.save_without_fill_missing(&mut known_events)?.0;
         let state_key = match &pdu.state_key {
             Some(s) => s,
             None => continue,
@@ -226,7 +230,7 @@ pub struct FetchedStateIds {
     pub auth_events: Vec<OwnedEventId>,
 }
 pub async fn fetch_state_ids(
-    origin: &ServerName,
+    remote_server: &ServerName,
     room_id: &RoomId,
     event_id: &EventId,
 ) -> AppResult<RoomStateIdsResBody> {
@@ -234,14 +238,14 @@ pub async fn fetch_state_ids(
     // Call /state_ids to find out what the state at this pdu is. We trust the server's
     // response to some extend, but we still do a lot of checks on the events
     let request = room_state_ids_request(
-        &origin.origin().await,
+        &remote_server.origin().await,
         RoomStateAtEventReqArgs {
             room_id: room_id.to_owned(),
             event_id: event_id.to_owned(),
         },
     )?
     .into_inner();
-    let res_body = send_federation_request(origin, request, None)
+    let res_body = send_federation_request(remote_server, request, None)
         .await?
         .json::<RoomStateIdsResBody>()
         .await?;
@@ -250,10 +254,10 @@ pub async fn fetch_state_ids(
     Ok(res_body)
 }
 
-pub async fn fetch_event(origin: &ServerName, event_id: &EventId) -> AppResult<EventResBody> {
-    let request = event_request(&origin.origin().await, EventReqArgs::new(event_id))?.into_inner();
+pub async fn fetch_event(remote_server: &ServerName, event_id: &EventId) -> AppResult<EventResBody> {
+    let request = event_request(&remote_server.origin().await, EventReqArgs::new(event_id))?.into_inner();
 
-    let body = crate::sending::send_federation_request(origin, request, None)
+    let body = crate::sending::send_federation_request(remote_server, request, None)
         .await?
         .json::<EventResBody>()
         .await?;
@@ -293,7 +297,7 @@ pub async fn fetch_and_process_missing_event(
         .await?
         .json::<EventResBody>()
         .await?;
-    process_to_outlier_pdu(
+    process_to_outlier_pdu(remote_server, 
         &event_id,
         room_id,
         &room_version_id,

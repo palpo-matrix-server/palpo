@@ -15,19 +15,18 @@ use super::fetching::{
     fetch_and_process_missing_state, fetch_and_process_missing_state_by_ids, fetch_state_ids,
 };
 use super::resolver::{resolve_state, state_at_incoming_resolved};
-use crate::core::events::StateEventType;
-use crate::core::events::TimelineEventType;
 use crate::core::events::room::server_acl::RoomServerAclEventContent;
+use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::authorization::{
     EventAuthorizationResBody, event_authorization_request,
 };
-use crate::core::federation::event::RoomStateIdsResBody;
 use crate::core::federation::event::{
-    EventReqArgs, EventResBody, MissingEventsReqBody, MissingEventsResBody, event_request,
-    missing_events_request,
+    EventReqArgs, EventResBody, MissingEventsReqBody, MissingEventsResBody, RoomStateIdsResBody,
+    event_request, missing_events_request,
 };
 use crate::core::identifiers::*;
 use crate::core::room_version_rules::StateResolutionV2Rules;
+use crate::core::serde::RawJsonValue;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonValue, canonical_json};
 use crate::core::signatures::Verified;
 use crate::core::state::{Event, StateError, StateMap, event_auth};
@@ -48,9 +47,10 @@ pub struct OutlierPdu {
     pub json_data: CanonicalJsonObject,
     pub soft_failed: bool,
 
-    pub origin: OwnedServerName,
+    pub remote_server: OwnedServerName,
     pub room_id: OwnedRoomId,
     pub room_version_id: RoomVersionId,
+    pub event_sn: Option<Seqnum>,
 }
 impl AsRef<PduEvent> for OutlierPdu {
     fn as_ref(&self) -> &PduEvent {
@@ -124,20 +124,30 @@ impl crate::core::state::Event for OutlierPdu {
 }
 
 impl OutlierPdu {
-    pub async fn save(
-        self,
-        fill_missing: bool,
+    pub fn save_without_fill_missing(
+        mut self,
+        known_events: &mut HashSet<OwnedEventId>,
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
-        if fill_missing {
-            self.fill_missing().await?;
-        }
         let Self {
             pdu,
             json_data,
             soft_failed,
             room_id,
+            event_sn,
             ..
         } = self;
+        if let Some(event_sn) = event_sn {
+            return Ok((
+                SnPduEvent {
+                    pdu,
+                    event_sn,
+                    is_outlier: true,
+                    soft_failed,
+                },
+                json_data,
+                None,
+            ));
+        }
         let (event_sn, event_guard) = ensure_event_sn(&room_id, &pdu.event_id)?;
         let mut db_event = NewDbEvent::from_canonical_json(&pdu.event_id, event_sn, &json_data)?;
         db_event.is_outlier = true;
@@ -156,16 +166,16 @@ impl OutlierPdu {
         .save()?;
 
         let existed_events = events::table
-            .filter(events::id.eq_any(&self.prev_events))
+            .filter(events::id.eq_any(&pdu.prev_events))
             .select(events::id)
             .load::<OwnedEventId>(&mut connect()?)?;
-        let missing_events = self
+        let missing_events = pdu
             .prev_events
             .iter()
             .filter(|id| !known_events.contains(*id) && !existed_events.contains(id))
             .collect::<Vec<_>>();
         if !missing_events.is_empty() {
-            data::room::add_timeline_gap(&self.room_id, event_sn)?;
+            data::room::add_timeline_gap(&room_id, event_sn)?;
         }
 
         Ok((
@@ -179,20 +189,22 @@ impl OutlierPdu {
             event_guard,
         ))
     }
-    async fn fill_missing(&mut self) -> AppResult<()> {
+   pub async fn save_with_fill_missing(
+        mut self,
+        known_events: &mut HashSet<OwnedEventId>,
+    ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
         let version_rules = crate::room::get_version_rules(&self.room_version_id)?;
         let auth_rules = &version_rules.authorization;
 
         let mut soft_failed = false;
         let mut rejection_reason = None;
-        let mut known_events = HashSet::new();
         // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
         if let Err(e) = fetch_and_process_missing_prev_events(
-            &self.origin,
+            &self.remote_server,
             &self.room_id,
             &self.room_version_id,
             &self,
-            &mut known_events,
+            known_events,
         )
         .await
         {
@@ -220,7 +232,7 @@ impl OutlierPdu {
         if !missing_auth_event_ids.is_empty() {
             // if fetch_state_for_missing {
             if let Err(_e) = fetch_and_process_missing_state_by_ids(
-                &self.origin,
+                &self.remote_server,
                 &self.room_id,
                 &self.room_version_id,
                 &self.event_id,
@@ -286,16 +298,16 @@ impl OutlierPdu {
 
         if let Err(_e) = event_auth::auth_check(
             &auth_rules,
-            self,
+            &self.pdu,
             &async |event_id| {
-                timeline::get_pdu(&event_id)
+                timeline::get_pdu(&event_id).map(|p|p.into_inner())
                     .map_err(|_| StateError::other("missing pdu 1"))
             },
             &async |k, s| {
                 if let Some(pdu) = auth_events
                     .get(&(k.to_string().into(), s.to_owned()))
                 {
-                    return Ok(pdu.to_owned());
+                    return Ok(pdu.pdu.clone());
                 }
                 if auth_rules.room_create_event_id_as_room_id && k == StateEventType::RoomCreate {
                     let pdu = crate::room::get_create(&self.room_id)
@@ -304,7 +316,7 @@ impl OutlierPdu {
                     if pdu.room_id != *self.room_id {
                         Err(StateError::other("mismatched room id in create event"))
                     } else {
-                        Ok(pdu)
+                        Ok(pdu.into_inner())
                     }
                 } else {
                     Err(StateError::other(format!(
@@ -323,6 +335,6 @@ impl OutlierPdu {
 
         self.soft_failed = soft_failed;
         self.rejection_reason = rejection_reason;
-        Ok(())
+        self.save_without_fill_missing(known_events)
     }
 }
