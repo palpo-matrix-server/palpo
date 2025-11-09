@@ -86,7 +86,7 @@ pub(super) async fn fetch_and_process_missing_state_by_ids(
     room_version_id: &RoomVersionId,
     event_id: &EventId,
 ) -> AppResult<FetchedState> {
-    println!("============fetch_and_process_missing_state_by_ids=============");
+    println!("============fetch_and_process_missing_state_by_ids============= {event_id}");
     debug!("calling /state_ids");
     // Call /state_ids to find out what the state at this pdu is. We trust the server's
     // response to some extend, but we still do a lot of checks on the events
@@ -309,13 +309,16 @@ pub async fn fetch_and_process_missing_event(
         .await?
         .json::<EventResBody>()
         .await?;
-    process_to_outlier_pdu(
+    let Some(outlier_pdu) = process_to_outlier_pdu(
         remote_server,
         &event_id,
         room_id,
         &room_version_id,
         serde_json::from_str(res_body.pdu.get())?,
     )
-    .await?;
+    .await? else {
+        return Ok(());
+    };
+    outlier_pdu.save_without_fill_missing(&mut HashSet::new())?;
     Ok(())
 }

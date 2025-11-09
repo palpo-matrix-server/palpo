@@ -72,10 +72,12 @@ pub(crate) async fn process_incoming_pdu(
     value: BTreeMap<String, CanonicalJsonValue>,
     is_timeline_event: bool,
 ) -> AppResult<()> {
+    println!("\n\n\n\n=====xx=process_incoming_pdu=========== {event_id}");
     if !crate::room::room_exists(room_id)? {
         return Err(MatrixError::not_found("room is unknown to this server").into());
     }
 
+    println!("======process_incoming_pdu 1");
     let event = events::table
         .filter(events::id.eq(event_id))
         .first::<DbEvent>(&mut connect()?);
@@ -94,6 +96,7 @@ pub(crate) async fn process_incoming_pdu(
         }
     }
 
+    println!("======process_incoming_pdu 2");
     // 1.2 Check if the room is disabled
     if crate::room::is_disabled(room_id)? {
         return Err(MatrixError::forbidden(
@@ -116,6 +119,7 @@ pub(crate) async fn process_incoming_pdu(
     )
     .map_err(|_| MatrixError::bad_json("user id in sender is invalid."))?;
 
+    println!("======process_incoming_pdu 3");
     if sender.server_name().ne(remote_server) {
         handler::acl_check(sender.server_name(), room_id)?;
     }
@@ -125,15 +129,19 @@ pub(crate) async fn process_incoming_pdu(
         return Ok(());
     }
 
+    println!("===========process_incoming_pdu  4");
+    println!("======call =process_to_outlier_pdu");
     let Some(outlier_context) =
         process_to_outlier_pdu(remote_server, event_id, room_id, room_version_id, value).await?
     else {
         return Ok(());
     };
 
+    println!("===========process_incoming_pdu  5");
     let (mut incoming_pdu, val, event_guard) = outlier_context
         .save_with_fill_missing(&mut HashSet::new())
         .await?;
+    println!("===========process_incoming_pdu  6");
 
     if incoming_pdu.rejected() {
         return Ok(());
@@ -201,22 +209,30 @@ pub(crate) async fn process_pulled_pdu(
     let Some(outlier_pdu) =
         process_to_outlier_pdu(remote_server, event_id, room_id, room_version_id, value).await?
     else {
+        println!("process pulled pdu 7");
         return Ok(());
     };
+    println!("process pulled pdu 8");
     let (pdu, json_data, _) = outlier_pdu.save_without_fill_missing(known_events)?;
 
     let mut event_ids = pdu.prev_events.clone();
     event_ids.extend(pdu.auth_events.clone());
-    let missing = diesel_exists!(
-        event_points::table
-            .filter(event_points::event_id.eq_any(&event_ids))
-            .filter(event_points::frame_id.is_null()),
-        &mut connect()?
-    )?;
-    if missing {
+    let event_ids = event_ids.into_iter().collect::<HashSet<_>>();
+    // let event_ids = event_ids
+    //     .into_iter()
+    //     .filter(|e| !known_events.contains(e))
+    //     .collect::<Vec<_>>();
+    let exist_prevs = event_points::table
+        .filter(event_points::event_id.eq_any(event_ids.iter()))
+        .filter(event_points::frame_id.is_not_null())
+        .select(event_points::event_id)
+        .load::<OwnedEventId>(&mut connect()?)?;
+    println!("process pulled pdu missing: {exist_prevs:?}  {event_ids:#?}");
+    if exist_prevs.len() < event_ids.len() {
         return Ok(());
     }
 
+    println!("process pulled pdu 9");
     process_to_timeline_pdu(pdu, json_data, remote_server, room_id, false).await
 }
 
@@ -443,7 +459,7 @@ pub async fn process_to_timeline_pdu(
     if !incoming_pdu.is_outlier {
         return Ok(());
     }
-
+    println!(">>>>>>>>>>>process_to_timeline_pdu 0");
     info!("upgrading {} to timeline pdu", incoming_pdu.event_id);
     let room_version_id = &room::get_version(room_id)?;
     let version_rules = crate::room::get_version_rules(room_version_id)?;
@@ -540,6 +556,7 @@ pub async fn process_to_timeline_pdu(
         return Ok(());
     }
 
+    println!(">>>>>>>>>>>process_to_timeline_pdu 2");
     // let state_at_incoming_event = if incoming_pdu.prev_events.len() == 1 {
     //     state_at_incoming_degree_one(&incoming_pdu).await?
     // } else {
@@ -559,6 +576,7 @@ pub async fn process_to_timeline_pdu(
         .await?
         .state_events
     };
+    println!(">>>>>>>>>>>process_to_timeline_pdu 3");
 
     if !state_at_incoming_event.is_empty() {
         debug!("performing auth check");
@@ -939,6 +957,7 @@ pub async fn fetch_and_process_missing_prev_events(
     incoming_pdu: &PduEvent,
     known_events: &mut HashSet<OwnedEventId>,
 ) -> AppResult<()> {
+    println!("==|||========fetch_and_process_missing_prev_events {known_events:#?}");
     let min_depth = timeline::first_pdu_in_room(room_id)
         .ok()
         .and_then(|pdu| pdu.map(|p| p.depth))
@@ -950,19 +969,25 @@ pub async fn fetch_and_process_missing_prev_events(
     earliest_events.extend(known_events.iter().cloned());
 
     let mut missing_events = Vec::with_capacity(incoming_pdu.prev_events.len());
+    println!("==========fetch_and_process_missing_prev_events 1");
     for prev_id in &incoming_pdu.prev_events {
         let pdu = timeline::get_pdu(&prev_id);
         if let Ok(pdu) = &pdu
             && !pdu.rejected()
         {
+            println!("kkkkkkkkkkkkknown prev event: {prev_id:?}  {pdu:#?}");
             known_events.insert(prev_id.to_owned());
         } else if !earliest_events.contains(&prev_id) && !fetched_events.contains_key(prev_id) {
+            println!("kkkkmiss event: {prev_id:?}");
             missing_events.push(prev_id.to_owned());
         }
     }
+    println!("==========fetch_and_process_missing_prev_events 2");
     if missing_events.is_empty() {
+        println!("==========fetch_and_process_missing_prev_events 3");
         return Ok(());
     }
+    println!("==========fetch_and_process_missing_prev_events 4 {missing_events:?}");
 
     let request = missing_events_request(
         &remote_server.origin().await,
@@ -976,10 +1001,12 @@ pub async fn fetch_and_process_missing_prev_events(
     )?
     .into_inner();
 
+    println!("==========fetch_and_process_missing_prev_events 5");
     known_events.insert(incoming_pdu.event_id.clone());
     let response = crate::sending::send_federation_request(remote_server, request, None).await?;
     let res_body = response.json::<MissingEventsResBody>().await?;
 
+    println!("==========fetch_and_process_missing_prev_events 6");
     for event in res_body.events {
         let (event_id, event_val, _room_id, _room_version_id) = crate::parse_incoming_pdu(&event)?;
 
@@ -1032,6 +1059,7 @@ pub async fn fetch_and_process_missing_prev_events(
 
         missing_events.retain(|e| e != &event_id);
     }
+    println!("==========fetch_and_process_missing_prev_events 7  {missing_events:?}");
 
     for missing_id in missing_events {
         println!("============missing_id: {missing_id:?}");
@@ -1064,9 +1092,11 @@ pub async fn fetch_and_process_missing_prev_events(
         // As an arbitrary heuristic, if we are missing more than 10% of the events, then
         // we fetch the whole state.
         if missing_events.len() * 10 >= desired_count {
+            println!("requesting complete state from remote");
             fetch_and_process_missing_state(remote_server, room_id, room_version_id, &missing_id)
                 .await?;
         } else {
+            println!("fetching {} events from remote", missing_events.len());
             fetch_and_process_missing_events(
                 remote_server,
                 room_id,
@@ -1074,11 +1104,12 @@ pub async fn fetch_and_process_missing_prev_events(
                 &missing_events,
             )
             .await?;
+            println!(">>>>>>>>>>>.fetching events end");
         }
         known_events.extend(missing_events.into_iter());
     }
 
-    known_events.insert(incoming_pdu.event_id.clone());
+    println!("==========fetch_and_process_missing_prev_events 8");
     fetched_events.sort_by(|_x1, v1, _k2, v2| {
         let depth1 = v1.get("depth").and_then(|v| v.as_integer()).unwrap_or(0);
         let depth2 = v2.get("depth").and_then(|v| v.as_integer()).unwrap_or(0);
@@ -1091,7 +1122,9 @@ pub async fn fetch_and_process_missing_prev_events(
                 .filter(events::room_id.eq(&room_id)),
             &mut connect()?
         )?;
+        println!("============event_id: {event_id:?}, is_exists: {is_exists}");
         if !is_exists {
+            println!("==========fetch_and_process_missing_prev_events 9");
             if let Err(e) = process_pulled_pdu(
                 remote_server,
                 &event_id,
@@ -1109,6 +1142,8 @@ pub async fn fetch_and_process_missing_prev_events(
             }
         }
     }
+
+    println!("======xxx===end fetch_and_process_missing_prev_events");
 
     Ok(())
 }

@@ -125,9 +125,10 @@ impl crate::core::state::Event for OutlierPdu {
 
 impl OutlierPdu {
     pub fn save_without_fill_missing(
-        mut self,
+        self,
         known_events: &mut HashSet<OwnedEventId>,
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
+        println!("============OutlierPdu::save_without_fill_missing {}",self.event_id);
         let Self {
             pdu,
             json_data,
@@ -178,6 +179,7 @@ impl OutlierPdu {
             data::room::add_timeline_gap(&room_id, event_sn)?;
         }
 
+        println!("========end OutlierPdu::save_without_fill_missing {:#?}",pdu);
         Ok((
             SnPduEvent {
                 pdu,
@@ -189,11 +191,11 @@ impl OutlierPdu {
             event_guard,
         ))
     }
-   pub async fn save_with_fill_missing(
+    pub async fn save_with_fill_missing(
         mut self,
         known_events: &mut HashSet<OwnedEventId>,
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
-        println!("============OutlierPdu::save_with_fill_missing=============");
+        println!("============OutlierPdu::save_with_fill_missing {}",self.event_id);
         let version_rules = crate::room::get_version_rules(&self.room_version_id)?;
         let auth_rules = &version_rules.authorization;
 
@@ -220,6 +222,7 @@ impl OutlierPdu {
                 soft_failed = true;
             }
         }
+        println!("====zz===x==process_pdu_missing_deps 1");
 
         let (_auth_events, missing_auth_event_ids) =
             match timeline::get_may_missing_pdus(&self.room_id, &self.auth_events) {
@@ -230,9 +233,16 @@ impl OutlierPdu {
                     (vec![], vec![])
                 }
             };
+        println!(
+            "====zz==x=process_pdu_missing_deps 2 {:#?} missing_auth_event_ids: {missing_auth_event_ids:?} soft_failed:{soft_failed} rejection_reason:{rejection_reason:?}",
+            self.pdu
+        );
 
         if !missing_auth_event_ids.is_empty() {
-            println!("======missing_auth_event_ids======: {:?}", missing_auth_event_ids);
+            println!(
+                "======missing_auth_event_ids======: {:?}",
+                missing_auth_event_ids
+            );
             // if fetch_state_for_missing {
             if let Err(_e) = fetch_and_process_missing_state_by_ids(
                 &self.remote_server,
@@ -252,6 +262,7 @@ impl OutlierPdu {
             //     }
             // }
         }
+        println!("====zz=====process_pdu_missing_deps 3");
         let (auth_events, missing_auth_event_ids) =
             timeline::get_may_missing_pdus(&self.room_id, &self.auth_events)?;
         if !missing_auth_event_ids.is_empty() {
@@ -277,6 +288,7 @@ impl OutlierPdu {
                 ))
             }
         }
+        println!("====zz=====process_pdu_missing_deps 4");
 
         let auth_events = auth_events
             .into_iter()

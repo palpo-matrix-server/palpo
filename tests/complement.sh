@@ -15,8 +15,7 @@ RESULTS_FILE="$3"
 BASE_IMAGE="complement-palpo-base"
 if [ -z "$(docker images -q $BASE_IMAGE)" ]; then
     echo "Image $BASE_IMAGE is not exist, build it..."
-    env \
-    -C "$(git rev-parse --show-toplevel)" \
+    env -C "$(git rev-parse --show-toplevel)" \
     docker build -t complement-palpo-base -f tests/complement/Dockerfile.base .
 else
     echo "Image $BASE_IMAGE is exists, skip building..."
