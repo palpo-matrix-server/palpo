@@ -193,11 +193,13 @@ impl OutlierPdu {
         mut self,
         known_events: &mut HashSet<OwnedEventId>,
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
+        println!("============OutlierPdu::save_with_fill_missing=============");
         let version_rules = crate::room::get_version_rules(&self.room_version_id)?;
         let auth_rules = &version_rules.authorization;
 
         let mut soft_failed = false;
         let mut rejection_reason = None;
+        println!("callllling  fetch_and_process_missing_prev_events");
         // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
         if let Err(e) = fetch_and_process_missing_prev_events(
             &self.remote_server,
@@ -230,6 +232,7 @@ impl OutlierPdu {
             };
 
         if !missing_auth_event_ids.is_empty() {
+            println!("======missing_auth_event_ids======: {:?}", missing_auth_event_ids);
             // if fetch_state_for_missing {
             if let Err(_e) = fetch_and_process_missing_state_by_ids(
                 &self.remote_server,
