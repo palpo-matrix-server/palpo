@@ -315,6 +315,7 @@ pub struct CustomProfileFieldValue {
 //     None,
 // );
 
+#[cfg(test)]
 mod tests {
     use crate::owned_mxc_uri;
     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};

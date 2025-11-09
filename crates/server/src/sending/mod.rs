@@ -24,7 +24,7 @@ use crate::core::{UnixMillis, push};
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::sending::{DbOutgoingRequest, NewDbOutgoingRequest};
-use crate::room::timeline::{self, get_pdu};
+use crate::room::timeline;
 use crate::{AppError, AppResult, GetUrlOrigin, ServerConfig, TlsNameMap, config, data, utils};
 
 mod dest;

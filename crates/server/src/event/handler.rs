@@ -124,7 +124,7 @@ pub(crate) async fn process_incoming_pdu(
         return Ok(());
     };
 
-    let (mut incoming_pdu, val, event_guard) = outlier_context
+    let (incoming_pdu, val, event_guard) = outlier_context
         .save_with_fill_missing(&mut HashSet::new())
         .await?;
 

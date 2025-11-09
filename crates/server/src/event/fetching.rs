@@ -15,13 +15,11 @@ use crate::core::identifiers::*;
 use crate::data::diesel_exists;
 use crate::data::schema::*;
 use crate::event::connect;
-use crate::event::handler::{
-    fetch_and_process_outliers, process_pulled_pdu, process_to_outlier_pdu,
-};
+use crate::event::handler::process_to_outlier_pdu;
 use crate::room::state::ensure_field_id;
-use crate::room::{state, timeline};
+use crate::room::timeline;
 use crate::sending::send_federation_request;
-use crate::{AppError, AppResult, SnPduEvent, exts::*, parse_incoming_pdu};
+use crate::{AppResult, SnPduEvent, exts::*, parse_incoming_pdu};
 
 pub struct FetchedState {
     pub state_events: IndexMap<i64, OwnedEventId>,
@@ -314,7 +312,8 @@ pub async fn fetch_and_process_missing_event(
         &room_version_id,
         serde_json::from_str(res_body.pdu.get())?,
     )
-    .await? else {
+    .await?
+    else {
         return Ok(());
     };
     outlier_pdu.save_without_fill_missing(&mut HashSet::new())?;

@@ -5,7 +5,6 @@ use std::sync::{LazyLock, Mutex};
 
 use diesel::prelude::*;
 use indexmap::IndexMap;
-use palpo_core::events::space::child::SpaceChildEventContent;
 use serde::Deserialize;
 use serde_json::value::to_raw_value;
 use ulid::Ulid;

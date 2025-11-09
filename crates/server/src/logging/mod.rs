@@ -60,7 +60,7 @@ pub fn init() -> AppResult<()> {
         .fmt_fields(ConsoleFormat::new(conf))
         .with_writer(ConsoleWriter::new(conf));
 
-    let (console_reload_filter, console_reload_handle) =
+    let (console_reload_filter, _console_reload_handle) =
         tracing_subscriber::reload::Layer::new(console_filter);
 
     // TODO: fix https://github.com/tokio-rs/tracing/pull/2956
