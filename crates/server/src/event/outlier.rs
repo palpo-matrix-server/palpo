@@ -1,45 +1,23 @@
-use std::borrow::Borrow;
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque, hash_map};
-use std::future::Future;
-use std::iter::once;
+use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
-use std::pin::Pin;
-use std::sync::Arc;
-use std::time::{Duration, Instant};
 
 use diesel::prelude::*;
-use indexmap::IndexMap;
 
-use super::fetching::{
-    fetch_and_process_auth_chain, fetch_and_process_missing_events,
-    fetch_and_process_missing_state, fetch_and_process_missing_state_by_ids, fetch_state_ids,
-};
-use super::resolver::{resolve_state, state_at_incoming_resolved};
-use crate::core::events::room::server_acl::RoomServerAclEventContent;
 use crate::core::events::{StateEventType, TimelineEventType};
-use crate::core::federation::authorization::{
-    EventAuthorizationResBody, event_authorization_request,
-};
-use crate::core::federation::event::{
-    EventReqArgs, EventResBody, MissingEventsReqBody, MissingEventsResBody, RoomStateIdsResBody,
-    event_request, missing_events_request,
-};
 use crate::core::identifiers::*;
-use crate::core::room_version_rules::StateResolutionV2Rules;
+use crate::core::serde::CanonicalJsonObject;
 use crate::core::serde::RawJsonValue;
-use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonValue, canonical_json};
-use crate::core::signatures::Verified;
-use crate::core::state::{Event, StateError, StateMap, event_auth};
+use crate::core::state::{Event, StateError, event_auth};
 use crate::core::{self, Seqnum, UnixMillis};
-use crate::data::room::{DbEvent, DbEventData, NewDbEvent};
+use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
-use crate::data::{self, connect, diesel_exists};
+use crate::data::{self, connect};
+use crate::event::fetching::fetch_and_process_missing_state_by_ids;
 use crate::event::handler::fetch_and_process_missing_prev_events;
-use crate::event::{PduEvent, SnPduEvent, ensure_event_sn, handler};
-use crate::room::state::{CompressedState, DbRoomStateField, DeltaInfo};
-use crate::room::{state, timeline};
+use crate::event::{PduEvent, SnPduEvent, ensure_event_sn};
+use crate::room::timeline;
 use crate::utils::SeqnumQueueGuard;
-use crate::{AppError, AppResult, MatrixError, exts::*, room};
+use crate::{AppError, AppResult, MatrixError};
 
 #[derive(Clone, Debug)]
 pub struct OutlierPdu {
@@ -125,7 +103,7 @@ impl crate::core::state::Event for OutlierPdu {
 
 impl OutlierPdu {
     pub fn save_without_fill_missing(
-        mut self,
+        self,
         known_events: &mut HashSet<OwnedEventId>,
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
         let Self {
@@ -189,7 +167,7 @@ impl OutlierPdu {
             event_guard,
         ))
     }
-   pub async fn save_with_fill_missing(
+    pub async fn save_with_fill_missing(
         mut self,
         known_events: &mut HashSet<OwnedEventId>,
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
@@ -230,24 +208,28 @@ impl OutlierPdu {
             };
 
         if !missing_auth_event_ids.is_empty() {
-            // if fetch_state_for_missing {
-            if let Err(_e) = fetch_and_process_missing_state_by_ids(
-                &self.remote_server,
-                &self.room_id,
-                &self.room_version_id,
-                &self.event_id,
-            )
-            .await
-            {
-                soft_failed = true;
+            if soft_failed {
+                if let Err(e) = fetch_and_process_missing_state_by_ids(
+                    &self.remote_server,
+                    &self.room_id,
+                    &self.room_version_id,
+                    &self.event_id,
+                )
+                .await
+                {
+                    error!(
+                        "failed to fetch missing auth events for {}: {:?}",
+                        self.event_id, e
+                    );
+                }
+                // } else {
+                //     if let Err(_e) =
+                //         fetch_and_process_auth_chain(&self.remote_server, &self.room_id, &self.event_id)
+                //             .await
+                //     {
+                //         soft_failed = true;
+                //     }
             }
-            // } else {
-            //     if let Err(_e) =
-            //         fetch_and_process_auth_chain(origin, room_id, &incoming_pdu.event_id).await
-            //     {
-            //         soft_failed = true;
-            //     }
-            // }
         }
         let (auth_events, missing_auth_event_ids) =
             timeline::get_may_missing_pdus(&self.room_id, &self.auth_events)?;

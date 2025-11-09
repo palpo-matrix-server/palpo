@@ -215,7 +215,7 @@ pub(super) async fn send_message(
 
     let payload = req.payload().await?;
     // Ensure it's valid JSON.
-    let content: JsonValue =
+    let _content: JsonValue =
         serde_json::from_slice(payload).map_err(|_| MatrixError::bad_json("invalid json body"))?;
 
     let state_lock = room::lock_state(&args.room_id).await;

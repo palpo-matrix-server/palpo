@@ -53,7 +53,7 @@ impl LogLevelReloadHandles {
             .insert(name.into(), handle);
     }
 
-    pub fn reload(&self, new_value: &EnvFilter, names: Option<&[&str]>) -> AppResult<()> {
+    pub fn reload(&self, _new_value: &EnvFilter, names: Option<&[&str]>) -> AppResult<()> {
         self.handles
             .lock()
             .expect("locked")

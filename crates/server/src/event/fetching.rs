@@ -15,13 +15,11 @@ use crate::core::identifiers::*;
 use crate::data::diesel_exists;
 use crate::data::schema::*;
 use crate::event::connect;
-use crate::event::handler::{
-    fetch_and_process_outliers, process_pulled_pdu, process_to_outlier_pdu,
-};
+use crate::event::handler::process_to_outlier_pdu;
 use crate::room::state::ensure_field_id;
-use crate::room::{state, timeline};
+use crate::room::timeline;
 use crate::sending::send_federation_request;
-use crate::{AppError, AppResult, SnPduEvent, exts::*, parse_incoming_pdu};
+use crate::{AppResult, SnPduEvent, exts::*, parse_incoming_pdu};
 
 pub struct FetchedState {
     pub state_events: IndexMap<i64, OwnedEventId>,
@@ -56,9 +54,14 @@ pub async fn fetch_and_process_auth_chain(
                     .filter(events::room_id.eq(&room_id)),
                 &mut connect()?
             )? {
-                let Some(outlier_pdu) =
-                    process_to_outlier_pdu(remote_server, &event_id, &room_id, &room_version_id, event_value)
-                        .await?
+                let Some(outlier_pdu) = process_to_outlier_pdu(
+                    remote_server,
+                    &event_id,
+                    &room_id,
+                    &room_version_id,
+                    event_value,
+                )
+                .await?
                 else {
                     continue;
                 };
@@ -84,18 +87,7 @@ pub(super) async fn fetch_and_process_missing_state_by_ids(
     debug!("calling /state_ids");
     // Call /state_ids to find out what the state at this pdu is. We trust the server's
     // response to some extend, but we still do a lot of checks on the events
-    let request = room_state_ids_request(
-        &remote_server.origin().await,
-        RoomStateAtEventReqArgs {
-            room_id: room_id.to_owned(),
-            event_id: event_id.to_owned(),
-        },
-    )?
-    .into_inner();
-    let res = send_federation_request(remote_server, request, None)
-        .await?
-        .json::<RoomStateIdsResBody>()
-        .await?;
+    let res = fetch_state_ids(remote_server, room_id, event_id).await?;
     debug!("fetching state events at event");
 
     let mut state_events: IndexMap<i64, OwnedEventId> = IndexMap::new();
@@ -116,12 +108,18 @@ pub(super) async fn fetch_and_process_missing_state_by_ids(
             state_events.insert(field_id, event_id);
             continue;
         }
-        let Some(outlier_pdu) =
-            process_to_outlier_pdu(remote_server, &event_id, &room_id, &room_version_id, event_value).await?
+        let Some(outlier_pdu) = process_to_outlier_pdu(
+            remote_server,
+            &event_id,
+            &room_id,
+            &room_version_id,
+            event_value,
+        )
+        .await?
         else {
             continue;
         };
-        let pdu = outlier_pdu.save_without_fill_missing( &mut known_events)?.0;
+        let pdu = outlier_pdu.save_without_fill_missing(&mut known_events)?.0;
         let state_key = match &pdu.state_key {
             Some(s) => s,
             None => continue,
@@ -143,8 +141,14 @@ pub(super) async fn fetch_and_process_missing_state_by_ids(
             auth_events.insert(field_id, event_id);
             continue;
         }
-        let Some(outlier_pdu) =
-            process_to_outlier_pdu(remote_server, &event_id, &room_id, &room_version_id, event_value).await?
+        let Some(outlier_pdu) = process_to_outlier_pdu(
+            remote_server,
+            &event_id,
+            &room_id,
+            &room_version_id,
+            event_value,
+        )
+        .await?
         else {
             continue;
         };
@@ -254,8 +258,12 @@ pub async fn fetch_state_ids(
     Ok(res_body)
 }
 
-pub async fn fetch_event(remote_server: &ServerName, event_id: &EventId) -> AppResult<EventResBody> {
-    let request = event_request(&remote_server.origin().await, EventReqArgs::new(event_id))?.into_inner();
+pub async fn fetch_event(
+    remote_server: &ServerName,
+    event_id: &EventId,
+) -> AppResult<EventResBody> {
+    let request =
+        event_request(&remote_server.origin().await, EventReqArgs::new(event_id))?.into_inner();
 
     let body = crate::sending::send_federation_request(remote_server, request, None)
         .await?
@@ -297,12 +305,17 @@ pub async fn fetch_and_process_missing_event(
         .await?
         .json::<EventResBody>()
         .await?;
-    process_to_outlier_pdu(remote_server, 
+    let Some(outlier_pdu) = process_to_outlier_pdu(
+        remote_server,
         &event_id,
         room_id,
         &room_version_id,
         serde_json::from_str(res_body.pdu.get())?,
     )
-    .await?;
+    .await?
+    else {
+        return Ok(());
+    };
+    outlier_pdu.save_without_fill_missing(&mut HashSet::new())?;
     Ok(())
 }
