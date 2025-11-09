@@ -158,9 +158,12 @@ pub fn get_may_missing_pdus(
     for (event_id, event_sn, json) in events {
         let mut pdu = SnPduEvent::from_json_value(room_id, &event_id, event_sn, json, true, false)
             .map_err(|_e| AppError::internal("invalid pdu in db"))?;
-        let event = events::table
+        let Ok(event) = events::table
             .filter(events::id.eq(&event_id))
-            .first::<DbEvent>(&mut connect()?)?;
+            .first::<DbEvent>(&mut connect()?)
+        else {
+            continue;
+        };
         pdu.is_outlier = event.is_outlier;
         pdu.soft_failed = event.soft_failed;
         pdus.push(pdu);

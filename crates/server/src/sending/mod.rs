@@ -504,7 +504,7 @@ pub async fn send_federation_request(
     request: reqwest::Request,
     timeout_secs: Option<u64>,
 ) -> AppResult<reqwest::Response> {
-    debug!("Waiting for permit");
+    debug!("waiting for permit");
     let max_request = max_request();
     let permit = max_request.acquire().await;
     debug!("Got permit");
@@ -515,8 +515,8 @@ pub async fn send_federation_request(
     )
     .await
     .map_err(|_| {
-        warn!("Timeout waiting for server response of {}", url);
-        AppError::public("Timeout waiting for server response")
+        warn!("timeout waiting for server response of {}", url);
+        AppError::public("timeout waiting for server response")
     })?;
     drop(permit);
 

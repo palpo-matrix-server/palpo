@@ -1,32 +1,19 @@
-use std::borrow::Borrow;
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque, hash_map};
-use std::future::Future;
-use std::iter::once;
-use std::pin::Pin;
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
 
 use diesel::prelude::*;
 use indexmap::IndexMap;
 
-use crate::core::federation::authorization::{
-    EventAuthorizationResBody, event_authorization_request,
-};
-use crate::core::federation::event::RoomStateIdsResBody;
-use crate::core::federation::event::{
-    EventReqArgs, EventResBody, MissingEventsReqBody, MissingEventsResBody, event_request,
-    missing_events_request,
-};
 use crate::core::identifiers::*;
 use crate::core::room_version_rules::{RoomVersionRules, StateResolutionV2Rules};
 use crate::core::state::{Event, StateError, StateMap, resolve};
+use crate::data::schema::*;
 use crate::data::{self, connect, diesel_exists};
 use crate::event::PduEvent;
-use crate::data::schema::*;
 use crate::room::state::{CompressedState, DbRoomStateField, DeltaInfo};
 use crate::room::{state, timeline};
 use crate::utils::SeqnumQueueGuard;
-use crate::{AppError, AppResult, MatrixError, exts::*, room};
+use crate::{AppError, AppResult, room};
 
 pub async fn resolve_state(
     room_id: &RoomId,

@@ -86,7 +86,6 @@ pub(super) async fn fetch_and_process_missing_state_by_ids(
     room_version_id: &RoomVersionId,
     event_id: &EventId,
 ) -> AppResult<FetchedState> {
-    println!("============fetch_and_process_missing_state_by_ids============= {event_id}");
     debug!("calling /state_ids");
     // Call /state_ids to find out what the state at this pdu is. We trust the server's
     // response to some extend, but we still do a lot of checks on the events
@@ -241,7 +240,6 @@ pub async fn fetch_state_ids(
     room_id: &RoomId,
     event_id: &EventId,
 ) -> AppResult<RoomStateIdsResBody> {
-    println!("============fetch_state_ids=============");
     debug!("calling /state_ids");
     // Call /state_ids to find out what the state at this pdu is. We trust the server's
     // response to some extend, but we still do a lot of checks on the events
