@@ -125,16 +125,13 @@ impl SnPduEvent {
         struct ExtractMemebership {
             membership: String,
         }
-        println!("======================unsigned membership===========user_id: {user_id}");
         let membership = if self.event_ty == TimelineEventType::RoomMember
             && self.state_key == Some(user_id.to_string())
         {
-            println!("======================unsigned membership 1");
             self.get_content::<ExtractMemebership>()
                 .map(|m| m.membership)
                 .ok()
         } else if let Ok(frame_id) = crate::event::get_frame_id(&self.room_id, self.event_sn) {
-            println!("======================unsigned membership 2");
             state::user_membership(frame_id, user_id)
                 .ok()
                 .map(|m| m.to_string())
@@ -142,13 +139,11 @@ impl SnPduEvent {
             None
         };
         if let Some(membership) = membership {
-            println!("======================unsigned membership 3  {membership}");
             self.unsigned.insert(
                 "membership".to_owned(),
                 to_raw_value(&membership).expect("should always work"),
             );
         } else {
-            println!("======================unsigned membership 4 leave");
             self.unsigned.insert(
                 "membership".to_owned(),
                 to_raw_value("leave").expect("should always work"),
