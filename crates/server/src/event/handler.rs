@@ -449,6 +449,7 @@ pub async fn process_to_timeline_pdu(
     //     doing all the checks in this list starting at 1. These are not timeline events.
     debug!("resolving state at event");
     let server_joined = crate::room::is_server_joined(crate::config::server_name(), room_id)?;
+    println!("=incoming pdu: {:#?}", incoming_pdu);
     if !server_joined {
         if let Some(state_key) = incoming_pdu.state_key.as_deref()
             && incoming_pdu.event_ty == TimelineEventType::RoomMember
@@ -544,8 +545,10 @@ pub async fn process_to_timeline_pdu(
     let state_at_incoming_event =
         state_at_incoming_resolved(&incoming_pdu, room_id, &version_rules).await?;
     let state_at_incoming_event = if let Some(state_at_incoming_event) = state_at_incoming_event {
+        println!("=state at incoming event: {:#?}", state_at_incoming_event);
         state_at_incoming_event
     } else {
+        println!("=state at incoming event2");
         fetch_and_process_missing_state(
             remote_server,
             room_id,
@@ -555,8 +558,12 @@ pub async fn process_to_timeline_pdu(
         .await?
         .state_events
     };
+    println!("=state at incoming event3: {:#?}", state_at_incoming_event);
 
     if !state_at_incoming_event.is_empty() {
+        println!("=state at incoming event3444444444");
+        println!("=state at incoming event34: {:#?}", incoming_pdu);
+
         debug!("performing auth check");
         // 11. Check the auth of the event passes based on the state of the event
         event_auth::auth_check(
