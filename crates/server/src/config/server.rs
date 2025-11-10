@@ -103,6 +103,8 @@ pub struct ServerConfig {
     #[serde(default = "default_server_name")]
     pub server_name: OwnedServerName,
 
+    pub home_page: Option<String>,
+
     // display: hidden
     pub db: DbConfig,
 

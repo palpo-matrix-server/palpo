@@ -29,10 +29,9 @@ server = "127.0.0.1:6006"
 client = "http://127.0.0.1:6006"
 
 [turn]
-shared_secret = "n0t4ctuAllymatr1Xd0TorgSshar3d5ecret4obvIousreAsons"
-user_lifetime = 86400000
+secret = "n0t4ctuAllymatr1Xd0TorgSshar3d5ecret4obvIousreAsons"
 allow_guests = true
-uris = ["turn:turn.matrix.org?transport=udp", "turn:turn.matrix.org?transport=tcp"]
+uris = ["turn:127.0.0.1?transport=udp", "turn:127.0.0.1?transport=tcp"]
 
 [oidc]
 enable = true

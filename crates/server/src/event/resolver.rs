@@ -149,7 +149,7 @@ pub async fn resolve_state(
 //     Ok(state)
 // }
 
-pub(super) async fn state_at_incoming_resolved(
+pub(super) async fn resolve_state_at_incoming(
     incoming_pdu: &PduEvent,
     room_id: &RoomId,
     version_rules: &RoomVersionRules,
@@ -168,6 +168,8 @@ pub(super) async fn state_at_incoming_resolved(
 
         if let Ok(frame_id) = state::get_pdu_frame_id(prev_event_id) {
             extremity_state_hashes.insert(frame_id, prev_event);
+        }else {
+            return Ok(None);
         }
     }
 
@@ -194,11 +196,10 @@ pub(super) async fn state_at_incoming_resolved(
                 ..
             }) = state::get_field(k)
             {
-                // FIXME: Undo .to_string().into() when StateMap
-                //        is updated to use StateEventType
+                // FIXME: Undo .to_string().into() when StateMap is updated to use StateEventType
                 state.insert((event_ty.to_string().into(), state_key), id.clone());
             } else {
-                warn!("failed to get_state_key_id.");
+                warn!("failed to get_state_key_id");
             }
             starting_events.push(id);
         }
@@ -258,10 +259,7 @@ pub(super) async fn state_at_incoming_resolved(
                 .collect::<AppResult<_>>()?,
         )),
         Err(e) => {
-            warn!(
-                "state resolution on prev events failed, either an event could not be found or deserialization: {}",
-                e
-            );
+            warn!("state resolution on prev events failed: {}", e);
             Ok(None)
         }
     }

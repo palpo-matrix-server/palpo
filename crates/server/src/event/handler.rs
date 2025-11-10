@@ -10,7 +10,7 @@ use indexmap::IndexMap;
 use super::fetching::{
     fetch_and_process_missing_events, fetch_and_process_missing_state, fetch_state_ids,
 };
-use super::resolver::{resolve_state, state_at_incoming_resolved};
+use super::resolver::{resolve_state, resolve_state_at_incoming};
 use crate::core::events::StateEventType;
 use crate::core::events::TimelineEventType;
 use crate::core::events::room::server_acl::RoomServerAclEventContent;
@@ -457,7 +457,7 @@ pub async fn process_to_timeline_pdu(
         {
             // let state_at_incoming_event = state_at_incoming_degree_one(&incoming_pdu).await?;
             let state_at_incoming_event =
-                state_at_incoming_resolved(&incoming_pdu, room_id, &version_rules)
+                resolve_state_at_incoming(&incoming_pdu, room_id, &version_rules)
                     .await
                     .ok()
                     .flatten()
@@ -539,10 +539,10 @@ pub async fn process_to_timeline_pdu(
     // let state_at_incoming_event = if incoming_pdu.prev_events.len() == 1 {
     //     state_at_incoming_degree_one(&incoming_pdu).await?
     // } else {
-    //     state_at_incoming_resolved(&incoming_pdu, room_id, room_version_id).await?
+    //     resolve_state_at_incoming(&incoming_pdu, room_id, room_version_id).await?
     // };
     let state_at_incoming_event =
-        state_at_incoming_resolved(&incoming_pdu, room_id, &version_rules).await?;
+        resolve_state_at_incoming(&incoming_pdu, room_id, &version_rules).await?;
     let state_at_incoming_event = if let Some(state_at_incoming_event) = state_at_incoming_event {
         state_at_incoming_event
     } else {

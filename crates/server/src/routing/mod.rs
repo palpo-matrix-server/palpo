@@ -4,6 +4,7 @@ mod federation;
 mod identity;
 mod media;
 
+use salvo::fs::NamedFile;
 use salvo::prelude::*;
 use salvo::serve_static::StaticDir;
 use url::Url;
@@ -30,7 +31,7 @@ pub fn root() -> Router {
     Router::new()
         .hoop(hoops::ensure_accept)
         .hoop(hoops::limit_size)
-        .get(index)
+        .get(home)
         .push(
             Router::with_path("_matrix")
                 .push(client::router())
@@ -50,8 +51,11 @@ pub fn root() -> Router {
 }
 
 #[handler]
-fn index() -> &'static str {
-    "Hello Palpo"
+async fn home(req: &mut Request, res: &mut Response) {
+    if let Some(home_page) = &config::get().home_page {
+        res.send_file(home_page, req.headers()).await;
+    }
+    res.render("Hello Palpo");
 }
 
 fn get_origin_host(req: &mut Request) -> Option<String> {
