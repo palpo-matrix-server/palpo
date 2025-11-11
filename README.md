@@ -75,8 +75,8 @@ Our test server is for **evaluation and testing purposes only**:
 ## 📦 Installation
 
 ### Prerequisites
-- Rust 1.70 or higher
-- PostgreSQL 13 or higher
+- Rust 1.89 or higher
+- PostgreSQL 16 or higher
 - Linux, macOS, or Windows (WSL2 recommended)
 
 ### Build from Source
