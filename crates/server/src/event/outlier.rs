@@ -177,7 +177,7 @@ impl OutlierPdu {
         let mut soft_failed = false;
         let mut rejection_reason = None;
         // 9. Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
-        if let Err(e) = fetch_and_process_missing_prev_events(
+        match fetch_and_process_missing_prev_events(
             &self.remote_server,
             &self.room_id,
             &self.room_version_id,
@@ -186,16 +186,22 @@ impl OutlierPdu {
         )
         .await
         {
-            if let AppError::Matrix(MatrixError { ref kind, .. }) = e {
-                if *kind == core::error::ErrorKind::BadJson {
-                    rejection_reason = Some(format!("failed to bad prev events: {}", e));
+            Ok(_failed_ids) => {
+                soft_failed = true;
+            }
+            Err(e) => {
+                if let AppError::Matrix(MatrixError { ref kind, .. }) = e {
+                    if *kind == core::error::ErrorKind::BadJson {
+                        rejection_reason = Some(format!("failed to bad prev events: {}", e));
+                    } else {
+                        soft_failed = true;
+                    }
                 } else {
                     soft_failed = true;
                 }
-            } else {
-                soft_failed = true;
             }
         }
+        println!("xxxxxxxxxxxxxxxxxxxxdre");
 
         let (_auth_events, missing_auth_event_ids) =
             match timeline::get_may_missing_pdus(&self.room_id, &self.auth_events) {
@@ -206,9 +212,11 @@ impl OutlierPdu {
                     (vec![], vec![])
                 }
             };
+        println!("xxxxxxxxxxxxxxxxxxxxdre 1");
 
         if !missing_auth_event_ids.is_empty() {
             if soft_failed {
+        println!("cccccccccprocess_to_timeline_pdu3");
                 if let Err(e) = fetch_and_process_missing_state_by_ids(
                     &self.remote_server,
                     &self.room_id,
@@ -256,6 +264,7 @@ impl OutlierPdu {
                 ))
             }
         }
+        println!("xxxxxxxxxxxxxxxxxxxxdre 2");
 
         let auth_events = auth_events
             .into_iter()
@@ -278,6 +287,7 @@ impl OutlierPdu {
             rejection_reason = Some("incoming event refers to wrong create event".to_owned());
         }
 
+        println!("xxxxxxxxxxxxxxxxxxxxdre 3");
         if let Err(_e) = event_auth::auth_check(
             auth_rules,
             &self.pdu,
@@ -313,6 +323,7 @@ impl OutlierPdu {
             soft_failed = true;
             // rejection_reason = Some(e.to_string())
         };
+        println!("xxxxxxxxxxxxxxxxxxxxdre 4");
         debug!("validation successful");
 
         self.soft_failed = soft_failed;

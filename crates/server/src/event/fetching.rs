@@ -94,6 +94,7 @@ pub(super) async fn fetch_and_process_missing_state_by_ids(
     let mut auth_events: IndexMap<i64, OwnedEventId> = IndexMap::new();
     let mut known_events = HashSet::new();
     for pdu_id in &res.pdu_ids {
+        println!("fetching state event {pdu_id}");
         let Ok(body) = fetch_event(remote_server, pdu_id).await else {
             continue;
         };
@@ -172,6 +173,7 @@ pub async fn fetch_and_process_missing_state(
     _room_version_id: &RoomVersionId,
     event_id: &EventId,
 ) -> AppResult<FetchedState> {
+    println!("===========fetch_and_process_missing_state");
     debug!("fetching state events at event: {event_id}");
     let request = room_state_request(
         &origin.origin().await,
@@ -280,6 +282,7 @@ pub async fn fetch_and_process_missing_events(
 ) -> AppResult<Vec<OwnedEventId>> {
     let mut done_ids = Vec::new();
     for event_id in event_ids {
+        println!("================fetch_and_process_missing_events===================");
         match fetch_and_process_missing_event(remote_server, room_id, room_version_id, event_id)
             .await
         {
@@ -290,7 +293,7 @@ pub async fn fetch_and_process_missing_events(
         }
     }
 
-    Ok(done_ids)
+    Ok(event_ids.into_iter().filter(|e|!done_ids.contains(e)).cloned().collect())
 }
 
 pub async fn fetch_and_process_missing_event(

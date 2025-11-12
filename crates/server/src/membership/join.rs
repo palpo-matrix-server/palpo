@@ -323,7 +323,7 @@ pub async fn join_room(
             error!("failed to process incoming events for join: {e}");
         }
     }
-    if let Err(e) = fetch_and_process_missing_prev_events(
+    match fetch_and_process_missing_prev_events(
         &remote_server,
         room_id,
         &room_version_id,
@@ -332,7 +332,12 @@ pub async fn join_room(
     )
     .await
     {
-        error!("failed to fetch missing prev events for join: {e}");
+        Ok(failed_ids) => {
+            error!("failed to fetch missing prev events {failed_ids:?} for join");
+        }
+        Err(e) => {
+            error!("failed to fetch missing prev events for join: {e}");
+        }
     }
     // crate::event::handler::fetch_state(
     //     &remote_server,

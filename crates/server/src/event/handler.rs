@@ -24,7 +24,7 @@ use crate::core::state::{Event, StateError, event_auth};
 use crate::core::{Seqnum, UnixMillis};
 use crate::data::room::DbEvent;
 use crate::data::schema::*;
-use crate::data::{ connect, diesel_exists};
+use crate::data::{connect, diesel_exists};
 use crate::event::{OutlierPdu, PduEvent, SnPduEvent, handler};
 use crate::room::state::{CompressedState, DeltaInfo};
 use crate::room::{state, timeline};
@@ -115,13 +115,13 @@ pub(crate) async fn process_incoming_pdu(
         return Ok(());
     }
 
-    let Some(outlier_context) =
+    let Some(outlier_pdu) =
         process_to_outlier_pdu(remote_server, event_id, room_id, room_version_id, value).await?
     else {
         return Ok(());
     };
 
-    let (incoming_pdu, val, event_guard) = outlier_context
+    let (incoming_pdu, val, event_guard) = outlier_pdu
         .save_with_fill_missing(&mut HashSet::new())
         .await?;
 
@@ -148,7 +148,12 @@ pub(crate) async fn process_incoming_pdu(
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
-    handler::process_to_timeline_pdu(incoming_pdu, val, remote_server, room_id, true).await?;
+    println!("ccccccccczzzzzzzzzzccccccprocess_to_timeline_pdu 0 {incoming_pdu:#?}");
+    if let Err(e) =
+        handler::process_to_timeline_pdu(incoming_pdu, val, remote_server, room_id, false).await
+    {
+        error!("failed to process incoming pdu to timeline: {}", e);
+    }
     drop(event_guard);
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
@@ -245,7 +250,6 @@ pub async fn process_to_outlier_pdu(
             }));
         }
     }
-
     // 1.1. Remove unsigned field
     value.remove("unsigned");
 
@@ -433,6 +437,7 @@ pub async fn process_to_timeline_pdu(
     room_id: &RoomId,
     fetch_missing: bool,
 ) -> AppResult<()> {
+    println!("===========process_to_timeline_pdu");
     // Skip the PDU if we already have it as a timeline event
     if !incoming_pdu.is_outlier {
         return Ok(());
@@ -533,15 +538,15 @@ pub async fn process_to_timeline_pdu(
         return Ok(());
     }
 
-    // let state_at_incoming_event = if incoming_pdu.prev_events.len() == 1 {
-    //     state_at_incoming_degree_one(&incoming_pdu).await?
-    // } else {
-    //     resolve_state_at_incoming(&incoming_pdu, room_id, room_version_id).await?
-    // };
     let state_at_incoming_event =
         resolve_state_at_incoming(&incoming_pdu, room_id, &version_rules).await?;
     let state_at_incoming_event = if let Some(state_at_incoming_event) = state_at_incoming_event {
         state_at_incoming_event
+    } else if incoming_pdu.soft_failed {
+        println!("LLLLLLLLLLLLLLLLLLLLLLLLLLl annot process soft-failed eve");
+        return Err(AppError::internal(
+            "cannot process soft-failed event without state at event",
+        ));
     } else {
         fetch_and_process_missing_state(
             remote_server,
@@ -552,6 +557,8 @@ pub async fn process_to_timeline_pdu(
         .await?
         .state_events
     };
+
+    println!("==============state_at_incoming_event: {state_at_incoming_event:#?}");
 
     if !state_at_incoming_event.is_empty() {
         debug!("performing auth check");
@@ -747,7 +754,7 @@ pub async fn fetch_and_process_missing_prev_events(
     room_version_id: &RoomVersionId,
     incoming_pdu: &PduEvent,
     known_events: &mut HashSet<OwnedEventId>,
-) -> AppResult<()> {
+) -> AppResult<Vec<OwnedEventId>> {
     let min_depth = timeline::first_pdu_in_room(room_id)
         .ok()
         .and_then(|pdu| pdu.map(|p| p.depth))
@@ -770,7 +777,7 @@ pub async fn fetch_and_process_missing_prev_events(
         }
     }
     if missing_events.is_empty() {
-        return Ok(());
+        return Ok(vec![]);
     }
 
     let request = missing_events_request(
@@ -842,6 +849,7 @@ pub async fn fetch_and_process_missing_prev_events(
         missing_events.retain(|e| e != &event_id);
     }
 
+    let mut failed_missing_ids = Vec::new();
     for missing_id in missing_events {
         let mut desired_events = HashSet::new();
         if let Ok(RoomStateIdsResBody {
@@ -873,17 +881,22 @@ pub async fn fetch_and_process_missing_prev_events(
         // we fetch the whole state.
         if missing_events.len() * 10 >= desired_count {
             debug!("requesting complete state from remote");
+            println!("cccccccccprocess_to_timeline_pdu1");
             fetch_and_process_missing_state(remote_server, room_id, room_version_id, &missing_id)
                 .await?;
         } else {
             debug!("fetching {} events from remote", missing_events.len());
-            fetch_and_process_missing_events(
+            println!("================fetch and process missing prev events===================");
+            let failed_ids = fetch_and_process_missing_events(
                 remote_server,
                 room_id,
                 room_version_id,
                 &missing_events,
             )
             .await?;
+            if !failed_ids.is_empty() {
+                failed_missing_ids.extend(failed_ids);
+            }
         }
         known_events.extend(missing_events.into_iter());
     }
@@ -900,16 +913,19 @@ pub async fn fetch_and_process_missing_prev_events(
                 .filter(events::room_id.eq(&room_id)),
             &mut connect()?
         )?;
-        if !is_exists
-            && let Err(e) = process_pulled_pdu(
-                remote_server,
-                &event_id,
-                room_id,
-                room_version_id,
-                event_val.clone(),
-                known_events,
-            )
-            .await
+        if is_exists {
+            continue;
+        }
+
+        if let Err(e) = process_pulled_pdu(
+            remote_server,
+            &event_id,
+            room_id,
+            room_version_id,
+            event_val.clone(),
+            known_events,
+        )
+        .await
         {
             error!(
                 "failed to process fetched missing prev event {}: {}",
@@ -917,7 +933,7 @@ pub async fn fetch_and_process_missing_prev_events(
             );
         }
     }
-    Ok(())
+    Ok(failed_missing_ids)
 }
 
 /// Returns Ok if the acl allows the server
