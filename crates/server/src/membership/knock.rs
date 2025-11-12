@@ -17,7 +17,7 @@ use crate::core::identifiers::*;
 use crate::core::room::JoinRule;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_canonical_value};
 use crate::data::room::NewDbEvent;
-use crate::event::{PduBuilder, PduEvent, ensure_event_sn, gen_event_id, handler};
+use crate::event::{PduBuilder, fetching, PduEvent, ensure_event_sn, gen_event_id, handler};
 use crate::room::state::{CompressedEvent, DeltaInfo};
 use crate::room::{self, state, timeline};
 use crate::{
@@ -243,13 +243,7 @@ pub async fn knock_room(
         let pdu = if let Some(pdu) = timeline::get_pdu(&event_id).optional()? {
             pdu
         } else {
-            let request =
-                event_request(&remote_server.origin().await, EventReqArgs::new(&event_id))?
-                    .into_inner();
-            let res_body = crate::sending::send_federation_request(&remote_server, request, None)
-                .await?
-                .json::<EventResBody>()
-                .await?;
+            let res_body = fetching::fetch_event(&remote_server, &event_id).await?;
             if let Err(e) = handler::process_incoming_pdu(
                 &remote_server,
                 &event_id,

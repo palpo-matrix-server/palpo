@@ -1,4 +1,4 @@
-#[cfg(all(feature = "unstable-msc4306"))]
+#[cfg(feature = "unstable-msc4306")]
 use std::panic::RefUnwindSafe;
 use std::{collections::BTreeMap, ops::RangeBounds, str::FromStr};
 #[cfg(feature = "unstable-msc4306")]
@@ -599,10 +599,10 @@ impl StrExt for str {
     }
 }
 
-#[cfg(all(feature = "unstable-msc4306"))]
+#[cfg(feature = "unstable-msc4306")]
 type HasThreadSubscriptionFuture<'a> = Pin<Box<dyn Future<Output = bool> + Send + 'a>>;
 
-#[cfg(all(feature = "unstable-msc4306"))]
+#[cfg(feature = "unstable-msc4306")]
 type HasThreadSubscriptionFn =
     dyn for<'a> Fn(&'a EventId) -> HasThreadSubscriptionFuture<'a> + Send + Sync + RefUnwindSafe;
 

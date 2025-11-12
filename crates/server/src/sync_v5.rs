@@ -100,7 +100,7 @@ pub async fn sync_events(
         sync_info,
         &all_invited_rooms,
         &todo_rooms,
-        &known_rooms,
+        known_rooms,
         &mut res_body,
     )
     .await?;
@@ -360,7 +360,7 @@ async fn process_rooms(
         let room_events: Vec<_> = timeline
             .events
             .iter()
-            .filter(|item| ignored_filter(item.clone(), sender_id))
+            .filter(|item| ignored_filter(*item, sender_id))
             .map(|(_, pdu)| pdu.to_sync_room_event())
             .collect();
 
@@ -748,7 +748,7 @@ pub fn update_sync_request_with_cache(
     let cached = Arc::clone(
         cache
             .entry((user_id, device_id, req_body.conn_id.clone()))
-            .or_insert_with(Default::default),
+            .or_default(),
     );
     let cached = &mut cached.lock().unwrap();
     drop(cache);
@@ -852,7 +852,7 @@ pub fn update_sync_subscriptions(
     let cached = Arc::clone(
         cache
             .entry((user_id, device_id, conn_id))
-            .or_insert_with(Default::default),
+            .or_default(),
     );
     let cached = &mut cached.lock().unwrap();
     drop(cache);
@@ -872,7 +872,7 @@ pub fn update_sync_known_rooms(
     let cached = Arc::clone(
         cache
             .entry((user_id, device_id, conn_id))
-            .or_insert_with(Default::default),
+            .or_default(),
     );
     let cached = &mut cached.lock().unwrap();
     drop(cache);
@@ -903,7 +903,7 @@ pub fn mark_required_state_sent(
     let cached = Arc::clone(
         cache
             .entry((user_id, device_id, conn_id))
-            .or_insert_with(Default::default),
+            .or_default(),
     );
     let cached = &mut cached.lock().unwrap();
     drop(cache);

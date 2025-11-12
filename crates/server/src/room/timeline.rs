@@ -465,7 +465,7 @@ where
 
     crate::event::search::save_pdu(pdu, &pdu_json)?;
 
-    let frame_id = state::append_to_state(&pdu)?;
+    let frame_id = state::append_to_state(pdu)?;
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
     state::set_room_state(&pdu.room_id, frame_id)?;
@@ -754,7 +754,7 @@ pub async fn hash_and_sign_event(
 
     Ok((
         SnPduEvent {
-            pdu: pdu,
+            pdu,
             event_sn,
             is_outlier: true,
             soft_failed: false,

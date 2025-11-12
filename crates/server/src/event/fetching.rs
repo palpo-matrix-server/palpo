@@ -111,8 +111,8 @@ pub(super) async fn fetch_and_process_missing_state_by_ids(
         let Some(outlier_pdu) = process_to_outlier_pdu(
             remote_server,
             &event_id,
-            &room_id,
-            &room_version_id,
+            room_id,
+            room_version_id,
             event_value,
         )
         .await?
@@ -144,8 +144,8 @@ pub(super) async fn fetch_and_process_missing_state_by_ids(
         let Some(outlier_pdu) = process_to_outlier_pdu(
             remote_server,
             &event_id,
-            &room_id,
-            &room_version_id,
+            room_id,
+            room_version_id,
             event_value,
         )
         .await?
@@ -299,17 +299,12 @@ pub async fn fetch_and_process_missing_event(
     room_version_id: &RoomVersionId,
     event_id: &EventId,
 ) -> AppResult<()> {
-    let request =
-        event_request(&remote_server.origin().await, EventReqArgs::new(event_id))?.into_inner();
-    let res_body = send_federation_request(&remote_server, request, None)
-        .await?
-        .json::<EventResBody>()
-        .await?;
+    let res_body = fetch_event(remote_server, event_id).await?;
     let Some(outlier_pdu) = process_to_outlier_pdu(
         remote_server,
-        &event_id,
+        event_id,
         room_id,
-        &room_version_id,
+        room_version_id,
         serde_json::from_str(res_body.pdu.get())?,
     )
     .await?

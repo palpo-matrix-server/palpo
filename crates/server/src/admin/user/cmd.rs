@@ -3,10 +3,7 @@ use crate::core::{
     OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedUserId,
     events::{
         RoomAccountDataEventType, StateEventType,
-        room::{
-            power_levels::{RoomPowerLevels, RoomPowerLevelsEventContent},
-            redaction::RoomRedactionEventContent,
-        },
+        room::{power_levels::RoomPowerLevelsEventContent, redaction::RoomRedactionEventContent},
         tag::{TagEventContent, TagInfo},
     },
 };
@@ -585,13 +582,10 @@ pub(super) async fn force_demote(
     let state_lock = crate::room::lock_state(&room_id).await;
     let room_power_levels = crate::room::get_power_levels(&room_id).await.ok();
 
-    let user_can_demote_self = room_power_levels
-        .as_ref()
-        .is_some_and(|power_levels_content| {
-            RoomPowerLevels::from(power_levels_content.clone())
-                .user_can_change_user_power_level(&user_id, &user_id)
-        })
-        || crate::room::get_state(&room_id, &StateEventType::RoomCreate, "", None)
+    let user_can_demote_self =
+        room_power_levels.as_ref().is_some_and(|power_levels| {
+            power_levels.user_can_change_user_power_level(&user_id, &user_id)
+        }) || crate::room::get_state(&room_id, &StateEventType::RoomCreate, "", None)
             .is_ok_and(|event| event.sender == user_id);
 
     if !user_can_demote_self {

@@ -1002,7 +1002,7 @@ pub(crate) fn load_timeline(
         if !is_backward {
             timeline_pdus.pop();
             timeline_pdus = timeline_pdus.into_iter().rev().collect();
-        } else if let Some(key) = timeline_pdus.first().map(|(key, _)| key.clone()) {
+        } else if let Some(key) = timeline_pdus.first().map(|(key, _)| *key) {
             timeline_pdus.shift_remove(&key);
         }
         limited = true;
