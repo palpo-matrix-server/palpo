@@ -163,7 +163,6 @@ pub(super) async fn resolve_state_at_incoming(
         };
 
         if prev_event.rejected() {
-            println!("========xx=========prev event rejected, skipping");
             continue;
         }
 
@@ -215,7 +214,6 @@ pub(super) async fn resolve_state_at_incoming(
         fork_states.push(state);
     }
 
-    println!("===========fork_states {fork_states:#?}");
     let state_lock = room::lock_state(room_id).await;
     let result = resolve(
         &version_rules.authorization,

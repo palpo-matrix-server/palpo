@@ -1,8 +1,8 @@
 use std::borrow::Borrow;
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque, hash_map};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::iter::once;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use diesel::prelude::*;
 use indexmap::IndexMap;
@@ -14,23 +14,20 @@ use super::resolver::{resolve_state, resolve_state_at_incoming};
 use crate::core::events::StateEventType;
 use crate::core::events::TimelineEventType;
 use crate::core::events::room::server_acl::RoomServerAclEventContent;
-use crate::core::federation::event::RoomStateIdsResBody;
 use crate::core::federation::event::{
-    EventReqArgs, EventResBody, MissingEventsReqBody, MissingEventsResBody, event_request,
-    missing_events_request,
+    MissingEventsReqBody, MissingEventsResBody, RoomStateIdsResBody, missing_events_request,
 };
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonValue, canonical_json};
 use crate::core::signatures::Verified;
 use crate::core::state::{Event, StateError, event_auth};
-use crate::core::{self, Seqnum, UnixMillis};
+use crate::core::{Seqnum, UnixMillis};
 use crate::data::room::DbEvent;
 use crate::data::schema::*;
-use crate::data::{self, connect, diesel_exists};
-use crate::event::{OutlierPdu, PduEvent, SnPduEvent, ensure_event_sn, handler};
+use crate::data::{ connect, diesel_exists};
+use crate::event::{OutlierPdu, PduEvent, SnPduEvent, handler};
 use crate::room::state::{CompressedState, DeltaInfo};
 use crate::room::{state, timeline};
-use crate::utils::SeqnumQueueGuard;
 use crate::{AppError, AppResult, MatrixError, exts::*, room};
 
 /// When receiving an event one needs to:
@@ -336,7 +333,7 @@ pub async fn process_to_outlier_pdu(
         timeline::get_may_missing_pdus(room_id, &incoming_pdu.auth_events)?;
     if !missing_auth_event_ids.is_empty() {
         warn!(
-            "missing auth events for {}: {:?}",
+            "process to outlier missing auth events for {}: {:?}",
             incoming_pdu.event_id, missing_auth_event_ids
         );
         soft_failed = true;
@@ -380,7 +377,7 @@ pub async fn process_to_outlier_pdu(
     // }
 
     if let Err(_e) = event_auth::auth_check(
-            &auth_rules,
+            auth_rules,
             &incoming_pdu,
             &async |event_id| {
                 timeline::get_pdu(&event_id)
@@ -449,7 +446,6 @@ pub async fn process_to_timeline_pdu(
     //     doing all the checks in this list starting at 1. These are not timeline events.
     debug!("resolving state at event");
     let server_joined = crate::room::is_server_joined(crate::config::server_name(), room_id)?;
-    println!("=incoming pdu: {:#?}", incoming_pdu);
     if !server_joined {
         if let Some(state_key) = incoming_pdu.state_key.as_deref()
             && incoming_pdu.event_ty == TimelineEventType::RoomMember
@@ -545,10 +541,8 @@ pub async fn process_to_timeline_pdu(
     let state_at_incoming_event =
         resolve_state_at_incoming(&incoming_pdu, room_id, &version_rules).await?;
     let state_at_incoming_event = if let Some(state_at_incoming_event) = state_at_incoming_event {
-        println!("=state at incoming event: {:#?}", state_at_incoming_event);
         state_at_incoming_event
     } else {
-        println!("=state at incoming event2");
         fetch_and_process_missing_state(
             remote_server,
             room_id,
@@ -558,12 +552,8 @@ pub async fn process_to_timeline_pdu(
         .await?
         .state_events
     };
-    println!("=state at incoming event3: {:#?}", state_at_incoming_event);
 
     if !state_at_incoming_event.is_empty() {
-        println!("=state at incoming event3444444444");
-        println!("=state at incoming event34: {:#?}", incoming_pdu);
-
         debug!("performing auth check");
         // 11. Check the auth of the event passes based on the state of the event
         event_auth::auth_check(
@@ -751,190 +741,6 @@ pub async fn process_to_timeline_pdu(
     Ok(())
 }
 
-/// Find the event and auth it. Once the event is validated (steps 1 - 8)
-/// it is appended to the outliers Tree.
-///
-/// Returns pdu and if we fetched it over federation the raw json.
-///
-/// a. Look in the main timeline (pduid_pdu tree)
-/// b. Look at outlier pdu tree
-/// c. Ask origin server over federation
-/// d. TODO: Ask other servers over federation?
-#[tracing::instrument(skip_all)]
-pub(crate) async fn fetch_and_process_outliers(
-    remote_server: &ServerName,
-    events: &[OwnedEventId],
-    room_id: &RoomId,
-    room_version_id: &RoomVersionId,
-) -> AppResult<
-    Vec<(
-        SnPduEvent,
-        Option<CanonicalJsonObject>,
-        Option<SeqnumQueueGuard>,
-    )>,
-> {
-    let back_off = |id| match crate::BAD_EVENT_RATE_LIMITER.write().unwrap().entry(id) {
-        hash_map::Entry::Vacant(e) => {
-            e.insert((Instant::now(), 1));
-        }
-        hash_map::Entry::Occupied(mut e) => *e.get_mut() = (Instant::now(), e.get().1 + 1),
-    };
-
-    let mut events_with_auth_events = Vec::with_capacity(events.len());
-    let mut known_events = HashSet::new();
-    for event_id in events {
-        // a. Look in the main timeline (pduid_pdu tree)
-        // b. Look at outlier pdu tree (get_pdu_json checks both)
-        if let Ok(local_pdu) = timeline::get_pdu(event_id) {
-            trace!("found {} in db", event_id);
-            events_with_auth_events.push((event_id, Some(local_pdu), vec![]));
-            continue;
-        }
-
-        // c. Ask origin server over federation
-        // We also handle its auth chain here so we don't get a stack overflow in process_to_outlier_pdu.
-        let mut todo_auth_events: VecDeque<_> = [event_id.clone()].into();
-        let mut events_in_reverse_order = Vec::new();
-        let mut events_all = HashSet::new();
-        while let Some(next_id) = todo_auth_events.pop_front() {
-            if let Some((time, tries)) =
-                crate::BAD_EVENT_RATE_LIMITER.read().unwrap().get(&*next_id)
-            {
-                // Exponential backoff
-                let mut min_elapsed_duration = Duration::from_secs(5 * 60) * (*tries) * (*tries);
-                if min_elapsed_duration > Duration::from_secs(60 * 60 * 24) {
-                    min_elapsed_duration = Duration::from_secs(60 * 60 * 24);
-                }
-
-                if time.elapsed() < min_elapsed_duration {
-                    info!("backing off from {}", next_id);
-                    continue;
-                }
-            }
-
-            if events_all.contains(&next_id) {
-                continue;
-            }
-
-            if timeline::has_pdu(&next_id) {
-                trace!("found {} in db", next_id);
-                continue;
-            }
-
-            info!("fetching event {} over federation", next_id);
-            let request = event_request(
-                &remote_server.origin().await,
-                EventReqArgs::new(next_id.clone()),
-            )?
-            .into_inner();
-
-            let response =
-                match crate::sending::send_federation_request(remote_server, request, None).await {
-                    Ok(res) => res,
-                    Err(e) => {
-                        warn!("failed to fetch event {}: {}", next_id, e);
-                        continue;
-                    }
-                };
-            match response.json::<EventResBody>().await {
-                Ok(res) => {
-                    info!("got event {} over federation", next_id);
-
-                    let Ok((calculated_event_id, value)) =
-                        crate::event::gen_event_id_canonical_json(&res.pdu, room_version_id)
-                    else {
-                        back_off((*next_id).to_owned());
-                        continue;
-                    };
-
-                    if calculated_event_id != *next_id {
-                        warn!(
-                            "server didn't return event id we requested: requested: {}, we got {}. Event: {:?}",
-                            next_id, calculated_event_id, &res.pdu
-                        );
-                    }
-
-                    if let Some(auth_events) = value.get("auth_events").and_then(|c| c.as_array()) {
-                        for auth_event in auth_events {
-                            if let Ok(auth_event) =
-                                serde_json::from_value(auth_event.clone().into())
-                            {
-                                let a: OwnedEventId = auth_event;
-                                todo_auth_events.push_back(a);
-                            } else {
-                                warn!("auth event id is not valid");
-                            }
-                        }
-                    } else {
-                        warn!("auth event list invalid");
-                    }
-
-                    events_in_reverse_order.push((next_id.clone(), value));
-                    events_all.insert(next_id);
-                }
-                Err(_) => {
-                    warn!("failed to fetch event: {}", next_id);
-                    back_off((*next_id).to_owned());
-                }
-            }
-        }
-        events_with_auth_events.push((event_id, None, events_in_reverse_order));
-    }
-
-    let mut pdus = Vec::with_capacity(events_with_auth_events.len());
-    for (event_id, local_pdu, events_in_reverse_order) in events_with_auth_events {
-        // a. Look in the main timeline (pduid_pdu tree)
-        // b. Look at outlier pdu tree (get_pdu_json checks both)
-        if let Some(local_pdu) = local_pdu {
-            trace!("found {event_id} in db");
-            pdus.push((local_pdu.clone(), None, None));
-        }
-        for (next_id, value) in events_in_reverse_order.into_iter().rev() {
-            if let Some((time, tries)) =
-                crate::BAD_EVENT_RATE_LIMITER.read().unwrap().get(&*next_id)
-            {
-                // Exponential backoff
-                let mut min_elapsed_duration = Duration::from_secs(5 * 60) * (*tries) * (*tries);
-                if min_elapsed_duration > Duration::from_secs(60 * 60 * 24) {
-                    min_elapsed_duration = Duration::from_secs(60 * 60 * 24);
-                }
-
-                if time.elapsed() < min_elapsed_duration {
-                    info!("backing off from {}", next_id);
-                    continue;
-                }
-            }
-
-            if let Ok(pdu) = timeline::get_pdu(&next_id) {
-                pdus.push((pdu, Some(value), None));
-                continue;
-            }
-            match process_to_outlier_pdu(remote_server, &next_id, room_id, room_version_id, value)
-                .await
-            {
-                Ok(Some(outlier_pdu)) => {
-                    if next_id == *event_id {
-                        match outlier_pdu.save_without_fill_missing(&mut known_events) {
-                            Ok((pdu, json, guard)) => {
-                                pdus.push((pdu, Some(json), guard));
-                            }
-                            Err(e) => {
-                                error!("failed to save outlier pdu {}: {}", next_id, e);
-                            }
-                        }
-                    }
-                }
-                Ok(None) => {}
-                Err(e) => {
-                    warn!("authentication of event {} failed: {:?}", next_id, e);
-                    back_off((*next_id).to_owned());
-                }
-            }
-        }
-    }
-    Ok(pdus)
-}
-
 pub async fn fetch_and_process_missing_prev_events(
     remote_server: &ServerName,
     room_id: &RoomId,
@@ -954,12 +760,12 @@ pub async fn fetch_and_process_missing_prev_events(
 
     let mut missing_events = Vec::with_capacity(incoming_pdu.prev_events.len());
     for prev_id in &incoming_pdu.prev_events {
-        let pdu = timeline::get_pdu(&prev_id);
+        let pdu = timeline::get_pdu(prev_id);
         if let Ok(pdu) = &pdu
             && !pdu.rejected()
         {
             known_events.insert(prev_id.to_owned());
-        } else if !earliest_events.contains(&prev_id) && !fetched_events.contains_key(prev_id) {
+        } else if !earliest_events.contains(prev_id) && !fetched_events.contains_key(prev_id) {
             missing_events.push(prev_id.to_owned());
         }
     }
@@ -1094,8 +900,8 @@ pub async fn fetch_and_process_missing_prev_events(
                 .filter(events::room_id.eq(&room_id)),
             &mut connect()?
         )?;
-        if !is_exists {
-            if let Err(e) = process_pulled_pdu(
+        if !is_exists
+            && let Err(e) = process_pulled_pdu(
                 remote_server,
                 &event_id,
                 room_id,
@@ -1104,12 +910,11 @@ pub async fn fetch_and_process_missing_prev_events(
                 known_events,
             )
             .await
-            {
-                error!(
-                    "failed to process fetched missing prev event {}: {}",
-                    event_id, e
-                );
-            }
+        {
+            error!(
+                "failed to process fetched missing prev event {}: {}",
+                event_id, e
+            );
         }
     }
     Ok(())

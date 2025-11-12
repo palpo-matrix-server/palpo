@@ -4,7 +4,6 @@ mod federation;
 mod identity;
 mod media;
 
-use salvo::fs::NamedFile;
 use salvo::prelude::*;
 use salvo::serve_static::StaticDir;
 use url::Url;

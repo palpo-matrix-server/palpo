@@ -235,7 +235,7 @@ impl OutlierPdu {
             timeline::get_may_missing_pdus(&self.room_id, &self.auth_events)?;
         if !missing_auth_event_ids.is_empty() {
             warn!(
-                "missing auth events for {}: {:?}",
+                "save outlier missing auth events for {}: {:?}",
                 self.event_id, missing_auth_event_ids
             );
             soft_failed = true;
@@ -275,11 +275,11 @@ impl OutlierPdu {
             auth_events.get(&(StateEventType::RoomCreate, "".to_owned())),
             Some(_) | None
         ) {
-            rejection_reason = Some(format!("incoming event refers to wrong create event"));
+            rejection_reason = Some("incoming event refers to wrong create event".to_owned());
         }
 
         if let Err(_e) = event_auth::auth_check(
-            &auth_rules,
+            auth_rules,
             &self.pdu,
             &async |event_id| {
                 timeline::get_pdu(&event_id).map(|p|p.into_inner())

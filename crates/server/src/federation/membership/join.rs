@@ -190,7 +190,7 @@ pub async fn send_join_v1(
         .map(crate::sending::convert_to_outgoing_federation_event)
         .collect();
 
-    if let Err(e) = sending::send_pdu_room(&room_id, &event_id, &[], &[origin.to_owned()]) {
+    if let Err(e) = sending::send_pdu_room(room_id, &event_id, &[], &[origin.to_owned()]) {
         error!("failed to notify user joined to servers: {e}");
     }
 

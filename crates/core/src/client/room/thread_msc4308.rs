@@ -54,6 +54,11 @@ pub struct ThreadSubscriptionsChangesReqArgs {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
 }
+impl Default for ThreadSubscriptionsChangesReqArgs {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl ThreadSubscriptionsChangesReqArgs {
     /// Creates a new empty `ThreadSubscriptionsChangesReqArgs`.
     pub fn new() -> Self {
@@ -118,7 +123,11 @@ pub struct ThreadSubscriptionsChangesResBody {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub end: Option<String>,
 }
-
+impl Default for ThreadSubscriptionsChangesResBody {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl ThreadSubscriptionsChangesResBody {
     /// Creates a new empty `ThreadSubscriptionsChangesResBody`.
     pub fn new() -> Self {
