@@ -433,6 +433,7 @@ pub fn parse_incoming_pdu(
         warn!("error parsing incoming event {:?}: {:?}", raw_value, e);
         MatrixError::bad_json("invalid pdu in server response")
     })?;
+    println!("=================== incoming pdu value {:?}", value);
     let room_id = value
         .get("room_id")
         .and_then(|id| RoomId::parse(id.as_str()?).ok())
