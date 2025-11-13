@@ -186,17 +186,20 @@ impl OutlierPdu {
         )
         .await
         {
-            Ok(_failed_ids) => {
-                soft_failed = true;
+            Ok(failed_ids) => {
+        println!("==================================soft failed 2 {failed_ids:?}");
+                soft_failed = !failed_ids.is_empty();
             }
             Err(e) => {
                 if let AppError::Matrix(MatrixError { ref kind, .. }) = e {
                     if *kind == core::error::ErrorKind::BadJson {
                         rejection_reason = Some(format!("failed to bad prev events: {}", e));
                     } else {
+        println!("==================================soft failed 3");
                         soft_failed = true;
                     }
                 } else {
+        println!("==================================soft failed 4");
                     soft_failed = true;
                 }
             }
@@ -208,6 +211,7 @@ impl OutlierPdu {
                 Ok(s) => s,
                 Err(e) => {
                     info!("error getting auth events for {}: {}", self.event_id, e);
+        println!("==================================soft failed 5");
                     soft_failed = true;
                     (vec![], vec![])
                 }
@@ -243,9 +247,10 @@ impl OutlierPdu {
             timeline::get_may_missing_pdus(&self.room_id, &self.auth_events)?;
         if !missing_auth_event_ids.is_empty() {
             warn!(
-                "save outlier missing auth events for {}: {:?}",
+                "save outlier event {} missing auth events {:?}",
                 self.event_id, missing_auth_event_ids
             );
+        println!("==================================soft failed 6");
             soft_failed = true;
         } else {
             let rejected_auth_events = auth_events
@@ -288,7 +293,7 @@ impl OutlierPdu {
         }
 
         println!("xxxxxxxxxxxxxxxxxxxxdre 3");
-        if let Err(_e) = event_auth::auth_check(
+        if let Err(e) = event_auth::auth_check(
             auth_rules,
             &self.pdu,
             &async |event_id| {
@@ -320,10 +325,12 @@ impl OutlierPdu {
         .await
             && rejection_reason.is_none()
         {
+            warn!("failed auth check: {e}");
+        println!("==================================soft failed 7");
             soft_failed = true;
             // rejection_reason = Some(e.to_string())
         };
-        println!("xxxxxxxxxxxxxxxxxxxxdre 4");
+        println!("xxxxxxxxxxxxxxxxxxxxdre 4  {soft_failed}");
         debug!("validation successful");
 
         self.soft_failed = soft_failed;

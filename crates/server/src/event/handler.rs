@@ -1,5 +1,6 @@
 use std::borrow::Borrow;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::hash::Hash;
 use std::iter::once;
 use std::sync::Arc;
 use std::time::Instant;
@@ -125,7 +126,7 @@ pub(crate) async fn process_incoming_pdu(
         .save_with_fill_missing(&mut HashSet::new())
         .await?;
 
-    if incoming_pdu.rejected() {
+    if incoming_pdu.rejected() || incoming_pdu.soft_failed {
         return Ok(());
     }
     check_room_id(room_id, &incoming_pdu)?;
@@ -148,7 +149,6 @@ pub(crate) async fn process_incoming_pdu(
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
-    println!("ccccccccczzzzzzzzzzccccccprocess_to_timeline_pdu 0 {incoming_pdu:#?}");
     if let Err(e) =
         handler::process_to_timeline_pdu(incoming_pdu, val, remote_server, room_id, false).await
     {
@@ -337,9 +337,10 @@ pub async fn process_to_outlier_pdu(
         timeline::get_may_missing_pdus(room_id, &incoming_pdu.auth_events)?;
     if !missing_auth_event_ids.is_empty() {
         warn!(
-            "process to outlier missing auth events for {}: {:?}",
+            "process event {} to outlier missing auth events {:?}",
             incoming_pdu.event_id, missing_auth_event_ids
         );
+        println!("==================================soft failed 0");
         soft_failed = true;
     } else {
         let rejected_auth_events = auth_events
@@ -414,6 +415,7 @@ pub async fn process_to_outlier_pdu(
         .await
             && rejection_reason.is_none()
         {
+        println!("==================================soft failed 1");
             soft_failed = true;
             // rejection_reason = Some(e.to_string())
         };
@@ -542,11 +544,11 @@ pub async fn process_to_timeline_pdu(
         resolve_state_at_incoming(&incoming_pdu, room_id, &version_rules).await?;
     let state_at_incoming_event = if let Some(state_at_incoming_event) = state_at_incoming_event {
         state_at_incoming_event
-    // } else if incoming_pdu.soft_failed {
-    //     println!("LLLLLLLLLLLLLLLLLLLLLLLLLLl annot process soft-failed eve");
-    //     return Err(AppError::internal(
-    //         "cannot process soft-failed event without state at event",
-    //     ));
+    } else if incoming_pdu.soft_failed {
+        println!("LLLLLLLLLLLLLLLLLLLLLLLLLLl annot process soft-failed eve {incoming_pdu:#?}");
+        return Err(AppError::internal(
+            "cannot process soft-failed event without state at event",
+        ));
     } else {
         fetch_and_process_missing_state(
             remote_server,
@@ -560,6 +562,9 @@ pub async fn process_to_timeline_pdu(
 
     println!("==============state_at_incoming_event: {state_at_incoming_event:#?}");
 
+    if incoming_pdu.soft_failed {
+        println!("==============state_at_incoming_event soft falied: {incoming_pdu:#?}");
+    }
     if !state_at_incoming_event.is_empty() {
         debug!("performing auth check");
         // 11. Check the auth of the event passes based on the state of the event
@@ -754,7 +759,7 @@ pub async fn fetch_and_process_missing_prev_events(
     room_version_id: &RoomVersionId,
     incoming_pdu: &PduEvent,
     known_events: &mut HashSet<OwnedEventId>,
-) -> AppResult<Vec<OwnedEventId>> {
+) -> AppResult<HashSet<OwnedEventId>> {
     let min_depth = timeline::first_pdu_in_room(room_id)
         .ok()
         .and_then(|pdu| pdu.map(|p| p.depth))
@@ -777,7 +782,7 @@ pub async fn fetch_and_process_missing_prev_events(
         }
     }
     if missing_events.is_empty() {
-        return Ok(vec![]);
+        return Ok(HashSet::new());
     }
 
     let request = missing_events_request(
@@ -849,7 +854,7 @@ pub async fn fetch_and_process_missing_prev_events(
         missing_events.retain(|e| e != &event_id);
     }
 
-    let mut failed_missing_ids = Vec::new();
+    let mut failed_missing_ids = HashSet::new();
     for missing_id in missing_events {
         let mut desired_events = HashSet::new();
         if let Ok(RoomStateIdsResBody {

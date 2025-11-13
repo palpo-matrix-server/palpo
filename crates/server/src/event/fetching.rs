@@ -94,21 +94,20 @@ pub(super) async fn fetch_and_process_missing_state_by_ids(
     let mut auth_events: IndexMap<i64, OwnedEventId> = IndexMap::new();
     let mut known_events = HashSet::new();
     for pdu_id in &res.pdu_ids {
-        println!("fetching state event {pdu_id}");
-        let Ok(body) = fetch_event(remote_server, pdu_id).await else {
-            continue;
-        };
-        let (event_id, event_value, _room_id, _room_version_id) = parse_incoming_pdu(&body.pdu)?;
-
-        if let Ok(pdu) = timeline::get_pdu(&event_id) {
+        if let Ok(pdu) = timeline::get_pdu(pdu_id) {
             let state_key = match &pdu.state_key {
                 Some(s) => s,
                 None => continue,
             };
             let field_id = ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
-            state_events.insert(field_id, event_id);
+            state_events.insert(field_id, pdu_id.to_owned());
             continue;
         }
+        println!("fetching state event 0 {pdu_id}");
+        let Ok(body) = fetch_event(remote_server, pdu_id).await else {
+            continue;
+        };
+        let (event_id, event_value, _room_id, _room_version_id) = parse_incoming_pdu(&body.pdu)?;
         let Some(outlier_pdu) = process_to_outlier_pdu(
             remote_server,
             &event_id,
@@ -129,19 +128,19 @@ pub(super) async fn fetch_and_process_missing_state_by_ids(
         state_events.insert(field_id, event_id);
     }
     for pdu_id in &res.auth_chain_ids {
-        let Ok(body) = fetch_event(remote_server, pdu_id).await else {
-            continue;
-        };
-        let (event_id, event_value, _room_id, _room_version_id) = parse_incoming_pdu(&body.pdu)?;
-        if let Ok(pdu) = timeline::get_pdu(&event_id) {
+        if let Ok(pdu) = timeline::get_pdu(pdu_id) {
             let state_key = match &pdu.state_key {
                 Some(s) => s,
                 None => continue,
             };
             let field_id = ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
-            auth_events.insert(field_id, event_id);
+            auth_events.insert(field_id, pdu_id.to_owned());
             continue;
         }
+        let Ok(body) = fetch_event(remote_server, pdu_id).await else {
+            continue;
+        };
+        let (event_id, event_value, _room_id, _room_version_id) = parse_incoming_pdu(&body.pdu)?;
         let Some(outlier_pdu) = process_to_outlier_pdu(
             remote_server,
             &event_id,
@@ -279,7 +278,7 @@ pub async fn fetch_and_process_missing_events(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
     event_ids: &[OwnedEventId],
-) -> AppResult<Vec<OwnedEventId>> {
+) -> AppResult<HashSet<OwnedEventId>> {
     let mut done_ids = Vec::new();
     for event_id in event_ids {
         println!("================fetch_and_process_missing_events===================");
@@ -293,7 +292,11 @@ pub async fn fetch_and_process_missing_events(
         }
     }
 
-    Ok(event_ids.into_iter().filter(|e|!done_ids.contains(e)).cloned().collect())
+    Ok(event_ids
+        .into_iter()
+        .filter(|e| !done_ids.contains(e))
+        .cloned()
+        .collect())
 }
 
 pub async fn fetch_and_process_missing_event(
