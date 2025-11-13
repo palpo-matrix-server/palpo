@@ -30,7 +30,7 @@ use crate::core::{Direction, Seqnum, UnixMillis, user_id};
 use crate::data::room::{DbEvent, DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::event::{EventHash, PduBuilder, PduEvent, handler};
+use crate::event::{EventHash, PduBuilder, PduEvent, handler, parse_fetched_pdu};
 use crate::room::{EventOrderBy, push_action, state};
 use crate::utils::SeqnumQueueGuard;
 use crate::{
@@ -1149,6 +1149,7 @@ pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<(
         .collect::<HashSet<_>>();
     admin_servers.remove(&*conf.server_name);
 
+    let room_version = super::get_version(room_id)?;
     // Request backfill
     for backfill_server in admin_servers {
         info!("Asking {backfill_server} for backfill");
@@ -1169,7 +1170,7 @@ pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<(
             Ok(response) => {
                 // let mut pub_key_map = RwLock::new(BTreeMap::new());
                 for pdu in response.pdus {
-                    if let Err(e) = backfill_pdu(backfill_server, pdu).await {
+                    if let Err(e) = backfill_pdu(backfill_server, room_id, &room_version, pdu).await {
                         warn!("Failedcar to add backfilled pdu: {e}");
                     }
                 }
@@ -1186,8 +1187,13 @@ pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<(
 }
 
 #[tracing::instrument(skip(pdu))]
-pub async fn backfill_pdu(origin: &ServerName, pdu: Box<RawJsonValue>) -> AppResult<()> {
-    let (event_id, value, room_id, room_version_id) = crate::parse_incoming_pdu(&pdu)?;
+pub async fn backfill_pdu(
+    origin: &ServerName,
+    room_id: &RoomId,
+    room_version: &RoomVersionId,
+    pdu: Box<RawJsonValue>,
+) -> AppResult<()> {
+    let (event_id, value) = parse_fetched_pdu(room_id, room_version, &pdu)?;
 
     // Skip the PDU if we already have it as a timeline event
     if get_pdu(&event_id).is_ok() {
@@ -1195,8 +1201,7 @@ pub async fn backfill_pdu(origin: &ServerName, pdu: Box<RawJsonValue>) -> AppRes
         return Ok(());
     }
 
-    handler::process_incoming_pdu(origin, &event_id, &room_id, &room_version_id, value, false)
-        .await?;
+    handler::process_incoming_pdu(origin, &event_id, room_id, room_version, value, false).await?;
 
     let _value = get_pdu_json(&event_id)?.expect("we just created it");
     let pdu = get_pdu(&event_id)?;
