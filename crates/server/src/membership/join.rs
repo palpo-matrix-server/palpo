@@ -28,7 +28,9 @@ use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::event::handler::{fetch_and_process_missing_prev_events, process_incoming_pdu};
-use crate::event::{PduBuilder, PduEvent, ensure_event_sn, gen_event_id_canonical_json};
+use crate::event::{
+    PduBuilder, PduEvent, ensure_event_sn, gen_event_id_canonical_json, parse_fetched_pdu,
+};
 use crate::federation::maybe_strip_event_id;
 use crate::room::state::{CompressedEvent, DeltaInfo};
 use crate::room::{state, timeline};
@@ -137,7 +139,7 @@ pub async fn join_room(
         make_join_request(sender_id, room_id, &servers).await?;
 
     info!("make join finished");
-    let room_version_id = match make_join_response.room_version {
+    let room_version = match make_join_response.room_version {
         Some(room_version) if config::supported_room_versions().contains(&room_version) => {
             room_version
         }
@@ -183,14 +185,14 @@ pub async fn join_room(
     );
 
     // We keep the "event_id" in the pdu only in v1 or v2 rooms
-    maybe_strip_event_id(&mut join_event_stub, &room_version_id);
+    maybe_strip_event_id(&mut join_event_stub, &room_version);
 
     // In order to create a compatible ref hash (EventID) the `hashes` field needs to be present
-    crate::server_key::hash_and_sign_event(&mut join_event_stub, &room_version_id)
+    crate::server_key::hash_and_sign_event(&mut join_event_stub, &room_version)
         .expect("event is valid, we just created it");
 
     // Generate event id
-    let event_id = crate::event::gen_event_id(&join_event_stub, &room_version_id)?;
+    let event_id = crate::event::gen_event_id(&join_event_stub, &room_version)?;
 
     // Add event_id back
     join_event_stub.insert(
@@ -228,7 +230,7 @@ pub async fn join_room(
             "there is a signed event. this room is probably using restricted joins. adding signature to our event"
         );
         let (signed_event_id, signed_value) =
-            match gen_event_id_canonical_json(signed_raw, &room_version_id) {
+            match gen_event_id_canonical_json(signed_raw, &room_version) {
                 Ok(t) => t,
                 Err(_) => {
                     // Event could not be converted to canonical json
@@ -270,7 +272,7 @@ pub async fn join_room(
         }
     }
 
-    room::ensure_room(room_id, &room_version_id)?;
+    room::ensure_room(room_id, &room_version)?;
 
     let parsed_join_pdu = PduEvent::from_canonical_object(room_id, &event_id, join_event.clone())
         .map_err(|e| {
@@ -301,12 +303,11 @@ pub async fn join_room(
 
     let mut parsed_pdus = IndexMap::new();
     for auth_pdu in resp_auth {
-        let (event_id, event_value, _room_id, _room_version_id) =
-            crate::parse_incoming_pdu(auth_pdu)?;
+        let (event_id, event_value) = parse_fetched_pdu(room_id, &room_version, auth_pdu)?;
         parsed_pdus.insert(event_id, event_value);
     }
     for state in resp_state {
-        let (event_id, event_value, _room_id, _room_version_id) = crate::parse_incoming_pdu(state)?;
+        let (event_id, event_value) = parse_fetched_pdu(room_id, &room_version, state)?;
         parsed_pdus.insert(event_id, event_value);
     }
     for (event_id, event_value) in parsed_pdus {
@@ -314,7 +315,7 @@ pub async fn join_room(
             &remote_server,
             &event_id,
             room_id,
-            &room_version_id,
+            &room_version,
             event_value,
             true,
         )
@@ -323,16 +324,23 @@ pub async fn join_room(
             error!("failed to process incoming events for join: {e}");
         }
     }
-    if let Err(e) = fetch_and_process_missing_prev_events(
+    match fetch_and_process_missing_prev_events(
         &remote_server,
         room_id,
-        &room_version_id,
+        &room_version,
         &parsed_join_pdu,
         &mut Default::default(),
     )
     .await
     {
-        error!("failed to fetch missing prev events for join: {e}");
+        Ok(failed_ids) => {
+            if !failed_ids.is_empty() {
+                error!("failed to fetch missing prev events {failed_ids:?} for join");
+            }
+        }
+        Err(e) => {
+            error!("failed to fetch missing prev events for join: {e}");
+        }
     }
     // crate::event::handler::fetch_state(
     //     &remote_server,
@@ -347,7 +355,7 @@ pub async fn join_room(
         .0
         .state
         .iter()
-        .map(|pdu| super::validate_and_add_event_id(pdu, &room_version_id, &pub_key_map))
+        .map(|pdu| super::validate_and_add_event_id(pdu, &room_version, &pub_key_map))
     {
         let (event_id, value) = match result.await {
             Ok(t) => t,
@@ -397,7 +405,7 @@ pub async fn join_room(
         .0
         .auth_chain
         .iter()
-        .map(|pdu| super::validate_and_add_event_id(pdu, &room_version_id, &pub_key_map))
+        .map(|pdu| super::validate_and_add_event_id(pdu, &room_version, &pub_key_map))
     {
         let (event_id, value) = match result.await {
             Ok(t) => t,

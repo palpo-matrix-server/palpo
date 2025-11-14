@@ -17,7 +17,7 @@ use crate::core::identifiers::*;
 use crate::core::room::JoinRule;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_canonical_value};
 use crate::data::room::NewDbEvent;
-use crate::event::{PduBuilder, fetching, PduEvent, ensure_event_sn, gen_event_id, handler};
+use crate::event::{PduBuilder, PduEvent, ensure_event_sn, fetching, gen_event_id, handler};
 use crate::room::state::{CompressedEvent, DeltaInfo};
 use crate::room::{self, state, timeline};
 use crate::{

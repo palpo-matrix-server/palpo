@@ -18,7 +18,7 @@ use crate::core::presence::PresenceContent;
 use crate::core::serde::RawJsonValue;
 use crate::core::to_device::DeviceIdOrAllDevices;
 use crate::data::user::NewDbPresence;
-use crate::event::handler;
+use crate::event::{handler, parse_incoming_pdu};
 use crate::sending::{EDU_LIMIT, PDU_LIMIT};
 use crate::{AppError, AppResult, DepotExt, JsonResult, MatrixError, data, json_ok, room};
 
@@ -79,7 +79,7 @@ async fn process_pdus(
 ) -> AppResult<BTreeMap<OwnedEventId, AppResult<()>>> {
     let mut parsed_pdus = Vec::with_capacity(pdus.len());
     for pdu in pdus {
-        parsed_pdus.push(match crate::parse_incoming_pdu(pdu) {
+        parsed_pdus.push(match parse_incoming_pdu(pdu) {
             Ok(t) => t,
             Err(e) => {
                 warn!("could not parse pdu: {e}");

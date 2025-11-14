@@ -26,7 +26,7 @@ pub fn gen_event_id_canonical_json(
     room_version_id: &RoomVersionId,
 ) -> AppResult<(OwnedEventId, CanonicalJsonObject)> {
     let value: CanonicalJsonObject = serde_json::from_str(pdu.get()).map_err(|e| {
-        warn!("error parsing incoming event {:?}: {:?}", pdu, e);
+        warn!("error parsing event {:?}: {:?}", pdu, e);
         AppError::public("invalid pdu in server response")
     })?;
     let event_id = gen_event_id(&value, room_version_id)?;
@@ -192,6 +192,72 @@ pub fn update_frame_id_by_sn(event_sn: Seqnum, frame_id: i64) -> AppResult<()> {
 }
 
 pub type PdusIterItem<'a> = (&'a Seqnum, &'a SnPduEvent);
+
+pub fn parse_fetched_pdu(
+    room_id: &RoomId,
+    room_version: &RoomVersionId,
+    raw_value: &RawJsonValue,
+) -> AppResult<(OwnedEventId, CanonicalJsonObject)> {
+    let value: CanonicalJsonObject = serde_json::from_str(raw_value.get()).map_err(|e| {
+        warn!("error parsing fetched event {:?}: {:?}", raw_value, e);
+        MatrixError::bad_json("invalid pdu in server response")
+    })?;
+    let parsed_room_id = value
+        .get("room_id")
+        .and_then(|id| RoomId::parse(id.as_str()?).ok());
+    if let Some(parsed_room_id) = parsed_room_id {
+        if &parsed_room_id != room_id {
+            return Err(MatrixError::invalid_param("mismatched room_id in fetched pdu").into());
+        }
+    }
+
+    let event_id = match crate::event::gen_event_id(&value, &room_version) {
+        Ok(t) => t,
+        Err(_) => {
+            // Event could not be converted to canonical json
+            return Err(
+                MatrixError::invalid_param("could not convert event to canonical json").into(),
+            );
+        }
+    };
+    Ok((event_id, value))
+}
+
+pub fn parse_incoming_pdu(
+    raw_value: &RawJsonValue,
+) -> AppResult<(
+    OwnedEventId,
+    CanonicalJsonObject,
+    OwnedRoomId,
+    RoomVersionId,
+)> {
+    let value: CanonicalJsonObject = serde_json::from_str(raw_value.get()).map_err(|e| {
+        warn!("error parsing incoming event {:?}: {:?}", raw_value, e);
+        MatrixError::bad_json("invalid pdu in server response")
+    })?;
+    let room_id = value
+        .get("room_id")
+        .and_then(|id| RoomId::parse(id.as_str()?).ok())
+        .ok_or(MatrixError::invalid_param("invalid room id in pdu"))?;
+
+    let room_version_id = crate::room::get_version(&room_id).map_err(|_| {
+        MatrixError::invalid_param(format!(
+            "server is not in room `{room_id}` when parse incoming event"
+        ))
+    })?;
+
+    let event_id = match crate::event::gen_event_id(&value, &room_version_id) {
+        Ok(t) => t,
+        Err(_) => {
+            // Event could not be converted to canonical json
+            return Err(
+                MatrixError::invalid_param("could not convert event to canonical json").into(),
+            );
+        }
+    };
+    Ok((event_id, value, room_id, room_version_id))
+}
+
 #[inline]
 pub fn ignored_filter(item: PdusIterItem, user_id: &UserId) -> bool {
     let (_, pdu) = item;
