@@ -339,7 +339,7 @@ pub async fn fetch_and_process_events(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
     event_ids: &[OwnedEventId],
-) -> AppResult<Vec<OwnedEventId>> {
+) -> AppResult<HashSet<OwnedEventId>> {
     let mut done_ids = Vec::new();
     for event_id in event_ids {
         match fetch_and_process_event(remote_server, room_id, room_version_id, event_id).await {
