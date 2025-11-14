@@ -169,7 +169,6 @@ pub(super) async fn resolve_state_at_incoming(
         if let Ok(frame_id) = state::get_pdu_frame_id(prev_event_id) {
             extremity_state_hashes.insert(frame_id, prev_event);
         }else {
-            println!("LLLLLLLLLLLLLL not found state");
             return Ok(None);
         }
     }

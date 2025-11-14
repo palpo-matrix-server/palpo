@@ -44,7 +44,6 @@ pub(crate) async fn process_incoming_pdu(
         return Err(MatrixError::not_found("room is unknown to this server").into());
     }
 
-    println!("\n\n\n\n\n\n======process_incoming_pdu  {value:#?}");
     let event = events::table
         .filter(events::id.eq(event_id))
         .first::<DbEvent>(&mut connect()?);
@@ -100,7 +99,6 @@ pub(crate) async fn process_incoming_pdu(
         return Ok(());
     };
 
-    println!("=======call save_with_fill_missing");
     let (incoming_pdu, val, event_guard) = outlier_pdu.save_with_fill_missing().await?;
 
     if incoming_pdu.rejected() {
@@ -126,7 +124,6 @@ pub(crate) async fn process_incoming_pdu(
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
-    println!("=============call process_to_timeline_pdu 1");
     if let Err(e) = process_to_timeline_pdu(incoming_pdu, val, remote_server, room_id, false).await
     {
         error!("failed to process incoming pdu to timeline: {}", e);
@@ -181,7 +178,6 @@ pub(crate) async fn process_pulled_pdu(
         return Ok(());
     }
 
-    println!("=============call process_to_timeline_pdu 2");
     if let Err(e) = process_to_timeline_pdu(pdu, json_data, remote_server, room_id, false).await {
         error!("failed to process pulled pdu to timeline: {}", e);
     }
@@ -208,7 +204,6 @@ pub async fn process_to_outlier_pdu(
         && let Ok(val) = serde_json::from_value::<CanonicalJsonObject>(event_data.clone())
     {
         if let Ok(pdu) = timeline::get_pdu(event_id) {
-            println!("=======process_to_outlier_pdu 0");
             return Ok(Some(OutlierPdu {
                 pdu: pdu.into_inner(),
                 json_data: val,
@@ -288,7 +283,6 @@ pub async fn process_to_outlier_pdu(
             && state_key.ends_with(&*format!(":{}", crate::config::server_name()))
         {
             debug!("added pdu as outlier");
-            println!("=======process_to_outlier_pdu 2");
             return Ok(Some(OutlierPdu {
                 pdu: incoming_pdu,
                 json_data: val,
@@ -311,10 +305,8 @@ pub async fn process_to_outlier_pdu(
             "process event {} to outlier missing prev events {:?}",
             incoming_pdu.event_id, missing_prev_event_ids
         );
-        println!("==================================soft failed 0");
         soft_failed = true;
     }
-    println!("==================================soft failed 1 prev_events: {prev_events:#?}");
     let rejected_prev_events = prev_events
         .iter()
         .filter_map(|pdu| {
@@ -339,10 +331,8 @@ pub async fn process_to_outlier_pdu(
             "process event {} to outlier missing auth events {:?}",
             incoming_pdu.event_id, missing_auth_event_ids
         );
-        println!("==================================soft failed 2");
         soft_failed = true;
     }
-    println!("==================================soft failed 3");
     let rejected_auth_events = auth_events
         .iter()
         .filter_map(|pdu| {
@@ -414,12 +404,10 @@ pub async fn process_to_outlier_pdu(
         .await
             && rejection_reason.is_none()
         {
-        println!("==================================soft failed 4 {incoming_pdu:#?}");
             soft_failed = true;
             // rejection_reason = Some(e.to_string())
         };
 
-    println!("=======process_to_outlier_pdu 5  {soft_failed}  {rejection_reason:?}");
     incoming_pdu.rejection_reason = rejection_reason;
     Ok(Some(OutlierPdu {
         pdu: incoming_pdu,
@@ -440,7 +428,6 @@ pub async fn process_to_timeline_pdu(
     room_id: &RoomId,
     fetch_missing: bool,
 ) -> AppResult<()> {
-    println!("===========process_to_timeline_pdu");
     // Skip the PDU if we already have it as a timeline event
     if !incoming_pdu.is_outlier {
         return Ok(());
@@ -538,7 +525,6 @@ pub async fn process_to_timeline_pdu(
     let state_at_incoming_event = if let Some(state_at_incoming_event) = state_at_incoming_event {
         state_at_incoming_event
     } else if incoming_pdu.soft_failed {
-        println!("LLLLLLLLLLLLLLLLLLLLLLLLLLl annot process soft-failed eve {incoming_pdu:#?}");
         return Err(AppError::internal(
             "cannot process soft-failed event without state at event",
         ));
@@ -553,11 +539,6 @@ pub async fn process_to_timeline_pdu(
         .state_events
     };
 
-    println!("==============state_at_incoming_event: {state_at_incoming_event:#?}");
-
-    if incoming_pdu.soft_failed {
-        println!("==============state_at_incoming_event soft falied: {incoming_pdu:#?}");
-    }
     if !state_at_incoming_event.is_empty() {
         debug!("performing auth check");
         // 11. Check the auth of the event passes based on the state of the event
@@ -753,7 +734,6 @@ pub async fn fetch_and_process_missing_prev_events(
     incoming_pdu: &PduEvent,
     known_events: &mut HashSet<OwnedEventId>,
 ) -> AppResult<HashSet<OwnedEventId>> {
-    println!(">>>>>>>>>>>>>>fetch_and_process_missing_prev_events");
     let min_depth = timeline::first_pdu_in_room(room_id)
         .ok()
         .and_then(|pdu| pdu.map(|p| p.depth))
@@ -775,7 +755,6 @@ pub async fn fetch_and_process_missing_prev_events(
             missing_events.push(prev_id.to_owned());
         }
     }
-    println!(">>>>>>>>>>>>>>fetch_and_process_missing_prev_events  1");
     if missing_events.is_empty() {
         return Ok(HashSet::new());
     }
@@ -792,26 +771,20 @@ pub async fn fetch_and_process_missing_prev_events(
     )?
     .into_inner();
 
-    println!(">>>>>>>>>>>>>>fetch_and_process_missing_prev_events  2");
     known_events.insert(incoming_pdu.event_id.clone());
     let response = sending::send_federation_request(remote_server, request, None).await?;
     let res_body = response.json::<MissingEventsResBody>().await?;
 
-    println!(">>>>>>>>>>>>>>fetch_and_process_missing_prev_events  3");
     let mut failed_missing_ids = HashSet::new();
     for event in res_body.events {
-        println!(">>>>>>>>>>>>>>fetch_and_process_missing_prev_events  3  - 1");
         let (event_id, event_val) =  parse_fetched_pdu(room_id, room_version, &event)?;
 
-        println!("fetch_and_process_missing_prev_events event 1: {event_id}");
         if known_events.contains(&event_id) {
-            println!("kkkkkkkknown event: {event_id}");
             continue;
         }
 
         if fetched_events.contains_key(&event_id) || timeline::get_pdu(&event_id).is_ok() {
             known_events.insert(event_id.clone());
-            println!("fetch_and_process_missing_prev_events 2: {event_id}");
             continue;
         }
 
@@ -887,12 +860,10 @@ pub async fn fetch_and_process_missing_prev_events(
         // we fetch the whole state.
         if missing_events.len() * 10 >= desired_count {
             debug!("requesting complete state from remote");
-            println!("cccccccccprocess_to_timeline_pdu1");
             fetch_and_process_missing_state(remote_server, room_id, room_version, &missing_id)
                 .await?;
         } else {
             debug!("fetching {} events from remote", missing_events.len());
-            println!("================fetch and process missing prev events===================");
             let failed_ids = fetch_and_process_missing_events(
                 remote_server,
                 room_id,
