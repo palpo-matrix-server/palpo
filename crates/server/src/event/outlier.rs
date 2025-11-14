@@ -13,7 +13,8 @@ use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{self, connect};
 use crate::event::fetching::{
-    fetch_and_process_missing_state, fetch_and_process_missing_state_by_ids,
+    fetch_and_process_auth_chain, fetch_and_process_missing_state,
+    fetch_and_process_missing_state_by_ids,
 };
 use crate::event::handler::fetch_and_process_missing_prev_events;
 use crate::event::{PduEvent, SnPduEvent, ensure_event_sn};
@@ -144,11 +145,6 @@ impl OutlierPdu {
             format_version: None,
         }
         .save()?;
-        println!(
-            "====================save event to database {}",
-            pdu.event_id
-        );
-        println!("=========get pdu: {:#?}", timeline::get_pdu(&pdu.event_id)?);
         Ok((
             SnPduEvent {
                 pdu,
@@ -164,7 +160,6 @@ impl OutlierPdu {
     pub async fn save_with_fill_missing(
         mut self,
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
-        println!(">>>>>>>>>>>>>>>>>>>..save_with_fill_missing");
         let version_rules = crate::room::get_version_rules(&self.room_version)?;
         let auth_rules = &version_rules.authorization;
 
@@ -212,18 +207,30 @@ impl OutlierPdu {
                     "=======call=====fetch_and_process_missing_state {}  {:#?}",
                     self.room_id, self.pdu
                 );
-                if let Err(e) = fetch_and_process_missing_state(
-                    &self.remote_server,
-                    &self.room_id,
-                    &self.room_version,
-                    &self.pdu.event_id,
-                )
-                .await
-                {
-                    error!("failed to fetch missing auth events: {}", e);
-                } else {
-                    self.soft_failed = false;
+                for event_id in &missing_auth_event_ids {
+                    if let Err(e) = fetch_and_process_auth_chain(
+                        &self.remote_server,
+                        &self.room_id,
+                        &self.room_version,
+                        event_id,
+                    )
+                    .await
+                    {
+                        println!("error fetching auth chain for {}: {}", event_id, e);
+                    }
                 }
+                // if let Err(e) = fetch_and_process_missing_state(
+                //     &self.remote_server,
+                //     &self.room_id,
+                //     &self.room_version,
+                //     &self.pdu.event_id,
+                // )
+                // .await
+                // {
+                //     error!("failed to fetch missing auth events: {}", e);
+                // } else {
+                //     self.soft_failed = false;
+                // }
             }
             println!("xxxxxxxxxxxxxxxxxxxxdre");
         }

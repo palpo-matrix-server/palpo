@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 
 use crate::core::ServerName;
 use crate::core::federation::authorization::{
-    EventAuthorizationResBody, event_authorization_request,
+    EventAuthResBody, event_auth_request,
 };
 use crate::core::federation::event::{
     EventReqArgs, EventResBody, RoomStateAtEventReqArgs, RoomStateIdsResBody, RoomStateReqArgs,
@@ -33,10 +33,10 @@ pub async fn fetch_and_process_auth_chain(
     event_id: &EventId,
 ) -> AppResult<Vec<SnPduEvent>> {
     let request =
-        event_authorization_request(&remote_server.origin().await, room_id, event_id)?.into_inner();
+        event_auth_request(&remote_server.origin().await, room_id, event_id)?.into_inner();
     let res_body = crate::sending::send_federation_request(remote_server, request, None)
         .await?
-        .json::<EventAuthorizationResBody>()
+        .json::<EventAuthResBody>()
         .await?;
     Box::pin(async move {
         let mut auth_events = Vec::new();

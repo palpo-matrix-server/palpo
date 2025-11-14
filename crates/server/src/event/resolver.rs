@@ -153,25 +153,14 @@ pub(super) async fn resolve_state_at_incoming(
     incoming_pdu: &PduEvent,
     room_id: &RoomId,
     version_rules: &RoomVersionRules,
-) -> AppResult<Option<IndexMap<i64, OwnedEventId>>> {
+) -> AppResult<IndexMap<i64, OwnedEventId>> {
     debug!("calculating state at event using state resolve");
     let mut extremity_state_hashes = HashMap::new();
 
     for prev_event_id in &incoming_pdu.prev_events {
-        let Ok(prev_event) = timeline::get_pdu(prev_event_id) else {
-            return Ok(None);
-        };
-
-        if prev_event.rejected() {
-            continue;
-        }
-
-        if let Ok(frame_id) = state::get_pdu_frame_id(prev_event_id) {
-            extremity_state_hashes.insert(frame_id, prev_event);
-        }else {
-            println!("LLLLLLLLLLLLLL not found state");
-            return Ok(None);
-        }
+        let prev_event = timeline::get_pdu(prev_event_id)?;
+        let frame_id = state::get_pdu_frame_id(prev_event_id)?;
+        extremity_state_hashes.insert(frame_id, prev_event);
     }
 
     let mut fork_states = Vec::with_capacity(extremity_state_hashes.len());
@@ -249,19 +238,17 @@ pub(super) async fn resolve_state_at_incoming(
     drop(state_lock);
 
     match result {
-        Ok(new_state) => Ok(Some(
-            new_state
-                .into_iter()
-                .map(|((event_type, state_key), event_id)| {
-                    let state_key_id =
-                        state::ensure_field_id(&event_type.to_string().into(), &state_key)?;
-                    Ok((state_key_id, event_id))
-                })
-                .collect::<AppResult<_>>()?,
-        )),
+        Ok(new_state) => Ok(new_state
+            .into_iter()
+            .map(|((event_type, state_key), event_id)| {
+                let state_key_id =
+                    state::ensure_field_id(&event_type.to_string().into(), &state_key)?;
+                Ok((state_key_id, event_id))
+            })
+            .collect::<AppResult<_>>()?),
         Err(e) => {
             warn!("state resolution on prev events failed: {}", e);
-            Ok(None)
+            Err(e.into())
         }
     }
 }

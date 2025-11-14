@@ -3,7 +3,7 @@ use salvo::prelude::*;
 
 use crate::core::UnixMillis;
 use crate::core::federation::authorization::{
-    EventAuthorizationReqArgs, EventAuthorizationResBody,
+    EventAuthReqArgs, EventAuthResBody,
 };
 use crate::core::federation::event::{
     EventByTimestampReqArgs, EventByTimestampResBody, EventReqArgs, EventResBody,
@@ -69,9 +69,9 @@ fn get_event(_aa: AuthArgs, args: EventReqArgs, depot: &mut Depot) -> JsonResult
 #[endpoint]
 fn auth_chain(
     _aa: AuthArgs,
-    args: EventAuthorizationReqArgs,
+    args: EventAuthReqArgs,
     depot: &mut Depot,
-) -> JsonResult<EventAuthorizationResBody> {
+) -> JsonResult<EventAuthResBody> {
     let origin = depot.origin()?;
     crate::federation::access_check(origin, &args.room_id, None)?;
 
@@ -91,7 +91,7 @@ fn auth_chain(
     let auth_chain_ids =
         crate::room::auth_chain::get_auth_chain_ids(room_id, [&*args.event_id].into_iter())?;
 
-    json_ok(EventAuthorizationResBody {
+    json_ok(EventAuthResBody {
         auth_chain: auth_chain_ids
             .into_iter()
             .filter_map(|id| timeline::get_pdu_json(&id).ok()?)

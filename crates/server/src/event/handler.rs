@@ -26,6 +26,7 @@ use crate::core::{Seqnum, UnixMillis};
 use crate::data::room::DbEvent;
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
+use crate::event::fetching::fetch_and_process_missing_state_by_ids;
 use crate::event::{OutlierPdu, PduEvent, SnPduEvent, handler, parse_fetched_pdu};
 use crate::room::state::{CompressedState, DeltaInfo};
 use crate::room::{state, timeline};
@@ -466,8 +467,6 @@ pub async fn process_to_timeline_pdu(
             let state_at_incoming_event =
                 resolve_state_at_incoming(&incoming_pdu, room_id, &version_rules)
                     .await
-                    .ok()
-                    .flatten()
                     .unwrap_or_default();
 
             // 13. Use state resolution to find new room state
@@ -534,25 +533,14 @@ pub async fn process_to_timeline_pdu(
     }
 
     let state_at_incoming_event =
-        resolve_state_at_incoming(&incoming_pdu, room_id, &version_rules).await?;
-    let state_at_incoming_event = if let Some(state_at_incoming_event) = state_at_incoming_event {
-        state_at_incoming_event
-    } else if incoming_pdu.soft_failed {
-        println!("LLLLLLLLLLLLLLLLLLLLLLLLLLl annot process soft-failed eve {incoming_pdu:#?}");
-        return Err(AppError::internal(
-            "cannot process soft-failed event without state at event",
-        ));
-    } else {
-        fetch_and_process_missing_state(
-            remote_server,
-            room_id,
-            room_version_id,
-            &incoming_pdu.event_id,
-        )
-        .await?
-        .state_events
+        resolve_state_at_incoming(&incoming_pdu, room_id, &version_rules).await;
+    let state_at_incoming_event = match state_at_incoming_event {
+        Ok(state) => state,
+        Err(e) => {
+            error!("cannot resolve state at incoming event {e}");
+            return Err(AppError::internal("cannot resolve state at incoming event"));
+        }
     };
-
     println!("==============state_at_incoming_event: {state_at_incoming_event:#?}");
 
     if incoming_pdu.soft_failed {
@@ -764,8 +752,19 @@ pub async fn fetch_and_process_missing_prev_events(
     let mut earliest_events = forward_extremities.clone();
     // earliest_events.extend(known_events.iter().cloned());
 
-    let mut missing_events = Vec::with_capacity(incoming_pdu.prev_events.len());
+    let mut missing_events =
+        Vec::with_capacity(incoming_pdu.prev_events.len() + incoming_pdu.auth_events.len());
     for prev_id in &incoming_pdu.prev_events {
+        let pdu = timeline::get_pdu(prev_id);
+        if let Ok(pdu) = &pdu
+            && !pdu.rejected()
+        {
+            known_events.insert(prev_id.to_owned());
+        } else if !earliest_events.contains(prev_id) && !fetched_events.contains_key(prev_id) {
+            missing_events.push(prev_id.to_owned());
+        }
+    }
+    for prev_id in &incoming_pdu.auth_events {
         let pdu = timeline::get_pdu(prev_id);
         if let Ok(pdu) = &pdu
             && !pdu.rejected()
@@ -801,7 +800,7 @@ pub async fn fetch_and_process_missing_prev_events(
     let mut failed_missing_ids = HashSet::new();
     for event in res_body.events {
         println!(">>>>>>>>>>>>>>fetch_and_process_missing_prev_events  3  - 1");
-        let (event_id, event_val) =  parse_fetched_pdu(room_id, room_version, &event)?;
+        let (event_id, event_val) = parse_fetched_pdu(room_id, room_version, &event)?;
 
         println!("fetch_and_process_missing_prev_events event 1: {event_id}");
         if known_events.contains(&event_id) {
@@ -888,7 +887,7 @@ pub async fn fetch_and_process_missing_prev_events(
         if missing_events.len() * 10 >= desired_count {
             debug!("requesting complete state from remote");
             println!("cccccccccprocess_to_timeline_pdu1");
-            fetch_and_process_missing_state(remote_server, room_id, room_version, &missing_id)
+            fetch_and_process_missing_state_by_ids(remote_server, room_id, room_version, &missing_id)
                 .await?;
         } else {
             debug!("fetching {} events from remote", missing_events.len());
