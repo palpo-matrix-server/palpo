@@ -28,7 +28,9 @@ use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::event::handler::{fetch_and_process_missing_prev_events, process_incoming_pdu};
-use crate::event::{PduBuilder, PduEvent, ensure_event_sn, parse_fetched_pdu, gen_event_id_canonical_json};
+use crate::event::{
+    PduBuilder, PduEvent, ensure_event_sn, gen_event_id_canonical_json, parse_fetched_pdu,
+};
 use crate::federation::maybe_strip_event_id;
 use crate::room::state::{CompressedEvent, DeltaInfo};
 use crate::room::{state, timeline};
@@ -301,8 +303,7 @@ pub async fn join_room(
 
     let mut parsed_pdus = IndexMap::new();
     for auth_pdu in resp_auth {
-        let (event_id, event_value) =
-            parse_fetched_pdu(room_id, &room_version, auth_pdu)?;
+        let (event_id, event_value) = parse_fetched_pdu(room_id, &room_version, auth_pdu)?;
         parsed_pdus.insert(event_id, event_value);
     }
     for state in resp_state {
@@ -333,7 +334,9 @@ pub async fn join_room(
     .await
     {
         Ok(failed_ids) => {
-            error!("failed to fetch missing prev events {failed_ids:?} for join");
+            if !failed_ids.is_empty() {
+                error!("failed to fetch missing prev events {failed_ids:?} for join");
+            }
         }
         Err(e) => {
             error!("failed to fetch missing prev events for join: {e}");

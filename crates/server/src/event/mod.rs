@@ -26,7 +26,7 @@ pub fn gen_event_id_canonical_json(
     room_version_id: &RoomVersionId,
 ) -> AppResult<(OwnedEventId, CanonicalJsonObject)> {
     let value: CanonicalJsonObject = serde_json::from_str(pdu.get()).map_err(|e| {
-        warn!("error parsing incoming event {:?}: {:?}", pdu, e);
+        warn!("error parsing event {:?}: {:?}", pdu, e);
         AppError::public("invalid pdu in server response")
     })?;
     let event_id = gen_event_id(&value, room_version_id)?;
@@ -199,10 +199,9 @@ pub fn parse_fetched_pdu(
     raw_value: &RawJsonValue,
 ) -> AppResult<(OwnedEventId, CanonicalJsonObject)> {
     let value: CanonicalJsonObject = serde_json::from_str(raw_value.get()).map_err(|e| {
-        warn!("error parsing incoming event {:?}: {:?}", raw_value, e);
+        warn!("error parsing fetched event {:?}: {:?}", raw_value, e);
         MatrixError::bad_json("invalid pdu in server response")
     })?;
-    println!("====================parse_fetched_pdu {:?}", value);
     let parsed_room_id = value
         .get("room_id")
         .and_then(|id| RoomId::parse(id.as_str()?).ok());

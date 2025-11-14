@@ -31,11 +31,11 @@ use crate::data::room::{DbEvent, DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::event::{EventHash, PduBuilder, PduEvent, handler, parse_fetched_pdu};
-use crate::room::{EventOrderBy, push_action, state};
+use crate::room::{EventOrderBy, push_action, timeline,state};
 use crate::utils::SeqnumQueueGuard;
 use crate::{
     AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, SnPduEvent, config, data,
-    membership, utils,
+    membership, utils, 
 };
 
 pub static LAST_TIMELINE_COUNT_CACHE: LazyLock<Mutex<HashMap<OwnedRoomId, i64>>> =
@@ -145,26 +145,15 @@ pub fn get_may_missing_pdus(
     let events = event_datas::table
         .filter(event_datas::room_id.eq(room_id))
         .filter(event_datas::event_id.eq_any(event_ids))
-        .select((
-            event_datas::event_id,
-            event_datas::event_sn,
-            event_datas::json_data,
-        ))
-        .load::<(OwnedEventId, Seqnum, JsonValue)>(&mut connect()?)?;
+        .select(event_datas::event_id)
+        .load::<OwnedEventId>(&mut connect()?)?;
 
     let mut pdus = Vec::with_capacity(events.len());
     let mut missing_ids = event_ids.iter().cloned().collect::<HashSet<_>>();
-    for (event_id, event_sn, json) in events {
-        let mut pdu = SnPduEvent::from_json_value(room_id, &event_id, event_sn, json, true, false)
-            .map_err(|_e| AppError::internal("invalid pdu in db"))?;
-        let Ok(event) = events::table
-            .filter(events::id.eq(&event_id))
-            .first::<DbEvent>(&mut connect()?)
-        else {
+    for event_id in events {
+        let Ok( pdu) = timeline::get_pdu(&event_id) else {
             continue;
         };
-        pdu.is_outlier = event.is_outlier;
-        pdu.soft_failed = event.soft_failed;
         pdus.push(pdu);
         missing_ids.remove(&event_id);
     }
@@ -1170,7 +1159,8 @@ pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<(
             Ok(response) => {
                 // let mut pub_key_map = RwLock::new(BTreeMap::new());
                 for pdu in response.pdus {
-                    if let Err(e) = backfill_pdu(backfill_server, room_id, &room_version, pdu).await {
+                    if let Err(e) = backfill_pdu(backfill_server, room_id, &room_version, pdu).await
+                    {
                         warn!("Failedcar to add backfilled pdu: {e}");
                     }
                 }

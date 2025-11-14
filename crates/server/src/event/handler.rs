@@ -29,9 +29,7 @@ use crate::data::{connect, diesel_exists};
 use crate::event::{OutlierPdu, PduEvent, SnPduEvent, handler, parse_fetched_pdu};
 use crate::room::state::{CompressedState, DeltaInfo};
 use crate::room::{state, timeline};
-use crate::{AppError, AppResult, sending, MatrixError, exts::*, room};
-
-
+use crate::{AppError, AppResult, MatrixError, exts::*, room, sending};
 
 #[tracing::instrument(skip_all)]
 pub(crate) async fn process_incoming_pdu(
@@ -46,6 +44,7 @@ pub(crate) async fn process_incoming_pdu(
         return Err(MatrixError::not_found("room is unknown to this server").into());
     }
 
+    println!("\n\n\n\n\n\n======process_incoming_pdu  {value:#?}");
     let event = events::table
         .filter(events::id.eq(event_id))
         .first::<DbEvent>(&mut connect()?);
@@ -209,6 +208,7 @@ pub async fn process_to_outlier_pdu(
         && let Ok(val) = serde_json::from_value::<CanonicalJsonObject>(event_data.clone())
     {
         if let Ok(pdu) = timeline::get_pdu(event_id) {
+            println!("=======process_to_outlier_pdu 0");
             return Ok(Some(OutlierPdu {
                 pdu: pdu.into_inner(),
                 json_data: val,
@@ -272,7 +272,7 @@ pub async fn process_to_outlier_pdu(
         "event_id".to_owned(),
         CanonicalJsonValue::String(event_id.as_str().to_owned()),
     );
-    let incoming_pdu = PduEvent::from_json_value(
+    let mut incoming_pdu = PduEvent::from_json_value(
         room_id,
         event_id,
         serde_json::to_value(&val).expect("`CanonicalJson` is a valid `JsonValue`"),
@@ -288,6 +288,7 @@ pub async fn process_to_outlier_pdu(
             && state_key.ends_with(&*format!(":{}", crate::config::server_name()))
         {
             debug!("added pdu as outlier");
+            println!("=======process_to_outlier_pdu 2");
             return Ok(Some(OutlierPdu {
                 pdu: incoming_pdu,
                 json_data: val,
@@ -303,6 +304,34 @@ pub async fn process_to_outlier_pdu(
 
     let mut soft_failed = false;
     let mut rejection_reason = None;
+    let (prev_events, missing_prev_event_ids) =
+        timeline::get_may_missing_pdus(room_id, &incoming_pdu.prev_events)?;
+    if !missing_prev_event_ids.is_empty() {
+        warn!(
+            "process event {} to outlier missing prev events {:?}",
+            incoming_pdu.event_id, missing_prev_event_ids
+        );
+        println!("==================================soft failed 0");
+        soft_failed = true;
+    }
+    println!("==================================soft failed 1 prev_events: {prev_events:#?}");
+    let rejected_prev_events = prev_events
+        .iter()
+        .filter_map(|pdu| {
+            if pdu.rejected() {
+                Some(pdu.event_id.clone())
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+    if !rejected_prev_events.is_empty() {
+        // rejection_reason = Some(format!(
+        //     "event's prev events rejected: {rejected_prev_events:?}"
+        // ))
+        soft_failed = true;
+    }
+
     let (auth_events, missing_auth_event_ids) =
         timeline::get_may_missing_pdus(room_id, &incoming_pdu.auth_events)?;
     if !missing_auth_event_ids.is_empty() {
@@ -310,24 +339,24 @@ pub async fn process_to_outlier_pdu(
             "process event {} to outlier missing auth events {:?}",
             incoming_pdu.event_id, missing_auth_event_ids
         );
-        println!("==================================soft failed 0");
+        println!("==================================soft failed 2");
         soft_failed = true;
-    } else {
-        let rejected_auth_events = auth_events
-            .iter()
-            .filter_map(|pdu| {
-                if pdu.rejected() {
-                    Some(pdu.event_id.clone())
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-        if !rejected_auth_events.is_empty() {
-            rejection_reason = Some(format!(
-                "event's auth events rejected: {rejected_auth_events:?}"
-            ))
-        }
+    }
+    println!("==================================soft failed 3");
+    let rejected_auth_events = auth_events
+        .iter()
+        .filter_map(|pdu| {
+            if pdu.rejected() {
+                Some(pdu.event_id.clone())
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+    if !rejected_auth_events.is_empty() {
+        rejection_reason = Some(format!(
+            "event's auth events rejected: {rejected_auth_events:?}"
+        ))
     }
 
     let auth_events = auth_events
@@ -343,13 +372,13 @@ pub async fn process_to_outlier_pdu(
         })
         .collect::<HashMap<(StateEventType, _), _>>();
 
-    // // The original create event must be in the auth events
-    // if !matches!(
-    //     auth_events.get(&(StateEventType::RoomCreate, "".to_owned())),
-    //     Some(_) | None
-    // ) {
-    //     rejection_reason = Some(format!("incoming event refers to wrong create event"));
-    // }
+    // The original create event must be in the auth events
+    if !matches!(
+        auth_events.get(&(StateEventType::RoomCreate, "".to_owned())),
+        Some(_) | None
+    ) {
+        rejection_reason = Some(format!("incoming event refers to wrong create event"));
+    }
 
     if let Err(_e) = event_auth::auth_check(
             auth_rules,
@@ -385,11 +414,13 @@ pub async fn process_to_outlier_pdu(
         .await
             && rejection_reason.is_none()
         {
-        println!("==================================soft failed 1 {incoming_pdu:#?}");
+        println!("==================================soft failed 4 {incoming_pdu:#?}");
             soft_failed = true;
             // rejection_reason = Some(e.to_string())
         };
 
+    println!("=======process_to_outlier_pdu 5  {soft_failed}  {rejection_reason:?}");
+    incoming_pdu.rejection_reason = rejection_reason;
     Ok(Some(OutlierPdu {
         pdu: incoming_pdu,
         soft_failed,
@@ -539,7 +570,7 @@ pub async fn process_to_timeline_pdu(
             },
             &async |k, s| {
                 let Ok(state_key_id) = state::get_field_id(&k.to_string().into(), &s) else {
-                    error!("missing field id for state type: {k}, state_key: {s}");
+                    warn!("missing field id for state type: {k}, state_key: {s}");
                     return Err(StateError::other(format!(
                         "missing field id for state type: {k}, state_key: {s}"
                     )));
@@ -549,7 +580,7 @@ pub async fn process_to_timeline_pdu(
                     Some(event_id) => match timeline::get_pdu(event_id) {
                         Ok(pdu) => Ok(pdu),
                         Err(e) => {
-                            error!("failed to get pdu for state resolution: {}", e);
+                            warn!("failed to get pdu for state resolution: {}", e);
                             Err(StateError::other(format!(
                                 "failed to get pdu for state resolution: {}",
                                 e
@@ -557,7 +588,7 @@ pub async fn process_to_timeline_pdu(
                         }
                     },
                     None => {
-                        error!(
+                        warn!(
                             "missing state key id {state_key_id} for state type: {k}, state_key: {s}, room: {room_id}"
                         );
                         Err(StateError::other(format!(
@@ -767,8 +798,10 @@ pub async fn fetch_and_process_missing_prev_events(
     let res_body = response.json::<MissingEventsResBody>().await?;
 
     println!(">>>>>>>>>>>>>>fetch_and_process_missing_prev_events  3");
+    let mut failed_missing_ids = HashSet::new();
     for event in res_body.events {
-        let (event_id, event_val) = parse_fetched_pdu(room_id, room_version,&event)?;
+        println!(">>>>>>>>>>>>>>fetch_and_process_missing_prev_events  3  - 1");
+        let (event_id, event_val) =  parse_fetched_pdu(room_id, room_version, &event)?;
 
         println!("fetch_and_process_missing_prev_events event 1: {event_id}");
         if known_events.contains(&event_id) {
@@ -823,7 +856,6 @@ pub async fn fetch_and_process_missing_prev_events(
         missing_events.retain(|e| e != &event_id);
     }
 
-    let mut failed_missing_ids = HashSet::new();
     for missing_id in missing_events {
         let mut desired_events = HashSet::new();
         if let Ok(RoomStateIdsResBody {

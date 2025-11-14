@@ -299,6 +299,7 @@ impl NewDbEvent {
     }
 
     pub fn save(&self) -> DataResult<()> {
+        println!("=========save event: {:#?}", self);
         diesel::insert_into(events::table)
             .values(self)
             .on_conflict(events::id)
