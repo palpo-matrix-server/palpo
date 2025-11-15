@@ -341,7 +341,6 @@ pub async fn process_to_outlier_pdu(
         println!("==================================soft failed 2");
         soft_failed = true;
     }
-    println!("==================================soft failed 3");
     let rejected_auth_events = auth_events
         .iter()
         .filter_map(|pdu| {

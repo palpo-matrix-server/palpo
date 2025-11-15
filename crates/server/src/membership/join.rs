@@ -27,7 +27,7 @@ use crate::core::serde::{
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::event::handler::{fetch_and_process_missing_prev_events, process_incoming_pdu};
+use crate::event::handler::{process_to_outlier_pdu, process_incoming_pdu};
 use crate::event::{
     PduBuilder, PduEvent, ensure_event_sn, gen_event_id_canonical_json, parse_fetched_pdu,
 };
@@ -322,24 +322,6 @@ pub async fn join_room(
         .await
         {
             error!("failed to process incoming events for join: {e}");
-        }
-    }
-    match fetch_and_process_missing_prev_events(
-        &remote_server,
-        room_id,
-        &room_version,
-        &parsed_join_pdu,
-        &mut Default::default(),
-    )
-    .await
-    {
-        Ok(failed_ids) => {
-            if !failed_ids.is_empty() {
-                error!("failed to fetch missing prev events {failed_ids:?} for join");
-            }
-        }
-        Err(e) => {
-            error!("failed to fetch missing prev events for join: {e}");
         }
     }
 

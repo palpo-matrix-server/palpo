@@ -13,10 +13,9 @@ use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{self, connect};
 use crate::event::fetching::{
-    fetch_and_process_auth_chain, fetch_and_process_missing_state,
-    fetch_and_process_missing_state_by_ids,
+    fetch_and_process_auth_chain, fetch_and_process_missing_prev_events,
+    fetch_and_process_missing_state, fetch_and_process_missing_state_by_ids,
 };
-use crate::event::handler::fetch_and_process_missing_prev_events;
 use crate::event::{PduEvent, SnPduEvent, ensure_event_sn};
 use crate::utils::SeqnumQueueGuard;
 use crate::{AppError, AppResult, MatrixError};
@@ -183,9 +182,9 @@ impl OutlierPdu {
                     if let AppError::Matrix(MatrixError { ref kind, .. }) = e {
                         println!("========================zzzz {e}");
                         if *kind == core::error::ErrorKind::BadJson {
-                            println!("LLLLL");
                             self.rejection_reason =
                                 Some(format!("failed to bad prev events: {}", e));
+                                return self.save_to_database();
                         } else {
                             println!("==================================soft failed 3 {e}");
                             self.soft_failed = true;
