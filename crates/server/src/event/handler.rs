@@ -8,9 +8,7 @@ use std::time::Instant;
 use diesel::prelude::*;
 use indexmap::IndexMap;
 
-use super::fetching::{
-    fetch_and_process_missing_events, fetch_and_process_missing_state, fetch_state_ids,
-};
+use super::fetching::{fetch_and_process_events, fetch_and_process_missing_state, fetch_state_ids};
 use super::resolver::{resolve_state, resolve_state_at_incoming};
 use crate::core::events::StateEventType;
 use crate::core::events::TimelineEventType;
@@ -215,6 +213,8 @@ pub async fn process_to_outlier_pdu(
                 room_id: room_id.to_owned(),
                 room_version: room_version.to_owned(),
                 event_sn: Some(event_sn),
+                rejected_auth_events: vec![],
+                rejected_prev_events: vec![],
             }));
         }
     }
@@ -295,6 +295,8 @@ pub async fn process_to_outlier_pdu(
                 room_id: room_id.to_owned(),
                 room_version: room_version.to_owned(),
                 event_sn: None,
+                rejected_auth_events: vec![],
+                rejected_prev_events: vec![],
             }));
         }
         return Ok(None);
@@ -411,7 +413,7 @@ pub async fn process_to_outlier_pdu(
         .await
             && rejection_reason.is_none()
         {
-        println!("==================================soft failed 4 {incoming_pdu:#?}");
+        println!("==================================soft failed b 4 {incoming_pdu:#?}");
             soft_failed = true;
             // rejection_reason = Some(e.to_string())
         };
@@ -426,6 +428,8 @@ pub async fn process_to_outlier_pdu(
         room_id: room_id.to_owned(),
         room_version: room_version.to_owned(),
         event_sn: None,
+        rejected_auth_events,
+        rejected_prev_events,
     }))
 }
 
@@ -442,7 +446,12 @@ pub async fn process_to_timeline_pdu(
     if !incoming_pdu.is_outlier {
         return Ok(());
     }
-    info!("upgrading {} to timeline pdu", incoming_pdu.event_id);
+    if incoming_pdu.rejected() {
+        return Err(AppError::internal(
+            "cannot process rejected event to timeline",
+        ));
+    }
+    info!("process {} to timeline pdu", incoming_pdu.event_id);
     let room_version_id = &room::get_version(room_id)?;
     let version_rules = crate::room::get_version_rules(room_version_id)?;
     let auth_rules = &version_rules.authorization;
