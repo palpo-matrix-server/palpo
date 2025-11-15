@@ -167,7 +167,6 @@ impl OutlierPdu {
                 &self.room_id,
                 &self.room_version,
                 &self,
-                &mut Default::default(),
             )
             .await
             {

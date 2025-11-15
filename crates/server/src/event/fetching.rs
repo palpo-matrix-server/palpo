@@ -29,7 +29,6 @@ pub async fn fetch_and_process_missing_prev_events(
     room_id: &RoomId,
     room_version: &RoomVersionId,
     incoming_pdu: &PduEvent,
-    known_events: &mut HashSet<OwnedEventId>,
 ) -> AppResult<HashSet<OwnedEventId>> {
     let min_depth = timeline::first_pdu_in_room(room_id)
         .ok()
@@ -41,6 +40,7 @@ pub async fn fetch_and_process_missing_prev_events(
     let mut earliest_events = forward_extremities.clone();
     // earliest_events.extend(known_events.iter().cloned());
 
+    let mut known_events = HashSet::new();
     let mut missing_events = Vec::with_capacity(incoming_pdu.prev_events.len());
     for prev_id in &incoming_pdu.prev_events {
         let pdu = timeline::get_pdu(prev_id);
@@ -68,7 +68,6 @@ pub async fn fetch_and_process_missing_prev_events(
     )?
     .into_inner();
 
-    known_events.insert(incoming_pdu.event_id.clone());
     let response = send_federation_request(remote_server, request, None).await?;
     let res_body = response.json::<MissingEventsResBody>().await?;
 
@@ -96,83 +95,6 @@ pub async fn fetch_and_process_missing_prev_events(
             .unwrap_or_default();
         fetched_events.insert(event_id.clone(), event_val);
         known_events.insert(event_id.clone());
-
-        if !prev_events.contains(&incoming_pdu.event_id) {
-            let prev_events = prev_events
-                .into_iter()
-                .filter_map(|id| {
-                    if !fetched_events.contains_key(&id)
-                        && incoming_pdu.event_id != id
-                        && !known_events.contains(&id)
-                        && !missing_events.contains(&id)
-                    {
-                        Some(id)
-                    } else {
-                        None
-                    }
-                })
-                .collect::<Vec<_>>();
-            let exists_events = events::table
-                .filter(events::id.eq_any(&prev_events))
-                .select(events::id)
-                .load::<OwnedEventId>(&mut connect()?)?;
-            missing_events.extend(
-                prev_events
-                    .into_iter()
-                    .filter(|id| !exists_events.contains(id)),
-            );
-        }
-
-        missing_events.retain(|e| e != &event_id);
-    }
-
-    for missing_id in missing_events {
-        let mut desired_events = HashSet::new();
-        if let Ok(RoomStateIdsResBody {
-            auth_chain_ids,
-            pdu_ids,
-        }) = fetch_state_ids(remote_server, room_id, &missing_id).await
-        {
-            desired_events.extend(pdu_ids.into_iter());
-            desired_events.extend(auth_chain_ids.into_iter());
-        }
-        desired_events.insert(missing_id.clone());
-        let desired_count = desired_events.len();
-
-        let exist_events = events::table
-            .filter(events::id.eq_any(&desired_events))
-            .select(events::id)
-            .load::<OwnedEventId>(&mut connect()?)?;
-        known_events.extend(exist_events.iter().cloned());
-        let missing_events = desired_events
-            .into_iter()
-            .filter(|id| !exist_events.contains(id))
-            .collect::<Vec<_>>();
-        // Same as synapse
-        // Making an individual request for each of 1000s of events has a lot of
-        // overhead. On the other hand, we don't really want to fetch all of the events
-        // if we already have most of them.
-        //
-        // As an arbitrary heuristic, if we are missing more than 10% of the events, then
-        // we fetch the whole state.
-        if missing_events.len() * 10 >= desired_count {
-            debug!("requesting complete state from remote");
-            fetch_and_process_missing_state(remote_server, room_id, room_version, &missing_id)
-                .await?;
-        } else {
-            debug!("fetching {} events from remote", missing_events.len());
-            let failed_ids = fetch_and_process_missing_events(
-                remote_server,
-                room_id,
-                room_version,
-                &missing_events,
-            )
-            .await?;
-            if !failed_ids.is_empty() {
-                failed_missing_ids.extend(failed_ids);
-            }
-        }
-        known_events.extend(missing_events.into_iter());
     }
 
     fetched_events.sort_by(|_x1, v1, _k2, v2| {
@@ -197,7 +119,6 @@ pub async fn fetch_and_process_missing_prev_events(
             room_id,
             room_version,
             event_val.clone(),
-            known_events,
         )
         .await
         {

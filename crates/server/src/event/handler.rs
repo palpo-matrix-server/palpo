@@ -145,7 +145,6 @@ pub(crate) async fn process_pulled_pdu(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
     value: BTreeMap<String, CanonicalJsonValue>,
-    known_events: &mut HashSet<OwnedEventId>,
 ) -> AppResult<()> {
     // 1.3.1 Check room ACL on origin field/server
     handler::acl_check(remote_server, room_id)?;
