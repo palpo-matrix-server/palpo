@@ -342,13 +342,6 @@ pub async fn join_room(
             error!("failed to fetch missing prev events for join: {e}");
         }
     }
-    // crate::event::handler::fetch_state(
-    //     &remote_server,
-    //     room_id,
-    //     &room_version_id,
-    //     &parsed_join_pdu.event_id,
-    // )
-    // .await?;
 
     info!("going through send_join response room_state");
     for result in send_join_body

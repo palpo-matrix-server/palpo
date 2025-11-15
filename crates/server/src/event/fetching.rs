@@ -4,9 +4,7 @@ use diesel::prelude::*;
 use indexmap::IndexMap;
 
 use crate::core::ServerName;
-use crate::core::federation::authorization::{
-    EventAuthResBody, event_auth_request,
-};
+use crate::core::federation::authorization::{EventAuthResBody, event_auth_request};
 use crate::core::federation::event::{
     EventReqArgs, EventResBody, RoomStateAtEventReqArgs, RoomStateIdsResBody, RoomStateReqArgs,
     RoomStateResBody, event_request, room_state_ids_request, room_state_request,
@@ -15,7 +13,7 @@ use crate::core::identifiers::*;
 use crate::data::diesel_exists;
 use crate::data::schema::*;
 use crate::event::handler::process_to_outlier_pdu;
-use crate::event::{connect, parse_fetched_pdu};
+use crate::event::{connect, parse_fetched_pdu, seen_event_ids};
 use crate::room::state::ensure_field_id;
 use crate::room::timeline;
 use crate::sending::send_federation_request;
@@ -66,7 +64,7 @@ pub async fn fetch_and_process_auth_chain(
                 else {
                     continue;
                 };
-                let pdu = outlier_pdu.save_to_database()?.0;
+                let pdu = outlier_pdu.process_pulled().await?.0;
                 auth_events.push(pdu);
                 known_events.insert(event_id);
             }
@@ -84,77 +82,50 @@ pub(super) async fn fetch_and_process_missing_state_by_ids(
     room_id: &RoomId,
     room_version: &RoomVersionId,
     event_id: &EventId,
-) -> AppResult<FetchedState> {
+) -> AppResult<Vec<OwnedEventId>> {
     debug!("calling /state_ids");
     // Call /state_ids to find out what the state at this pdu is. We trust the server's
     // response to some extend, but we still do a lot of checks on the events
-    let res = fetch_state_ids(remote_server, room_id, event_id).await?;
+    let RoomStateIdsResBody {
+        pdu_ids,
+        auth_chain_ids,
+    } = fetch_state_ids(remote_server, room_id, event_id).await?;
     debug!("fetching state events at event");
 
-    let mut state_events: IndexMap<i64, OwnedEventId> = IndexMap::new();
-    let mut auth_events: IndexMap<i64, OwnedEventId> = IndexMap::new();
-    // let mut known_events = HashSet::new();
-    for pdu_id in &res.pdu_ids {
-        if let Ok(pdu) = timeline::get_pdu(pdu_id) {
-            let state_key = match &pdu.state_key {
-                Some(s) => s,
-                None => continue,
-            };
-            let field_id = ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
-            state_events.insert(field_id, pdu_id.to_owned());
-            continue;
+    let mut desired_events = pdu_ids;
+    desired_events.push(event_id.to_owned());
+    desired_events.extend(auth_chain_ids.into_iter());
+
+    let desired_count = desired_events.len();
+    let mut failed_missing_events = Vec::new();
+    let seen_events = seen_event_ids(room_id, &desired_events)?;
+    let missing_events: Vec<_> = desired_events
+        .into_iter()
+        .filter(|e| !seen_events.contains(e))
+        .collect();
+    // Same as synapse
+    // Making an individual request for each of 1000s of events has a lot of
+    // overhead. On the other hand, we don't really want to fetch all of the events
+    // if we already have most of them.
+    //
+    // As an arbitrary heuristic, if we are missing more than 10% of the events, then
+    // we fetch the whole state.
+    if missing_events.len() * 10 >= desired_count {
+        debug!("requesting complete state from remote");
+        println!("cccccccccprocess_to_timeline_pdu1");
+        fetch_and_process_missing_state(remote_server, room_id, room_version, event_id).await?;
+    } else {
+        debug!("fetching {} events from remote", missing_events.len());
+        println!("================fetch and process missing prev events===================");
+        let failed_events =
+            fetch_and_process_missing_events(remote_server, room_id, room_version, &missing_events)
+                .await?;
+        if !failed_events.is_empty() {
+            failed_missing_events.extend(failed_events);
         }
-        println!("fetching state event 0 {pdu_id}");
-        let Ok(body) = fetch_event(remote_server, pdu_id).await else {
-            continue;
-        };
-        let (event_id, event_value) = parse_fetched_pdu(room_id, room_version, &body.pdu)?;
-        let Some(outlier_pdu) =
-            process_to_outlier_pdu(remote_server, &event_id, room_id, room_version, event_value)
-                .await?
-        else {
-            continue;
-        };
-        let pdu = outlier_pdu.save_to_database()?.0;
-        let state_key = match &pdu.state_key {
-            Some(s) => s,
-            None => continue,
-        };
-        let field_id = ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
-        state_events.insert(field_id, event_id);
     }
-    for pdu_id in &res.auth_chain_ids {
-        if let Ok(pdu) = timeline::get_pdu(pdu_id) {
-            let state_key = match &pdu.state_key {
-                Some(s) => s,
-                None => continue,
-            };
-            let field_id = ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
-            auth_events.insert(field_id, pdu_id.to_owned());
-            continue;
-        }
-        let Ok(body) = fetch_event(remote_server, pdu_id).await else {
-            continue;
-        };
-        let (event_id, event_value) = parse_fetched_pdu(room_id, room_version, &body.pdu)?;
-        let Some(outlier_pdu) =
-            process_to_outlier_pdu(remote_server, &event_id, room_id, room_version, event_value)
-                .await?
-        else {
-            continue;
-        };
-        let pdu = outlier_pdu.save_to_database()?.0;
-        let state_key = match &pdu.state_key {
-            Some(s) => s,
-            None => continue,
-        };
-        let field_id = ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
-        auth_events.insert(field_id, event_id);
-    }
-    Ok(FetchedState {
-        state_events,
-        auth_events,
-    })
+
+    Ok(failed_missing_events)
 }
 
 pub async fn fetch_and_process_missing_state(
@@ -262,7 +233,7 @@ pub async fn fetch_and_process_missing_events(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
     event_ids: &[OwnedEventId],
-) -> AppResult<HashSet<OwnedEventId>> {
+) -> AppResult<Vec<OwnedEventId>> {
     let mut done_ids = Vec::new();
     for event_id in event_ids {
         println!("================fetch_and_process_missing_events===================");

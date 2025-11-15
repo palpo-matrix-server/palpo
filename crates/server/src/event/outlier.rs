@@ -18,7 +18,6 @@ use crate::event::fetching::{
 };
 use crate::event::handler::fetch_and_process_missing_prev_events;
 use crate::event::{PduEvent, SnPduEvent, ensure_event_sn};
-use crate::room::timeline;
 use crate::utils::SeqnumQueueGuard;
 use crate::{AppError, AppResult, MatrixError};
 
@@ -130,7 +129,6 @@ impl OutlierPdu {
         }
         let (event_sn, event_guard) = ensure_event_sn(&room_id, &pdu.event_id)?;
         let mut db_event = NewDbEvent::from_canonical_json(&pdu.event_id, event_sn, &json_data)?;
-        println!("======pdu.rejection_reason: {:#?}", pdu.rejection_reason);
         db_event.is_outlier = true;
         db_event.soft_failed = soft_failed;
         db_event.is_rejected = pdu.rejection_reason.is_some();
@@ -157,14 +155,13 @@ impl OutlierPdu {
         ))
     }
 
-    pub async fn save_with_fill_missing(
+    pub async fn process_incoming(
         mut self,
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
         let version_rules = crate::room::get_version_rules(&self.room_version)?;
         let auth_rules = &version_rules.authorization;
 
         if self.soft_failed {
-            println!("cccccccccccccccall fetch_and_process_missing_prev_events");
             // Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
             match fetch_and_process_missing_prev_events(
                 &self.remote_server,
@@ -199,15 +196,59 @@ impl OutlierPdu {
                     }
                 }
             }
+        }
+        self.process_pulled().await
+    }
 
-            let (auth_events, missing_auth_event_ids) =
-                timeline::get_may_missing_pdus(&self.room_id, &self.pdu.auth_events)?;
-            if !missing_auth_event_ids.is_empty() {
+    pub async fn process_pulled(
+        mut self,
+    ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
+        let version_rules = crate::room::get_version_rules(&self.room_version)?;
+        let auth_rules = &version_rules.authorization;
+
+        if self.soft_failed {
+            // Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
+            let missing_events = match fetch_and_process_missing_state_by_ids(
+                &self.remote_server,
+                &self.room_id,
+                &self.room_version,
+                &self.pdu.event_id,
+            )
+            .await
+            {
+                Ok(missing_events) => {
+                    self.soft_failed = !missing_events.is_empty();
+                    println!(
+                        "==================================soft failed 2 {}",
+                        self.soft_failed
+                    );
+                    missing_events
+                }
+                Err(e) => {
+                    if let AppError::Matrix(MatrixError { ref kind, .. }) = e {
+                        println!("========================zzzz {e}");
+                        if *kind == core::error::ErrorKind::BadJson {
+                            println!("LLLLL");
+                            self.rejection_reason =
+                                Some(format!("failed to bad prev events: {}", e));
+                        } else {
+                            println!("==================================soft failed 3 {e}");
+                            self.soft_failed = true;
+                        }
+                    } else {
+                        println!("==================================soft failed 4  {e}");
+                        self.soft_failed = true;
+                    }
+                    vec![]
+                }
+            };
+
+            if !missing_events.is_empty() {
                 println!(
                     "=======call=====fetch_and_process_missing_state {}  {:#?}",
                     self.room_id, self.pdu
                 );
-                for event_id in &missing_auth_event_ids {
+                for event_id in &missing_events {
                     if let Err(e) = fetch_and_process_auth_chain(
                         &self.remote_server,
                         &self.room_id,

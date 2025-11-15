@@ -258,6 +258,14 @@ pub fn parse_incoming_pdu(
     Ok((event_id, value, room_id, room_version_id))
 }
 
+pub fn seen_event_ids(room_id: &RoomId, event_ids: &[OwnedEventId]) -> AppResult<Vec<OwnedEventId>> {
+    let seen_events = events::table
+        .filter(events::room_id.eq(room_id))
+        .filter(events::id.eq_any(event_ids))
+        .select(events::id)
+        .load::<OwnedEventId>(&mut connect()?)?;
+    Ok(seen_events)
+}
 #[inline]
 pub fn ignored_filter(item: PdusIterItem, user_id: &UserId) -> bool {
     let (_, pdu) = item;
