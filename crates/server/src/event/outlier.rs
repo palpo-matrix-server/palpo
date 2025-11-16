@@ -10,14 +10,14 @@ use crate::core::serde::{CanonicalJsonObject, RawJsonValue};
 use crate::core::state::{Event, StateError, event_auth};
 use crate::core::{self, Seqnum, UnixMillis};
 use crate::data::room::{DbEventData, NewDbEvent};
-use crate::data::schema::*;
-use crate::data::{self, connect};
+use crate::data::{connect, schema::*};
 use crate::event::fetching::{
     fetch_and_process_auth_chain, fetch_and_process_missing_events,
     fetch_and_process_missing_state, fetch_and_process_missing_state_by_ids,
 };
 use crate::event::handler::auth_check;
 use crate::event::{PduEvent, SnPduEvent, ensure_event_sn};
+use crate::room::timeline;
 use crate::utils::SeqnumQueueGuard;
 use crate::{AppError, AppResult, MatrixError};
 
@@ -208,7 +208,6 @@ impl OutlierPdu {
         mut self,
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
         let version_rules = crate::room::get_version_rules(&self.room_version)?;
-        let auth_rules = &version_rules.authorization;
 
         if !self.soft_failed || self.rejected() {
             return self.save_to_database();
@@ -240,41 +239,47 @@ impl OutlierPdu {
                 return self.save_to_database();
             }
         }
-
-        println!("============any_auth_event_rejected 3");
-        let missing_events = match fetch_and_process_missing_state_by_ids(
-            &self.remote_server,
-            &self.room_id,
-            &self.room_version,
-            &self.pdu.event_id,
-        )
-        .await
-        {
-            Ok(missing_events) => {
-                self.soft_failed = !missing_events.is_empty();
-                println!(
-                    "==================================soft failed 2 {}",
-                    self.soft_failed
-                );
-                missing_events
-            }
-            Err(e) => {
-                if let AppError::Matrix(MatrixError { ref kind, .. }) = e {
-                    println!("========================zzzz {e}");
-                    if *kind == core::error::ErrorKind::BadJson {
-                        println!("LLLLL");
-                        self.rejection_reason = Some(format!("failed to bad prev events: {}", e));
-                    } else {
-                        println!("==================================soft failed 3 {e}");
-                        self.soft_failed = true;
+        let (prev_events, missing_prev_event_ids) =
+            timeline::get_may_missing_pdus(&self.room_id, &self.pdu.prev_events)?;
+        if !missing_prev_event_ids.is_empty() {
+            for event_id in &missing_prev_event_ids {
+                println!("============any_auth_event_rejected 3 {event_id}  {:#?}", self.pdu);
+                let missing_events = match fetch_and_process_missing_state_by_ids(
+                    &self.remote_server,
+                    &self.room_id,
+                    &self.room_version,
+                    event_id,
+                )
+                .await
+                {
+                    Ok(missing_events) => {
+                        self.soft_failed = !missing_events.is_empty();
+                        println!(
+                            "==================================soft failed 2 {}",
+                            self.soft_failed
+                        );
+                        missing_events
                     }
-                } else {
-                    println!("==================================soft failed 4z  {e}");
-                    self.soft_failed = true;
-                }
-                vec![]
+                    Err(e) => {
+                        if let AppError::Matrix(MatrixError { ref kind, .. }) = e {
+                            println!("========================zzzz {e}");
+                            if *kind == core::error::ErrorKind::BadJson {
+                                println!("LLLLL");
+                                self.rejection_reason =
+                                    Some(format!("failed to bad prev events: {}", e));
+                            } else {
+                                println!("==================================soft failed 3 {e}");
+                                self.soft_failed = true;
+                            }
+                        } else {
+                            println!("==================================soft failed 4z  {e}");
+                            self.soft_failed = true;
+                        }
+                        vec![]
+                    }
+                };
             }
-        };
+        }
 
         // if !missing_events.is_empty() {
         //     println!(

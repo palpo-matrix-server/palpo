@@ -1,12 +1,10 @@
 use std::borrow::Borrow;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::hash::Hash;
 use std::iter::once;
 use std::sync::Arc;
 use std::time::Instant;
 
 use diesel::prelude::*;
-use indexmap::IndexMap;
 use palpo_core::room_version_rules::RoomVersionRules;
 
 use super::fetching::{fetch_and_process_events, fetch_and_process_missing_state, fetch_state_ids};
@@ -14,17 +12,13 @@ use super::resolver::{resolve_state, resolve_state_at_incoming};
 use crate::core::events::StateEventType;
 use crate::core::events::TimelineEventType;
 use crate::core::events::room::server_acl::RoomServerAclEventContent;
-use crate::core::federation::event::{
-    MissingEventsReqBody, MissingEventsResBody, RoomStateIdsResBody, missing_events_request,
-};
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonValue, canonical_json};
 use crate::core::signatures::Verified;
 use crate::core::state::{Event, StateError, event_auth};
 use crate::core::{Seqnum, UnixMillis};
 use crate::data::room::DbEvent;
-use crate::data::schema::*;
-use crate::data::{connect, diesel_exists};
+use crate::data::{connect, schema::*};
 use crate::event::{OutlierPdu, PduEvent, SnPduEvent, handler, parse_fetched_pdu};
 use crate::room::state::{CompressedState, DeltaInfo};
 use crate::room::{state, timeline};
