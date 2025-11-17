@@ -95,16 +95,20 @@ pub(crate) async fn process_incoming_pdu(
 
     let (incoming_pdu, val, event_guard) = outlier_pdu.process_incoming().await?;
 
+    println!(
+        "=============call process_incoming_pdu for incoming 1  {:#?}",
+        incoming_pdu
+    );
     if incoming_pdu.rejected() {
         return Ok(());
     }
     check_room_id(room_id, &incoming_pdu)?;
-
+    println!("=============call process_incoming_pdu for incoming 2");
     // 8. if not timeline event: stop
     if !is_timeline_event {
         return Ok(());
     }
-
+    println!("=============call process_incoming_pdu for incoming 3");
     // Skip old events
     let first_pdu_in_room = timeline::first_pdu_in_room(room_id)?
         .ok_or_else(|| AppError::internal("failed to find first pdu in database."))?;
@@ -112,15 +116,20 @@ pub(crate) async fn process_incoming_pdu(
         return Ok(());
     }
 
+    println!("=============call process_incoming_pdu for incoming 4");
     // Done with prev events, now handling the incoming event
     let start_time = Instant::now();
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
-    println!("=============call process_to_timeline_pdu 1");
+    println!(
+        "=============call process_to_timeline_pdu for incoming 9  {}",
+        incoming_pdu.event_id
+    );
     if let Err(e) = process_to_timeline_pdu(incoming_pdu, val, remote_server, room_id).await {
-        error!("failed to process incoming pdu to timeline: {}", e);
+        println!("=============call process_to_timeline_pdu {e:#?}");
+        error!("failed to process incoming pdu to timeline {}", e);
     }
     drop(event_guard);
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
@@ -300,7 +309,7 @@ pub async fn process_to_outlier_pdu(
         timeline::get_may_missing_pdus(room_id, &incoming_pdu.prev_events)?;
     if !missing_prev_event_ids.is_empty() {
         warn!(
-            "process event {} to outlier missing prev events {:?}",
+            "process event to outlier missing prev events {}: {:?}",
             incoming_pdu.event_id, missing_prev_event_ids
         );
         println!("==================================soft failed 0");
@@ -321,14 +330,14 @@ pub async fn process_to_outlier_pdu(
         // rejection_reason = Some(format!(
         //     "event's prev events rejected: {rejected_prev_events:?}"
         // ))
-        soft_failed = true;
+        soft_failed = true; // Will try to fetch rejected prev events again later
     }
 
     let (auth_events, missing_auth_event_ids) =
         timeline::get_may_missing_pdus(room_id, &incoming_pdu.auth_events)?;
     if !missing_auth_event_ids.is_empty() {
         warn!(
-            "process event {} to outlier missing auth events {:?}",
+            "process event to outlier missing auth events {}: {:?}",
             incoming_pdu.event_id, missing_auth_event_ids
         );
         println!("==================================soft failed 2");
@@ -422,7 +431,6 @@ pub async fn process_to_timeline_pdu(
     info!("process {} to timeline pdu", incoming_pdu.event_id);
     let room_version_id = &room::get_version(room_id)?;
     let version_rules = crate::room::get_version_rules(room_version_id)?;
-    let auth_rules = &version_rules.authorization;
 
     // 10. Fetch missing state and auth chain events by calling /state_ids at backwards extremities
     //     doing all the checks in this list starting at 1. These are not timeline events.
@@ -504,19 +512,8 @@ pub async fn process_to_timeline_pdu(
     }
 
     let state_at_incoming_event =
-        resolve_state_at_incoming(&incoming_pdu, room_id, &version_rules).await;
-    let state_at_incoming_event = match state_at_incoming_event {
-        Ok(state) => state,
-        Err(e) => {
-            error!("cannot resolve state at incoming event {e}");
-            return Err(AppError::internal("cannot resolve state at incoming event"));
-        }
-    };
+        resolve_state_at_incoming(&incoming_pdu, room_id, &version_rules).await?;
     println!("==============state_at_incoming_event: {state_at_incoming_event:#?}");
-
-    if incoming_pdu.soft_failed {
-        println!("==============state_at_incoming_event soft falied: {incoming_pdu:#?}");
-    }
 
     auth_check(&incoming_pdu, room_id, &version_rules).await?;
 

@@ -159,8 +159,16 @@ pub(super) async fn resolve_state_at_incoming(
 
     for prev_event_id in &incoming_pdu.prev_events {
         let prev_event = timeline::get_pdu(prev_event_id)?;
-        let frame_id = state::get_pdu_frame_id(prev_event_id)?;
-        extremity_state_hashes.insert(frame_id, prev_event);
+        if let Ok(frame_id) = state::get_pdu_frame_id(prev_event_id) {
+            extremity_state_hashes.insert(frame_id, prev_event);
+        }
+    }
+
+    if !incoming_pdu.prev_events.is_empty() && extremity_state_hashes.is_empty() {
+        return Err(AppError::public(format!(
+            "cannot resolve state at incoming event, no prev event has frame {}",
+            incoming_pdu.event_id
+        )));
     }
 
     let mut fork_states = Vec::with_capacity(extremity_state_hashes.len());

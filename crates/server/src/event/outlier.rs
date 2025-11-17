@@ -255,7 +255,7 @@ impl OutlierPdu {
                     Ok(missing_events) => {
                         self.soft_failed = !missing_events.is_empty();
                         println!(
-                            "==================================soft failed 2 {}",
+                            "==================================soft failed dsew2 {}",
                             self.soft_failed
                         );
                         missing_events
@@ -281,36 +281,36 @@ impl OutlierPdu {
             }
         }
 
-        // if !missing_events.is_empty() {
-        //     println!(
-        //         "=======call=====fetch_and_process_missing_state {}  {:#?}",
-        //         self.room_id, self.pdu
-        //     );
-        //     for event_id in &missing_events {
-        //         if let Err(e) = fetch_and_process_auth_chain(
-        //             &self.remote_server,
-        //             &self.room_id,
-        //             &self.room_version,
-        //             event_id,
-        //         )
-        //         .await
-        //         {
-        //             println!("error fetching auth chain for {}: {}", event_id, e);
-        //         }
-        //     }
-        //     // if let Err(e) = fetch_and_process_missing_state(
-        //     //     &self.remote_server,
-        //     //     &self.room_id,
-        //     //     &self.room_version,
-        //     //     &self.pdu.event_id,
-        //     // )
-        //     // .await
-        //     // {
-        //     //     error!("failed to fetch missing auth events: {}", e);
-        //     // } else {
-        //     //     self.soft_failed = false;
-        //     // }
-        // }
+        if !missing_events.is_empty() {
+            println!(
+                "=======call=====fetch_and_process_missing_state {}  {:#?}",
+                self.room_id, self.pdu
+            );
+            for event_id in &missing_events {
+                if let Err(e) = fetch_and_process_auth_chain(
+                    &self.remote_server,
+                    &self.room_id,
+                    &self.room_version,
+                    event_id,
+                )
+                .await
+                {
+                    println!("error fetching auth chain for {}: {}", event_id, e);
+                }
+            }
+            // if let Err(e) = fetch_and_process_missing_state(
+            //     &self.remote_server,
+            //     &self.room_id,
+            //     &self.room_version,
+            //     &self.pdu.event_id,
+            // )
+            // .await
+            // {
+            //     error!("failed to fetch missing auth events: {}", e);
+            // } else {
+            //     self.soft_failed = false;
+            // }
+        }
 
         if self.pdu.rejection_reason.is_none() {
             if let Err(e) = auth_check(&self.pdu, &self.room_id, &version_rules).await {
