@@ -93,6 +93,7 @@ pub(crate) async fn process_incoming_pdu(
         return Ok(());
     };
 
+    println!("\n\n\n=============call process_incoming_pdu for incoming 0");
     let (incoming_pdu, val, event_guard) = outlier_pdu.process_incoming().await?;
 
     println!(
@@ -100,6 +101,8 @@ pub(crate) async fn process_incoming_pdu(
         incoming_pdu
     );
     if incoming_pdu.rejected() {
+        println!(
+        "=============call process_incoming_pdu for incoming 1 -1 ");
         return Ok(());
     }
     check_room_id(room_id, &incoming_pdu)?;
@@ -327,10 +330,10 @@ pub async fn process_to_outlier_pdu(
         })
         .collect::<Vec<_>>();
     if !rejected_prev_events.is_empty() {
-        // rejection_reason = Some(format!(
-        //     "event's prev events rejected: {rejected_prev_events:?}"
-        // ))
-        soft_failed = true; // Will try to fetch rejected prev events again later
+        incoming_pdu.rejection_reason = Some(format!(
+            "event's prev events rejected: {rejected_prev_events:?}"
+        ));
+        // soft_failed = true; // Will try to fetch rejected prev events again later
     }
 
     let (auth_events, missing_auth_event_ids) =

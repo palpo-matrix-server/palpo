@@ -33,30 +33,42 @@ pub async fn fetch_and_process_missing_events(
     room_version: &RoomVersionId,
     incoming_pdu: &PduEvent,
 ) -> AppResult<()> {
+    println!("=======  fetch_and_process_missing_events  0");
     let min_depth = timeline::first_pdu_in_room(room_id)
         .ok()
         .and_then(|pdu| pdu.map(|p| p.depth))
         .unwrap_or(0);
-    let forward_extremities = room::state::get_forward_extremities(room_id)?;
     let mut fetched_events = IndexMap::with_capacity(10);
 
-    let mut earliest_events = forward_extremities.clone();
-    // earliest_events.extend(known_events.iter().cloned());
-
+    println!("=======  fetch_and_process_missing_events  1");
+    let earliest_events = room::state::get_forward_extremities(room_id)?;
     let mut known_events = HashSet::new();
     let mut missing_events = Vec::with_capacity(incoming_pdu.prev_events.len());
+    println!(
+        "=======  fetch_and_process_missing_events  2 {:?}",
+        incoming_pdu.prev_events
+    );
+    println!(
+        "=======  fetch_and_process_missing_events  3 {:#?}",
+        earliest_events
+    );
     for prev_id in &incoming_pdu.prev_events {
         let pdu = timeline::get_pdu(prev_id);
+        println!("=================found prev event id {}", prev_id);
         if let Ok(pdu) = &pdu {
+            println!("=================found prev event {:#?}", pdu);
             if pdu.rejected() {
+                println!("=================found prev event rejected");
                 missing_events.push(prev_id.to_owned());
             } else {
+                println!("=================found prev event accepted");
                 known_events.insert(prev_id.to_owned());
             }
-        } else if !earliest_events.contains(prev_id) && !fetched_events.contains_key(prev_id) {
+        } else if !earliest_events.contains(prev_id) {
             missing_events.push(prev_id.to_owned());
         }
     }
+    println!("=======  fetch_and_process_missing_events  3");
     if missing_events.is_empty() {
         return Ok(());
     }

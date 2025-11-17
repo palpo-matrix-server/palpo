@@ -160,10 +160,18 @@ impl OutlierPdu {
     pub async fn process_incoming(
         mut self,
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
-        if !self.soft_failed || self.rejected() {
+        println!("innnnnnnnnn  process_incoming  0");
+
+        if (!self.soft_failed && !self.rejected())
+            || (self.rejected()
+                && self.rejected_prev_events.is_empty()
+                && self.rejected_auth_events.is_empty())
+        {
+            println!("innnnnnnnnn  process_incoming  1 {:#?}", self);
             return self.save_to_database();
         }
 
+        println!("innnnnnnnnn  process_incoming  2");
         // Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
         if let Err(e) = fetch_and_process_missing_events(
             &self.remote_server,
@@ -176,7 +184,8 @@ impl OutlierPdu {
             if let AppError::Matrix(MatrixError { ref kind, .. }) = e {
                 println!("========================zzzz {e}");
                 if *kind == core::error::ErrorKind::BadJson {
-                    self.rejection_reason = Some(format!("failed to bad prev events: {}", e));
+                    self.rejection_reason = Some(format!("bad prev events: {}", e));
+                    println!("========================zzzz 2");
                     return self.save_to_database();
                 } else {
                     println!("==================================soft failed 3 {e}");
@@ -209,15 +218,19 @@ impl OutlierPdu {
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
         let version_rules = crate::room::get_version_rules(&self.room_version)?;
 
+        println!("DDDDDDDDDDDDDDDDDDDDDDDDD 0");
         if !self.soft_failed || self.rejected() {
+            println!("DDDDDDDDDDDDDDDDDDDDDDDDD 1  {:#?}", self);
             return self.save_to_database();
         }
+        println!("DDDDDDDDDDDDDDDDDDDDDDDDD 2");
 
         if self.any_prev_event_rejected()? {
             println!("============any prev event rejected");
             self.rejection_reason = Some("one or more prev events are rejected".to_string());
             return self.save_to_database();
         }
+        println!("DDDDDDDDDDDDDDDDDDDDDDDDD 3");
         if self.any_auth_event_rejected()? {
             println!("============any_auth_event_rejected");
             if let Err(e) = fetch_and_process_auth_chain(
