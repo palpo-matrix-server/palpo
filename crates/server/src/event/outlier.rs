@@ -160,18 +160,14 @@ impl OutlierPdu {
     pub async fn process_incoming(
         mut self,
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
-        println!("innnnnnnnnn  process_incoming  0");
-
         if (!self.soft_failed && !self.rejected())
             || (self.rejected()
                 && self.rejected_prev_events.is_empty()
                 && self.rejected_auth_events.is_empty())
         {
-            println!("innnnnnnnnn  process_incoming  1 {:#?}", self);
             return self.save_to_database();
         }
 
-        println!("innnnnnnnnn  process_incoming  2");
         // Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
         if let Err(e) = fetch_and_process_missing_events(
             &self.remote_server,
@@ -182,7 +178,6 @@ impl OutlierPdu {
         .await
         {
             if let AppError::Matrix(MatrixError { ref kind, .. }) = e {
-                println!("========================zzzz {e}");
                 if *kind == core::error::ErrorKind::BadJson {
                     self.rejection_reason = Some(format!("bad prev events: {}", e));
                     println!("========================zzzz 2");

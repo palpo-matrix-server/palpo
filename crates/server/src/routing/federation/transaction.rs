@@ -36,6 +36,7 @@ async fn send_message(
 ) -> JsonResult<SendMessageResBody> {
     let origin = depot.origin()?;
     let body = body.into_inner();
+    println!("=======send_message from {origin} with  {:?}", body);
     if &body.origin != origin {
         return Err(MatrixError::forbidden(
             "not allowed to send transactions on behalf of other servers",

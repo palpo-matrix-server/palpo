@@ -106,6 +106,14 @@ pub fn get_event_for_timestamp(
                 .order_by((events::origin_server_ts.asc(), events::sn.asc()))
                 .select((events::id, events::origin_server_ts))
                 .first::<(OwnedEventId, UnixMillis)>(&mut connect()?)?;
+            println!(
+                "get_event_for_timestamp Forward  {timestamp} {:#?}",
+                events::table
+                    .filter(events::room_id.eq(room_id))
+                    .order_by((events::origin_server_ts.asc(), events::sn.asc()))
+                    .select((events::id, events::origin_server_ts))
+                    .load::<(OwnedEventId, UnixMillis)>(&mut connect()?)?
+            );
             Ok((local_event_id, origin_server_ts))
         }
         Direction::Backward => {
@@ -258,7 +266,10 @@ pub fn parse_incoming_pdu(
     Ok((event_id, value, room_id, room_version_id))
 }
 
-pub fn seen_event_ids(room_id: &RoomId, event_ids: &[OwnedEventId]) -> AppResult<Vec<OwnedEventId>> {
+pub fn seen_event_ids(
+    room_id: &RoomId,
+    event_ids: &[OwnedEventId],
+) -> AppResult<Vec<OwnedEventId>> {
     let seen_events = events::table
         .filter(events::room_id.eq(room_id))
         .filter(events::id.eq_any(event_ids))

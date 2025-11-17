@@ -101,8 +101,7 @@ pub(crate) async fn process_incoming_pdu(
         incoming_pdu
     );
     if incoming_pdu.rejected() {
-        println!(
-        "=============call process_incoming_pdu for incoming 1 -1 ");
+        println!("=============call process_incoming_pdu for incoming 1 -1 ");
         return Ok(());
     }
     check_room_id(room_id, &incoming_pdu)?;
@@ -198,6 +197,7 @@ pub async fn process_to_outlier_pdu(
     room_version: &RoomVersionId,
     mut value: CanonicalJsonObject,
 ) -> AppResult<Option<OutlierPdu>> {
+    println!("=======process_to_outlier_pdu 0 {value:?}");
     if let Some((room_id, event_sn, event_data)) = event_datas::table
         .filter(event_datas::event_id.eq(event_id))
         .select((
@@ -209,8 +209,8 @@ pub async fn process_to_outlier_pdu(
         .optional()?
         && let Ok(val) = serde_json::from_value::<CanonicalJsonObject>(event_data.clone())
     {
+        println!("=======process_to_outlier_pdu 1");
         if let Ok(pdu) = timeline::get_pdu(event_id) {
-            println!("=======process_to_outlier_pdu 0");
             return Ok(Some(OutlierPdu {
                 pdu: pdu.into_inner(),
                 json_data: val,
@@ -224,6 +224,7 @@ pub async fn process_to_outlier_pdu(
             }));
         }
     }
+    println!("=======process_to_outlier_pdu 2");
     // 1.1. Remove unsigned field
     value.remove("unsigned");
 
@@ -318,7 +319,6 @@ pub async fn process_to_outlier_pdu(
         println!("==================================soft failed 0");
         soft_failed = true;
     }
-    println!("==================================soft failed 1 prev_events: {prev_events:#?}");
     let rejected_prev_events = prev_events
         .iter()
         .filter_map(|pdu| {
@@ -520,10 +520,6 @@ pub async fn process_to_timeline_pdu(
         resolve_state_at_incoming(&incoming_pdu, room_id, &version_rules).await?;
     let state_at_incoming_event = if let Some(state_at_incoming_event) = state_at_incoming_event {
         state_at_incoming_event
-    } else if incoming_pdu.soft_failed {
-        return Err(AppError::internal(
-            "cannot auth check event without state at event",
-        ));
     } else {
         fetch_and_process_missing_state(
             remote_server,
