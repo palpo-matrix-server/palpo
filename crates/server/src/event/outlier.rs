@@ -243,7 +243,10 @@ impl OutlierPdu {
             timeline::get_may_missing_pdus(&self.room_id, &self.pdu.prev_events)?;
         if !missing_prev_event_ids.is_empty() {
             for event_id in &missing_prev_event_ids {
-                println!("============any_auth_event_rejected 3 {event_id}  {:#?}", self.pdu);
+                println!(
+                    "============any_auth_event_rejected 3 {event_id}  {:#?}",
+                    self.pdu
+                );
                 let missing_events = match fetch_and_process_missing_state_by_ids(
                     &self.remote_server,
                     &self.room_id,
@@ -278,42 +281,41 @@ impl OutlierPdu {
                         vec![]
                     }
                 };
-            }
-        }
-
-        if !missing_events.is_empty() {
-            println!(
-                "=======call=====fetch_and_process_missing_state {}  {:#?}",
-                self.room_id, self.pdu
-            );
-            for event_id in &missing_events {
-                if let Err(e) = fetch_and_process_auth_chain(
-                    &self.remote_server,
-                    &self.room_id,
-                    &self.room_version,
-                    event_id,
-                )
-                .await
-                {
-                    println!("error fetching auth chain for {}: {}", event_id, e);
+                if !missing_events.is_empty() {
+                    println!(
+                        "=======call=====fetch_and_process_missing_state {}  {:#?}",
+                        self.room_id, self.pdu
+                    );
+                    for event_id in &missing_events {
+                        if let Err(e) = fetch_and_process_auth_chain(
+                            &self.remote_server,
+                            &self.room_id,
+                            &self.room_version,
+                            event_id,
+                        )
+                        .await
+                        {
+                            println!("error fetching auth chain for {}: {}", event_id, e);
+                        }
+                    }
+                    // if let Err(e) = fetch_and_process_missing_state(
+                    //     &self.remote_server,
+                    //     &self.room_id,
+                    //     &self.room_version,
+                    //     &self.pdu.event_id,
+                    // )
+                    // .await
+                    // {
+                    //     error!("failed to fetch missing auth events: {}", e);
+                    // } else {
+                    //     self.soft_failed = false;
+                    // }
                 }
             }
-            // if let Err(e) = fetch_and_process_missing_state(
-            //     &self.remote_server,
-            //     &self.room_id,
-            //     &self.room_version,
-            //     &self.pdu.event_id,
-            // )
-            // .await
-            // {
-            //     error!("failed to fetch missing auth events: {}", e);
-            // } else {
-            //     self.soft_failed = false;
-            // }
         }
 
         if self.pdu.rejection_reason.is_none() {
-            if let Err(e) = auth_check(&self.pdu, &self.room_id, &version_rules).await {
+            if let Err(e) = auth_check(&self.pdu, &self.room_id, &version_rules, None).await {
                 match e {
                     AppError::State(StateError::Forbidden(brief)) => {
                         println!("=========outlier check auth error: {brief}");

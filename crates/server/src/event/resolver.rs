@@ -153,26 +153,29 @@ pub(super) async fn resolve_state_at_incoming(
     incoming_pdu: &PduEvent,
     room_id: &RoomId,
     version_rules: &RoomVersionRules,
-) -> AppResult<IndexMap<i64, OwnedEventId>> {
+) -> AppResult<Option<IndexMap<i64, OwnedEventId>>> {
     debug!("calculating state at event using state resolve");
     let mut extremity_state_hashes = HashMap::new();
 
     for prev_event_id in &incoming_pdu.prev_events {
-        let prev_event = timeline::get_pdu(prev_event_id)?;
+        let Ok(prev_event) = timeline::get_pdu(prev_event_id) else {
+            return Ok(None);
+        };
+
+        if prev_event.rejected() {
+            continue;
+        }
+
         if let Ok(frame_id) = state::get_pdu_frame_id(prev_event_id) {
             extremity_state_hashes.insert(frame_id, prev_event);
+        }else {
+            return Ok(None);
         }
-    }
-
-    if !incoming_pdu.prev_events.is_empty() && extremity_state_hashes.is_empty() {
-        return Err(AppError::public(format!(
-            "cannot resolve state at incoming event, no prev event has frame {}",
-            incoming_pdu.event_id
-        )));
     }
 
     let mut fork_states = Vec::with_capacity(extremity_state_hashes.len());
     let mut auth_chain_sets = Vec::with_capacity(extremity_state_hashes.len());
+
 
     for (frame_id, prev_event) in extremity_state_hashes {
         let mut leaf_state = state::get_full_state_ids(frame_id)?;
@@ -246,17 +249,19 @@ pub(super) async fn resolve_state_at_incoming(
     drop(state_lock);
 
     match result {
-        Ok(new_state) => Ok(new_state
-            .into_iter()
-            .map(|((event_type, state_key), event_id)| {
-                let state_key_id =
-                    state::ensure_field_id(&event_type.to_string().into(), &state_key)?;
-                Ok((state_key_id, event_id))
-            })
-            .collect::<AppResult<_>>()?),
+        Ok(new_state) => Ok(Some(
+            new_state
+                .into_iter()
+                .map(|((event_type, state_key), event_id)| {
+                    let state_key_id =
+                        state::ensure_field_id(&event_type.to_string().into(), &state_key)?;
+                    Ok((state_key_id, event_id))
+                })
+                .collect::<AppResult<_>>()?,
+        )),
         Err(e) => {
             warn!("state resolution on prev events failed: {}", e);
-            Err(e.into())
+            Ok(None)
         }
     }
 }

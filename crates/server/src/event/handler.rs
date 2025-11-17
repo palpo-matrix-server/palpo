@@ -5,14 +5,14 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use diesel::prelude::*;
-use palpo_core::room_version_rules::RoomVersionRules;
+use indexmap::IndexMap;
 
 use super::fetching::{fetch_and_process_events, fetch_and_process_missing_state, fetch_state_ids};
 use super::resolver::{resolve_state, resolve_state_at_incoming};
-use crate::core::events::StateEventType;
-use crate::core::events::TimelineEventType;
 use crate::core::events::room::server_acl::RoomServerAclEventContent;
+use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
+use crate::core::room_version_rules::RoomVersionRules;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonValue, canonical_json};
 use crate::core::signatures::Verified;
 use crate::core::state::{Event, StateError, event_auth};
@@ -382,7 +382,7 @@ pub async fn process_to_outlier_pdu(
     }
 
     if incoming_pdu.rejection_reason.is_none() {
-        if let Err(e) = auth_check(&incoming_pdu, room_id, &version_rules).await {
+        if let Err(e) = auth_check(&incoming_pdu, room_id, &version_rules, None).await {
             match e {
                 AppError::State(StateError::Forbidden(brief)) => {
                     println!("=========outlier check auth error: {brief}");
@@ -446,6 +446,8 @@ pub async fn process_to_timeline_pdu(
             let state_at_incoming_event =
                 resolve_state_at_incoming(&incoming_pdu, room_id, &version_rules)
                     .await
+                    .ok()
+                    .flatten()
                     .unwrap_or_default();
 
             // 13. Use state resolution to find new room state
@@ -513,9 +515,30 @@ pub async fn process_to_timeline_pdu(
 
     let state_at_incoming_event =
         resolve_state_at_incoming(&incoming_pdu, room_id, &version_rules).await?;
-    println!("==============state_at_incoming_event: {state_at_incoming_event:#?}");
+    let state_at_incoming_event = if let Some(state_at_incoming_event) = state_at_incoming_event {
+        state_at_incoming_event
+    } else if incoming_pdu.soft_failed {
+        return Err(AppError::internal(
+            "cannot auth check event without state at event",
+        ));
+    } else {
+        fetch_and_process_missing_state(
+            remote_server,
+            room_id,
+            room_version_id,
+            &incoming_pdu.event_id,
+        )
+        .await?
+        .state_events
+    };
 
-    auth_check(&incoming_pdu, room_id, &version_rules).await?;
+    auth_check(
+        &incoming_pdu,
+        room_id,
+        &version_rules,
+        Some(&state_at_incoming_event),
+    )
+    .await?;
 
     // Soft fail check before doing state res
     debug!("performing soft-fail check");
@@ -629,11 +652,20 @@ pub async fn auth_check(
     incoming_pdu: &PduEvent,
     room_id: &RoomId,
     version_rules: &RoomVersionRules,
+    state_at_incoming_event: Option<&IndexMap<i64, OwnedEventId>>,
 ) -> AppResult<()> {
     let auth_rules = &version_rules.authorization;
-    let state_at_incoming_event =
-        resolve_state_at_incoming(incoming_pdu, room_id, version_rules).await?;
-    println!("==============state_at_incoming_event: {state_at_incoming_event:#?}");
+    let state_at_incoming_event = if let Some(state_at_incoming_event) = state_at_incoming_event {
+        state_at_incoming_event.to_owned()
+    } else if let Some(state_at_incoming_event) =
+        resolve_state_at_incoming(&incoming_pdu, room_id, &version_rules).await?
+    {
+        state_at_incoming_event
+    } else {
+        return Err(AppError::internal(
+            "cannot auth check event without state at event",
+        ));
+    };
 
     if !state_at_incoming_event.is_empty() {
         debug!("performing auth check");
