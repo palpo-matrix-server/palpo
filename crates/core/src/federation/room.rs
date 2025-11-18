@@ -9,21 +9,6 @@ use crate::{
     serde::RawJson,
 };
 
-/// Request type for the `get_event_by_timestamp` endpoint.
-#[derive(ToParameters, Deserialize, Debug)]
-pub struct TimestampToEventReqArgs {
-    /// The ID of the room the event is in.
-    #[salvo(parameter(parameter_in = Path))]
-    pub room_id: OwnedRoomId,
-
-    /// The timestamp to search from, inclusively.
-    #[salvo(parameter(parameter_in = Query))]
-    pub ts: UnixMillis,
-
-    /// The direction in which to search.
-    #[salvo(parameter(parameter_in = Query))]
-    pub dir: Direction,
-}
 
 // /// `GET /_matrix/client/*/rooms/{room_id}/event/{event_id}`
 // ///

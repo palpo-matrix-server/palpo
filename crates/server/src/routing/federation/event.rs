@@ -4,10 +4,10 @@ use salvo::prelude::*;
 use crate::core::UnixMillis;
 use crate::core::federation::authorization::{EventAuthReqArgs, EventAuthResBody};
 use crate::core::federation::event::{
-    EventReqArgs, EventResBody, MissingEventsReqBody, MissingEventsResBody, TimestampToEventReqArgs,
+    EventReqArgs, EventResBody, MissingEventsReqBody, MissingEventsResBody,
 };
 use crate::core::identifiers::*;
-use crate::core::room::TimestampToEventResBody;
+use crate::core::room::{TimestampToEventReqArgs, TimestampToEventResBody};
 use crate::data::room::DbEvent;
 use crate::room::{state, timeline};
 use crate::{

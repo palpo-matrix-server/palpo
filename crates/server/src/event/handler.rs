@@ -4,7 +4,6 @@ use std::iter::once;
 use std::sync::Arc;
 use std::time::Instant;
 
-use chrono::Duration;
 use diesel::prelude::*;
 use indexmap::IndexMap;
 use palpo_core::Direction;
@@ -13,9 +12,9 @@ use super::fetching::{fetch_and_process_events, fetch_and_process_missing_state,
 use super::resolver::{resolve_state, resolve_state_at_incoming};
 use crate::core::events::room::server_acl::RoomServerAclEventContent;
 use crate::core::events::{StateEventType, TimelineEventType};
-use crate::core::federation::event::{TimestampToEventReqArgs, timestamp_to_event_request};
+use crate::core::federation::event::timestamp_to_event_request;
 use crate::core::identifiers::*;
-use crate::core::room::TimestampToEventResBody;
+use crate::core::room::{TimestampToEventReqArgs, TimestampToEventResBody};
 use crate::core::room_version_rules::RoomVersionRules;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonValue, canonical_json};
 use crate::core::signatures::Verified;
@@ -26,6 +25,7 @@ use crate::data::{connect, schema::*};
 use crate::event::{OutlierPdu, PduEvent, SnPduEvent, handler, parse_fetched_pdu};
 use crate::room::state::{CompressedState, DeltaInfo};
 use crate::room::{state, timeline};
+use crate::sending::send_federation_request;
 use crate::{AppError, AppResult, MatrixError, exts::*, room, sending};
 
 #[tracing::instrument(skip_all)]
@@ -660,35 +660,48 @@ pub async fn remote_timestamp_to_event(
     ts: UnixMillis,
     exist: Option<&(OwnedEventId, UnixMillis)>,
 ) -> AppResult<(OwnedServerName, TimestampToEventResBody)> {
-    for remote_server in remote_servers {
-        let Ok(res_body) = timestamp_to_event_request(
-            remote_server.origin().await,
+    async fn remote_event(
+        remote_server: &ServerName,
+        room_id: &RoomId,
+        dir: Direction,
+        ts: UnixMillis,
+    ) -> AppResult<TimestampToEventResBody> {
+        let request = timestamp_to_event_request(
+            &remote_server.origin().await,
             TimestampToEventReqArgs {
-                room_id: room_id.clone(),
+                room_id: room_id.to_owned(),
                 dir,
                 ts,
             },
-        )
-        .await
-        else {
-            continue;
-        };
-        if let Some((exist_id, exist_ts)) = exist {
-            match dir {
-                Duration::Forward => {
-                    if res_body.event_id == *exist_id && res_body.origin_server_ts >= *exist_ts {
-                        return Ok(res_body);
+        )?
+        .into_inner();
+        let res_body = send_federation_request(remote_server, request, None)
+            .await?
+            .json::<TimestampToEventResBody>()
+            .await?;
+        Ok(res_body)
+    }
+    for remote_server in remote_servers {
+        if let Ok(res_body) = remote_event(remote_server, room_id, dir, ts, exist).await {
+            if let Some((exist_id, exist_ts)) = exist {
+                match dir {
+                    Direction::Forward => {
+                        if res_body.event_id == *exist_id && res_body.origin_server_ts >= *exist_ts
+                        {
+                            return Ok((remote_server.to_owned(), res_body));
+                        }
+                    }
+                    Direction::Backward => {
+                        if res_body.event_id == *exist_id && res_body.origin_server_ts <= *exist_ts
+                        {
+                            return Ok((remote_server.to_owned(), res_body));
+                        }
                     }
                 }
-                Duration::Backward => {
-                    if res_body.event_id == *exist_id && res_body.origin_server_ts <= *exist_ts {
-                        return Ok(res_body);
-                    }
-                }
-            }
-        } else {
-            return Ok(res_body);
-        };
+            } else {
+                return Ok((remote_server.to_owned(), res_body));
+            };
+        }
     }
     Err(AppError::internal(
         "failed to get timestamp to event from remote servers",

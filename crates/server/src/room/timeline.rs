@@ -1105,6 +1105,14 @@ pub fn redact_pdu(event_id: &EventId, reason: &PduEvent) -> AppResult<()> {
     Ok(())
 }
 
+pub fn is_event_next_to_backward_gap(event_id: &EventId) -> AppResult<bool> {
+    Ok(true)
+}
+
+pub fn is_event_next_to_forward_gap(event_id: &EventId) -> AppResult<bool> {
+    Ok(true)
+}
+
 #[tracing::instrument(skip(room_id))]
 pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<()> {
     let pdus = all_pdus(
@@ -1204,7 +1212,7 @@ pub async fn backfill_pdu(
 
         let _content = pdu
             .get_content::<ExtractBody>()
-            .map_err(|_| AppError::internal("Invalid content in pdu."))?;
+            .map_err(|_| AppError::internal("invalid content in pdu."))?;
     }
 
     Ok(())

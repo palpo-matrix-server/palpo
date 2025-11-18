@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize, de};
 use serde_json::{Value as JsonValue, value::RawValue as RawJsonValue};
 
 use crate::{
-    EventEncryptionAlgorithm, OwnedEventId, OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId,
+    Direction, EventEncryptionAlgorithm, OwnedEventId, OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId,
     OwnedUserId, PrivOwnedStr, RoomId, RoomVersionId, UnixMillis,
     events::StateEventType,
     serde::{StringEnum, from_raw_json_value},
@@ -631,6 +631,22 @@ impl From<Restricted> for RestrictedSummary {
 
         Self::new(allowed_room_ids)
     }
+}
+
+/// Request type for the `get_event_by_timestamp` endpoint.
+#[derive(ToParameters, Deserialize, Debug)]
+pub struct TimestampToEventReqArgs {
+    /// The ID of the room the event is in.
+    #[salvo(parameter(parameter_in = Path))]
+    pub room_id: OwnedRoomId,
+
+    /// The timestamp to search from, inclusively.
+    #[salvo(parameter(parameter_in = Query))]
+    pub ts: UnixMillis,
+
+    /// The direction in which to search.
+    #[salvo(parameter(parameter_in = Query))]
+    pub dir: Direction,
 }
 
 /// Response type for the `get_event_by_timestamp` endpoint.

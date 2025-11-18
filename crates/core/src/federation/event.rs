@@ -2,9 +2,10 @@ use reqwest::Url;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use crate::identifiers::*;
+use crate::room::TimestampToEventReqArgs;
 use crate::sending::{SendRequest, SendResult};
-use crate::{Direction, serde::RawJsonValue};
-use crate::{OwnedEventId, OwnedRoomId, OwnedServerName, OwnedTransactionId, RoomId, UnixMillis};
+use crate::{Direction, UnixMillis, serde::RawJsonValue};
 
 // /// `GET /_matrix/federation/*/timestamp_to_event/{room_id}`
 // ///
@@ -42,22 +43,6 @@ pub fn timestamp_to_event_request(
         )
         .append_pair("ts", &args.ts.to_string());
     Ok(crate::sending::get(url))
-}
-
-/// Request type for the `get_event_by_timestamp` endpoint.
-#[derive(ToParameters, Deserialize, Debug)]
-pub struct TimestampToEventReqArgs {
-    /// The ID of the room the event is in.
-    #[salvo(parameter(parameter_in = Path))]
-    pub room_id: OwnedRoomId,
-
-    /// The timestamp to search from.
-    #[salvo(parameter(parameter_in = Query))]
-    pub dir: Direction,
-
-    /// The timestamp to search from.
-    #[salvo(parameter(parameter_in = Query))]
-    pub ts: UnixMillis,
 }
 
 // /// `GET /_matrix/federation/*/event/{event_id}`
