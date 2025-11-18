@@ -9,12 +9,12 @@ use state::DbRoomStateField;
 use crate::core::client::filter::LazyLoadOptions;
 use crate::core::client::redact::{RedactEventReqArgs, RedactEventReqBody, RedactEventResBody};
 use crate::core::client::room::{
-    ContextReqArgs, ContextResBody, ReportContentReqBody, RoomEventResBody, TimestampToEventReqArgs,
+    ContextReqArgs, ContextResBody, ReportContentReqBody, RoomEventResBody,
 };
 use crate::core::events::room::message::RoomMessageEventContent;
 use crate::core::events::room::redaction::RoomRedactionEventContent;
 use crate::core::events::{StateEventType, TimelineEventType};
-use crate::core::room::{RoomEventReqArgs, TimestampToEventResBody};
+use crate::core::room::{RoomEventReqArgs,TimestampToEventReqArgs, TimestampToEventResBody};
 use crate::data::room::DbEvent;
 use crate::event::fetching::fetch_event;
 use crate::event::handler::{process_pulled_pdu, remote_timestamp_to_event};

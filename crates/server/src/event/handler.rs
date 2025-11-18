@@ -682,7 +682,7 @@ pub async fn remote_timestamp_to_event(
         Ok(res_body)
     }
     for remote_server in remote_servers {
-        if let Ok(res_body) = remote_event(remote_server, room_id, dir, ts, exist).await {
+        if let Ok(res_body) = remote_event(remote_server, room_id, dir, ts).await {
             if let Some((exist_id, exist_ts)) = exist {
                 match dir {
                     Direction::Forward => {
