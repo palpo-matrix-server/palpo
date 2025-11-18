@@ -660,12 +660,17 @@ pub async fn remote_timestamp_to_event(
     ts: UnixMillis,
     exist: Option<&(OwnedEventId, UnixMillis)>,
 ) -> AppResult<(OwnedServerName, TimestampToEventResBody)> {
+    println!(
+        ">>>>>>>>>>>>>>>>>>remote_timestamp_to_event {:?}",
+        remote_servers
+    );
     async fn remote_event(
         remote_server: &ServerName,
         room_id: &RoomId,
         dir: Direction,
         ts: UnixMillis,
     ) -> AppResult<TimestampToEventResBody> {
+        println!(">>>>>>>>>>>>>>>>>>remote_event {:?}", remote_server);
         let request = timestamp_to_event_request(
             &remote_server.origin().await,
             TimestampToEventReqArgs {
@@ -679,21 +684,20 @@ pub async fn remote_timestamp_to_event(
             .await?
             .json::<TimestampToEventResBody>()
             .await?;
+        println!(">>>>>>>>>>>>>>>>>>remote_event res_body {:?}", res_body);
         Ok(res_body)
     }
     for remote_server in remote_servers {
         if let Ok(res_body) = remote_event(remote_server, room_id, dir, ts).await {
-            if let Some((exist_id, exist_ts)) = exist {
+            if let Some((_exist_id, exist_ts)) = exist {
                 match dir {
                     Direction::Forward => {
-                        if res_body.event_id == *exist_id && res_body.origin_server_ts >= *exist_ts
-                        {
+                        if res_body.origin_server_ts < *exist_ts {
                             return Ok((remote_server.to_owned(), res_body));
                         }
                     }
                     Direction::Backward => {
-                        if res_body.event_id == *exist_id && res_body.origin_server_ts <= *exist_ts
-                        {
+                        if res_body.origin_server_ts > *exist_ts {
                             return Ok((remote_server.to_owned(), res_body));
                         }
                     }

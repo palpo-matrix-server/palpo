@@ -37,8 +37,8 @@ pub fn timestamp_to_event_request(
         .append_pair(
             "dir",
             match args.dir {
-                Direction::Forward => "b",
-                Direction::Backward => "f",
+                Direction::Forward => "f",
+                Direction::Backward => "b",
             },
         )
         .append_pair("ts", &args.ts.to_string());

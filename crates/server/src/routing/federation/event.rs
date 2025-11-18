@@ -18,7 +18,7 @@ pub fn router() -> Router {
     Router::new()
         .push(Router::with_path("event/{event_id}").get(get_event))
         .push(Router::with_path("event_auth/{room_id}/{event_id}").get(auth_chain))
-        .push(Router::with_path("timestamp_to_event/{room_id}").get(event_by_timestamp))
+        .push(Router::with_path("timestamp_to_event/{room_id}").get(timestamp_to_event))
         .push(Router::with_path("get_missing_events/{room_id}").post(missing_events))
         .push(
             Router::with_path("exchange_third_party_invite/{room_id}")
@@ -99,11 +99,12 @@ fn auth_chain(
 }
 
 #[endpoint]
-async fn event_by_timestamp(
+async fn timestamp_to_event(
     _aa: AuthArgs,
     args: TimestampToEventReqArgs,
     depot: &mut Depot,
 ) -> JsonResult<TimestampToEventResBody> {
+    println!(">>>>>>>>>>>>>>>>>fffffffffffff  timestamp_to_event  {args:#?}");
     let origin = depot.origin()?;
     crate::federation::access_check(origin, &args.room_id, None)?;
 

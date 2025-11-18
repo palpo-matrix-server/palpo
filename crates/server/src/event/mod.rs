@@ -114,6 +114,9 @@ pub fn get_event_for_timestamp(
                     .select((events::id, events::origin_server_ts))
                     .load::<(OwnedEventId, UnixMillis)>(&mut connect()?)?
             );
+            println!(
+                "get_event_for_timestamp Forward  {timestamp}  found event {local_event_id} at {origin_server_ts}"
+            );
             Ok((local_event_id, origin_server_ts))
         }
         Direction::Backward => {
