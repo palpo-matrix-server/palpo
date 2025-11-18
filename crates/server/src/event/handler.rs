@@ -153,6 +153,7 @@ pub(crate) async fn process_pulled_pdu(
     room_version_id: &RoomVersionId,
     value: BTreeMap<String, CanonicalJsonValue>,
 ) -> AppResult<()> {
+    println!("================= process_pulled_pdu 0 {event_id}");
     // 1.3.1 Check room ACL on origin field/server
     handler::acl_check(remote_server, room_id)?;
 
@@ -182,6 +183,7 @@ pub(crate) async fn process_pulled_pdu(
     };
     let (pdu, json_data, _) = outlier_pdu.process_pulled().await?;
 
+    println!("=============call process_to_timeline_pdu z 0");
     if pdu.soft_failed || pdu.rejected() {
         return Ok(());
     }
@@ -201,7 +203,7 @@ pub async fn process_to_outlier_pdu(
     room_version: &RoomVersionId,
     mut value: CanonicalJsonObject,
 ) -> AppResult<Option<OutlierPdu>> {
-    println!("=======process_to_outlier_pdu 0 {value:?}");
+    println!("=======process_to_outlier_pdu 0 {event_id:?}");
     if let Some((room_id, event_sn, event_data)) = event_datas::table
         .filter(event_datas::event_id.eq(event_id))
         .select((
@@ -296,7 +298,7 @@ pub async fn process_to_outlier_pdu(
             && state_key.ends_with(&*format!(":{}", crate::config::server_name()))
         {
             debug!("added pdu as outlier");
-            println!("=======process_to_outlier_pdu 2");
+            println!("=======process_to_outlier_pdu !server_joined");
             return Ok(Some(OutlierPdu {
                 pdu: incoming_pdu,
                 json_data: val,

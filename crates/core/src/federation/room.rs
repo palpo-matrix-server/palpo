@@ -9,7 +9,6 @@ use crate::{
     serde::RawJson,
 };
 
-
 // /// `GET /_matrix/client/*/rooms/{room_id}/event/{event_id}`
 // ///
 // /// Get a single event based on roomId/eventId

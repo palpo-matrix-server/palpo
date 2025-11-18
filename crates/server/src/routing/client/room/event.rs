@@ -14,7 +14,7 @@ use crate::core::client::room::{
 use crate::core::events::room::message::RoomMessageEventContent;
 use crate::core::events::room::redaction::RoomRedactionEventContent;
 use crate::core::events::{StateEventType, TimelineEventType};
-use crate::core::room::{RoomEventReqArgs,TimestampToEventReqArgs, TimestampToEventResBody};
+use crate::core::room::{RoomEventReqArgs, TimestampToEventReqArgs, TimestampToEventResBody};
 use crate::data::room::DbEvent;
 use crate::event::fetching::fetch_event;
 use crate::event::handler::{process_pulled_pdu, remote_timestamp_to_event};
@@ -327,17 +327,20 @@ pub(super) async fn timestamp_to_event(
     let mut is_event_next_to_backward_gap = false;
     let mut is_event_next_to_forward_gap = false;
     if let Some(local_event) = &local_event {
+        let local_event = timeline::get_pdu(&local_event.0)?;
         match args.dir {
             Direction::Backward => {
                 is_event_next_to_backward_gap =
-                    timeline::is_event_next_to_backward_gap(&local_event.0)?
+                    timeline::is_event_next_to_backward_gap(&local_event)?
             }
             Direction::Forward => {
-                is_event_next_to_forward_gap =
-                    timeline::is_event_next_to_forward_gap(&local_event.0)?
+                is_event_next_to_forward_gap = timeline::is_event_next_to_forward_gap(&local_event)?
             }
         }
     }
+    println!(
+        "=========>>>>>>>>>>>>>>fffffffffffff  timestamp_to_event  is_event_next_to_forward_gap={is_event_next_to_forward_gap:?} is_event_next_to_backward_gap={is_event_next_to_backward_gap} is_event_next_to_forward_gap={is_event_next_to_forward_gap}"
+    );
     if local_event.is_none() || is_event_next_to_backward_gap || is_event_next_to_forward_gap {
         let remote_servers = room::participating_servers(&args.room_id, false)?;
         let Ok((

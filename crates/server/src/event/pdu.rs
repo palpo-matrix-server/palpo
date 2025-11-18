@@ -67,8 +67,17 @@ impl SnPduEvent {
                 return Ok(true);
             }
         }
-        let Ok(frame_id) = state::get_pdu_frame_id(&self.event_id) else {
-            return Ok(false);
+        let frame_id = match state::get_pdu_frame_id(&self.event_id) {
+            Ok(frame_id) => frame_id,
+            Err(_) => {
+                println!("<<<<<<<<<<<<<<<<<<user can see false 1 {self:#?}");
+                match state::get_room_frame_id(&self.room_id, None) {
+                    Ok(frame_id) => frame_id,
+                    Err(_) => {
+                        return Ok(false);
+                    }
+                }
+            }
         };
 
         if let Some(visibility) = state::USER_VISIBILITY_CACHE
@@ -76,6 +85,7 @@ impl SnPduEvent {
             .unwrap()
             .get_mut(&(user_id.to_owned(), frame_id))
         {
+            println!("<<<<<<<<<<<<<<<<<<user can see false 2 {visibility:?}");
             return Ok(*visibility);
         }
 
@@ -109,9 +119,11 @@ impl SnPduEvent {
             }
             _ => {
                 error!("unknown history visibility {history_visibility}");
+                println!("<<<<<<<<<<<<<<<<<<user can see false 3");
                 false
             }
         };
+        println!("<<<<<<<<<<<<<<<<<<user can see false 4");
 
         state::USER_VISIBILITY_CACHE
             .lock()

@@ -1,22 +1,21 @@
-use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 
 use diesel::prelude::*;
-use palpo_data::diesel_exists;
 
-use crate::core::events::{StateEventType, TimelineEventType};
+use crate::core::events::TimelineEventType;
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonObject, RawJsonValue};
-use crate::core::state::{Event, StateError, event_auth};
+use crate::core::state::{Event, StateError};
 use crate::core::{self, Seqnum, UnixMillis};
 use crate::data::room::{DbEventData, NewDbEvent};
-use crate::data::{connect, schema::*};
+use crate::data::{connect, diesel_exists, schema::*};
 use crate::event::fetching::{
     fetch_and_process_auth_chain, fetch_and_process_missing_events,
-    fetch_and_process_missing_state, fetch_and_process_missing_state_by_ids,
+    fetch_and_process_missing_state_by_ids,
 };
 use crate::event::handler::auth_check;
 use crate::event::{PduEvent, SnPduEvent, ensure_event_sn};
+use crate::room::state::update_backward_extremities;
 use crate::room::timeline;
 use crate::utils::SeqnumQueueGuard;
 use crate::{AppError, AppResult, MatrixError};
@@ -145,16 +144,14 @@ impl OutlierPdu {
             format_version: None,
         }
         .save()?;
-        Ok((
-            SnPduEvent {
-                pdu,
-                event_sn,
-                is_outlier: true,
-                soft_failed,
-            },
-            json_data,
-            event_guard,
-        ))
+        let pdu = SnPduEvent {
+            pdu,
+            event_sn,
+            is_outlier: true,
+            soft_failed,
+        };
+        update_backward_extremities(&pdu)?;
+        Ok((pdu, json_data, event_guard))
     }
 
     pub async fn process_incoming(
@@ -213,7 +210,7 @@ impl OutlierPdu {
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
         let version_rules = crate::room::get_version_rules(&self.room_version)?;
 
-        println!("DDDDDDDDDDDDDDDDDDDDDDDDD 0");
+        println!("DDDDDDDDDDDDDDDDDDDDDDDDD 0  {:#?}", self.event_id);
         if !self.soft_failed || self.rejected() {
             println!("DDDDDDDDDDDDDDDDDDDDDDDDD 1  {:#?}", self);
             return self.save_to_database();
@@ -326,11 +323,11 @@ impl OutlierPdu {
             if let Err(e) = auth_check(&self.pdu, &self.room_id, &version_rules, None).await {
                 match e {
                     AppError::State(StateError::Forbidden(brief)) => {
-                        println!("=========outlier check auth error: {brief}");
+                        println!("=======zz==outlier check auth error: {brief}");
                         self.pdu.rejection_reason = Some(brief);
                     }
                     _ => {
-                        println!("=========outlier check auth error2: {e}");
+                        println!("======zz===outlier check auth error2: {e}");
                         self.soft_failed = true;
                     }
                 }
@@ -339,7 +336,6 @@ impl OutlierPdu {
             }
         }
         println!("xxxxxxxxxxxxxxxxxxxxdre");
-
         self.save_to_database()
     }
 }

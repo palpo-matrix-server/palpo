@@ -178,7 +178,16 @@ impl Writer for AppError {
                     MatrixError::unknown("unknown db error")
                 }
             }
-            Self::HttpStatus(e) => MatrixError::unknown(e.brief),
+            Self::HttpStatus(e) => match e.code {
+                StatusCode::NOT_FOUND => MatrixError::not_found(e.brief),
+                StatusCode::FORBIDDEN => MatrixError::forbidden(e.brief, None),
+                StatusCode::UNAUTHORIZED => MatrixError::unauthorized(e.brief),
+                code => {
+                    let mut e = MatrixError::unknown(e.brief);
+                    e.status_code = Some(code);
+                    e
+                }
+            },
             Self::Data(e) => {
                 e.write(req, depot, res).await;
                 return;

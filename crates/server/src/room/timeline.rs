@@ -1105,12 +1105,26 @@ pub fn redact_pdu(event_id: &EventId, reason: &PduEvent) -> AppResult<()> {
     Ok(())
 }
 
-pub fn is_event_next_to_backward_gap(event_id: &EventId) -> AppResult<bool> {
-    Ok(true)
+pub fn is_event_next_to_backward_gap(event: &PduEvent) -> AppResult<bool> {
+    let mut event_ids = event.prev_events.clone();
+    event_ids.push(event.event_id().to_owned());
+    println!(
+        "ccccccccccccccChecking backward gap for event {:#?}",
+        event_ids
+    );
+    let query = event_backward_extremities::table
+        .filter(event_backward_extremities::room_id.eq(event.room_id()))
+        .filter(event_backward_extremities::event_id.eq_any(event_ids));
+    Ok(diesel_exists!(query, &mut connect()?)?)
 }
 
-pub fn is_event_next_to_forward_gap(event_id: &EventId) -> AppResult<bool> {
-    Ok(true)
+pub fn is_event_next_to_forward_gap(event: &PduEvent) -> AppResult<bool> {
+    let mut event_ids = event.prev_events.clone();
+    event_ids.push(event.event_id().to_owned());
+    let query = event_forward_extremities::table
+        .filter(event_forward_extremities::room_id.eq(event.room_id()))
+        .filter(event_forward_extremities::event_id.eq_any(event_ids));
+    Ok(diesel_exists!(query, &mut connect()?)?)
 }
 
 #[tracing::instrument(skip(room_id))]
