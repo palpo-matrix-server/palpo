@@ -24,9 +24,29 @@ use crate::{OwnedEventId, OwnedRoomId, OwnedServerName, OwnedTransactionId, Room
 //     }
 // };
 
+pub fn timestamp_to_event_request(
+    origin: &str,
+    args: TimestampToEventReqArgs,
+) -> SendResult<SendRequest> {
+    let mut url = Url::parse(&format!(
+        "{origin}/_matrix/federation/v1/timestamp_to_event/{}",
+        args.room_id
+    ))?;
+    url.query_pairs_mut()
+        .append_pair(
+            "dir",
+            match args.dir {
+                Direction::Forward => "b",
+                Direction::Backward => "f",
+            },
+        )
+        .append_pair("ts", &args.ts.to_string());
+    Ok(crate::sending::get(url))
+}
+
 /// Request type for the `get_event_by_timestamp` endpoint.
 #[derive(ToParameters, Deserialize, Debug)]
-pub struct EventByTimestampReqArgs {
+pub struct TimestampToEventReqArgs {
     /// The ID of the room the event is in.
     #[salvo(parameter(parameter_in = Path))]
     pub room_id: OwnedRoomId,
@@ -38,26 +58,6 @@ pub struct EventByTimestampReqArgs {
     /// The timestamp to search from.
     #[salvo(parameter(parameter_in = Query))]
     pub ts: UnixMillis,
-}
-
-/// Response type for the `get_event_by_timestamp` endpoint.
-#[derive(ToSchema, Serialize, Debug)]
-pub struct EventByTimestampResBody {
-    /// The ID of the event found.
-    pub event_id: OwnedEventId,
-
-    /// The event's timestamp.
-    pub origin_server_ts: UnixMillis,
-}
-
-impl EventByTimestampResBody {
-    /// Creates a new `Response` with the given event ID and timestamp.
-    pub fn new(event_id: OwnedEventId, origin_server_ts: UnixMillis) -> Self {
-        Self {
-            event_id,
-            origin_server_ts,
-        }
-    }
 }
 
 // /// `GET /_matrix/federation/*/event/{event_id}`

@@ -168,14 +168,13 @@ pub(super) async fn resolve_state_at_incoming(
 
         if let Ok(frame_id) = state::get_pdu_frame_id(prev_event_id) {
             extremity_state_hashes.insert(frame_id, prev_event);
-        }else {
+        } else {
             return Ok(None);
         }
     }
 
     let mut fork_states = Vec::with_capacity(extremity_state_hashes.len());
     let mut auth_chain_sets = Vec::with_capacity(extremity_state_hashes.len());
-
 
     for (frame_id, prev_event) in extremity_state_hashes {
         let mut leaf_state = state::get_full_state_ids(frame_id)?;

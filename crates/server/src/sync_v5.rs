@@ -849,11 +849,7 @@ pub fn update_sync_subscriptions(
     subscriptions: BTreeMap<OwnedRoomId, sync_events::v5::RoomSubscription>,
 ) {
     let mut cache = CONNECTIONS.lock().unwrap();
-    let cached = Arc::clone(
-        cache
-            .entry((user_id, device_id, conn_id))
-            .or_default(),
-    );
+    let cached = Arc::clone(cache.entry((user_id, device_id, conn_id)).or_default());
     let cached = &mut cached.lock().unwrap();
     drop(cache);
 
@@ -869,11 +865,7 @@ pub fn update_sync_known_rooms(
     since_sn: i64,
 ) {
     let mut cache = CONNECTIONS.lock().unwrap();
-    let cached = Arc::clone(
-        cache
-            .entry((user_id, device_id, conn_id))
-            .or_default(),
-    );
+    let cached = Arc::clone(cache.entry((user_id, device_id, conn_id)).or_default());
     let cached = &mut cached.lock().unwrap();
     drop(cache);
 
@@ -900,11 +892,7 @@ pub fn mark_required_state_sent(
     event_sn: Seqnum,
 ) {
     let mut cache = CONNECTIONS.lock().unwrap();
-    let cached = Arc::clone(
-        cache
-            .entry((user_id, device_id, conn_id))
-            .or_default(),
-    );
+    let cached = Arc::clone(cache.entry((user_id, device_id, conn_id)).or_default());
     let cached = &mut cached.lock().unwrap();
     drop(cache);
     cached.required_state.insert(event_sn);

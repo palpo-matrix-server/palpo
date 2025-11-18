@@ -12,7 +12,7 @@ use serde_json::{Value as JsonValue, value::RawValue as RawJsonValue};
 
 use crate::{
     EventEncryptionAlgorithm, OwnedEventId, OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId,
-    OwnedUserId, PrivOwnedStr, RoomId, RoomVersionId,
+    OwnedUserId, PrivOwnedStr, RoomId, RoomVersionId, UnixMillis,
     events::StateEventType,
     serde::{StringEnum, from_raw_json_value},
 };
@@ -630,6 +630,26 @@ impl From<Restricted> for RestrictedSummary {
             .collect();
 
         Self::new(allowed_room_ids)
+    }
+}
+
+/// Response type for the `get_event_by_timestamp` endpoint.
+#[derive(ToSchema, Deserialize, Serialize, Debug)]
+pub struct TimestampToEventResBody {
+    /// The ID of the event found.
+    pub event_id: OwnedEventId,
+
+    /// The event's timestamp.
+    pub origin_server_ts: UnixMillis,
+}
+
+impl TimestampToEventResBody {
+    /// Creates a new `Response` with the given event ID and timestamp.
+    pub fn new(event_id: OwnedEventId, origin_server_ts: UnixMillis) -> Self {
+        Self {
+            event_id,
+            origin_server_ts,
+        }
     }
 }
 

@@ -2,14 +2,12 @@ use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
 use crate::core::UnixMillis;
-use crate::core::federation::authorization::{
-    EventAuthReqArgs, EventAuthResBody,
-};
+use crate::core::federation::authorization::{EventAuthReqArgs, EventAuthResBody};
 use crate::core::federation::event::{
-    EventByTimestampReqArgs, EventByTimestampResBody, EventReqArgs, EventResBody,
-    MissingEventsReqBody, MissingEventsResBody,
+    EventReqArgs, EventResBody, MissingEventsReqBody, MissingEventsResBody, TimestampToEventReqArgs,
 };
 use crate::core::identifiers::*;
+use crate::core::room::TimestampToEventResBody;
 use crate::data::room::DbEvent;
 use crate::room::{state, timeline};
 use crate::{
@@ -103,15 +101,15 @@ fn auth_chain(
 #[endpoint]
 async fn event_by_timestamp(
     _aa: AuthArgs,
-    args: EventByTimestampReqArgs,
+    args: TimestampToEventReqArgs,
     depot: &mut Depot,
-) -> JsonResult<EventByTimestampResBody> {
+) -> JsonResult<TimestampToEventResBody> {
     let origin = depot.origin()?;
     crate::federation::access_check(origin, &args.room_id, None)?;
 
     let (event_id, origin_server_ts) =
         crate::event::get_event_for_timestamp(&args.room_id, args.ts, args.dir)?;
-    json_ok(EventByTimestampResBody {
+    json_ok(TimestampToEventResBody {
         event_id,
         origin_server_ts,
     })

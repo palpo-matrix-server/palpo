@@ -273,7 +273,7 @@ pub struct UpgradeRoomResBody {
 
 /// Request type for the `get_event_by_timestamp` endpoint.
 #[derive(ToParameters, Deserialize, Debug)]
-pub struct EventByTimestampReqArgs {
+pub struct TimestampToEventReqArgs {
     /// The ID of the room the event is in.
     #[salvo(parameter(parameter_in = Path))]
     pub room_id: OwnedRoomId,
@@ -287,15 +287,6 @@ pub struct EventByTimestampReqArgs {
     pub dir: Direction,
 }
 
-/// Response type for the `get_event_by_timestamp` endpoint.
-#[derive(ToSchema, Serialize, Debug)]
-pub struct EventByTimestampResBody {
-    /// The ID of the event found.
-    pub event_id: OwnedEventId,
-
-    /// The event's timestamp.
-    pub origin_server_ts: UnixMillis,
-}
 
 // /// `GET /_matrix/client/*/rooms/{room_id}/event/{event_id}`
 // ///

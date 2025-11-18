@@ -31,11 +31,11 @@ use crate::data::room::{DbEvent, DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::event::{EventHash, PduBuilder, PduEvent, handler, parse_fetched_pdu};
-use crate::room::{EventOrderBy, push_action, timeline,state};
+use crate::room::{EventOrderBy, push_action, state, timeline};
 use crate::utils::SeqnumQueueGuard;
 use crate::{
     AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, SnPduEvent, config, data,
-    membership, utils, 
+    membership, utils,
 };
 
 pub static LAST_TIMELINE_COUNT_CACHE: LazyLock<Mutex<HashMap<OwnedRoomId, i64>>> =
@@ -151,7 +151,7 @@ pub fn get_may_missing_pdus(
     let mut pdus = Vec::with_capacity(events.len());
     let mut missing_ids = event_ids.iter().cloned().collect::<HashSet<_>>();
     for event_id in events {
-        let Ok( pdu) = timeline::get_pdu(&event_id) else {
+        let Ok(pdu) = timeline::get_pdu(&event_id) else {
             continue;
         };
         pdus.push(pdu);
