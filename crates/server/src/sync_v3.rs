@@ -19,6 +19,7 @@ use crate::core::events::{
 use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::core::{Seqnum, UnixMillis};
+use crate::event::BatchToken;
 use crate::event::{EventHash, PduEvent, SnPduEvent};
 use crate::room::{EventOrderBy, state, timeline};
 use crate::{AppError, AppResult, config, data, extract_variant, room};
@@ -943,33 +944,33 @@ async fn load_left_room(
 pub struct TimelineData {
     pub events: IndexMap<Seqnum, SnPduEvent>,
     pub limited: bool,
-    pub prev_batch: Option<Seqnum>,
-    pub next_batch: Option<Seqnum>,
+    pub prev_batch: Option<BatchToken>,
+    pub next_batch: Option<BatchToken>,
 }
 #[tracing::instrument]
 pub(crate) fn load_timeline(
     user_id: &UserId,
     room_id: &RoomId,
-    since_sn: Option<Seqnum>,
-    until_sn: Option<Seqnum>,
+    since: Option<BatchToken>,
+    until: Option<BatchToken>,
     filter: Option<&RoomEventFilter>,
 ) -> AppResult<TimelineData> {
     let limit = filter.and_then(|f| f.limit).unwrap_or(10);
     let mut is_backward = false;
-    let mut timeline_pdus = if let Some(since_sn) = since_sn {
-        if let Some(until_sn) = until_sn {
-            let (min_sn, max_sn) = if until_sn > since_sn {
-                (since_sn, until_sn)
+    let mut timeline_pdus = if let Some(since) = since {
+        if let Some(until) = until {
+            let (min, max) = if until.stream_ordering > since.stream_ordering {
+                (since, until)
             } else {
                 is_backward = true;
-                (until_sn, since_sn)
+                (until, since)
             };
 
             timeline::get_pdus_backward(
                 Some(user_id),
                 room_id,
-                max_sn,
-                Some(min_sn),
+                max,
+                Some(min),
                 filter,
                 limit + 1,
                 EventOrderBy::StreamOrdering,
@@ -978,8 +979,8 @@ pub(crate) fn load_timeline(
             timeline::get_pdus_backward(
                 Some(user_id),
                 room_id,
-                i64::MAX,
-                Some(since_sn),
+                BatchToken::MAX,
+                Some(since),
                 filter,
                 limit + 1,
                 EventOrderBy::StreamOrdering,
@@ -989,7 +990,7 @@ pub(crate) fn load_timeline(
         timeline::get_pdus_backward(
             Some(user_id),
             room_id,
-            i64::MAX,
+            BatchToken::MAX,
             None,
             filter,
             limit + 1,

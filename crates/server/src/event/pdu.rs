@@ -22,6 +22,7 @@ use crate::core::serde::{
     CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJson, RawJsonValue, default_false,
 };
 use crate::core::{Seqnum, UnixMillis, UserId};
+use crate::event::BatchToken;
 use crate::room::state;
 use crate::{AppError, AppResult, room};
 
@@ -184,6 +185,13 @@ impl SnPduEvent {
 
     pub fn into_inner(self) -> PduEvent {
         self.pdu
+    }
+
+    pub fn batch_token(&self) -> BatchToken {
+        BatchToken {
+            stream_ordering: self.event_sn,
+            topological_ordering: self.depth as i64,
+        }
     }
 }
 impl AsRef<PduEvent> for SnPduEvent {

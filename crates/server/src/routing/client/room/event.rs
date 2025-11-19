@@ -136,7 +136,7 @@ pub(super) fn get_context(
     };
 
     let mut lazy_loaded = HashSet::new();
-    let base_token = crate::event::get_event_sn(&args.event_id)
+    let base_token = crate::event::get_batch_token(&args.event_id)
         .map_err(|_| MatrixError::not_found("base event id not found"))?;
     let base_event = timeline::get_pdu(&args.event_id)?;
     let room_id = base_event.room_id.clone();
@@ -187,8 +187,8 @@ pub(super) fn get_context(
 
     let start_token = events_before
         .last()
-        .map(|(count, _)| count.to_string())
-        .unwrap_or_else(|| base_token.to_string());
+        .map(|(_, pdu)| pdu.batch_token())
+        .unwrap_or_else(|| base_token);
     let events_before = events_before
         .into_iter()
         .map(|(_, pdu)| pdu.to_room_event())
@@ -226,8 +226,8 @@ pub(super) fn get_context(
     let state_ids = state::get_full_state_ids(frame_id).unwrap_or_default();
     let end_token = events_after
         .last()
-        .map(|(count, _)| count.to_string())
-        .unwrap_or_else(|| base_token.to_string());
+        .map(|(_, e)| e.batch_token())
+        .unwrap_or_else(|| base_token);
     let events_after: Vec<_> = events_after
         .into_iter()
         .map(|(_, pdu)| pdu.to_room_event())
@@ -263,8 +263,8 @@ pub(super) fn get_context(
     }
 
     json_ok(ContextResBody {
-        start: Some(start_token),
-        end: Some(end_token),
+        start: Some(start_token.to_string()),
+        end: Some(end_token.to_string()),
         events_before,
         event: Some(base_event),
         events_after,

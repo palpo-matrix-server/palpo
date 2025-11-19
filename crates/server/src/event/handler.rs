@@ -129,8 +129,8 @@ pub(crate) async fn process_incoming_pdu(
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
     println!(
-        "=============call process_to_timeline_pdu for incoming 9  {}",
-        incoming_pdu.event_id
+        "=============call process_to_timeline_pdu for incoming 9  {:#?}",
+        incoming_pdu
     );
     if let Err(e) = process_to_timeline_pdu(incoming_pdu, val, remote_server, room_id).await {
         println!("=============call process_to_timeline_pdu {e:#?}");

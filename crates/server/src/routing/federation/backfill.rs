@@ -24,9 +24,11 @@ async fn get_history(
     let until = args
         .v
         .iter()
-        .filter_map(|event_id| crate::event::get_event_sn(event_id).ok())
-        .max()
-        .ok_or(MatrixError::invalid_param("unknown event id in query string v"))?;
+        .filter_map(|event_id| crate::event::get_batch_token(event_id).ok())
+        .max_by(|a, b| a.stream_ordering.cmp(&b.stream_ordering))
+        .ok_or(MatrixError::invalid_param(
+            "unknown event id in query string v",
+        ))?;
 
     let limit = args.limit.min(100);
 

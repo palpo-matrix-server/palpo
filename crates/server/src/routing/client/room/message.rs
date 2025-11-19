@@ -11,6 +11,8 @@ use crate::core::client::message::{
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
+use crate::event::BatchToken;
+use crate::event::get_batch_token_by_sn;
 use crate::room::{EventOrderBy, timeline};
 use crate::routing::prelude::*;
 use crate::{PduBuilder, room};
@@ -36,8 +38,8 @@ pub(super) async fn get_messages(
             .filter(room_users::membership.eq("join")),
         &mut connect()?
     )?;
-    let until_sn = if !is_joined {
-        let Some((until_sn, forgotten)) = room_users::table
+    let until = if !is_joined {
+        let Some((event_sn, forgotten)) = room_users::table
             .filter(room_users::room_id.eq(&args.room_id))
             .filter(room_users::user_id.eq(sender_id))
             .filter(room_users::membership.eq("leave"))
@@ -50,27 +52,27 @@ pub(super) async fn get_messages(
         if forgotten {
             return Err(MatrixError::forbidden("you aren't a member of the room", None).into());
         }
-        Some(until_sn)
+        get_batch_token_by_sn(event_sn).ok()
     } else {
         None
     };
 
-    let from: i64 = args
+    let from: BatchToken = args
         .from
         .as_ref()
         .map(|from| from.parse())
         .transpose()?
         .unwrap_or(match args.dir {
-            crate::core::Direction::Forward => 0,
-            crate::core::Direction::Backward => i64::MAX,
+            Direction::Forward => BatchToken::MIN,
+            Direction::Backward => BatchToken::MAX,
         });
-    let _to: Option<i64> = args.to.as_ref().map(|to| to.parse()).transpose()?;
+    // let _to: Option<i64> = args.to.as_ref().map(|to| to.parse()).transpose()?;
 
     crate::room::lazy_loading::lazy_load_confirm_delivery(
         authed.user_id(),
         authed.device_id(),
         &args.room_id,
-        from,
+        from.stream_ordering,
     )?;
 
     let limit = args.limit.min(100);
@@ -83,7 +85,7 @@ pub(super) async fn get_messages(
                 Some(sender_id),
                 &args.room_id,
                 from,
-                until_sn,
+                until,
                 Some(&args.filter),
                 limit,
                 EventOrderBy::TopologicalOrdering,
@@ -117,16 +119,11 @@ pub(super) async fn get_messages(
             resp.chunk = events;
         }
         Direction::Backward => {
-            let from = if let Some(until_sn) = until_sn {
-                until_sn.min(from)
-            } else {
-                from
-            };
             let mut events = timeline::get_pdus_backward(
                 Some(authed.user_id()),
                 &args.room_id,
                 from,
-                None,
+                until,
                 Some(&args.filter),
                 limit,
                 EventOrderBy::TopologicalOrdering,
@@ -136,7 +133,7 @@ pub(super) async fn get_messages(
                     Some(sender_id),
                     &args.room_id,
                     from,
-                    None,
+                    until,
                     Some(&args.filter),
                     limit,
                     EventOrderBy::TopologicalOrdering,
@@ -249,7 +246,7 @@ pub(super) async fn send_message(
         PduBuilder {
             event_type: args.event_type.to_string().into(),
             content: serde_json::from_slice(payload)
-                .map_err(|_| MatrixError::bad_json("iInvalid json body"))?,
+                .map_err(|_| MatrixError::bad_json("invalid json body"))?,
             unsigned,
             timestamp: if authed.appservice().is_some() {
                 args.timestamp
@@ -305,16 +302,16 @@ pub(super) async fn post_message(
     let payload = req.payload().await?;
     // Ensure it's valid JSON.
     let content: JsonValue =
-        serde_json::from_slice(payload).map_err(|_| MatrixError::bad_json("Invalid JSON body."))?;
+        serde_json::from_slice(payload).map_err(|_| MatrixError::bad_json("invalid json body"))?;
     if !content.is_object() {
-        return Err(MatrixError::bad_json("JSON body is not object.").into());
+        return Err(MatrixError::bad_json("json body is not object").into());
     }
 
     let event_id = timeline::build_and_append_pdu(
         PduBuilder {
             event_type: args.event_type.to_string().into(),
             content: serde_json::from_slice(payload)
-                .map_err(|_| MatrixError::bad_json("Invalid JSON body."))?,
+                .map_err(|_| MatrixError::bad_json("invalid json body"))?,
             unsigned: BTreeMap::new(),
             ..Default::default()
         },

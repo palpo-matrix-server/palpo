@@ -244,7 +244,7 @@ impl OutlierPdu {
                 return self.save_to_database();
             }
         }
-        let (prev_events, missing_prev_event_ids) =
+        let (_prev_events, missing_prev_event_ids) =
             timeline::get_may_missing_pdus(&self.room_id, &self.pdu.prev_events)?;
         if !missing_prev_event_ids.is_empty() {
             for event_id in &missing_prev_event_ids {
@@ -288,18 +288,6 @@ impl OutlierPdu {
                             println!("error fetching auth chain for {}: {}", event_id, e);
                         }
                     }
-                    // if let Err(e) = fetch_and_process_missing_state(
-                    //     &self.remote_server,
-                    //     &self.room_id,
-                    //     &self.room_version,
-                    //     &self.pdu.event_id,
-                    // )
-                    // .await
-                    // {
-                    //     error!("failed to fetch missing auth events: {}", e);
-                    // } else {
-                    //     self.soft_failed = false;
-                    // }
                 }
             }
         }

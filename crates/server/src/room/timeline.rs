@@ -29,7 +29,7 @@ use crate::core::{Direction, Seqnum, UnixMillis};
 use crate::data::room::{DbEvent, DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::event::{EventHash, PduBuilder, PduEvent, handler, parse_fetched_pdu};
+use crate::event::{BatchToken, EventHash, PduBuilder, PduEvent, handler, parse_fetched_pdu};
 use crate::room::{EventOrderBy, push_action, state, timeline};
 use crate::utils::SeqnumQueueGuard;
 use crate::{
@@ -905,8 +905,8 @@ pub fn all_pdus(
 pub fn get_pdus_forward(
     user_id: Option<&UserId>,
     room_id: &RoomId,
-    since_sn: Seqnum,
-    until_sn: Option<i64>,
+    since: BatchToken,
+    until: Option<BatchToken>,
     filter: Option<&RoomEventFilter>,
     limit: usize,
     order_by: EventOrderBy,
@@ -914,8 +914,8 @@ pub fn get_pdus_forward(
     get_pdus(
         user_id,
         room_id,
-        since_sn,
-        until_sn,
+        since,
+        until,
         limit,
         filter,
         Direction::Forward,
@@ -925,8 +925,8 @@ pub fn get_pdus_forward(
 pub fn get_pdus_backward(
     user_id: Option<&UserId>,
     room_id: &RoomId,
-    since_sn: Seqnum,
-    until_sn: Option<i64>,
+    since: BatchToken,
+    until: Option<BatchToken>,
     filter: Option<&RoomEventFilter>,
     limit: usize,
     order_by: EventOrderBy,
@@ -934,8 +934,8 @@ pub fn get_pdus_backward(
     get_pdus(
         user_id,
         room_id,
-        since_sn,
-        until_sn,
+        since,
+        until,
         limit,
         filter,
         Direction::Backward,
@@ -950,8 +950,8 @@ pub fn get_pdus_backward(
 pub fn get_pdus(
     user_id: Option<&UserId>,
     room_id: &RoomId,
-    since_sn: Seqnum,
-    until_sn: Option<Seqnum>,
+    since: BatchToken,
+    until: Option<BatchToken>,
     limit: usize,
     filter: Option<&RoomEventFilter>,
     dir: Direction,
@@ -968,20 +968,54 @@ pub fn get_pdus(
         let mut query = events::table
             .filter(events::room_id.eq(room_id))
             .into_boxed();
-        if let Some(until_sn) = until_sn {
+        if let Some(until) = until {
             if dir == Direction::Forward {
-                query = query
-                    .filter(events::sn.le(until_sn))
-                    .filter(events::sn.ge(since_sn));
+                match order_by {
+                    EventOrderBy::StreamOrdering => {
+                        query = query
+                            .filter(events::stream_ordering.le(until.stream_ordering))
+                            .filter(events::stream_ordering.ge(since.stream_ordering));
+                    }
+                    EventOrderBy::TopologicalOrdering => {
+                        query = query
+                            .filter(events::topological_ordering.le(until.topological_ordering))
+                            .filter(events::topological_ordering.ge(since.topological_ordering));
+                    }
+                }
             } else {
-                query = query
-                    .filter(events::sn.le(since_sn))
-                    .filter(events::sn.ge(until_sn));
+                match order_by {
+                    EventOrderBy::StreamOrdering => {
+                        query = query
+                            .filter(events::stream_ordering.le(since.stream_ordering))
+                            .filter(events::stream_ordering.ge(until.stream_ordering));
+                    }
+                    EventOrderBy::TopologicalOrdering => {
+                        query = query
+                            .filter(events::topological_ordering.le(since.topological_ordering))
+                            .filter(events::topological_ordering.ge(until.topological_ordering));
+                    }
+                }
             }
         } else if dir == Direction::Forward {
-            query = query.filter(events::sn.ge(since_sn));
+            match order_by {
+                EventOrderBy::StreamOrdering => {
+                    query = query.filter(events::stream_ordering.ge(since.stream_ordering));
+                }
+                EventOrderBy::TopologicalOrdering => {
+                    query =
+                        query.filter(events::topological_ordering.ge(since.topological_ordering));
+                }
+            }
         } else {
-            query = query.filter(events::sn.le(since_sn));
+            match order_by {
+                EventOrderBy::StreamOrdering => {
+                    query = query.filter(events::stream_ordering.le(since.stream_ordering));
+                }
+                EventOrderBy::TopologicalOrdering => {
+                    query =
+                        query.filter(events::topological_ordering.le(since.topological_ordering));
+                }
+            }
         }
 
         if let Some(filter) = filter {

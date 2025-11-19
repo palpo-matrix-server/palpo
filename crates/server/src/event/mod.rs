@@ -1,7 +1,10 @@
+mod batch_token;
 pub mod fetching;
 pub mod handler;
 mod pdu;
 pub mod resolver;
+pub use batch_token::*;
+
 pub use pdu::*;
 mod outlier;
 pub mod search;
@@ -81,6 +84,29 @@ pub fn get_event_sn(event_id: &EventId) -> AppResult<Seqnum> {
         .find(event_id)
         .select(event_points::event_sn)
         .first::<Seqnum>(&mut connect()?)
+        .map_err(Into::into)
+}
+
+pub fn get_batch_token(event_id: &EventId) -> AppResult<BatchToken> {
+    events::table
+        .find(event_id)
+        .select((events::stream_ordering, events::topological_ordering))
+        .first::<(Seqnum, i64)>(&mut connect()?)
+        .map(|(stream_ordering, topological_ordering)| BatchToken {
+            stream_ordering,
+            topological_ordering,
+        })
+        .map_err(Into::into)
+}
+pub fn get_batch_token_by_sn(event_sn: Seqnum) -> AppResult<BatchToken> {
+    events::table
+        .filter(events::sn.eq(event_sn))
+        .select((events::stream_ordering, events::topological_ordering))
+        .first::<(Seqnum, i64)>(&mut connect()?)
+        .map(|(stream_ordering, topological_ordering)| BatchToken {
+            stream_ordering,
+            topological_ordering,
+        })
         .map_err(Into::into)
 }
 
