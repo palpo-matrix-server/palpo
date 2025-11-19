@@ -41,7 +41,7 @@ pub(crate) async fn process_incoming_pdu(
         return Err(MatrixError::not_found("room is unknown to this server").into());
     }
 
-    println!("\n\n\n\n\n\n======process_incoming_pdu  {value:#?}");
+    println!("\n\n\n\n\n\n======process_incoming_pdu  {event_id:#?}");
     let event = events::table
         .filter(events::id.eq(event_id))
         .first::<DbEvent>(&mut connect()?);
@@ -97,32 +97,31 @@ pub(crate) async fn process_incoming_pdu(
         return Ok(());
     };
 
-    println!("\n\n\n=============call process_incoming_pdu for incoming 0");
     let (incoming_pdu, val, event_guard) = outlier_pdu.process_incoming().await?;
 
     println!(
-        "=============call process_incoming_pdu for incoming 1  {:#?}",
-        incoming_pdu
+        "=============process incoming pdu 1  {}",
+        incoming_pdu.event_id
     );
     if incoming_pdu.rejected() {
-        println!("=============call process_incoming_pdu for incoming 1 -1 ");
+        println!("=============process incoming pdu 1 -1 ");
         return Ok(());
     }
     check_room_id(room_id, &incoming_pdu)?;
-    println!("=============call process_incoming_pdu for incoming 2");
+    println!("=============process incoming pdu 2");
     // 8. if not timeline event: stop
     if !is_timeline_event {
         return Ok(());
     }
-    println!("=============call process_incoming_pdu for incoming 3");
+    println!("=============process incoming pdu 3");
     // Skip old events
-    let first_pdu_in_room = timeline::first_pdu_in_room(room_id)?
-        .ok_or_else(|| AppError::internal("failed to find first pdu in database."))?;
-    if incoming_pdu.origin_server_ts < first_pdu_in_room.origin_server_ts {
-        return Ok(());
-    }
+    // let first_pdu_in_room = timeline::first_pdu_in_room(room_id)?
+    //     .ok_or_else(|| AppError::internal("failed to find first pdu in database"))?;
+    // if incoming_pdu.origin_server_ts < first_pdu_in_room.origin_server_ts {
+    //     return Ok(());
+    // }
 
-    println!("=============call process_incoming_pdu for incoming 4");
+    println!("=============process incoming pdu 4");
     // Done with prev events, now handling the incoming event
     let start_time = Instant::now();
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
@@ -136,6 +135,8 @@ pub(crate) async fn process_incoming_pdu(
     if let Err(e) = process_to_timeline_pdu(incoming_pdu, val, remote_server, room_id).await {
         println!("=============call process_to_timeline_pdu {e:#?}");
         error!("failed to process incoming pdu to timeline {}", e);
+    } else {
+        debug!("succeed to process incoming pdu to timeline {}", event_id);
     }
     drop(event_guard);
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
@@ -191,6 +192,8 @@ pub(crate) async fn process_pulled_pdu(
     println!("=============call process_to_timeline_pdu 2");
     if let Err(e) = process_to_timeline_pdu(pdu, json_data, remote_server, room_id).await {
         error!("failed to process pulled pdu to timeline: {}", e);
+    } else {
+        println!("=============process pulled pdu in timeline {}", event_id);
     }
     Ok(())
 }
@@ -230,7 +233,6 @@ pub async fn process_to_outlier_pdu(
             }));
         }
     }
-    println!("=======process_to_outlier_pdu 2");
     // 1.1. Remove unsigned field
     value.remove("unsigned");
 
@@ -349,7 +351,6 @@ pub async fn process_to_outlier_pdu(
             "process event to outlier missing auth events {}: {:?}",
             incoming_pdu.event_id, missing_auth_event_ids
         );
-        println!("==================================soft failed 2");
         soft_failed = true;
     }
     let rejected_auth_events = auth_events
@@ -439,7 +440,7 @@ pub async fn process_to_timeline_pdu(
             "cannot process rejected event to timeline",
         ));
     }
-    info!("process {} to timeline pdu", incoming_pdu.event_id);
+    info!("process to timeline event {}", incoming_pdu.event_id);
     let room_version_id = &room::get_version(room_id)?;
     let version_rules = crate::room::get_version_rules(room_version_id)?;
 

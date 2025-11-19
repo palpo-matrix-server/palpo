@@ -323,12 +323,7 @@ pub fn get_backward_extremities(room_id: &RoomId) -> AppResult<Vec<OwnedEventId>
 }
 
 pub fn update_backward_extremities(pdu: &SnPduEvent) -> AppResult<()> {
-    println!(
-        "=========>>>>>>>>>>>>>>fffffffffffff  update_backward_extremities  pdu={:#?}",
-        pdu
-    );
     if !pdu.is_outlier || pdu.prev_events.is_empty() {
-        println!("ffffffffffffff 0");
         diesel::delete(
             event_backward_extremities::table
                 .filter(event_backward_extremities::room_id.eq(&pdu.room_id))
@@ -337,7 +332,6 @@ pub fn update_backward_extremities(pdu: &SnPduEvent) -> AppResult<()> {
         .execute(&mut connect()?)?;
     }
     if pdu.is_outlier {
-        println!("ffffffffffffff 1");
         diesel::insert_into(event_backward_extremities::table)
             .values((
                 event_backward_extremities::room_id.eq(&pdu.room_id),
@@ -346,9 +340,7 @@ pub fn update_backward_extremities(pdu: &SnPduEvent) -> AppResult<()> {
             .on_conflict_do_nothing()
             .execute(&mut connect()?)?;
     } else {
-        println!("ffffffffffffff 2");
         for event_id in &pdu.prev_events {
-            println!("ffffffffffffff 3  {event_id}");
             let query = events::table
                 .filter(events::id.eq(event_id))
                 .filter(events::is_outlier.eq(false));

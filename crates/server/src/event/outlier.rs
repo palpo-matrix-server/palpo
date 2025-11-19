@@ -248,10 +248,6 @@ impl OutlierPdu {
             timeline::get_may_missing_pdus(&self.room_id, &self.pdu.prev_events)?;
         if !missing_prev_event_ids.is_empty() {
             for event_id in &missing_prev_event_ids {
-                println!(
-                    "============any_auth_event_rejected 3 {event_id}  {:#?}",
-                    self.pdu
-                );
                 let missing_events = match fetch_and_process_missing_state_by_ids(
                     &self.remote_server,
                     &self.room_id,
@@ -262,35 +258,24 @@ impl OutlierPdu {
                 {
                     Ok(missing_events) => {
                         self.soft_failed = !missing_events.is_empty();
-                        println!(
-                            "==================================soft failed dsew2 {}",
-                            self.soft_failed
-                        );
                         missing_events
                     }
                     Err(e) => {
                         if let AppError::Matrix(MatrixError { ref kind, .. }) = e {
-                            println!("========================zzzz {e}");
                             if *kind == core::error::ErrorKind::BadJson {
                                 println!("LLLLL");
                                 self.rejection_reason =
                                     Some(format!("failed to bad prev events: {}", e));
                             } else {
-                                println!("==================================soft failed 3 {e}");
                                 self.soft_failed = true;
                             }
                         } else {
-                            println!("==================================soft failed 4z  {e}");
                             self.soft_failed = true;
                         }
                         vec![]
                     }
                 };
                 if !missing_events.is_empty() {
-                    println!(
-                        "=======call=====fetch_and_process_missing_state {}  {:#?}",
-                        self.room_id, self.pdu
-                    );
                     for event_id in &missing_events {
                         if let Err(e) = fetch_and_process_auth_chain(
                             &self.remote_server,
@@ -323,11 +308,9 @@ impl OutlierPdu {
             if let Err(e) = auth_check(&self.pdu, &self.room_id, &version_rules, None).await {
                 match e {
                     AppError::State(StateError::Forbidden(brief)) => {
-                        println!("=======zz==outlier check auth error: {brief}");
                         self.pdu.rejection_reason = Some(brief);
                     }
                     _ => {
-                        println!("======zz===outlier check auth error2: {e}");
                         self.soft_failed = true;
                     }
                 }
@@ -335,7 +318,6 @@ impl OutlierPdu {
                 self.soft_failed = false;
             }
         }
-        println!("xxxxxxxxxxxxxxxxxxxxdre");
         self.save_to_database()
     }
 }

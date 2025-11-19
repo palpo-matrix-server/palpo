@@ -26,7 +26,7 @@ async fn get_history(
         .iter()
         .filter_map(|event_id| crate::event::get_event_sn(event_id).ok())
         .max()
-        .ok_or(MatrixError::invalid_param("unknown event id in v"))?;
+        .ok_or(MatrixError::invalid_param("unknown event id in query string v"))?;
 
     let limit = args.limit.min(100);
 
@@ -49,6 +49,10 @@ async fn get_history(
         all_events.len()
     );
     let mut events = Vec::with_capacity(all_events.len());
+    println!(
+        "=======================================events {:#?}",
+        events
+    );
     for (_, pdu) in all_events {
         if state::server_can_see_event(origin, &args.room_id, &pdu.event_id)?
             && let Some(pdu_json) = timeline::get_pdu_json(&pdu.event_id)?
@@ -67,6 +71,7 @@ async fn get_history(
         "=======================================end get history {}",
         events.len()
     );
+    events.reverse();
 
     json_ok(BackfillResBody {
         origin: config::get().server_name.to_owned(),

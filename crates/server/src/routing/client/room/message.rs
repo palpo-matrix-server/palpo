@@ -45,10 +45,10 @@ pub(super) async fn get_messages(
             .first::<(i64, bool)>(&mut connect()?)
             .optional()?
         else {
-            return Err(MatrixError::forbidden("You aren't a member of the room.", None).into());
+            return Err(MatrixError::forbidden("you aren't a member of the room", None).into());
         };
         if forgotten {
-            return Err(MatrixError::forbidden("You aren't a member of the room.", None).into());
+            return Err(MatrixError::forbidden("you aren't a member of the room", None).into());
         }
         Some(until_sn)
     } else {

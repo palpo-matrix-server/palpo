@@ -82,7 +82,6 @@ impl SnPduEvent {
             .unwrap()
             .get_mut(&(user_id.to_owned(), frame_id))
         {
-            println!("<<<<<<<<<<<<<<<<<<user can see false 2 {visibility:?}");
             return Ok(*visibility);
         }
 
@@ -116,11 +115,9 @@ impl SnPduEvent {
             }
             _ => {
                 error!("unknown history visibility {history_visibility}");
-                println!("<<<<<<<<<<<<<<<<<<user can see false 3");
                 false
             }
         };
-        println!("<<<<<<<<<<<<<<<<<<user can see false 4");
 
         state::USER_VISIBILITY_CACHE
             .lock()
