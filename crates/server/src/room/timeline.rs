@@ -14,7 +14,6 @@ use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::encrypted::Relation;
 use crate::core::events::room::member::MembershipState;
-use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
 use crate::core::events::{GlobalAccountDataEventType, StateEventType, TimelineEventType};
 use crate::core::federation::backfill::{BackfillReqArgs, BackfillResBody, backfill_request};
 use crate::core::identifiers::*;
@@ -35,7 +34,7 @@ use crate::room::{EventOrderBy, push_action, state, timeline};
 use crate::utils::SeqnumQueueGuard;
 use crate::{
     AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, SnPduEvent, config, data,
-    membership, utils,
+    membership, room, utils,
 };
 
 pub static LAST_TIMELINE_COUNT_CACHE: LazyLock<Mutex<HashMap<OwnedRoomId, i64>>> =
@@ -896,7 +895,7 @@ pub async fn build_and_append_pdu(
 
 /// Returns an iterator over all PDUs in a room.
 pub fn all_pdus(
-    user_id: &UserId,
+    user_id: Option<&UserId>,
     room_id: &RoomId,
     until_sn: Option<i64>,
     order_by: EventOrderBy,
@@ -904,7 +903,7 @@ pub fn all_pdus(
     get_pdus_forward(user_id, room_id, 0, until_sn, None, usize::MAX, order_by)
 }
 pub fn get_pdus_forward(
-    user_id: &UserId,
+    user_id: Option<&UserId>,
     room_id: &RoomId,
     since_sn: Seqnum,
     until_sn: Option<i64>,
@@ -924,7 +923,7 @@ pub fn get_pdus_forward(
     )
 }
 pub fn get_pdus_backward(
-    user_id: &UserId,
+    user_id: Option<&UserId>,
     room_id: &RoomId,
     since_sn: Seqnum,
     until_sn: Option<i64>,
@@ -949,7 +948,7 @@ pub fn get_pdus_backward(
 /// Skips events before user joined the room.
 #[tracing::instrument]
 pub fn get_pdus(
-    user_id: &UserId,
+    user_id: Option<&UserId>,
     room_id: &RoomId,
     since_sn: Seqnum,
     until_sn: Option<Seqnum>,
@@ -1055,6 +1054,10 @@ pub fn get_pdus(
                     .collect(),
             }
         };
+        println!(
+            "dxxxdddddddddddddFetched start_sn:{start_sn} events{:?} ",
+            events
+        );
         if events.is_empty() {
             break;
         }
@@ -1070,14 +1073,17 @@ pub fn get_pdus(
             break;
         };
         for (event_id, event_sn) in events {
-            if let Ok(mut pdu) = get_pdu(&event_id)
-                && pdu.user_can_see(user_id)?
-            {
-                if pdu.sender != user_id {
-                    pdu.remove_transaction_id()?;
+            if let Ok(mut pdu) = get_pdu(&event_id) {
+                if let Some(user_id) = user_id {
+                    if !pdu.user_can_see(user_id)? {
+                        continue;
+                    }
+                    if pdu.sender != user_id {
+                        pdu.remove_transaction_id()?;
+                    }
+                    pdu.add_unsigned_membership(user_id)?;
                 }
                 pdu.add_age()?;
-                pdu.add_unsigned_membership(user_id)?;
                 list.insert(event_sn, pdu);
                 if list.len() >= limit {
                     break;
@@ -1127,48 +1133,65 @@ pub fn is_event_next_to_forward_gap(event: &PduEvent) -> AppResult<bool> {
     Ok(diesel_exists!(query, &mut connect()?)?)
 }
 
-#[tracing::instrument(skip(room_id))]
-pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<()> {
-    let pdus = all_pdus(
-        user_id!("@doesntmatter:palpo.im"),
-        room_id,
-        None,
-        EventOrderBy::StreamOrdering,
-    )?;
-    let first_pdu = pdus.first();
+#[tracing::instrument(skip_all)]
+pub async fn backfill_if_required(
+    room_id: &RoomId,
+    pdus: &IndexMap<Seqnum, SnPduEvent>,
+) -> AppResult<bool> {
+    println!("bbbbbbbbbbbbackfill_if_required from");
+    let mut depths = pdus
+        .values()
+        .map(|p| (&p.event_id, p.depth))
+        .collect::<Vec<_>>();
+    depths.sort_unstable_by(|a, b| b.1.cmp(&a.1));
 
-    let Some((first_sn, first_pdu)) = first_pdu else {
-        return Ok(());
+    let (mut fill_from, mut prev_depth) = if let Some(depth) = depths.first() {
+        *depth
+    } else {
+        return Ok(false);
     };
-    if *first_sn < from {
-        // No backfill required, there are still events between them
-        return Ok(());
+
+    let mut found_big_gap = false;
+    let mut number_of_gaps = 0;
+    for &(event_id, depth) in depths.iter().skip(1) {
+        println!("llllllllll");
+        println!(
+            "==========prev_depth {prev_depth} - curr_depth: {depth}     {}",
+            prev_depth - depth
+        );
+        let delta = prev_depth - depth;
+        if delta > 1 {
+            number_of_gaps += 1;
+            fill_from = event_id;
+        }
+        if delta >= 2 {
+            found_big_gap = true;
+            break;
+        }
+        prev_depth = depth;
     }
 
-    let conf = config::get();
-    let power_levels = super::get_state_content::<RoomPowerLevelsEventContent>(
-        room_id,
-        &StateEventType::RoomPowerLevels,
-        "",
-        None,
-    )?;
-    let mut admin_servers = power_levels
-        .users
-        .iter()
-        .filter(|(_, level)| **level > power_levels.users_default)
-        .map(|(user_id, _)| user_id.server_name())
-        .collect::<HashSet<_>>();
-    admin_servers.remove(&*conf.server_name);
+    if number_of_gaps < 3 && !found_big_gap {
+        println!(
+            "bbbbbbbbbbbbackfill_if_required z 1  number_of_gaps: {number_of_gaps} found_big_gap:{found_big_gap} {depths:?}  {pdus:#?}"
+        );
+        return Ok(false);
+    };
 
+    println!("bbbbbbbbbbbbackfill_if_required 3");
+    let admin_servers = room::admin_servers(room_id, false)?;
+
+    println!("bbbbbbbbbbbbackfill_if_required 4");
     let room_version = super::get_version(room_id)?;
     // Request backfill
-    for backfill_server in admin_servers {
+    for backfill_server in &admin_servers {
+        println!("bbbbbbbbbbbbackfill_if_required 6");
         info!("Asking {backfill_server} for backfill");
         let request = backfill_request(
             &backfill_server.origin().await,
             BackfillReqArgs {
                 room_id: room_id.to_owned(),
-                v: vec![(*first_pdu.event_id).to_owned()],
+                v: vec![fill_from.to_owned()],
                 limit: 100,
             },
         )?
@@ -1179,14 +1202,14 @@ pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<(
             .await
         {
             Ok(response) => {
-                // let mut pub_key_map = RwLock::new(BTreeMap::new());
+                println!("bbbbbbbbbbbbackfill_if_required 7  {:#?}", response.pdus);
                 for pdu in response.pdus {
                     if let Err(e) = backfill_pdu(backfill_server, room_id, &room_version, pdu).await
                     {
-                        warn!("Failedcar to add backfilled pdu: {e}");
+                        warn!("failed to add backfilled pdu: {e}");
                     }
                 }
-                return Ok(());
+                return Ok(true);
             }
             Err(e) => {
                 warn!("{backfill_server} could not provide backfill: {e}");
@@ -1194,8 +1217,8 @@ pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<(
         }
     }
 
-    info!("No servers could backfill");
-    Ok(())
+    info!("no servers could backfill");
+    Ok(false)
 }
 
 #[tracing::instrument(skip(pdu))]

@@ -342,7 +342,6 @@ pub async fn fetch_and_process_events(
 ) -> AppResult<Vec<OwnedEventId>> {
     let mut done_ids = Vec::new();
     for event_id in event_ids {
-        println!("================fetch_and_process_events===================");
         match fetch_and_process_event(remote_server, room_id, room_version_id, event_id).await {
             Ok(_) => done_ids.push(event_id.clone()),
             Err(e) => {

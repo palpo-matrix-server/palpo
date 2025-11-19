@@ -164,7 +164,7 @@ async fn initial_sync(
 
     let limit = LIMIT_MAX;
     let events = timeline::get_pdus_backward(
-        sender_id,
+        Some(sender_id),
         room_id,
         0,
         None,

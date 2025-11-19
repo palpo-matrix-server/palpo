@@ -391,7 +391,7 @@ async fn load_joined_room(
                     // Go through all PDUs and for each member event, check if the user is still joined or
                     // invited until we have 5 or we reach the end
                     for hero in timeline::all_pdus(
-                        sender_id,
+                        Some(sender_id),
                         room_id,
                         until_sn,
                         EventOrderBy::StreamOrdering,
@@ -966,7 +966,7 @@ pub(crate) fn load_timeline(
             };
 
             timeline::get_pdus_backward(
-                user_id,
+                Some(user_id),
                 room_id,
                 max_sn,
                 Some(min_sn),
@@ -976,7 +976,7 @@ pub(crate) fn load_timeline(
             )?
         } else {
             timeline::get_pdus_backward(
-                user_id,
+                Some(user_id),
                 room_id,
                 i64::MAX,
                 Some(since_sn),
@@ -987,7 +987,7 @@ pub(crate) fn load_timeline(
         }
     } else {
         timeline::get_pdus_backward(
-            user_id,
+            Some(user_id),
             room_id,
             i64::MAX,
             None,

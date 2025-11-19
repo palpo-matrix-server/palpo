@@ -135,7 +135,7 @@ fn calc_event_context(
     include_profile: bool,
 ) -> AppResult<EventContextResult> {
     let before_pdus = timeline::get_pdus_backward(
-        user_id,
+        Some(user_id),
         room_id,
         event_sn - 1,
         None,
@@ -144,7 +144,7 @@ fn calc_event_context(
         EventOrderBy::StreamOrdering,
     )?;
     let after_pdus = timeline::get_pdus_forward(
-        user_id,
+        Some(user_id),
         room_id,
         event_sn + 1,
         None,

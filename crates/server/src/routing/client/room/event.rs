@@ -161,7 +161,7 @@ pub(super) fn get_context(
     let limit = args.limit.min(100);
     let base_event = base_event.to_room_event();
     let events_before = timeline::get_pdus_backward(
-        sender_id,
+        Some(sender_id),
         &room_id,
         base_token,
         None,
@@ -194,7 +194,7 @@ pub(super) fn get_context(
         .map(|(_, pdu)| pdu.to_room_event())
         .collect::<Vec<_>>();
     let events_after = timeline::get_pdus_forward(
-        sender_id,
+        Some(sender_id),
         &room_id,
         base_token,
         None,
@@ -342,7 +342,7 @@ pub(super) async fn timestamp_to_event(
         "=========>>>>>>>>>>>>>>fffffffffffff  timestamp_to_event  is_event_next_to_forward_gap={is_event_next_to_forward_gap:?} is_event_next_to_backward_gap={is_event_next_to_backward_gap} is_event_next_to_forward_gap={is_event_next_to_forward_gap}"
     );
     if local_event.is_none() || is_event_next_to_backward_gap || is_event_next_to_forward_gap {
-        let remote_servers = room::participating_servers(&args.room_id, false)?;
+        let remote_servers = room::admin_servers(&args.room_id, false)?;
         let Ok((
             remote_server,
             TimestampToEventResBody {

@@ -69,15 +69,12 @@ impl SnPduEvent {
         }
         let frame_id = match state::get_pdu_frame_id(&self.event_id) {
             Ok(frame_id) => frame_id,
-            Err(_) => {
-                println!("<<<<<<<<<<<<<<<<<<user can see false 1 {self:#?}");
-                match state::get_room_frame_id(&self.room_id, None) {
-                    Ok(frame_id) => frame_id,
-                    Err(_) => {
-                        return Ok(false);
-                    }
+            Err(_) => match state::get_room_frame_id(&self.room_id, None) {
+                Ok(frame_id) => frame_id,
+                Err(_) => {
+                    return Ok(false);
                 }
-            }
+            },
         };
 
         if let Some(visibility) = state::USER_VISIBILITY_CACHE

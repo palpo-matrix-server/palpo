@@ -1,20 +1,19 @@
-use std::collections::BTreeMap;
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 
 use diesel::prelude::*;
-use salvo::prelude::*;
 use serde_json::value::to_raw_value;
 
+use crate::core::Direction;
 use crate::core::client::message::{
     CreateMessageReqArgs, CreateMessageWithTxnReqArgs, MessagesReqArgs, MessagesResBody,
     SendMessageResBody,
 };
 use crate::core::events::{StateEventType, TimelineEventType};
-use crate::core::serde::JsonValue;
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::room::{EventOrderBy, timeline};
-use crate::{AuthArgs, JsonResult, MatrixError, PduBuilder, config, exts::*, json_ok, room};
+use crate::routing::prelude::*;
+use crate::{PduBuilder, room};
 
 /// #GET /_matrix/client/r0/rooms/{room_id}/messages
 /// Allows paginating through room history.
@@ -28,18 +27,19 @@ pub(super) async fn get_messages(
     depot: &mut Depot,
 ) -> JsonResult<MessagesResBody> {
     let authed = depot.authed_info()?;
+    let sender_id = authed.user_id();
 
     let is_joined = diesel_exists!(
         room_users::table
             .filter(room_users::room_id.eq(&args.room_id))
-            .filter(room_users::user_id.eq(authed.user_id()))
+            .filter(room_users::user_id.eq(sender_id))
             .filter(room_users::membership.eq("join")),
         &mut connect()?
     )?;
     let until_sn = if !is_joined {
         let Some((until_sn, forgotten)) = room_users::table
             .filter(room_users::room_id.eq(&args.room_id))
-            .filter(room_users::user_id.eq(authed.user_id()))
+            .filter(room_users::user_id.eq(sender_id))
             .filter(room_users::membership.eq("leave"))
             .select((room_users::event_sn, room_users::forgotten))
             .first::<(i64, bool)>(&mut connect()?)
@@ -78,9 +78,9 @@ pub(super) async fn get_messages(
     let mut resp = MessagesResBody::default();
     let mut lazy_loaded = HashSet::new();
     match args.dir {
-        crate::core::Direction::Forward => {
+        Direction::Forward => {
             let events = timeline::get_pdus_forward(
-                authed.user_id(),
+                Some(sender_id),
                 &args.room_id,
                 from,
                 until_sn,
@@ -94,8 +94,8 @@ pub(super) async fn get_messages(
                  * https://github.com/vector-im/element-android/issues/3417
                  * https://github.com/vector-im/element-web/issues/21034
                 if !crate::room::lazy_loading.lazy_load_was_sent_before(
-                    authed.user_id(),
-                    authed.user_id(),
+                    sender_id,
+                    sender_id,
                     &body.room_id,
                     &event.sender,
                 )? {
@@ -116,15 +116,14 @@ pub(super) async fn get_messages(
             resp.end = next_token.map(|sn| sn.to_string());
             resp.chunk = events;
         }
-        crate::core::Direction::Backward => {
-            timeline::backfill_if_required(&args.room_id, from).await?;
+        Direction::Backward => {
             let from = if let Some(until_sn) = until_sn {
                 until_sn.min(from)
             } else {
                 from
             };
-            let events = timeline::get_pdus_backward(
-                authed.user_id(),
+            let mut events = timeline::get_pdus_backward(
+                Some(authed.user_id()),
                 &args.room_id,
                 from,
                 None,
@@ -132,13 +131,24 @@ pub(super) async fn get_messages(
                 limit,
                 EventOrderBy::TopologicalOrdering,
             )?;
+            if timeline::backfill_if_required(&args.room_id, &events).await? {
+                events = timeline::get_pdus_backward(
+                    Some(sender_id),
+                    &args.room_id,
+                    from,
+                    None,
+                    Some(&args.filter),
+                    limit,
+                    EventOrderBy::TopologicalOrdering,
+                )?;
+            }
 
             for (_, event) in &events {
                 /* TODO: Remove this when these are resolved:
                  * https://github.com/vector-im/element-android/issues/3417
                  * https://github.com/vector-im/element-web/issues/21034
                 if !crate::room::lazy_loading.lazy_load_was_sent_before(
-                    authed.user_id(),
+                    sender_id,
                     authed.device_id(),
                     &args.room_id,
                     &event.sender,
