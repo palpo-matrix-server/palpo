@@ -9,51 +9,51 @@ use crate::data::schema::*;
 use crate::utils::SeqnumQueueGuard;
 use crate::{AppError, AppResult, MatrixError};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
 pub struct BatchToken {
-    pub stream_ordering: Seqnum,
-    pub topological_ordering: Option<i64>,
+    pub event_sn: Seqnum,
+    pub event_depth: Option<i64>,
 }
 impl BatchToken {
-    pub fn new(stream_ordering: Seqnum, topological_ordering: Option<i64>) -> Self {
+    pub fn new(event_sn: Seqnum, event_depth: Option<i64>) -> Self {
         Self {
-            stream_ordering,
-            topological_ordering,
+            event_sn,
+            event_depth,
         }
     }
     pub fn zero() -> Self {
         Self {
-            stream_ordering: 0,
-            topological_ordering: Some(0),
+            event_sn: 0,
+            event_depth: Some(0),
         }
     }
     pub const MIN: Self = Self {
-        stream_ordering: 0,
-        topological_ordering: 0,
+        event_sn: 0,
+        event_depth: Some(0),
     };
     pub const MAX: Self = Self {
-        stream_ordering: Seqnum::MAX,
-        topological_ordering: Some(i64::MAX),
+        event_sn: Seqnum::MAX,
+        event_depth: Some(i64::MAX),
     };
 }
 impl FromStr for BatchToken {
     type Err = MatrixError;
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         let mut parts = input.split('_');
-        let stream_ordering = None;
-        let topological_ordering = None;
+        let mut event_sn = None;
+        let mut event_depth = None;
         while let Some(part) = parts.next() {
             if part.starts_with("s") {
-                stream_ordering = Some(
+                event_sn = Some(
                     part[1..]
                         .parse::<Seqnum>()
-                        .map_err(|_| MatrixError::unknown("invalid stream ordering"))?,
+                        .map_err(|_| MatrixError::unknown("invalid event_sn"))?,
                 );
-            } else if part.starts_with("t") {
-                topological_ordering = Some(
+            } else if part.starts_with("d") {
+                event_depth = Some(
                     part[1..]
                         .parse::<i64>()
-                        .map_err(|_| MatrixError::unknown("invalid topological ordering"))?,
+                        .map_err(|_| MatrixError::unknown("invalid event_depth"))?,
                 );
             } else {
                 return Err(MatrixError::unknown("invalid stream token part"));
@@ -61,20 +61,18 @@ impl FromStr for BatchToken {
         }
 
         Ok(BatchToken {
-            stream_ordering: stream_ordering
-                .ok_or_else(|| MatrixError::unknown("missing stream ordering"))?,
-            topological_ordering: topological_ordering
-                .ok_or_else(|| MatrixError::unknown("missing topological ordering"))?,
+            event_sn: event_sn.ok_or_else(|| MatrixError::unknown("missing event_sn"))?,
+            event_depth,
         })
     }
 }
 
 impl std::fmt::Display for BatchToken {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "s{}_t{}",
-            self.stream_ordering, self.topological_ordering
-        )
+        if let Some(event_depth) = self.event_depth {
+            write!(f, "s{}_d{}", self.event_sn, event_depth)
+        } else {
+            write!(f, "s{}", self.event_sn)
+        }
     }
 }

@@ -57,7 +57,7 @@ pub(super) async fn get_messages(
         None
     };
 
-    let from: BatchToken = args
+    let from_tk: BatchToken = args
         .from
         .as_ref()
         .map(|from| from.parse())
@@ -72,7 +72,7 @@ pub(super) async fn get_messages(
         authed.user_id(),
         authed.device_id(),
         &args.room_id,
-        from.stream_ordering,
+        from_tk.event_sn,
     )?;
 
     let limit = args.limit.min(100);
@@ -84,7 +84,7 @@ pub(super) async fn get_messages(
             let events = timeline::get_pdus_forward(
                 Some(sender_id),
                 &args.room_id,
-                from,
+                from_tk,
                 until,
                 Some(&args.filter),
                 limit,
@@ -114,7 +114,7 @@ pub(super) async fn get_messages(
                 .map(|(_, pdu)| pdu.to_room_event())
                 .collect();
 
-            resp.start = from.to_string();
+            resp.start = from_tk.to_string();
             resp.end = next_token.map(|sn| sn.to_string());
             resp.chunk = events;
         }
@@ -122,7 +122,7 @@ pub(super) async fn get_messages(
             let mut events = timeline::get_pdus_backward(
                 Some(authed.user_id()),
                 &args.room_id,
-                from,
+                from_tk,
                 until,
                 Some(&args.filter),
                 limit,
@@ -132,7 +132,7 @@ pub(super) async fn get_messages(
                 events = timeline::get_pdus_backward(
                     Some(sender_id),
                     &args.room_id,
-                    from,
+                    from_tk,
                     until,
                     Some(&args.filter),
                     limit,
@@ -163,7 +163,7 @@ pub(super) async fn get_messages(
                 .map(|(_, pdu)| pdu.to_room_event())
                 .collect();
 
-            resp.start = from.to_string();
+            resp.start = from_tk.to_string();
             resp.end = next_token.map(|sn| sn.to_string());
             resp.chunk = events;
         }

@@ -189,8 +189,8 @@ impl SnPduEvent {
 
     pub fn batch_token(&self) -> BatchToken {
         BatchToken {
-            stream_ordering: self.event_sn,
-            topological_ordering: self.depth as i64,
+            event_sn: self.event_sn,
+            event_depth: Some(self.depth as i64),
         }
     }
 }

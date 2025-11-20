@@ -15,6 +15,7 @@ use crate::core::serde::canonical_json::CanonicalJsonValue;
 use crate::data::full_text_search::*;
 use crate::data::schema::*;
 use crate::data::{self, connect};
+use crate::event::BatchToken;
 use crate::room::{EventOrderBy, state, timeline};
 use crate::{AppResult, MatrixError, SnPduEvent};
 
@@ -137,7 +138,7 @@ fn calc_event_context(
     let before_pdus = timeline::get_pdus_backward(
         Some(user_id),
         room_id,
-        event_sn - 1,
+        BatchToken::new(event_sn - 1, None),
         None,
         None,
         before_limit,
@@ -146,7 +147,7 @@ fn calc_event_context(
     let after_pdus = timeline::get_pdus_forward(
         Some(user_id),
         room_id,
-        event_sn + 1,
+        BatchToken::new(event_sn + 1, None),
         None,
         None,
         after_limit,

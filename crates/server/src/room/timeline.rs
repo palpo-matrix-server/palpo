@@ -897,10 +897,18 @@ pub async fn build_and_append_pdu(
 pub fn all_pdus(
     user_id: Option<&UserId>,
     room_id: &RoomId,
-    until_sn: Option<i64>,
+    until_sn: Option<BatchToken>,
     order_by: EventOrderBy,
 ) -> AppResult<IndexMap<i64, SnPduEvent>> {
-    get_pdus_forward(user_id, room_id, 0, until_sn, None, usize::MAX, order_by)
+    get_pdus_forward(
+        user_id,
+        room_id,
+        BatchToken::MIN,
+        until_sn,
+        None,
+        usize::MAX,
+        order_by,
+    )
 }
 pub fn get_pdus_forward(
     user_id: Option<&UserId>,
@@ -973,47 +981,61 @@ pub fn get_pdus(
                 match order_by {
                     EventOrderBy::StreamOrdering => {
                         query = query
-                            .filter(events::stream_ordering.le(until.stream_ordering))
-                            .filter(events::stream_ordering.ge(since.stream_ordering));
+                            .filter(events::sn.le(until.event_sn))
+                            .filter(events::sn.ge(since.event_sn));
                     }
                     EventOrderBy::TopologicalOrdering => {
+                        let (Some(since_depth), Some(until_depth)) =
+                            (since.event_depth, until.event_depth)
+                        else {
+                            return Err(AppError::public("since or util token is incorrect"));
+                        };
                         query = query
-                            .filter(events::topological_ordering.le(until.topological_ordering))
-                            .filter(events::topological_ordering.ge(since.topological_ordering));
+                            .filter(events::depth.le(until_depth))
+                            .filter(events::depth.ge(since_depth));
                     }
                 }
             } else {
                 match order_by {
                     EventOrderBy::StreamOrdering => {
                         query = query
-                            .filter(events::stream_ordering.le(since.stream_ordering))
-                            .filter(events::stream_ordering.ge(until.stream_ordering));
+                            .filter(events::sn.le(since.event_sn))
+                            .filter(events::sn.ge(until.event_sn));
                     }
                     EventOrderBy::TopologicalOrdering => {
+                        let (Some(since_depth), Some(until_depth)) =
+                            (since.event_depth, until.event_depth)
+                        else {
+                            return Err(AppError::public("since or util token is incorrect"));
+                        };
                         query = query
-                            .filter(events::topological_ordering.le(since.topological_ordering))
-                            .filter(events::topological_ordering.ge(until.topological_ordering));
+                            .filter(events::depth.le(since_depth))
+                            .filter(events::depth.ge(until_depth));
                     }
                 }
             }
         } else if dir == Direction::Forward {
             match order_by {
                 EventOrderBy::StreamOrdering => {
-                    query = query.filter(events::stream_ordering.ge(since.stream_ordering));
+                    query = query.filter(events::sn.ge(since.event_sn));
                 }
                 EventOrderBy::TopologicalOrdering => {
-                    query =
-                        query.filter(events::topological_ordering.ge(since.topological_ordering));
+                    let Some(since_depth) = since.event_depth else {
+                        return Err(AppError::public("since token is incorrect"));
+                    };
+                    query = query.filter(events::depth.ge(since_depth));
                 }
             }
         } else {
             match order_by {
                 EventOrderBy::StreamOrdering => {
-                    query = query.filter(events::stream_ordering.le(since.stream_ordering));
+                    query = query.filter(events::sn.le(since.event_sn));
                 }
                 EventOrderBy::TopologicalOrdering => {
-                    query =
-                        query.filter(events::topological_ordering.le(since.topological_ordering));
+                    let Some(since_depth) = since.event_depth else {
+                        return Err(AppError::public("since token is incorrect"));
+                    };
+                    query = query.filter(events::depth.le(since_depth));
                 }
             }
         }

@@ -10,6 +10,7 @@ use crate::core::serde::{JsonValue, RawJson};
 use crate::data::room::DbEventPushSummary;
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
+use crate::event::BatchToken;
 use crate::{AppResult, MatrixError};
 
 #[derive(Debug, Clone)]
@@ -306,7 +307,7 @@ pub fn membership(user_id: &UserId, room_id: &RoomId) -> AppResult<MembershipSta
 #[tracing::instrument]
 pub fn left_rooms(
     user_id: &UserId,
-    since_sn: Option<Seqnum>,
+    since_tk: Option<BatchToken>,
 ) -> AppResult<HashMap<OwnedRoomId, Vec<RawJson<AnySyncStateEvent>>>> {
     let query = room_users::table
         .filter(room_users::user_id.eq(user_id))
@@ -315,8 +316,8 @@ pub fn left_rooms(
             MembershipState::Ban.to_string(),
         ]))
         .into_boxed();
-    let query = if let Some(since_sn) = since_sn {
-        query.filter(room_users::event_sn.ge(since_sn))
+    let query = if let Some(since_tk) = since_tk {
+        query.filter(room_users::event_sn.ge(since_tk.event_sn))
     } else {
         query.filter(room_users::forgotten.eq(false))
     };

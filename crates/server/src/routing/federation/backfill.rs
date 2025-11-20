@@ -25,7 +25,7 @@ async fn get_history(
         .v
         .iter()
         .filter_map(|event_id| crate::event::get_batch_token(event_id).ok())
-        .max_by(|a, b| a.stream_ordering.cmp(&b.stream_ordering))
+        .max_by(|a, b| a.event_sn.cmp(&b.event_sn))
         .ok_or(MatrixError::invalid_param(
             "unknown event id in query string v",
         ))?;
