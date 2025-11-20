@@ -48,7 +48,7 @@ use crate::core::room::{JoinRule, Visibility};
 use crate::core::room_version_rules::{AuthorizationRules, RoomIdFormatVersion, RoomVersionRules};
 use crate::core::serde::{CanonicalJsonObject, JsonValue, RawJson};
 use crate::core::state::events::RoomCreateEvent;
-use crate::event::{PduBuilder, BatchToken};
+use crate::event::{BatchToken, PduBuilder};
 use crate::room::{EventOrderBy, push_action, timeline};
 use crate::user::user_is_ignored;
 use crate::{

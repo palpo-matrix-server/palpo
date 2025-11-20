@@ -977,41 +977,27 @@ pub fn get_pdus(
             .filter(events::room_id.eq(room_id))
             .into_boxed();
         if let Some(until_tk) = until_tk {
-            if dir == Direction::Forward {
-                match order_by {
-                    EventOrderBy::StreamOrdering => {
-                        query = query
-                            .filter(events::sn.le(until_tk.event_sn))
-                            .filter(events::sn.ge(since_tk.event_sn));
-                    }
-                    EventOrderBy::TopologicalOrdering => {
-                        let (Some(since_depth), Some(until_depth)) =
-                            (since_tk.event_depth, until_tk.event_depth)
-                        else {
-                            return Err(AppError::public("since or util token is incorrect"));
-                        };
-                        query = query
-                            .filter(events::depth.le(until_depth))
-                            .filter(events::depth.ge(since_depth));
-                    }
+            match order_by {
+                EventOrderBy::StreamOrdering => {
+                    let max_sn = until_tk.event_sn.max(since_tk.event_sn);
+                    let min_sn = until_tk.event_sn.min(since_tk.event_sn);
+                    query = query
+                        .filter(events::sn.le(max_sn))
+                        .filter(events::sn.ge(min_sn));
                 }
-            } else {
-                match order_by {
-                    EventOrderBy::StreamOrdering => {
-                        query = query
-                            .filter(events::sn.le(since_tk.event_sn))
-                            .filter(events::sn.ge(until_tk.event_sn));
-                    }
-                    EventOrderBy::TopologicalOrdering => {
-                        let (Some(since_depth), Some(until_depth)) =
-                            (since_tk.event_depth, until_tk.event_depth)
-                        else {
-                            return Err(AppError::public("since or util token is incorrect"));
-                        };
-                        query = query
-                            .filter(events::depth.le(since_depth))
-                            .filter(events::depth.ge(until_depth));
-                    }
+                EventOrderBy::TopologicalOrdering => {
+                    let (Some(since_depth), Some(until_depth)) =
+                        (since_tk.event_depth, until_tk.event_depth)
+                    else {
+                        return Err(AppError::public("since or util token is incorrect"));
+                    };
+                    println!(">>>>>>>>>>>>>>since_tk: {since_tk:?}, until_tk: {until_tk:?}");
+                    let min_depth = since_depth.min(until_depth);
+                    let max_depth = since_depth.max(until_depth);
+                    println!(">>>>>>>>>>>>>>min_depth: {}, max_depth: {}", min_depth, max_depth);
+                    query = query
+                        .filter(events::depth.le(max_depth))
+                        .filter(events::depth.ge(min_depth));
                 }
             }
         } else if dir == Direction::Forward {
@@ -1083,7 +1069,7 @@ pub fn get_pdus(
                     .rev()
                     .collect(),
                 EventOrderBy::TopologicalOrdering => query
-                    .order((events::topological_ordering.desc(),))
+                    .order((events::depth.desc(),))
                     .limit(utils::usize_to_i64(limit))
                     .select((events::id, events::sn))
                     .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
@@ -1095,14 +1081,14 @@ pub fn get_pdus(
             let query = query.filter(events::sn.lt(start_sn));
             match order_by {
                 EventOrderBy::StreamOrdering => query
-                    .order(events::stream_ordering.desc())
+                    .order(events::sn.desc())
                     .limit(utils::usize_to_i64(limit))
                     .select((events::id, events::sn))
                     .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
                     .into_iter()
                     .collect(),
                 EventOrderBy::TopologicalOrdering => query
-                    .order(events::topological_ordering.desc())
+                    .order(events::depth.desc())
                     .limit(utils::usize_to_i64(limit))
                     .select((events::id, events::sn))
                     .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?

@@ -43,8 +43,7 @@ pub async fn sync_events(
     let curr_sn = data::curr_sn()?;
     crate::seqnum_reach(curr_sn).await;
     let since_tk = if let Some(since_str) = args.since.as_ref() {
-        let since_tk: BatchToken = since_str
-            .parse()?;
+        let since_tk: BatchToken = since_str.parse()?;
         if since_tk.event_sn > curr_sn {
             return Ok(SyncEventsResBody::new(since_str.to_owned()));
         }
@@ -1040,7 +1039,9 @@ pub(crate) fn load_timeline(
                 limited = true;
             }
             // prev_batch = timeline_pdus.last().map(|(sn, _)| *sn);
-            next_batch = timeline_pdus.first().map(|(sn, _)| BatchToken::new(*sn + 1, None));
+            next_batch = timeline_pdus
+                .first()
+                .map(|(sn, _)| BatchToken::new(*sn + 1, None));
         }
     } else {
         let min_sn = pdu_sns.iter().min().cloned().unwrap_or_default();
@@ -1056,7 +1057,9 @@ pub(crate) fn load_timeline(
                 limited = true;
             }
             // prev_batch = timeline_pdus.first().map(|(sn, _)| *sn);
-            next_batch = timeline_pdus.last().map(|(sn, _)| BatchToken::new(*sn + 1, None));
+            next_batch = timeline_pdus
+                .last()
+                .map(|(sn, _)| BatchToken::new(*sn + 1, None));
         }
     }
     // if prev_batch.is_none() {

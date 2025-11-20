@@ -54,9 +54,9 @@ pub(super) async fn get_messages(
     //     }
     //     get_batch_token_by_sn(event_sn).ok()
     // } else {
-    //     None
+    //     args.to.as_ref().map(|to| to.parse()).transpose()?
     // };
-    let until_tk = None;
+     let until_tk = args.to.as_ref().map(|to| to.parse()).transpose()?;
 
     println!("WWWWWWWWWWWWWWWWWWWWWargs: {args:#?} until:{until_tk:?}");
     let mut from_tk: BatchToken = args
@@ -68,8 +68,6 @@ pub(super) async fn get_messages(
             Direction::Forward => BatchToken::MIN,
             Direction::Backward => BatchToken::MAX,
         });
-    // let _to: Option<i64> = args.to.as_ref().map(|to| to.parse()).transpose()?;
-
     if from_tk.event_depth.is_none() {
         from_tk = events::table
             .filter(events::sn.le(from_tk.event_sn))
@@ -92,6 +90,7 @@ pub(super) async fn get_messages(
     let mut lazy_loaded = HashSet::new();
     match args.dir {
         Direction::Forward => {
+            println!("BBBBBBBBBBBBBBBBBBBB Forward");
             let events = timeline::get_pdus_forward(
                 Some(sender_id),
                 &args.room_id,
@@ -130,8 +129,9 @@ pub(super) async fn get_messages(
             resp.chunk = events;
         }
         Direction::Backward => {
+            println!("BBBBBBBBBBBBBBBBBBBB backward");
             let mut events = timeline::get_pdus_backward(
-                Some(authed.user_id()),
+                Some(sender_id),
                 &args.room_id,
                 from_tk,
                 until_tk,
@@ -167,9 +167,7 @@ pub(super) async fn get_messages(
                 lazy_loaded.insert(event.sender.clone());
             }
 
-            next_token = events
-                .last()
-                .map(|(_, pdu)| pdu.batch_token());
+            next_token = events.last().map(|(_, pdu)| pdu.batch_token());
 
             let events: Vec<_> = events
                 .into_iter()
