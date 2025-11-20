@@ -421,6 +421,10 @@ pub fn shutdown() {
     ROTATE.fire();
 }
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> main
 pub fn get_servers_from_users(users: &[OwnedUserId]) -> Vec<OwnedServerName> {
     let mut servers = HashSet::new();
     for user in users {

@@ -409,6 +409,7 @@ pub async fn process_to_outlier_pdu(
         }
     }
 
+    incoming_pdu.rejection_reason = rejection_reason;
     Ok(Some(OutlierPdu {
         pdu: incoming_pdu,
         soft_failed,
@@ -444,6 +445,8 @@ pub async fn process_to_timeline_pdu(
     info!("process to timeline event {}", incoming_pdu.event_id);
     let room_version_id = &room::get_version(room_id)?;
     let version_rules = crate::room::get_version_rules(room_version_id)?;
+
+    if incoming_pdu.soft_failed && fetch_missing {}
 
     // 10. Fetch missing state and auth chain events by calling /state_ids at backwards extremities
     //     doing all the checks in this list starting at 1. These are not timeline events.
