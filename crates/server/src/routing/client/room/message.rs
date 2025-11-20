@@ -3,12 +3,12 @@ use std::collections::{BTreeMap, HashSet};
 use diesel::prelude::*;
 use serde_json::value::to_raw_value;
 
-use crate::core::Direction;
 use crate::core::client::message::{
     CreateMessageReqArgs, CreateMessageWithTxnReqArgs, MessagesReqArgs, MessagesResBody,
     SendMessageResBody,
 };
 use crate::core::events::{StateEventType, TimelineEventType};
+use crate::core::{Direction, Seqnum};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::event::BatchToken;
@@ -57,7 +57,8 @@ pub(super) async fn get_messages(
         None
     };
 
-    let from_tk: BatchToken = args
+    println!("WWWWWWWWWWWWWWWWWWWWWargs: {args:#?}");
+    let mut from_tk: BatchToken = args
         .from
         .as_ref()
         .map(|from| from.parse())
@@ -67,6 +68,15 @@ pub(super) async fn get_messages(
             Direction::Backward => BatchToken::MAX,
         });
     // let _to: Option<i64> = args.to.as_ref().map(|to| to.parse()).transpose()?;
+
+    if from_tk.event_depth.is_none() {
+        from_tk = events::table
+            .filter(events::sn.le(from_tk.event_sn))
+            .order_by(events::sn.desc())
+            .select((events::sn, events::depth))
+            .first::<(Seqnum, i64)>(&mut connect()?)
+            .map(|(sn, depth)| BatchToken::new(sn, Some(depth)))?
+    }
 
     crate::room::lazy_loading::lazy_load_confirm_delivery(
         authed.user_id(),
@@ -107,7 +117,7 @@ pub(super) async fn get_messages(
                 lazy_loaded.insert(event.sender.clone());
             }
 
-            next_token = events.last().map(|(sn, _)| sn).copied();
+            next_token = events.last().map(|(_, pdu)| pdu.batch_token());
 
             let events: Vec<_> = events
                 .into_iter()
@@ -115,7 +125,7 @@ pub(super) async fn get_messages(
                 .collect();
 
             resp.start = from_tk.to_string();
-            resp.end = next_token.map(|sn| sn.to_string());
+            resp.end = next_token.map(|tk| tk.to_string());
             resp.chunk = events;
         }
         Direction::Backward => {
@@ -156,7 +166,9 @@ pub(super) async fn get_messages(
                 lazy_loaded.insert(event.sender.clone());
             }
 
-            next_token = events.last().map(|(sn, _)| sn).copied();
+            next_token = events
+                .last()
+                .map(|(_, pdu)| pdu.batch_token());
 
             let events: Vec<_> = events
                 .into_iter()
@@ -164,7 +176,7 @@ pub(super) async fn get_messages(
                 .collect();
 
             resp.start = from_tk.to_string();
-            resp.end = next_token.map(|sn| sn.to_string());
+            resp.end = next_token.map(|tk| tk.to_string());
             resp.chunk = events;
         }
     }

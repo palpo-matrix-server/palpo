@@ -56,7 +56,10 @@ impl FromStr for BatchToken {
                         .map_err(|_| MatrixError::unknown("invalid event_depth"))?,
                 );
             } else {
-                return Err(MatrixError::unknown("invalid stream token part"));
+                return Err(MatrixError::unknown(format!(
+                    "invalid stream token: {}",
+                    part
+                )));
             }
         }
 

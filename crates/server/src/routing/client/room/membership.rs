@@ -22,7 +22,7 @@ use crate::core::user::ProfileResBody;
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::user::DbProfile;
-use crate::event::{PduBuilder, SnPduEvent};
+use crate::event::{BatchToken, PduBuilder, SnPduEvent};
 use crate::exts::*;
 use crate::membership::banned_room_check;
 use crate::room::{state, timeline};
@@ -61,23 +61,23 @@ pub(super) fn get_members(
         None
     };
 
-    let frame_id = if let Some(at_sn) = &args.at {
-        if let Ok(at_sn) = at_sn.parse::<Seqnum>() {
+    let frame_id = if let Some(at_tk) = &args.at {
+        if let Ok(at_tk) = at_tk.parse::<BatchToken>() {
             if let Some(usn) = until_sn {
-                until_sn = Some(usn.min(at_sn));
+                until_sn = Some(usn.min(at_tk.event_sn));
             } else {
-                until_sn = Some(at_sn);
+                until_sn = Some(at_tk.event_sn);
             }
             event_points::table
                 .filter(event_points::room_id.eq(&args.room_id))
-                .filter(event_points::event_sn.le(at_sn))
+                .filter(event_points::event_sn.le(at_tk.event_sn))
                 .filter(event_points::frame_id.is_not_null())
                 .order(event_points::frame_id.desc())
                 .select(event_points::frame_id)
                 .first::<Option<i64>>(&mut connect()?)?
                 .unwrap_or_default()
         } else {
-            return Err(MatrixError::bad_state("Invalid at parameter.").into());
+            return Err(MatrixError::bad_state("invalid at parameter").into());
         }
     } else {
         crate::room::get_frame_id(&args.room_id, until_sn).unwrap_or_default()

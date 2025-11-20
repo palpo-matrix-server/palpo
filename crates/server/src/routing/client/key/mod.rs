@@ -3,14 +3,14 @@ mod signature;
 
 use std::collections::HashSet;
 
-use palpo_core::client::key::KeyChangesReqArgs;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
 use crate::core::client::key::{
-    ClaimKeysReqBody, ClaimKeysResBody, KeyChangesResBody, KeysReqBody, KeysResBody,
-    UploadKeysReqBody, UploadKeysResBody,
+    ClaimKeysReqBody, ClaimKeysResBody, KeyChangesReqArgs, KeyChangesResBody, KeysReqBody,
+    KeysResBody, UploadKeysReqBody, UploadKeysResBody,
 };
+use crate::event::BatchToken;
 use crate::user::key;
 use crate::{AuthArgs, CjsonResult, DepotExt, JsonResult, cjson_ok, data, json_ok, room};
 
@@ -97,18 +97,23 @@ async fn get_key_changes(
     depot: &mut Depot,
 ) -> JsonResult<KeyChangesResBody> {
     let authed = depot.authed_info()?;
+    let sender_id = authed.user_id();
 
-    let from_sn = args.from.parse()?;
-    let to_sn = args.to.parse()?;
+    let from_tk: BatchToken = args.from.parse()?;
+    let to_tk: BatchToken = args.to.parse()?;
     let mut device_list_updates = HashSet::new();
     device_list_updates.extend(data::user::keys_changed_users(
-        authed.user_id(),
-        from_sn,
-        Some(to_sn),
+        sender_id,
+        from_tk.event_sn,
+        Some(to_tk.event_sn),
     )?);
 
-    for room_id in data::user::joined_rooms(authed.user_id())? {
-        device_list_updates.extend(room::keys_changed_users(&room_id, from_sn, Some(to_sn))?);
+    for room_id in data::user::joined_rooms(sender_id)? {
+        device_list_updates.extend(room::keys_changed_users(
+            &room_id,
+            from_tk.event_sn,
+            Some(to_tk.event_sn),
+        )?);
     }
     json_ok(KeyChangesResBody {
         changed: device_list_updates.into_iter().collect(),

@@ -43,13 +43,12 @@ pub async fn sync_events(
     let curr_sn = data::curr_sn()?;
     crate::seqnum_reach(curr_sn).await;
     let since_tk = if let Some(since_str) = args.since.as_ref() {
-        let since = since_str
-            .parse()
-            .map_err(|_| AppError::public("invalid `since` parameter, must be a number"))?;
-        if since > curr_sn {
+        let since_tk: BatchToken = since_str
+            .parse()?;
+        if since_tk.event_sn > curr_sn {
             return Ok(SyncEventsResBody::new(since_str.to_owned()));
         }
-        Some(BatchToken::new(since, None))
+        Some(since_tk)
     } else {
         None
     };
