@@ -38,6 +38,21 @@ pub(super) async fn get_messages(
             .filter(room_users::membership.eq("join")),
         &mut connect()?
     )?;
+    if !is_joined {
+        let Some((_event_sn, forgotten)) = room_users::table
+            .filter(room_users::room_id.eq(&args.room_id))
+            .filter(room_users::user_id.eq(sender_id))
+            .filter(room_users::membership.eq("leave"))
+            .select((room_users::event_sn, room_users::forgotten))
+            .first::<(i64, bool)>(&mut connect()?)
+            .optional()?
+        else {
+            return Err(MatrixError::forbidden("you aren't a member of the room", None).into());
+        };
+        if forgotten {
+            return Err(MatrixError::forbidden("you aren't a member of the room", None).into());
+        }
+    }
     // let until_tk = if !is_joined {
     //     let Some((event_sn, forgotten)) = room_users::table
     //         .filter(room_users::room_id.eq(&args.room_id))
@@ -56,7 +71,7 @@ pub(super) async fn get_messages(
     // } else {
     //     args.to.as_ref().map(|to| to.parse()).transpose()?
     // };
-     let until_tk = args.to.as_ref().map(|to| to.parse()).transpose()?;
+    let until_tk = args.to.as_ref().map(|to| to.parse()).transpose()?;
 
     println!("WWWWWWWWWWWWWWWWWWWWWargs: {args:#?} until:{until_tk:?}");
     let mut from_tk: BatchToken = args
