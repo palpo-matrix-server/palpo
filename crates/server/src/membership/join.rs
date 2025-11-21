@@ -317,7 +317,8 @@ pub async fn join_room(
             room_id,
             &room_version,
             event_value,
-            true, false
+            true,
+            false,
         )
         .await
         {

@@ -106,7 +106,8 @@ impl crate::core::state::Event for OutlierPdu {
 
 impl OutlierPdu {
     pub fn save_to_database(
-        self, backfilled: bool,
+        self,
+        backfilled: bool,
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
         let Self {
             pdu,
@@ -129,7 +130,8 @@ impl OutlierPdu {
             ));
         }
         let (event_sn, event_guard) = ensure_event_sn(&room_id, &pdu.event_id)?;
-        let mut db_event = NewDbEvent::from_canonical_json(&pdu.event_id, event_sn, &json_data, backfilled)?;
+        let mut db_event =
+            NewDbEvent::from_canonical_json(&pdu.event_id, event_sn, &json_data, backfilled)?;
         db_event.is_outlier = true;
         db_event.soft_failed = soft_failed;
         db_event.is_rejected = pdu.rejection_reason.is_some();
@@ -155,7 +157,8 @@ impl OutlierPdu {
     }
 
     pub async fn process_incoming(
-        mut self, backfilled: bool,
+        mut self,
+        backfilled: bool,
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
         if (!self.soft_failed && !self.rejected())
             || (self.rejected()
@@ -203,7 +206,8 @@ impl OutlierPdu {
     }
 
     pub async fn process_pulled(
-        mut self, backfilled: bool,
+        mut self,
+        backfilled: bool,
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
         let version_rules = crate::room::get_version_rules(&self.room_version)?;
 

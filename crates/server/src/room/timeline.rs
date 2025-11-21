@@ -1289,7 +1289,8 @@ pub async fn backfill_pdu(
         info!("we already know {event_id}, skipping backfill");
         return Ok(());
     }
-    handler::process_incoming_pdu(origin, &event_id, room_id, room_version, value, true, true).await?;
+    handler::process_incoming_pdu(origin, &event_id, room_id, room_version, value, true, true)
+        .await?;
 
     let _value = get_pdu_json(&event_id)?.expect("we just created it");
     let pdu = get_pdu(&event_id)?;

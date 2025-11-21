@@ -370,7 +370,7 @@ pub(super) async fn timestamp_to_event(
             &room_version,
             &fetch_event(&remote_server, &event_id).await?.pdu,
         ) else {
-            error!("failed pase featch pdu for timestamp to event");
+            error!("failed parse featch pdu for timestamp to event");
             return json_ok(TimestampToEventResBody {
                 event_id,
                 origin_server_ts,
@@ -381,7 +381,8 @@ pub(super) async fn timestamp_to_event(
             &event_id,
             &args.room_id,
             &room_version,
-            event_value,true
+            event_value,
+            true,
         )
         .await?;
 
