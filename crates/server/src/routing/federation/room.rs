@@ -239,7 +239,8 @@ async fn send_knock(
         &args.room_id,
         &room_version,
         value.clone(),
-        true,false
+        true,
+        false,
     )
     .await
     .map_err(|_| MatrixError::invalid_param("could not accept as timeline event"))?;

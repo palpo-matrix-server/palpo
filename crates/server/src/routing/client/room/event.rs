@@ -19,7 +19,7 @@ use crate::data::room::DbEvent;
 use crate::event::fetching::fetch_event;
 use crate::event::handler::{process_pulled_pdu, remote_timestamp_to_event};
 use crate::event::parse_fetched_pdu;
-use crate::room::{EventOrderBy, state, timeline};
+use crate::room::{state, timeline};
 use crate::utils::HtmlEscape;
 use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, json_ok, room};
 use crate::{OptionalExtension, PduBuilder};
@@ -160,14 +160,13 @@ pub(super) fn get_context(
     // Use limit with maximum 100
     let limit = args.limit.min(100);
     let base_event = base_event.to_room_event();
-    let events_before = timeline::get_pdus_backward(
+    let events_before = timeline::stream::load_pdus_backward(
         Some(sender_id),
         &room_id,
         base_token,
         None,
         None,
         limit / 2,
-        EventOrderBy::StreamOrdering,
     )?
     .into_iter()
     .filter(|(_, pdu)| state::user_can_see_event(sender_id, &pdu.event_id).unwrap_or(false))
@@ -193,14 +192,13 @@ pub(super) fn get_context(
         .into_iter()
         .map(|(_, pdu)| pdu.to_room_event())
         .collect::<Vec<_>>();
-    let events_after = timeline::get_pdus_forward(
+    let events_after = timeline::stream::load_pdus_forward(
         Some(sender_id),
         &room_id,
         base_token,
         None,
         None,
         limit / 2,
-        EventOrderBy::StreamOrdering,
     )?;
 
     for (_, event) in &events_after {
@@ -370,7 +368,7 @@ pub(super) async fn timestamp_to_event(
             &room_version,
             &fetch_event(&remote_server, &event_id).await?.pdu,
         ) else {
-            error!("failed pase featch pdu for timestamp to event");
+            error!("failed parse featch pdu for timestamp to event");
             return json_ok(TimestampToEventResBody {
                 event_id,
                 origin_server_ts,
@@ -381,7 +379,8 @@ pub(super) async fn timestamp_to_event(
             &event_id,
             &args.room_id,
             &room_version,
-            event_value,true
+            event_value,
+            true,
         )
         .await?;
 

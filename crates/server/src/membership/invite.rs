@@ -127,8 +127,16 @@ pub async fn invite_user(
             ))
         })?;
 
-        handler::process_incoming_pdu(&origin, &event_id, room_id, &room_version_id, value, true, false)
-            .await?;
+        handler::process_incoming_pdu(
+            &origin,
+            &event_id,
+            room_id,
+            &room_version_id,
+            value,
+            true,
+            false,
+        )
+        .await?;
         return sending::send_pdu_room(
             room_id,
             &event_id,

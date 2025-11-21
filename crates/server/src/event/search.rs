@@ -16,7 +16,7 @@ use crate::data::full_text_search::*;
 use crate::data::schema::*;
 use crate::data::{self, connect};
 use crate::event::BatchToken;
-use crate::room::{EventOrderBy, state, timeline};
+use crate::room::{state, timeline};
 use crate::{AppResult, MatrixError, SnPduEvent};
 
 pub fn search_pdus(
@@ -135,23 +135,21 @@ fn calc_event_context(
     after_limit: usize,
     include_profile: bool,
 ) -> AppResult<EventContextResult> {
-    let before_pdus = timeline::get_pdus_backward(
+    let before_pdus = timeline::stream::load_pdus_backward(
         Some(user_id),
         room_id,
         BatchToken::new(event_sn - 1, None),
         None,
         None,
         before_limit,
-        EventOrderBy::StreamOrdering,
     )?;
-    let after_pdus = timeline::get_pdus_forward(
+    let after_pdus = timeline::stream::load_pdus_forward(
         Some(user_id),
         room_id,
         BatchToken::new(event_sn + 1, None),
         None,
         None,
         after_limit,
-        EventOrderBy::StreamOrdering,
     )?;
     let mut profile = BTreeMap::new();
     if include_profile && let Ok(frame_id) = crate::event::get_frame_id(room_id, event_sn) {
