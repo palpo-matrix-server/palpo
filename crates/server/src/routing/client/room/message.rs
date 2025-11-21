@@ -13,7 +13,7 @@ use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::event::BatchToken;
 use crate::event::get_batch_token_by_sn;
-use crate::room::{EventOrderBy, timeline};
+use crate::room::{timeline};
 use crate::routing::prelude::*;
 use crate::{PduBuilder, room};
 
@@ -104,14 +104,13 @@ pub(super) async fn get_messages(
     let mut lazy_loaded = HashSet::new();
     match args.dir {
         Direction::Forward => {
-            let events = timeline::get_pdus_forward(
+            let events = timeline::topolo::load_pdus_forward(
                 Some(sender_id),
                 &args.room_id,
                 from_tk,
                 until_tk,
                 Some(&args.filter),
                 limit,
-                EventOrderBy::TopologicalOrdering,
             )?;
 
             for (_, event) in &events {
@@ -142,24 +141,22 @@ pub(super) async fn get_messages(
             resp.chunk = events;
         }
         Direction::Backward => {
-            let mut events = timeline::get_pdus_backward(
+            let mut events = timeline::topolo::load_pdus_backward(
                 Some(sender_id),
                 &args.room_id,
                 from_tk,
                 until_tk,
                 Some(&args.filter),
                 limit,
-                EventOrderBy::TopologicalOrdering,
             )?;
             if timeline::backfill_if_required(&args.room_id, &events).await? {
-                events = timeline::get_pdus_backward(
+                events = timeline::topolo::load_pdus_backward(
                     Some(sender_id),
                     &args.room_id,
                     from_tk,
                     until_tk,
                     Some(&args.filter),
                     limit,
-                    EventOrderBy::TopologicalOrdering,
                 )?;
             }
 

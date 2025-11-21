@@ -49,7 +49,7 @@ use crate::core::room_version_rules::{AuthorizationRules, RoomIdFormatVersion, R
 use crate::core::serde::{CanonicalJsonObject, JsonValue, RawJson};
 use crate::core::state::events::RoomCreateEvent;
 use crate::event::{BatchToken, PduBuilder};
-use crate::room::{EventOrderBy, push_action, timeline};
+use crate::room::{push_action, timeline};
 use crate::user::user_is_ignored;
 use crate::{
     AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, RoomMutexGuard, config,
@@ -163,14 +163,13 @@ async fn initial_sync(
     }
 
     let limit = LIMIT_MAX;
-    let events = timeline::get_pdus_backward(
+    let events = timeline::stream::load_pdus_backward(
         Some(sender_id),
         room_id,
         BatchToken::zero(),
         None,
         None,
         limit,
-        EventOrderBy::StreamOrdering,
     )?;
 
     let frame_id = room::get_frame_id(room_id, None).unwrap_or_default();

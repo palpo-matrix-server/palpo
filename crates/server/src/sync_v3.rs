@@ -21,7 +21,7 @@ use crate::core::serde::RawJson;
 use crate::core::{Seqnum, UnixMillis};
 use crate::event::BatchToken;
 use crate::event::{EventHash, PduEvent, SnPduEvent};
-use crate::room::{EventOrderBy, state, timeline};
+use crate::room::{ state, timeline};
 use crate::utils::IterStream;
 use crate::{AppError, AppResult, config, data, extract_variant, room};
 
@@ -406,11 +406,10 @@ async fn load_joined_room(
                 if joined_member_count + invited_member_count <= 5 {
                     // Go through all PDUs and for each member event, check if the user is still joined or
                     // invited until we have 5 or we reach the end
-                    for hero in timeline::all_pdus(
+                    for hero in timeline::stream::load_all_pdus(
                         Some(sender_id),
                         room_id,
                         until_tk,
-                        EventOrderBy::StreamOrdering,
                     )?
                     .into_iter() // Ignore all broken pdus
                     .filter(|(_, pdu)| pdu.event_ty == TimelineEventType::RoomMember)
@@ -977,35 +976,32 @@ pub(crate) fn load_timeline(
                 (until, since)
             };
 
-            timeline::get_pdus_backward(
+            timeline::stream::load_pdus_backward(
                 Some(user_id),
                 room_id,
                 max,
                 Some(min),
                 filter,
                 limit + 1,
-                EventOrderBy::StreamOrdering,
             )?
         } else {
-            timeline::get_pdus_backward(
+            timeline::stream::load_pdus_backward(
                 Some(user_id),
                 room_id,
                 BatchToken::MAX,
                 Some(since),
                 filter,
                 limit + 1,
-                EventOrderBy::StreamOrdering,
             )?
         }
     } else {
-        timeline::get_pdus_backward(
+        timeline::stream::load_pdus_backward(
             Some(user_id),
             room_id,
             BatchToken::MAX,
             None,
             filter,
             limit + 1,
-            EventOrderBy::StreamOrdering,
         )?
     };
 
