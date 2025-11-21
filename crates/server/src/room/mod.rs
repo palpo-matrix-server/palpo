@@ -51,7 +51,7 @@ pub mod push_action;
 pub mod thread;
 pub use state::get_room_frame_id as get_frame_id;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum EventOrderBy {
     StreamOrdering,
     TopologicalOrdering,

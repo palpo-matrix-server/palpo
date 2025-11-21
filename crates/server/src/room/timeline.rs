@@ -986,18 +986,27 @@ pub fn get_pdus(
                         .filter(events::sn.ge(min_sn));
                 }
                 EventOrderBy::TopologicalOrdering => {
-                    let (Some(since_depth), Some(until_depth)) =
+                    if let (Some(since_depth), Some(until_depth)) =
                         (since_tk.event_depth, until_tk.event_depth)
-                    else {
-                        return Err(AppError::public("since or util token is incorrect"));
-                    };
-                    println!(">>>>>>>>>>>>>>since_tk: {since_tk:?}, until_tk: {until_tk:?}");
-                    let min_depth = since_depth.min(until_depth);
-                    let max_depth = since_depth.max(until_depth);
-                    println!(">>>>>>>>>>>>>>min_depth: {}, max_depth: {}", min_depth, max_depth);
-                    query = query
-                        .filter(events::depth.le(max_depth))
-                        .filter(events::depth.ge(min_depth));
+                    {
+                        let min_depth = since_depth.min(until_depth);
+                        let max_depth = since_depth.max(until_depth);
+                        query = query
+                            .filter(events::depth.le(max_depth))
+                            .filter(events::depth.ge(min_depth));
+                    } else if let Some(since_depth) = since_tk.event_depth {
+                        if dir == Direction::Forward {
+                            query = query.filter(events::depth.ge(since_depth));
+                        } else {
+                            query = query.filter(events::depth.le(since_depth));
+                        }
+                    } else if let Some(until_depth) = until_tk.event_depth {
+                        if dir == Direction::Forward {
+                            query = query.filter(events::depth.le(until_depth));
+                        } else {
+                            query = query.filter(events::depth.ge(until_depth));
+                        }
+                    }
                 }
             }
         } else if dir == Direction::Forward {
@@ -1006,10 +1015,9 @@ pub fn get_pdus(
                     query = query.filter(events::sn.ge(since_tk.event_sn));
                 }
                 EventOrderBy::TopologicalOrdering => {
-                    let Some(since_depth) = since_tk.event_depth else {
-                        return Err(AppError::public("since token is incorrect"));
-                    };
-                    query = query.filter(events::depth.ge(since_depth));
+                    if let Some(since_depth) = since_tk.event_depth {
+                        query = query.filter(events::depth.ge(since_depth));
+                    }
                 }
             }
         } else {
@@ -1018,10 +1026,13 @@ pub fn get_pdus(
                     query = query.filter(events::sn.le(since_tk.event_sn));
                 }
                 EventOrderBy::TopologicalOrdering => {
-                    let Some(since_depth) = since_tk.event_depth else {
-                        return Err(AppError::public("since token is incorrect"));
-                    };
-                    query = query.filter(events::depth.le(since_depth));
+                    if let Some(since_depth) = since_tk.event_depth {
+                        if dir == Direction::Forward {
+                            query = query.filter(events::depth.ge(since_depth));
+                        } else {
+                            query = query.filter(events::depth.le(since_depth));
+                        }
+                    }
                 }
             }
         }
