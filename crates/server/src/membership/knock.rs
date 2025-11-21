@@ -251,6 +251,7 @@ pub async fn knock_room(
                 &room_version,
                 serde_json::from_str(res_body.pdu.get())?,
                 true,
+                false,
             )
             .await
             {

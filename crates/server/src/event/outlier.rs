@@ -106,7 +106,7 @@ impl crate::core::state::Event for OutlierPdu {
 
 impl OutlierPdu {
     pub fn save_to_database(
-        self,
+        self, backfilled: bool,
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
         let Self {
             pdu,
@@ -129,7 +129,7 @@ impl OutlierPdu {
             ));
         }
         let (event_sn, event_guard) = ensure_event_sn(&room_id, &pdu.event_id)?;
-        let mut db_event = NewDbEvent::from_canonical_json(&pdu.event_id, event_sn, &json_data)?;
+        let mut db_event = NewDbEvent::from_canonical_json(&pdu.event_id, event_sn, &json_data, backfilled)?;
         db_event.is_outlier = true;
         db_event.soft_failed = soft_failed;
         db_event.is_rejected = pdu.rejection_reason.is_some();
@@ -155,14 +155,14 @@ impl OutlierPdu {
     }
 
     pub async fn process_incoming(
-        mut self,
+        mut self, backfilled: bool,
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
         if (!self.soft_failed && !self.rejected())
             || (self.rejected()
                 && self.rejected_prev_events.is_empty()
                 && self.rejected_auth_events.is_empty())
         {
-            return self.save_to_database();
+            return self.save_to_database(backfilled);
         }
 
         // Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
@@ -178,7 +178,7 @@ impl OutlierPdu {
                 if *kind == core::error::ErrorKind::BadJson {
                     self.rejection_reason = Some(format!("bad prev events: {}", e));
                     println!("========================zzzz 2");
-                    return self.save_to_database();
+                    return self.save_to_database(backfilled);
                 } else {
                     println!("==================================soft failed 3 {e}");
                     self.soft_failed = true;
@@ -189,7 +189,7 @@ impl OutlierPdu {
             }
         }
 
-        self.process_pulled().await
+        self.process_pulled(backfilled).await
     }
 
     fn any_auth_event_rejected(&self) -> AppResult<bool> {
@@ -206,21 +206,21 @@ impl OutlierPdu {
     }
 
     pub async fn process_pulled(
-        mut self,
+        mut self, backfilled: bool,
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
         let version_rules = crate::room::get_version_rules(&self.room_version)?;
 
         println!("DDDDDDDDDDDDDDDDDDDDDDDDD 0  {:#?}", self.event_id);
         if !self.soft_failed || self.rejected() {
             println!("DDDDDDDDDDDDDDDDDDDDDDDDD 1  {:#?}", self);
-            return self.save_to_database();
+            return self.save_to_database(backfilled);
         }
         println!("DDDDDDDDDDDDDDDDDDDDDDDDD 2");
 
         if self.any_prev_event_rejected()? {
             println!("============any prev event rejected");
             self.rejection_reason = Some("one or more prev events are rejected".to_string());
-            return self.save_to_database();
+            return self.save_to_database(backfilled);
         }
         println!("DDDDDDDDDDDDDDDDDDDDDDDDD 3");
         if self.any_auth_event_rejected()? {
@@ -241,7 +241,7 @@ impl OutlierPdu {
                     self.rejection_reason =
                         Some("one or more auth events are rejected".to_string());
                 }
-                return self.save_to_database();
+                return self.save_to_database(backfilled);
             }
         }
         let (_prev_events, missing_prev_event_ids) =
@@ -306,6 +306,6 @@ impl OutlierPdu {
                 self.soft_failed = false;
             }
         }
-        self.save_to_database()
+        self.save_to_database(backfilled)
     }
 }

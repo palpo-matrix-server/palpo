@@ -317,7 +317,7 @@ pub async fn join_room(
             room_id,
             &room_version,
             event_value,
-            true,
+            true, false
         )
         .await
         {
@@ -354,7 +354,7 @@ pub async fn join_room(
                 AppError::public("invalid pdu in send_join response.")
             })?;
 
-            NewDbEvent::from_canonical_json(&event_id, event_sn, &value)?.save()?;
+            NewDbEvent::from_canonical_json(&event_id, event_sn, &value, false)?.save()?;
             DbEventData {
                 event_id: pdu.event_id.to_owned(),
                 event_sn,
@@ -389,7 +389,7 @@ pub async fn join_room(
 
         if !timeline::has_pdu(&event_id) {
             let (event_sn, event_guard) = ensure_event_sn(room_id, &event_id)?;
-            NewDbEvent::from_canonical_json(&event_id, event_sn, &value)?.save()?;
+            NewDbEvent::from_canonical_json(&event_id, event_sn, &value, false)?.save()?;
             DbEventData {
                 event_id: event_id.to_owned(),
                 event_sn,
@@ -451,6 +451,7 @@ pub async fn join_room(
             &event_id,
             join_event_sn,
             &join_event,
+            false,
         )?)
         .on_conflict_do_nothing()
         .execute(&mut connect()?)?;

@@ -384,7 +384,7 @@ pub(super) async fn timestamp_to_event(
             &event_id,
             &args.room_id,
             &room_version,
-            event_value,
+            event_value,false
         )
         .await?;
 

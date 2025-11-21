@@ -452,7 +452,7 @@ async fn send_leave(
         &args.room_id,
         &room_version_id,
         value,
-        true,
+        true,false
     )
     .await?;
     if let Err(e) = crate::sending::send_pdu_room(&args.room_id, &event_id, &[], &[]) {

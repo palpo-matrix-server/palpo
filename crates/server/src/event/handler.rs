@@ -37,6 +37,7 @@ pub(crate) async fn process_incoming_pdu(
     room_version_id: &RoomVersionId,
     value: BTreeMap<String, CanonicalJsonValue>,
     is_timeline_event: bool,
+    backfilled: bool,
 ) -> AppResult<()> {
     if !crate::room::room_exists(room_id)? {
         return Err(MatrixError::not_found("room is unknown to this server").into());
@@ -98,7 +99,7 @@ pub(crate) async fn process_incoming_pdu(
         return Ok(());
     };
 
-    let (incoming_pdu, val, event_guard) = outlier_pdu.process_incoming().await?;
+    let (incoming_pdu, val, event_guard) = outlier_pdu.process_incoming(backfilled).await?;
 
     println!(
         "=============process incoming pdu 1  {}",
@@ -154,6 +155,7 @@ pub(crate) async fn process_pulled_pdu(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
     value: BTreeMap<String, CanonicalJsonValue>,
+    backfilled: bool,
 ) -> AppResult<()> {
     println!("================= process_pulled_pdu 0 {event_id}");
     // 1.3.1 Check room ACL on origin field/server
@@ -183,7 +185,7 @@ pub(crate) async fn process_pulled_pdu(
     else {
         return Ok(());
     };
-    let (pdu, json_data, _) = outlier_pdu.process_pulled().await?;
+    let (pdu, json_data, _) = outlier_pdu.process_pulled(backfilled).await?;
 
     println!("=============call process_to_timeline_pdu z 0");
     if pdu.soft_failed || pdu.rejected() {

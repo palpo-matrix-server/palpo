@@ -1306,7 +1306,7 @@ pub async fn backfill_pdu(
         return Ok(());
     }
     println!("bbbbbbbbbbbbackfill_pdu 1");
-    handler::process_incoming_pdu(origin, &event_id, room_id, room_version, value, true).await?;
+    handler::process_incoming_pdu(origin, &event_id, room_id, room_version, value, true, true).await?;
 
     println!("bbbbbbbbbbbbackfill_pdu 2");
     let _value = get_pdu_json(&event_id)?.expect("we just created it");
