@@ -1,7 +1,10 @@
+mod batch_token;
 pub mod fetching;
 pub mod handler;
 mod pdu;
 pub mod resolver;
+pub use batch_token::*;
+
 pub use pdu::*;
 mod outlier;
 pub mod search;
@@ -81,6 +84,23 @@ pub fn get_event_sn(event_id: &EventId) -> AppResult<Seqnum> {
         .find(event_id)
         .select(event_points::event_sn)
         .first::<Seqnum>(&mut connect()?)
+        .map_err(Into::into)
+}
+
+pub fn get_batch_token(event_id: &EventId) -> AppResult<BatchToken> {
+    events::table
+        .find(event_id)
+        .select((events::sn, events::depth))
+        .first::<(Seqnum, i64)>(&mut connect()?)
+        .map(|(sn, depth)| BatchToken::new(sn, Some(depth)))
+        .map_err(Into::into)
+}
+pub fn get_batch_token_by_sn(event_sn: Seqnum) -> AppResult<BatchToken> {
+    events::table
+        .filter(events::sn.eq(event_sn))
+        .select((events::sn, events::depth))
+        .first::<(Seqnum, i64)>(&mut connect()?)
+        .map(|(sn, depth)| BatchToken::new(sn, Some(depth)))
         .map_err(Into::into)
 }
 
@@ -258,6 +278,17 @@ pub fn parse_incoming_pdu(
     Ok((event_id, value, room_id, room_version_id))
 }
 
+pub fn seen_event_ids(
+    room_id: &RoomId,
+    event_ids: &[OwnedEventId],
+) -> AppResult<Vec<OwnedEventId>> {
+    let seen_events = events::table
+        .filter(events::room_id.eq(room_id))
+        .filter(events::id.eq_any(event_ids))
+        .select(events::id)
+        .load::<OwnedEventId>(&mut connect()?)?;
+    Ok(seen_events)
+}
 #[inline]
 pub fn ignored_filter(item: PdusIterItem, user_id: &UserId) -> bool {
     let (_, pdu) = item;

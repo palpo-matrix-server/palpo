@@ -1,22 +1,21 @@
-use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 
 use diesel::prelude::*;
 
-use crate::core::events::{StateEventType, TimelineEventType};
+use crate::core::events::TimelineEventType;
 use crate::core::identifiers::*;
-use crate::core::serde::CanonicalJsonObject;
-use crate::core::serde::RawJsonValue;
-use crate::core::state::{Event, StateError, event_auth};
+use crate::core::serde::{CanonicalJsonObject, RawJsonValue};
+use crate::core::state::{Event, StateError};
 use crate::core::{self, Seqnum, UnixMillis};
 use crate::data::room::{DbEventData, NewDbEvent};
-use crate::data::schema::*;
-use crate::data::{self, connect};
+use crate::data::{connect, diesel_exists, schema::*};
 use crate::event::fetching::{
-    fetch_and_process_missing_state, fetch_and_process_missing_state_by_ids,
+    fetch_and_process_auth_chain, fetch_and_process_missing_events,
+    fetch_and_process_missing_state_by_ids,
 };
-use crate::event::handler::fetch_and_process_missing_prev_events;
+use crate::event::handler::auth_check;
 use crate::event::{PduEvent, SnPduEvent, ensure_event_sn};
+use crate::room::state::update_backward_extremities;
 use crate::room::timeline;
 use crate::utils::SeqnumQueueGuard;
 use crate::{AppError, AppResult, MatrixError};
@@ -31,6 +30,8 @@ pub struct OutlierPdu {
     pub room_id: OwnedRoomId,
     pub room_version: RoomVersionId,
     pub event_sn: Option<Seqnum>,
+    pub rejected_auth_events: Vec<OwnedEventId>,
+    pub rejected_prev_events: Vec<OwnedEventId>,
 }
 impl AsRef<PduEvent> for OutlierPdu {
     fn as_ref(&self) -> &PduEvent {
@@ -105,7 +106,7 @@ impl crate::core::state::Event for OutlierPdu {
 
 impl OutlierPdu {
     pub fn save_to_database(
-        self,
+        self, backfilled: bool,
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
         let Self {
             pdu,
@@ -128,7 +129,7 @@ impl OutlierPdu {
             ));
         }
         let (event_sn, event_guard) = ensure_event_sn(&room_id, &pdu.event_id)?;
-        let mut db_event = NewDbEvent::from_canonical_json(&pdu.event_id, event_sn, &json_data)?;
+        let mut db_event = NewDbEvent::from_canonical_json(&pdu.event_id, event_sn, &json_data, backfilled)?;
         db_event.is_outlier = true;
         db_event.soft_failed = soft_failed;
         db_event.is_rejected = pdu.rejection_reason.is_some();
@@ -143,70 +144,156 @@ impl OutlierPdu {
             format_version: None,
         }
         .save()?;
-        Ok((
-            SnPduEvent {
-                pdu,
-                event_sn,
-                is_outlier: true,
-                soft_failed,
-            },
-            json_data,
-            event_guard,
-        ))
+        let pdu = SnPduEvent {
+            pdu,
+            event_sn,
+            is_outlier: true,
+            soft_failed,
+        };
+        update_backward_extremities(&pdu)?;
+        Ok((pdu, json_data, event_guard))
     }
 
-    pub async fn save_with_fill_missing(
-        mut self,
+    pub async fn process_incoming(
+        mut self, backfilled: bool,
+    ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
+        if (!self.soft_failed && !self.rejected())
+            || (self.rejected()
+                && self.rejected_prev_events.is_empty()
+                && self.rejected_auth_events.is_empty())
+        {
+            return self.save_to_database(backfilled);
+        }
+
+        // Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
+        if let Err(e) = fetch_and_process_missing_events(
+            &self.remote_server,
+            &self.room_id,
+            &self.room_version,
+            &self,
+        )
+        .await
+        {
+            if let AppError::Matrix(MatrixError { ref kind, .. }) = e {
+                if *kind == core::error::ErrorKind::BadJson {
+                    self.rejection_reason = Some(format!("bad prev events: {}", e));
+                    return self.save_to_database(backfilled);
+                } else {
+                    self.soft_failed = true;
+                }
+            } else {
+                self.soft_failed = true;
+            }
+        }
+
+        self.process_pulled(backfilled).await
+    }
+
+    fn any_auth_event_rejected(&self) -> AppResult<bool> {
+        let query = events::table
+            .filter(events::id.eq_any(&self.pdu.auth_events))
+            .filter(events::is_rejected.eq(true));
+        Ok(diesel_exists!(query, &mut connect()?)?)
+    }
+    fn any_prev_event_rejected(&self) -> AppResult<bool> {
+        let query = events::table
+            .filter(events::id.eq_any(&self.pdu.prev_events))
+            .filter(events::is_rejected.eq(true));
+        Ok(diesel_exists!(query, &mut connect()?)?)
+    }
+
+    pub async fn process_pulled(
+        mut self, backfilled: bool,
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
         let version_rules = crate::room::get_version_rules(&self.room_version)?;
-        let auth_rules = &version_rules.authorization;
 
-        if self.soft_failed {
-            // Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
-            match fetch_and_process_missing_prev_events(
+        if !self.soft_failed || self.rejected() {
+            return self.save_to_database(backfilled);
+        }
+
+        if self.any_prev_event_rejected()? {
+            self.rejection_reason = Some("one or more prev events are rejected".to_string());
+            return self.save_to_database(backfilled);
+        }
+        if self.any_auth_event_rejected()? {
+            if let Err(e) = fetch_and_process_auth_chain(
                 &self.remote_server,
                 &self.room_id,
                 &self.room_version,
-                &self,
-                &mut Default::default(),
+                &self.pdu.event_id,
             )
             .await
             {
-                Ok(failed_ids) => {
-                    self.soft_failed = !failed_ids.is_empty();
+                if let AppError::HttpStatus(_) = e {
+                    self.soft_failed = true;
+                } else {
+                    self.rejection_reason =
+                        Some("one or more auth events are rejected".to_string());
                 }
-                Err(e) => {
-                    if let AppError::Matrix(MatrixError { ref kind, .. }) = e {
-                        if *kind == core::error::ErrorKind::BadJson {
-                            self.rejection_reason =
-                                Some(format!("failed to bad prev events: {}", e));
-                        } else {
-                            self.soft_failed = true;
-                        }
-                    } else {
-                        self.soft_failed = true;
-                    }
-                }
+                return self.save_to_database(backfilled);
             }
-
-            let (auth_events, missing_auth_event_ids) =
-                timeline::get_may_missing_pdus(&self.room_id, &self.pdu.auth_events)?;
-            if !missing_auth_event_ids.is_empty() {
-                if let Err(e) = fetch_and_process_missing_state(
+        }
+        let (_prev_events, missing_prev_event_ids) =
+            timeline::get_may_missing_pdus(&self.room_id, &self.pdu.prev_events)?;
+        if !missing_prev_event_ids.is_empty() {
+            for event_id in &missing_prev_event_ids {
+                let missing_events = match fetch_and_process_missing_state_by_ids(
                     &self.remote_server,
                     &self.room_id,
                     &self.room_version,
-                    &self.pdu.event_id,
+                    event_id,
                 )
                 .await
                 {
-                    error!("failed to fetch missing auth events: {}", e);
-                } else {
-                    self.soft_failed = false;
+                    Ok(missing_events) => {
+                        self.soft_failed = !missing_events.is_empty();
+                        missing_events
+                    }
+                    Err(e) => {
+                        if let AppError::Matrix(MatrixError { ref kind, .. }) = e {
+                            if *kind == core::error::ErrorKind::BadJson {
+                                self.rejection_reason =
+                                    Some(format!("failed to bad prev events: {}", e));
+                            } else {
+                                self.soft_failed = true;
+                            }
+                        } else {
+                            self.soft_failed = true;
+                        }
+                        vec![]
+                    }
+                };
+                if !missing_events.is_empty() {
+                    for event_id in &missing_events {
+                        if let Err(e) = fetch_and_process_auth_chain(
+                            &self.remote_server,
+                            &self.room_id,
+                            &self.room_version,
+                            event_id,
+                        )
+                        .await
+                        {
+                            warn!("error fetching auth chain for {}: {}", event_id, e);
+                        }
+                    }
                 }
             }
         }
 
-        self.save_to_database()
+        if self.pdu.rejection_reason.is_none() {
+            if let Err(e) = auth_check(&self.pdu, &self.room_id, &version_rules, None).await {
+                match e {
+                    AppError::State(StateError::Forbidden(brief)) => {
+                        self.pdu.rejection_reason = Some(brief);
+                    }
+                    _ => {
+                        self.soft_failed = true;
+                    }
+                }
+            } else {
+                self.soft_failed = false;
+            }
+        }
+        self.save_to_database(backfilled)
     }
 }

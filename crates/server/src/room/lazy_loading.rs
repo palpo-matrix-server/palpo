@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{LazyLock, Mutex};
 
 use diesel::prelude::*;
+use palpo_core::Seqnum;
 
 use crate::AppResult;
 use crate::core::{DeviceId, OwnedDeviceId, OwnedRoomId, OwnedUserId, RoomId, UserId};
@@ -9,7 +10,7 @@ use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 
 pub static LAZY_LOAD_WAITING: LazyLock<
-    Mutex<HashMap<(OwnedUserId, OwnedDeviceId, OwnedRoomId, i64), HashSet<OwnedUserId>>>,
+    Mutex<HashMap<(OwnedUserId, OwnedDeviceId, OwnedRoomId, Seqnum), HashSet<OwnedUserId>>>,
 > = LazyLock::new(Default::default);
 
 #[tracing::instrument]
@@ -33,7 +34,7 @@ pub fn lazy_load_mark_sent(
     device_id: &DeviceId,
     room_id: &RoomId,
     lazy_load: HashSet<OwnedUserId>,
-    until_sn: i64,
+    until_sn: Seqnum,
 ) {
     LAZY_LOAD_WAITING.lock().unwrap().insert(
         (
@@ -51,7 +52,7 @@ pub fn lazy_load_confirm_delivery(
     user_id: &UserId,
     device_id: &DeviceId,
     room_id: &RoomId,
-    occur_sn: i64,
+    occur_sn: Seqnum,
 ) -> AppResult<()> {
     if let Some(confirmed_user_ids) = LAZY_LOAD_WAITING.lock().unwrap().remove(&(
         user_id.to_owned(),

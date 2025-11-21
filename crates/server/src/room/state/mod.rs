@@ -4,6 +4,7 @@ use std::sync::{Arc, LazyLock, Mutex};
 use diesel::prelude::*;
 use indexmap::IndexMap;
 use lru_cache::LruCache;
+use palpo_data::diesel_exists;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 
@@ -306,6 +307,53 @@ where
             ))
             .on_conflict_do_nothing()
             .execute(&mut connect()?)?;
+    }
+    Ok(())
+}
+
+pub fn get_backward_extremities(room_id: &RoomId) -> AppResult<Vec<OwnedEventId>> {
+    let event_ids = event_backward_extremities::table
+        .filter(event_backward_extremities::room_id.eq(room_id))
+        .select(event_backward_extremities::event_id)
+        .distinct()
+        .load::<OwnedEventId>(&mut connect()?)?
+        .into_iter()
+        .collect();
+    Ok(event_ids)
+}
+
+pub fn update_backward_extremities(pdu: &SnPduEvent) -> AppResult<()> {
+    if !pdu.is_outlier || pdu.prev_events.is_empty() {
+        diesel::delete(
+            event_backward_extremities::table
+                .filter(event_backward_extremities::room_id.eq(&pdu.room_id))
+                .filter(event_backward_extremities::event_id.eq(&pdu.event_id)),
+        )
+        .execute(&mut connect()?)?;
+    }
+    if pdu.is_outlier {
+        diesel::insert_into(event_backward_extremities::table)
+            .values((
+                event_backward_extremities::room_id.eq(&pdu.room_id),
+                event_backward_extremities::event_id.eq(&pdu.event_id),
+            ))
+            .on_conflict_do_nothing()
+            .execute(&mut connect()?)?;
+    } else {
+        for event_id in &pdu.prev_events {
+            let query = events::table
+                .filter(events::id.eq(event_id))
+                .filter(events::is_outlier.eq(false));
+            if !diesel_exists!(query, &mut connect()?)? {
+                diesel::insert_into(event_backward_extremities::table)
+                    .values((
+                        event_backward_extremities::room_id.eq(&pdu.room_id),
+                        event_backward_extremities::event_id.eq(event_id),
+                    ))
+                    .on_conflict_do_nothing()
+                    .execute(&mut connect()?)?;
+            }
+        }
     }
     Ok(())
 }

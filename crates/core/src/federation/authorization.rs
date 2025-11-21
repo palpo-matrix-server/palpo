@@ -23,7 +23,7 @@ use crate::serde::RawJsonValue;
 //     }
 // };
 
-pub fn event_authorization_request(
+pub fn event_auth_request(
     origin: &str,
     room_id: &RoomId,
     event_id: &EventId,
@@ -36,7 +36,7 @@ pub fn event_authorization_request(
 
 /// Request type for the `get_event_authorization` endpoint.
 #[derive(ToParameters, Deserialize, Debug)]
-pub struct EventAuthorizationReqArgs {
+pub struct EventAuthReqArgs {
     /// The room ID to get the auth chain for.
     #[salvo(parameter(parameter_in = Path))]
     pub room_id: OwnedRoomId,
@@ -49,13 +49,13 @@ pub struct EventAuthorizationReqArgs {
 /// Response type for the `get_event_authorization` endpoint.
 #[derive(ToSchema, Deserialize, Serialize, Debug)]
 
-pub struct EventAuthorizationResBody {
+pub struct EventAuthResBody {
     /// The full set of authorization events that make up the state of the room,
     /// and their authorization events, recursively.
     #[salvo(schema(value_type = Vec<Object>))]
     pub auth_chain: Vec<Box<RawJsonValue>>,
 }
-impl EventAuthorizationResBody {
+impl EventAuthResBody {
     /// Creates a new `Response` with the given auth chain.
     pub fn new(auth_chain: Vec<Box<RawJsonValue>>) -> Self {
         Self { auth_chain }

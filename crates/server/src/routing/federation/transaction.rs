@@ -99,7 +99,7 @@ async fn process_pdus(
             &room_id,
             &room_version_id,
             value,
-            true,
+            true,false
         )
         .await;
         debug!(

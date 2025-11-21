@@ -1,25 +1,28 @@
 use std::collections::HashSet;
 
+use palpo_core::Direction;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
 use state::DbRoomStateField;
 
-use crate::PduBuilder;
 use crate::core::client::filter::LazyLoadOptions;
 use crate::core::client::redact::{RedactEventReqArgs, RedactEventReqBody, RedactEventResBody};
 use crate::core::client::room::{
-    ContextReqArgs, ContextResBody, EventByTimestampReqArgs, EventByTimestampResBody,
-    ReportContentReqBody, RoomEventResBody,
+    ContextReqArgs, ContextResBody, ReportContentReqBody, RoomEventResBody,
 };
 use crate::core::events::room::message::RoomMessageEventContent;
 use crate::core::events::room::redaction::RoomRedactionEventContent;
 use crate::core::events::{StateEventType, TimelineEventType};
-use crate::core::room::RoomEventReqArgs;
+use crate::core::room::{RoomEventReqArgs, TimestampToEventReqArgs, TimestampToEventResBody};
 use crate::data::room::DbEvent;
+use crate::event::fetching::fetch_event;
+use crate::event::handler::{process_pulled_pdu, remote_timestamp_to_event};
+use crate::event::parse_fetched_pdu;
 use crate::room::{EventOrderBy, state, timeline};
 use crate::utils::HtmlEscape;
 use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, json_ok, room};
+use crate::{OptionalExtension, PduBuilder};
 
 /// #GET /_matrix/client/r0/rooms/{room_id}/event/{event_id}
 /// Gets a single event.
@@ -133,7 +136,7 @@ pub(super) fn get_context(
     };
 
     let mut lazy_loaded = HashSet::new();
-    let base_token = crate::event::get_event_sn(&args.event_id)
+    let base_token = crate::event::get_batch_token(&args.event_id)
         .map_err(|_| MatrixError::not_found("base event id not found"))?;
     let base_event = timeline::get_pdu(&args.event_id)?;
     let room_id = base_event.room_id.clone();
@@ -158,7 +161,7 @@ pub(super) fn get_context(
     let limit = args.limit.min(100);
     let base_event = base_event.to_room_event();
     let events_before = timeline::get_pdus_backward(
-        sender_id,
+        Some(sender_id),
         &room_id,
         base_token,
         None,
@@ -184,14 +187,14 @@ pub(super) fn get_context(
 
     let start_token = events_before
         .last()
-        .map(|(count, _)| count.to_string())
-        .unwrap_or_else(|| base_token.to_string());
+        .map(|(_, pdu)| pdu.batch_token())
+        .unwrap_or_else(|| base_token);
     let events_before = events_before
         .into_iter()
         .map(|(_, pdu)| pdu.to_room_event())
         .collect::<Vec<_>>();
     let events_after = timeline::get_pdus_forward(
-        sender_id,
+        Some(sender_id),
         &room_id,
         base_token,
         None,
@@ -223,8 +226,8 @@ pub(super) fn get_context(
     let state_ids = state::get_full_state_ids(frame_id).unwrap_or_default();
     let end_token = events_after
         .last()
-        .map(|(count, _)| count.to_string())
-        .unwrap_or_else(|| base_token.to_string());
+        .map(|(_, e)| e.batch_token())
+        .unwrap_or_else(|| base_token);
     let events_after: Vec<_> = events_after
         .into_iter()
         .map(|(_, pdu)| pdu.to_room_event())
@@ -260,8 +263,8 @@ pub(super) fn get_context(
     }
 
     json_ok(ContextResBody {
-        start: Some(start_token),
-        end: Some(end_token),
+        start: Some(start_token.to_string()),
+        end: Some(end_token.to_string()),
         events_before,
         event: Some(base_event),
         events_after,
@@ -311,17 +314,88 @@ pub(super) async fn send_redact(
 #[endpoint]
 pub(super) async fn timestamp_to_event(
     _aa: AuthArgs,
-    args: EventByTimestampReqArgs,
+    args: TimestampToEventReqArgs,
     depot: &mut Depot,
-) -> JsonResult<EventByTimestampResBody> {
+) -> JsonResult<TimestampToEventResBody> {
     let authed = depot.authed_info()?;
     if !room::user::is_joined(authed.user_id(), &args.room_id)? {
         return Err(MatrixError::forbidden("You are not joined to this room.", None).into());
     }
-    let (event_id, origin_server_ts) =
-        crate::event::get_event_for_timestamp(&args.room_id, args.ts, args.dir)?;
-    json_ok(EventByTimestampResBody {
-        event_id,
-        origin_server_ts,
-    })
+    let local_event =
+        crate::event::get_event_for_timestamp(&args.room_id, args.ts, args.dir).optional()?;
+
+    let mut is_event_next_to_backward_gap = false;
+    let mut is_event_next_to_forward_gap = false;
+    if let Some(local_event) = &local_event {
+        let local_event = timeline::get_pdu(&local_event.0)?;
+        match args.dir {
+            Direction::Backward => {
+                is_event_next_to_backward_gap =
+                    timeline::is_event_next_to_backward_gap(&local_event)?
+            }
+            Direction::Forward => {
+                is_event_next_to_forward_gap = timeline::is_event_next_to_forward_gap(&local_event)?
+            }
+        }
+    }
+    if local_event.is_none() || is_event_next_to_backward_gap || is_event_next_to_forward_gap {
+        let remote_servers = room::admin_servers(&args.room_id, false)?;
+        let Ok((
+            remote_server,
+            TimestampToEventResBody {
+                event_id,
+                origin_server_ts,
+            },
+        )) = remote_timestamp_to_event(
+            &remote_servers,
+            &args.room_id,
+            args.dir,
+            args.ts,
+            local_event.as_ref(),
+        )
+        .await
+        else {
+            return if let Some((event_id, origin_server_ts)) = local_event {
+                json_ok(TimestampToEventResBody {
+                    event_id,
+                    origin_server_ts,
+                })
+            } else {
+                Err(StatusError::not_found().brief("no event found").into())
+            };
+        };
+        let room_version = crate::room::get_version(&args.room_id)?;
+        let Ok((event_id, event_value)) = parse_fetched_pdu(
+            &args.room_id,
+            &room_version,
+            &fetch_event(&remote_server, &event_id).await?.pdu,
+        ) else {
+            error!("failed pase featch pdu for timestamp to event");
+            return json_ok(TimestampToEventResBody {
+                event_id,
+                origin_server_ts,
+            });
+        };
+        process_pulled_pdu(
+            &remote_server,
+            &event_id,
+            &args.room_id,
+            &room_version,
+            event_value,true
+        )
+        .await?;
+
+        return json_ok(TimestampToEventResBody {
+            event_id,
+            origin_server_ts,
+        });
+    }
+    if let Some((event_id, origin_server_ts)) = local_event {
+        json_ok(TimestampToEventResBody {
+            event_id,
+            origin_server_ts,
+        })
+    } else {
+        Err(StatusError::not_found().brief("no event found").into())
+    }
 }

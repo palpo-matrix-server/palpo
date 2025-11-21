@@ -1,4 +1,5 @@
 use diesel::prelude::*;
+use palpo_core::Seqnum;
 use serde::Deserialize;
 
 use crate::AppResult;
@@ -9,7 +10,7 @@ use crate::core::identifiers::*;
 use crate::data::connect;
 use crate::data::room::{DbEventRelation, NewDbEventRelation};
 use crate::data::schema::*;
-use crate::event::SnPduEvent;
+use crate::event::{BatchToken, SnPduEvent};
 use crate::room::timeline;
 
 #[derive(Clone, Debug, Deserialize)]
@@ -63,10 +64,10 @@ pub fn paginate_relations_with_filter(
         .map(|from| from.parse())
         .transpose()?
         .unwrap_or(match dir {
-            Direction::Forward => i64::MIN,
-            Direction::Backward => i64::MAX,
+            Direction::Forward => BatchToken::MIN,
+            Direction::Backward => BatchToken::MAX,
         });
-    let to: Option<i64> = to.map(|to| to.parse()).transpose()?;
+    let to: Option<BatchToken> = to.map(|to| to.parse()).transpose()?;
 
     // Use limit or else 10, with maximum 100
     let limit = limit
@@ -83,15 +84,19 @@ pub fn paginate_relations_with_filter(
         target,
         filter_event_type.as_ref(),
         filter_rel_type.as_ref(),
-        from,
-        to,
+        from.event_sn,
+        to.map(|t| t.event_sn),
         dir,
         limit,
     )?;
 
     let next_token = match dir {
-        Direction::Forward => events.last().map(|(count, _)| *count + 1),
-        Direction::Backward => events.last().map(|(count, _)| *count - 1),
+        Direction::Forward => events
+            .last()
+            .map(|(_, pdu)| BatchToken::new(pdu.event_sn + 1, None)),
+        Direction::Backward => events
+            .last()
+            .map(|(_, pdu)| BatchToken::new(pdu.event_sn - 1, None)),
     };
 
     let events: Vec<_> = events
@@ -113,11 +118,11 @@ pub fn get_relations(
     event_id: &EventId,
     child_ty: Option<&TimelineEventType>,
     rel_type: Option<&RelationType>,
-    from: i64,
-    to: Option<i64>,
+    from: Seqnum,
+    to: Option<Seqnum>,
     dir: Direction,
     limit: usize,
-) -> AppResult<Vec<(i64, SnPduEvent)>> {
+) -> AppResult<Vec<(Seqnum, SnPduEvent)>> {
     let mut query = event_relations::table
         .filter(event_relations::room_id.eq(room_id))
         .filter(event_relations::event_id.eq(event_id))

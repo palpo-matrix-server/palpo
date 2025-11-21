@@ -14,7 +14,6 @@ use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::encrypted::Relation;
 use crate::core::events::room::member::MembershipState;
-use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
 use crate::core::events::{GlobalAccountDataEventType, StateEventType, TimelineEventType};
 use crate::core::federation::backfill::{BackfillReqArgs, BackfillResBody, backfill_request};
 use crate::core::identifiers::*;
@@ -26,16 +25,16 @@ use crate::core::serde::{
     validate_canonical_json,
 };
 use crate::core::state::{Event, StateError, event_auth};
-use crate::core::{Direction, Seqnum, UnixMillis, user_id};
+use crate::core::{Direction, Seqnum, UnixMillis};
 use crate::data::room::{DbEvent, DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::event::{EventHash, PduBuilder, PduEvent, handler, parse_fetched_pdu};
-use crate::room::{EventOrderBy, push_action, timeline,state};
+use crate::event::{BatchToken, EventHash, PduBuilder, PduEvent, handler, parse_fetched_pdu};
+use crate::room::{EventOrderBy, push_action, state, timeline};
 use crate::utils::SeqnumQueueGuard;
 use crate::{
     AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, SnPduEvent, config, data,
-    membership, utils, 
+    membership, room, utils,
 };
 
 pub static LAST_TIMELINE_COUNT_CACHE: LazyLock<Mutex<HashMap<OwnedRoomId, i64>>> =
@@ -151,7 +150,7 @@ pub fn get_may_missing_pdus(
     let mut pdus = Vec::with_capacity(events.len());
     let mut missing_ids = event_ids.iter().cloned().collect::<HashSet<_>>();
     for event_id in events {
-        let Ok( pdu) = timeline::get_pdu(&event_id) else {
+        let Ok(pdu) = timeline::get_pdu(&event_id) else {
             continue;
         };
         pdus.push(pdu);
@@ -896,18 +895,26 @@ pub async fn build_and_append_pdu(
 
 /// Returns an iterator over all PDUs in a room.
 pub fn all_pdus(
-    user_id: &UserId,
+    user_id: Option<&UserId>,
     room_id: &RoomId,
-    until_sn: Option<i64>,
+    until_sn: Option<BatchToken>,
     order_by: EventOrderBy,
 ) -> AppResult<IndexMap<i64, SnPduEvent>> {
-    get_pdus_forward(user_id, room_id, 0, until_sn, None, usize::MAX, order_by)
+    get_pdus_forward(
+        user_id,
+        room_id,
+        BatchToken::MIN,
+        until_sn,
+        None,
+        usize::MAX,
+        order_by,
+    )
 }
 pub fn get_pdus_forward(
-    user_id: &UserId,
+    user_id: Option<&UserId>,
     room_id: &RoomId,
-    since_sn: Seqnum,
-    until_sn: Option<i64>,
+    since: BatchToken,
+    until: Option<BatchToken>,
     filter: Option<&RoomEventFilter>,
     limit: usize,
     order_by: EventOrderBy,
@@ -915,8 +922,8 @@ pub fn get_pdus_forward(
     get_pdus(
         user_id,
         room_id,
-        since_sn,
-        until_sn,
+        since,
+        until,
         limit,
         filter,
         Direction::Forward,
@@ -924,10 +931,10 @@ pub fn get_pdus_forward(
     )
 }
 pub fn get_pdus_backward(
-    user_id: &UserId,
+    user_id: Option<&UserId>,
     room_id: &RoomId,
-    since_sn: Seqnum,
-    until_sn: Option<i64>,
+    since: BatchToken,
+    until: Option<BatchToken>,
     filter: Option<&RoomEventFilter>,
     limit: usize,
     order_by: EventOrderBy,
@@ -935,8 +942,8 @@ pub fn get_pdus_backward(
     get_pdus(
         user_id,
         room_id,
-        since_sn,
-        until_sn,
+        since,
+        until,
         limit,
         filter,
         Direction::Backward,
@@ -949,10 +956,10 @@ pub fn get_pdus_backward(
 /// Skips events before user joined the room.
 #[tracing::instrument]
 pub fn get_pdus(
-    user_id: &UserId,
+    user_id: Option<&UserId>,
     room_id: &RoomId,
-    since_sn: Seqnum,
-    until_sn: Option<Seqnum>,
+    since_tk: BatchToken,
+    until_tk: Option<BatchToken>,
     limit: usize,
     filter: Option<&RoomEventFilter>,
     dir: Direction,
@@ -969,20 +976,65 @@ pub fn get_pdus(
         let mut query = events::table
             .filter(events::room_id.eq(room_id))
             .into_boxed();
-        if let Some(until_sn) = until_sn {
-            if dir == Direction::Forward {
-                query = query
-                    .filter(events::sn.le(until_sn))
-                    .filter(events::sn.ge(since_sn));
-            } else {
-                query = query
-                    .filter(events::sn.le(since_sn))
-                    .filter(events::sn.ge(until_sn));
+        if let Some(until_tk) = until_tk {
+            match order_by {
+                EventOrderBy::StreamOrdering => {
+                    let max_sn = until_tk.event_sn.max(since_tk.event_sn);
+                    let min_sn = until_tk.event_sn.min(since_tk.event_sn);
+                    query = query
+                        .filter(events::sn.le(max_sn))
+                        .filter(events::sn.ge(min_sn));
+                }
+                EventOrderBy::TopologicalOrdering => {
+                    if let (Some(since_depth), Some(until_depth)) =
+                        (since_tk.event_depth, until_tk.event_depth)
+                    {
+                        let min_depth = since_depth.min(until_depth);
+                        let max_depth = since_depth.max(until_depth);
+                        query = query
+                            .filter(events::depth.le(max_depth))
+                            .filter(events::depth.ge(min_depth));
+                    } else if let Some(since_depth) = since_tk.event_depth {
+                        if dir == Direction::Forward {
+                            query = query.filter(events::depth.ge(since_depth));
+                        } else {
+                            query = query.filter(events::depth.le(since_depth));
+                        }
+                    } else if let Some(until_depth) = until_tk.event_depth {
+                        if dir == Direction::Forward {
+                            query = query.filter(events::depth.le(until_depth));
+                        } else {
+                            query = query.filter(events::depth.ge(until_depth));
+                        }
+                    }
+                }
             }
         } else if dir == Direction::Forward {
-            query = query.filter(events::sn.ge(since_sn));
+            match order_by {
+                EventOrderBy::StreamOrdering => {
+                    query = query.filter(events::sn.ge(since_tk.event_sn));
+                }
+                EventOrderBy::TopologicalOrdering => {
+                    if let Some(since_depth) = since_tk.event_depth {
+                        query = query.filter(events::depth.ge(since_depth));
+                    }
+                }
+            }
         } else {
-            query = query.filter(events::sn.le(since_sn));
+            match order_by {
+                EventOrderBy::StreamOrdering => {
+                    query = query.filter(events::sn.le(since_tk.event_sn));
+                }
+                EventOrderBy::TopologicalOrdering => {
+                    if let Some(since_depth) = since_tk.event_depth {
+                        if dir == Direction::Forward {
+                            query = query.filter(events::depth.ge(since_depth));
+                        } else {
+                            query = query.filter(events::depth.le(since_depth));
+                        }
+                    }
+                }
+            }
         }
 
         if let Some(filter) = filter {
@@ -1028,7 +1080,7 @@ pub fn get_pdus(
                     .rev()
                     .collect(),
                 EventOrderBy::TopologicalOrdering => query
-                    .order((events::topological_ordering.desc(),))
+                    .order((events::depth.desc(),))
                     .limit(utils::usize_to_i64(limit))
                     .select((events::id, events::sn))
                     .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
@@ -1040,14 +1092,14 @@ pub fn get_pdus(
             let query = query.filter(events::sn.lt(start_sn));
             match order_by {
                 EventOrderBy::StreamOrdering => query
-                    .order(events::stream_ordering.desc())
+                    .order(events::sn.desc())
                     .limit(utils::usize_to_i64(limit))
                     .select((events::id, events::sn))
                     .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
                     .into_iter()
                     .collect(),
                 EventOrderBy::TopologicalOrdering => query
-                    .order(events::topological_ordering.desc())
+                    .order(events::depth.desc())
                     .limit(utils::usize_to_i64(limit))
                     .select((events::id, events::sn))
                     .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
@@ -1070,14 +1122,17 @@ pub fn get_pdus(
             break;
         };
         for (event_id, event_sn) in events {
-            if let Ok(mut pdu) = get_pdu(&event_id)
-                && pdu.user_can_see(user_id)?
-            {
-                if pdu.sender != user_id {
-                    pdu.remove_transaction_id()?;
+            if let Ok(mut pdu) = get_pdu(&event_id) {
+                if let Some(user_id) = user_id {
+                    if !pdu.user_can_see(user_id)? {
+                        continue;
+                    }
+                    if pdu.sender != user_id {
+                        pdu.remove_transaction_id()?;
+                    }
+                    pdu.add_unsigned_membership(user_id)?;
                 }
                 pdu.add_age()?;
-                pdu.add_unsigned_membership(user_id)?;
                 list.insert(event_sn, pdu);
                 if list.len() >= limit {
                     break;
@@ -1105,48 +1160,93 @@ pub fn redact_pdu(event_id: &EventId, reason: &PduEvent) -> AppResult<()> {
     Ok(())
 }
 
-#[tracing::instrument(skip(room_id))]
-pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<()> {
-    let pdus = all_pdus(
-        user_id!("@doesntmatter:palpo.im"),
-        room_id,
-        None,
-        EventOrderBy::StreamOrdering,
-    )?;
-    let first_pdu = pdus.first();
+pub fn is_event_next_to_backward_gap(event: &PduEvent) -> AppResult<bool> {
+    let mut event_ids = event.prev_events.clone();
+    event_ids.push(event.event_id().to_owned());
+    let query = event_backward_extremities::table
+        .filter(event_backward_extremities::room_id.eq(event.room_id()))
+        .filter(event_backward_extremities::event_id.eq_any(event_ids));
+    Ok(diesel_exists!(query, &mut connect()?)?)
+}
 
-    let Some((first_sn, first_pdu)) = first_pdu else {
-        return Ok(());
+pub fn is_event_next_to_forward_gap(event: &PduEvent) -> AppResult<bool> {
+    let mut event_ids = event.prev_events.clone();
+    event_ids.push(event.event_id().to_owned());
+    let query = event_forward_extremities::table
+        .filter(event_forward_extremities::room_id.eq(event.room_id()))
+        .filter(event_forward_extremities::event_id.eq_any(event_ids));
+    Ok(diesel_exists!(query, &mut connect()?)?)
+}
+
+#[tracing::instrument(skip_all)]
+pub async fn backfill_if_required(
+    room_id: &RoomId,
+    pdus: &IndexMap<Seqnum, SnPduEvent>,
+) -> AppResult<bool> {
+    let mut depths = pdus
+        .values()
+        .map(|p| (&p.event_id, p.depth))
+        .collect::<Vec<_>>();
+    depths.sort_unstable_by(|a, b| b.1.cmp(&a.1));
+
+    let (mut prev_event, prev_depth) = if let Some(depth) = depths.first() {
+        *depth
+    } else {
+        return Ok(false);
     };
-    if *first_sn < from {
-        // No backfill required, there are still events between them
-        return Ok(());
+
+    let mut prev_depth = prev_depth as i64;
+    let last_depth = depths.last().map(|&(_, d)| d).unwrap_or_default() as i64;
+    if prev_depth == last_depth {
+        return Ok(false);
     }
 
-    let conf = config::get();
-    let power_levels = super::get_state_content::<RoomPowerLevelsEventContent>(
-        room_id,
-        &StateEventType::RoomPowerLevels,
-        "",
-        None,
-    )?;
-    let mut admin_servers = power_levels
-        .users
-        .iter()
-        .filter(|(_, level)| **level > power_levels.users_default)
-        .map(|(user_id, _)| user_id.server_name())
-        .collect::<HashSet<_>>();
-    admin_servers.remove(&*conf.server_name);
+    let depths = events::table
+        .filter(events::depth.lt(prev_depth))
+        .filter(events::depth.ge(last_depth))
+        .order(events::depth.desc())
+        .select((events::id, events::depth))
+        .load::<(OwnedEventId, i64)>(&mut connect()?)?;
+
+    let mut found_big_gap = false;
+    let mut number_of_gaps = 0;
+    let mut fill_from = None;
+    for &(ref event_id, depth) in depths.iter() {
+        let delta = prev_depth - depth;
+        if delta > 1 {
+            number_of_gaps += 1;
+            if fill_from.is_none() {
+                fill_from = Some(prev_event);
+            }
+        }
+        if delta >= 2 {
+            found_big_gap = true;
+            if fill_from.is_none() {
+                fill_from = Some(prev_event);
+            }
+            break;
+        }
+        prev_depth = depth;
+        prev_event = event_id;
+    }
+
+    if number_of_gaps < 3 && !found_big_gap {
+        return Ok(false);
+    };
+    let Some(fill_from) = fill_from else {
+        return Ok(false);
+    };
+
+    let admin_servers = room::admin_servers(room_id, false)?;
 
     let room_version = super::get_version(room_id)?;
-    // Request backfill
-    for backfill_server in admin_servers {
-        info!("Asking {backfill_server} for backfill");
+    for backfill_server in &admin_servers {
+        info!("asking {backfill_server} for backfill");
         let request = backfill_request(
             &backfill_server.origin().await,
             BackfillReqArgs {
                 room_id: room_id.to_owned(),
-                v: vec![(*first_pdu.event_id).to_owned()],
+                v: vec![fill_from.to_owned()],
                 limit: 100,
             },
         )?
@@ -1157,14 +1257,13 @@ pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<(
             .await
         {
             Ok(response) => {
-                // let mut pub_key_map = RwLock::new(BTreeMap::new());
                 for pdu in response.pdus {
                     if let Err(e) = backfill_pdu(backfill_server, room_id, &room_version, pdu).await
                     {
-                        warn!("Failedcar to add backfilled pdu: {e}");
+                        warn!("failed to add backfilled pdu: {e}");
                     }
                 }
-                return Ok(());
+                return Ok(true);
             }
             Err(e) => {
                 warn!("{backfill_server} could not provide backfill: {e}");
@@ -1172,8 +1271,8 @@ pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<(
         }
     }
 
-    info!("No servers could backfill");
-    Ok(())
+    info!("no servers could backfill");
+    Ok(false)
 }
 
 #[tracing::instrument(skip(pdu))]
@@ -1190,8 +1289,7 @@ pub async fn backfill_pdu(
         info!("we already know {event_id}, skipping backfill");
         return Ok(());
     }
-
-    handler::process_incoming_pdu(origin, &event_id, room_id, room_version, value, false).await?;
+    handler::process_incoming_pdu(origin, &event_id, room_id, room_version, value, true, true).await?;
 
     let _value = get_pdu_json(&event_id)?.expect("we just created it");
     let pdu = get_pdu(&event_id)?;
@@ -1204,7 +1302,7 @@ pub async fn backfill_pdu(
 
         let _content = pdu
             .get_content::<ExtractBody>()
-            .map_err(|_| AppError::internal("Invalid content in pdu."))?;
+            .map_err(|_| AppError::internal("invalid content in pdu."))?;
     }
 
     Ok(())

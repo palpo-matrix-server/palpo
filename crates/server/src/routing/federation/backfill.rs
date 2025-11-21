@@ -6,38 +6,40 @@ use crate::room::{state, timeline};
 use crate::{AuthArgs, DepotExt, JsonResult, MatrixError, config, json_ok};
 
 pub fn router() -> Router {
-    Router::with_path("backfill/{room_id}").get(history)
+    Router::with_path("backfill/{room_id}").get(get_history)
 }
 
 /// #GET /_matrix/federation/v1/backfill/{room_id}
 /// Retrieves events from before the sender joined the room, if the room's
 /// history visibility allows.
 #[endpoint]
-async fn history(
+async fn get_history(
     _aa: AuthArgs,
     args: BackfillReqArgs,
     depot: &mut Depot,
 ) -> JsonResult<BackfillResBody> {
     let origin = depot.origin()?;
-    debug!("Got backfill request from: {}", origin);
+    debug!("got backfill request from: {}", origin);
 
     let until = args
         .v
         .iter()
-        .filter_map(|event_id| crate::event::get_event_sn(event_id).ok())
-        .max()
-        .ok_or(MatrixError::invalid_param("No known eventid in v"))?;
+        .filter_map(|event_id| crate::event::get_batch_token(event_id).ok())
+        .max_by(|a, b| a.event_sn.cmp(&b.event_sn))
+        .ok_or(MatrixError::invalid_param(
+            "unknown event id in query string v",
+        ))?;
 
     let limit = args.limit.min(100);
 
     let all_events = timeline::get_pdus_backward(
-        user_id!("@doesntmatter:palpo.im"),
+        None,
         &args.room_id,
         until,
         None,
         None,
         limit,
-        crate::room::EventOrderBy::StreamOrdering,
+        crate::room::EventOrderBy::TopologicalOrdering,
     )?;
 
     let mut events = Vec::with_capacity(all_events.len());
@@ -50,6 +52,7 @@ async fn history(
             ));
         }
     }
+    events.reverse();
 
     json_ok(BackfillResBody {
         origin: config::get().server_name.to_owned(),

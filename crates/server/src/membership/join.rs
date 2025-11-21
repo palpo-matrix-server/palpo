@@ -27,7 +27,7 @@ use crate::core::serde::{
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::event::handler::{fetch_and_process_missing_prev_events, process_incoming_pdu};
+use crate::event::handler::{process_incoming_pdu, process_to_outlier_pdu};
 use crate::event::{
     PduBuilder, PduEvent, ensure_event_sn, gen_event_id_canonical_json, parse_fetched_pdu,
 };
@@ -317,38 +317,13 @@ pub async fn join_room(
             room_id,
             &room_version,
             event_value,
-            true,
+            true, false
         )
         .await
         {
             error!("failed to process incoming events for join: {e}");
         }
     }
-    match fetch_and_process_missing_prev_events(
-        &remote_server,
-        room_id,
-        &room_version,
-        &parsed_join_pdu,
-        &mut Default::default(),
-    )
-    .await
-    {
-        Ok(failed_ids) => {
-            if !failed_ids.is_empty() {
-                error!("failed to fetch missing prev events {failed_ids:?} for join");
-            }
-        }
-        Err(e) => {
-            error!("failed to fetch missing prev events for join: {e}");
-        }
-    }
-    // crate::event::handler::fetch_state(
-    //     &remote_server,
-    //     room_id,
-    //     &room_version_id,
-    //     &parsed_join_pdu.event_id,
-    // )
-    // .await?;
 
     info!("going through send_join response room_state");
     for result in send_join_body
@@ -379,7 +354,7 @@ pub async fn join_room(
                 AppError::public("invalid pdu in send_join response.")
             })?;
 
-            NewDbEvent::from_canonical_json(&event_id, event_sn, &value)?.save()?;
+            NewDbEvent::from_canonical_json(&event_id, event_sn, &value, false)?.save()?;
             DbEventData {
                 event_id: pdu.event_id.to_owned(),
                 event_sn,
@@ -414,7 +389,7 @@ pub async fn join_room(
 
         if !timeline::has_pdu(&event_id) {
             let (event_sn, event_guard) = ensure_event_sn(room_id, &event_id)?;
-            NewDbEvent::from_canonical_json(&event_id, event_sn, &value)?.save()?;
+            NewDbEvent::from_canonical_json(&event_id, event_sn, &value, false)?.save()?;
             DbEventData {
                 event_id: event_id.to_owned(),
                 event_sn,
@@ -476,6 +451,7 @@ pub async fn join_room(
             &event_id,
             join_event_sn,
             &join_event,
+            false,
         )?)
         .on_conflict_do_nothing()
         .execute(&mut connect()?)?;

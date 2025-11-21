@@ -172,7 +172,7 @@ pub async fn send_join_v1(
         room_id,
         &room_version_id,
         value.clone(),
-        true,
+        true, false
     )
     .await?;
 

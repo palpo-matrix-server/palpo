@@ -10,6 +10,7 @@ use crate::core::events::receipt::{SyncReceiptEvent, combine_receipt_event_conte
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{AnyRawAccountDataEvent, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
+use crate::event::BatchToken;
 use crate::event::ignored_filter;
 use crate::room::{self, filter_rooms, state, timeline};
 use crate::sync_v3::{DEFAULT_BUMP_TYPES, TimelineData, share_encrypted_room};
@@ -291,8 +292,8 @@ async fn process_rooms(
             crate::sync_v3::load_timeline(
                 sender_id,
                 room_id,
-                Some(*room_since_sn),
-                Some(Seqnum::MAX),
+                Some(BatchToken::new(*room_since_sn, None)),
+                Some(BatchToken::MAX),
                 Some(&RoomEventFilter::with_limit(*timeline_limit)),
             )?
         };
@@ -849,11 +850,7 @@ pub fn update_sync_subscriptions(
     subscriptions: BTreeMap<OwnedRoomId, sync_events::v5::RoomSubscription>,
 ) {
     let mut cache = CONNECTIONS.lock().unwrap();
-    let cached = Arc::clone(
-        cache
-            .entry((user_id, device_id, conn_id))
-            .or_default(),
-    );
+    let cached = Arc::clone(cache.entry((user_id, device_id, conn_id)).or_default());
     let cached = &mut cached.lock().unwrap();
     drop(cache);
 
@@ -869,11 +866,7 @@ pub fn update_sync_known_rooms(
     since_sn: i64,
 ) {
     let mut cache = CONNECTIONS.lock().unwrap();
-    let cached = Arc::clone(
-        cache
-            .entry((user_id, device_id, conn_id))
-            .or_default(),
-    );
+    let cached = Arc::clone(cache.entry((user_id, device_id, conn_id)).or_default());
     let cached = &mut cached.lock().unwrap();
     drop(cache);
 
@@ -900,11 +893,7 @@ pub fn mark_required_state_sent(
     event_sn: Seqnum,
 ) {
     let mut cache = CONNECTIONS.lock().unwrap();
-    let cached = Arc::clone(
-        cache
-            .entry((user_id, device_id, conn_id))
-            .or_default(),
-    );
+    let cached = Arc::clone(cache.entry((user_id, device_id, conn_id)).or_default());
     let cached = &mut cached.lock().unwrap();
     drop(cache);
     cached.required_state.insert(event_sn);

@@ -4,7 +4,6 @@ mod federation;
 mod identity;
 mod media;
 
-use salvo::fs::NamedFile;
 use salvo::prelude::*;
 use salvo::serve_static::StaticDir;
 use url::Url;
@@ -23,8 +22,9 @@ pub mod prelude {
     pub use crate::core::serde::{JsonValue, RawJson};
     pub use crate::{
         AppError, AppResult, AuthArgs, DepotExt, EmptyResult, JsonResult, OptionalExtension,
-        config, empty_ok, hoops, json_ok,
+        config, empty_ok, exts::*, hoops, json_ok,
     };
+    pub use salvo::prelude::*;
 }
 
 pub fn root() -> Router {

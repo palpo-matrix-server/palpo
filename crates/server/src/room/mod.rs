@@ -51,7 +51,7 @@ pub mod push_action;
 pub mod thread;
 pub use state::get_room_frame_id as get_frame_id;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum EventOrderBy {
     StreamOrdering,
     TopologicalOrdering,
@@ -421,6 +421,28 @@ pub fn participating_servers(
             .load(&mut connect()?)
             .map_err(Into::into)
     }
+}
+
+pub fn admin_servers(
+    room_id: &RoomId,
+    include_self_server: bool,
+) -> AppResult<Vec<OwnedServerName>> {
+    let power_levels = get_state_content::<RoomPowerLevelsEventContent>(
+        room_id,
+        &StateEventType::RoomPowerLevels,
+        "",
+        None,
+    )?;
+    let mut admin_servers = power_levels
+        .users
+        .iter()
+        .filter(|(_, level)| **level > power_levels.users_default)
+        .map(|(user_id, _)| user_id.server_name())
+        .collect::<HashSet<_>>();
+    if !include_self_server {
+        admin_servers.remove(&*config::server_name());
+    }
+    Ok(admin_servers.into_iter().map(|s| s.to_owned()).collect())
 }
 
 pub fn public_room_ids() -> AppResult<Vec<OwnedRoomId>> {

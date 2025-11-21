@@ -2,14 +2,12 @@ use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
 use crate::core::UnixMillis;
-use crate::core::federation::authorization::{
-    EventAuthorizationReqArgs, EventAuthorizationResBody,
-};
+use crate::core::federation::authorization::{EventAuthReqArgs, EventAuthResBody};
 use crate::core::federation::event::{
-    EventByTimestampReqArgs, EventByTimestampResBody, EventReqArgs, EventResBody,
-    MissingEventsReqBody, MissingEventsResBody,
+    EventReqArgs, EventResBody, MissingEventsReqBody, MissingEventsResBody,
 };
 use crate::core::identifiers::*;
+use crate::core::room::{TimestampToEventReqArgs, TimestampToEventResBody};
 use crate::data::room::DbEvent;
 use crate::room::{state, timeline};
 use crate::{
@@ -20,7 +18,7 @@ pub fn router() -> Router {
     Router::new()
         .push(Router::with_path("event/{event_id}").get(get_event))
         .push(Router::with_path("event_auth/{room_id}/{event_id}").get(auth_chain))
-        .push(Router::with_path("timestamp_to_event/{room_id}").get(event_by_timestamp))
+        .push(Router::with_path("timestamp_to_event/{room_id}").get(timestamp_to_event))
         .push(Router::with_path("get_missing_events/{room_id}").post(missing_events))
         .push(
             Router::with_path("exchange_third_party_invite/{room_id}")
@@ -69,9 +67,9 @@ fn get_event(_aa: AuthArgs, args: EventReqArgs, depot: &mut Depot) -> JsonResult
 #[endpoint]
 fn auth_chain(
     _aa: AuthArgs,
-    args: EventAuthorizationReqArgs,
+    args: EventAuthReqArgs,
     depot: &mut Depot,
-) -> JsonResult<EventAuthorizationResBody> {
+) -> JsonResult<EventAuthResBody> {
     let origin = depot.origin()?;
     crate::federation::access_check(origin, &args.room_id, None)?;
 
@@ -91,7 +89,7 @@ fn auth_chain(
     let auth_chain_ids =
         crate::room::auth_chain::get_auth_chain_ids(room_id, [&*args.event_id].into_iter())?;
 
-    json_ok(EventAuthorizationResBody {
+    json_ok(EventAuthResBody {
         auth_chain: auth_chain_ids
             .into_iter()
             .filter_map(|id| timeline::get_pdu_json(&id).ok()?)
@@ -101,17 +99,17 @@ fn auth_chain(
 }
 
 #[endpoint]
-async fn event_by_timestamp(
+async fn timestamp_to_event(
     _aa: AuthArgs,
-    args: EventByTimestampReqArgs,
+    args: TimestampToEventReqArgs,
     depot: &mut Depot,
-) -> JsonResult<EventByTimestampResBody> {
+) -> JsonResult<TimestampToEventResBody> {
     let origin = depot.origin()?;
     crate::federation::access_check(origin, &args.room_id, None)?;
 
     let (event_id, origin_server_ts) =
         crate::event::get_event_for_timestamp(&args.room_id, args.ts, args.dir)?;
-    json_ok(EventByTimestampResBody {
+    json_ok(TimestampToEventResBody {
         event_id,
         origin_server_ts,
     })

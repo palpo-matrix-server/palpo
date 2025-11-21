@@ -22,6 +22,7 @@ use crate::core::serde::{
     CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJson, RawJsonValue, default_false,
 };
 use crate::core::{Seqnum, UnixMillis, UserId};
+use crate::event::BatchToken;
 use crate::room::state;
 use crate::{AppError, AppResult, room};
 
@@ -67,8 +68,14 @@ impl SnPduEvent {
                 return Ok(true);
             }
         }
-        let Ok(frame_id) = state::get_pdu_frame_id(&self.event_id) else {
-            return Ok(false);
+        let frame_id = match state::get_pdu_frame_id(&self.event_id) {
+            Ok(frame_id) => frame_id,
+            Err(_) => match state::get_room_frame_id(&self.room_id, None) {
+                Ok(frame_id) => frame_id,
+                Err(_) => {
+                    return Ok(false);
+                }
+            },
         };
 
         if let Some(visibility) = state::USER_VISIBILITY_CACHE
@@ -178,6 +185,13 @@ impl SnPduEvent {
 
     pub fn into_inner(self) -> PduEvent {
         self.pdu
+    }
+
+    pub fn batch_token(&self) -> BatchToken {
+        BatchToken {
+            event_sn: self.event_sn,
+            event_depth: Some(self.depth as i64),
+        }
     }
 }
 impl AsRef<PduEvent> for SnPduEvent {
