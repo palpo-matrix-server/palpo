@@ -43,7 +43,6 @@ pub(crate) async fn process_incoming_pdu(
         return Err(MatrixError::not_found("room is unknown to this server").into());
     }
 
-    println!("\n\n\n\n\n\n======process_incoming_pdu  {event_id:#?}");
     let event = events::table
         .filter(events::id.eq(event_id))
         .first::<DbEvent>(&mut connect()?);
@@ -101,21 +100,14 @@ pub(crate) async fn process_incoming_pdu(
 
     let (incoming_pdu, val, event_guard) = outlier_pdu.process_incoming(backfilled).await?;
 
-    println!(
-        "=============process incoming pdu 1  {}",
-        incoming_pdu.event_id
-    );
     if incoming_pdu.rejected() {
-        println!("=============process incoming pdu 1 -1 ");
         return Ok(());
     }
     check_room_id(room_id, &incoming_pdu)?;
-    println!("=============process incoming pdu 2");
     // 8. if not timeline event: stop
     if !is_timeline_event {
         return Ok(());
     }
-    println!("=============process incoming pdu 3");
     // Skip old events
     // let first_pdu_in_room = timeline::first_pdu_in_room(room_id)?
     //     .ok_or_else(|| AppError::internal("failed to find first pdu in database"))?;
@@ -123,19 +115,13 @@ pub(crate) async fn process_incoming_pdu(
     //     return Ok(());
     // }
 
-    println!("=============process incoming pdu 4");
     // Done with prev events, now handling the incoming event
     let start_time = Instant::now();
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
-    println!(
-        "=============call process_to_timeline_pdu for incoming 9  {:#?}",
-        incoming_pdu
-    );
     if let Err(e) = process_to_timeline_pdu(incoming_pdu, val, remote_server, room_id).await {
-        println!("=============call process_to_timeline_pdu {e:#?}");
         error!("failed to process incoming pdu to timeline {}", e);
     } else {
         debug!("succeed to process incoming pdu to timeline {}", event_id);
@@ -157,7 +143,6 @@ pub(crate) async fn process_pulled_pdu(
     value: BTreeMap<String, CanonicalJsonValue>,
     backfilled: bool,
 ) -> AppResult<()> {
-    println!("================= process_pulled_pdu 0 {event_id}");
     // 1.3.1 Check room ACL on origin field/server
     handler::acl_check(remote_server, room_id)?;
 
@@ -187,16 +172,12 @@ pub(crate) async fn process_pulled_pdu(
     };
     let (pdu, json_data, _) = outlier_pdu.process_pulled(backfilled).await?;
 
-    println!("=============call process_to_timeline_pdu z 0");
     if pdu.soft_failed || pdu.rejected() {
         return Ok(());
     }
 
-    println!("=============call process_to_timeline_pdu 2");
     if let Err(e) = process_to_timeline_pdu(pdu, json_data, remote_server, room_id).await {
         error!("failed to process pulled pdu to timeline: {}", e);
-    } else {
-        println!("=============process pulled pdu in timeline {}", event_id);
     }
     Ok(())
 }
@@ -209,7 +190,6 @@ pub async fn process_to_outlier_pdu(
     room_version: &RoomVersionId,
     mut value: CanonicalJsonObject,
 ) -> AppResult<Option<OutlierPdu>> {
-    println!("=======process_to_outlier_pdu 0 {event_id:?}");
     if let Some((room_id, event_sn, event_data)) = event_datas::table
         .filter(event_datas::event_id.eq(event_id))
         .select((
@@ -221,7 +201,6 @@ pub async fn process_to_outlier_pdu(
         .optional()?
         && let Ok(val) = serde_json::from_value::<CanonicalJsonObject>(event_data.clone())
     {
-        println!("=======process_to_outlier_pdu 1");
         if let Ok(pdu) = timeline::get_pdu(event_id) {
             return Ok(Some(OutlierPdu {
                 pdu: pdu.into_inner(),
@@ -303,7 +282,6 @@ pub async fn process_to_outlier_pdu(
             && state_key.ends_with(&*format!(":{}", crate::config::server_name()))
         {
             debug!("added pdu as outlier");
-            println!("=======process_to_outlier_pdu !server_joined");
             return Ok(Some(OutlierPdu {
                 pdu: incoming_pdu,
                 json_data: val,
@@ -327,7 +305,6 @@ pub async fn process_to_outlier_pdu(
             "process event to outlier missing prev events {}: {:?}",
             incoming_pdu.event_id, missing_prev_event_ids
         );
-        println!("==================================soft failed 0");
         soft_failed = true;
     }
     let rejected_prev_events = prev_events
@@ -398,11 +375,9 @@ pub async fn process_to_outlier_pdu(
         if let Err(e) = auth_check(&incoming_pdu, room_id, &version_rules, None).await {
             match e {
                 AppError::State(StateError::Forbidden(brief)) => {
-                    println!("=========outlier check auth error: {brief}");
                     incoming_pdu.rejection_reason = Some(brief);
                 }
                 _ => {
-                    println!("=========outlier check auth error2: {e}");
                     soft_failed = true;
                 }
             }
@@ -431,14 +406,11 @@ pub async fn process_to_timeline_pdu(
     remote_server: &ServerName,
     room_id: &RoomId,
 ) -> AppResult<()> {
-    println!("===========process_to_timeline_pdu {:#?}", incoming_pdu);
     // Skip the PDU if we already have it as a timeline event
     if !incoming_pdu.is_outlier {
-        println!("===========process_to_timeline_pdu zzz 0");
         return Ok(());
     }
     if incoming_pdu.rejected() {
-        println!("===========process_to_timeline_pdu zzz 1");
         return Err(AppError::internal(
             "cannot process rejected event to timeline",
         ));
@@ -670,17 +642,12 @@ pub async fn remote_timestamp_to_event(
     ts: UnixMillis,
     exist: Option<&(OwnedEventId, UnixMillis)>,
 ) -> AppResult<(OwnedServerName, TimestampToEventResBody)> {
-    println!(
-        ">>>>>>>>>>>>>>>>>>remote_timestamp_to_event {:?}",
-        remote_servers
-    );
     async fn remote_event(
         remote_server: &ServerName,
         room_id: &RoomId,
         dir: Direction,
         ts: UnixMillis,
     ) -> AppResult<TimestampToEventResBody> {
-        println!(">>>>>>>>>>>>>>>>>>remote_event {:?}", remote_server);
         let request = timestamp_to_event_request(
             &remote_server.origin().await,
             TimestampToEventReqArgs {
@@ -694,7 +661,6 @@ pub async fn remote_timestamp_to_event(
             .await?
             .json::<TimestampToEventResBody>()
             .await?;
-        println!(">>>>>>>>>>>>>>>>>>remote_event res_body {:?}", res_body);
         Ok(res_body)
     }
     for remote_server in remote_servers {

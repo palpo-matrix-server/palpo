@@ -1110,7 +1110,6 @@ pub fn get_pdus(
         if events.is_empty() {
             break;
         }
-        println!("Fetched sssssssssssssssssstart_sn0  {start_sn}");
         start_sn = if dir == Direction::Forward {
             if let Some(sn) = events.iter().map(|(_, sn)| sn).max() {
                 *sn
@@ -1122,7 +1121,6 @@ pub fn get_pdus(
         } else {
             break;
         };
-        println!("Fetched sssssssssssssssssstart_sn1  {start_sn}");
         for (event_id, event_sn) in events {
             if let Ok(mut pdu) = get_pdu(&event_id) {
                 if let Some(user_id) = user_id {
@@ -1165,10 +1163,6 @@ pub fn redact_pdu(event_id: &EventId, reason: &PduEvent) -> AppResult<()> {
 pub fn is_event_next_to_backward_gap(event: &PduEvent) -> AppResult<bool> {
     let mut event_ids = event.prev_events.clone();
     event_ids.push(event.event_id().to_owned());
-    println!(
-        "ccccccccccccccChecking backward gap for event {:#?}",
-        event_ids
-    );
     let query = event_backward_extremities::table
         .filter(event_backward_extremities::room_id.eq(event.room_id()))
         .filter(event_backward_extremities::event_id.eq_any(event_ids));
@@ -1189,7 +1183,6 @@ pub async fn backfill_if_required(
     room_id: &RoomId,
     pdus: &IndexMap<Seqnum, SnPduEvent>,
 ) -> AppResult<bool> {
-    println!("bbbbbbbbbbbbackfill_if_required from  {pdus:#?}");
     let mut depths = pdus
         .values()
         .map(|p| (&p.event_id, p.depth))
@@ -1214,15 +1207,6 @@ pub async fn backfill_if_required(
         .order(events::depth.desc())
         .select((events::id, events::depth))
         .load::<(OwnedEventId, i64)>(&mut connect()?)?;
-
-    println!(
-        "bbbbbbbbbbbbackf   exists events: {:#?}",
-        events::table
-            .filter(events::depth.lt(prev_depth))
-            .filter(events::depth.ge(last_depth))
-            .order(events::depth.desc())
-            .load::<DbEvent>(&mut connect()?)?
-    );
 
     let mut found_big_gap = false;
     let mut number_of_gaps = 0;
@@ -1256,7 +1240,6 @@ pub async fn backfill_if_required(
     let admin_servers = room::admin_servers(room_id, false)?;
 
     let room_version = super::get_version(room_id)?;
-    println!("==============depths:{depths:?}    =fill_from: {fill_from}");
     for backfill_server in &admin_servers {
         info!("asking {backfill_server} for backfill");
         let request = backfill_request(
@@ -1299,7 +1282,6 @@ pub async fn backfill_pdu(
     room_version: &RoomVersionId,
     pdu: Box<RawJsonValue>,
 ) -> AppResult<()> {
-    println!("bbbbbbbbbbbbackfill_pdu {pdu:?}");
     let (event_id, value) = parse_fetched_pdu(room_id, room_version, &pdu)?;
 
     // Skip the PDU if we already have it as a timeline event
@@ -1307,16 +1289,12 @@ pub async fn backfill_pdu(
         info!("we already know {event_id}, skipping backfill");
         return Ok(());
     }
-    println!("bbbbbbbbbbbbackfill_pdu 1");
     handler::process_incoming_pdu(origin, &event_id, room_id, room_version, value, true, true).await?;
 
-    println!("bbbbbbbbbbbbackfill_pdu 2");
     let _value = get_pdu_json(&event_id)?.expect("we just created it");
     let pdu = get_pdu(&event_id)?;
 
-    println!("bbbbbbbbbbbbackfill_pdu 3");
     if pdu.event_ty == TimelineEventType::RoomMessage {
-        println!("bbbbbbbbbbbbackfill_pdu 4");
         #[derive(Deserialize)]
         struct ExtractBody {
             body: Option<String>,

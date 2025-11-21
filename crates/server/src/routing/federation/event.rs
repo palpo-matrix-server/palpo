@@ -104,7 +104,6 @@ async fn timestamp_to_event(
     args: TimestampToEventReqArgs,
     depot: &mut Depot,
 ) -> JsonResult<TimestampToEventResBody> {
-    println!(">>>>>>>>>>>>>>>>>fffffffffffff  timestamp_to_event  {args:#?}");
     let origin = depot.origin()?;
     crate::federation::access_check(origin, &args.room_id, None)?;
 

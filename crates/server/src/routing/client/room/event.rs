@@ -338,9 +338,6 @@ pub(super) async fn timestamp_to_event(
             }
         }
     }
-    println!(
-        "=========>>>>>>>>>>>>>>fffffffffffff  timestamp_to_event  is_event_next_to_forward_gap={is_event_next_to_forward_gap:?} is_event_next_to_backward_gap={is_event_next_to_backward_gap} is_event_next_to_forward_gap={is_event_next_to_forward_gap}"
-    );
     if local_event.is_none() || is_event_next_to_backward_gap || is_event_next_to_forward_gap {
         let remote_servers = room::admin_servers(&args.room_id, false)?;
         let Ok((

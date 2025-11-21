@@ -59,9 +59,6 @@ pub fn paginate_relations_with_filter(
     recurse: bool,
     dir: Direction,
 ) -> AppResult<RelationEventsResBody> {
-    println!(
-        "+++++++++++++++++++++++++++++paginate_relations_with_filter called target: {target}  from: {from:?}  to: {to:?}  limit: {limit:?}  dir: {dir:?}  recurse: {recurse}  filter_event_type: {filter_event_type:?}  filter_rel_type: {filter_rel_type:?}"
-    );
     let prev_batch = from.map(|from| from.to_string());
     let from = from
         .map(|from| from.parse())

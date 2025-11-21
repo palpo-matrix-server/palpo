@@ -73,7 +73,6 @@ pub(super) async fn get_messages(
     // };
     let until_tk = args.to.as_ref().map(|to| to.parse()).transpose()?;
 
-    println!("WWWWWWWWWWWWWWWWWWWWWargs: {args:#?} until:{until_tk:?}");
     let mut from_tk: BatchToken = args
         .from
         .as_ref()
@@ -105,7 +104,6 @@ pub(super) async fn get_messages(
     let mut lazy_loaded = HashSet::new();
     match args.dir {
         Direction::Forward => {
-            println!("BBBBBBBBBBBBBBBBBBBB Forward");
             let events = timeline::get_pdus_forward(
                 Some(sender_id),
                 &args.room_id,
@@ -144,7 +142,6 @@ pub(super) async fn get_messages(
             resp.chunk = events;
         }
         Direction::Backward => {
-            println!("BBBBBBBBBBBBBBBBBBBB backward");
             let mut events = timeline::get_pdus_backward(
                 Some(sender_id),
                 &args.room_id,

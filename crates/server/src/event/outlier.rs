@@ -177,14 +177,11 @@ impl OutlierPdu {
             if let AppError::Matrix(MatrixError { ref kind, .. }) = e {
                 if *kind == core::error::ErrorKind::BadJson {
                     self.rejection_reason = Some(format!("bad prev events: {}", e));
-                    println!("========================zzzz 2");
                     return self.save_to_database(backfilled);
                 } else {
-                    println!("==================================soft failed 3 {e}");
                     self.soft_failed = true;
                 }
             } else {
-                println!("==================================soft failed x4  {e}");
                 self.soft_failed = true;
             }
         }
@@ -210,21 +207,15 @@ impl OutlierPdu {
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
         let version_rules = crate::room::get_version_rules(&self.room_version)?;
 
-        println!("DDDDDDDDDDDDDDDDDDDDDDDDD 0  {:#?}", self.event_id);
         if !self.soft_failed || self.rejected() {
-            println!("DDDDDDDDDDDDDDDDDDDDDDDDD 1  {:#?}", self);
             return self.save_to_database(backfilled);
         }
-        println!("DDDDDDDDDDDDDDDDDDDDDDDDD 2");
 
         if self.any_prev_event_rejected()? {
-            println!("============any prev event rejected");
             self.rejection_reason = Some("one or more prev events are rejected".to_string());
             return self.save_to_database(backfilled);
         }
-        println!("DDDDDDDDDDDDDDDDDDDDDDDDD 3");
         if self.any_auth_event_rejected()? {
-            println!("============any_auth_event_rejected");
             if let Err(e) = fetch_and_process_auth_chain(
                 &self.remote_server,
                 &self.room_id,
@@ -234,10 +225,8 @@ impl OutlierPdu {
             .await
             {
                 if let AppError::HttpStatus(_) = e {
-                    println!("============any_auth_event_rejected  1");
                     self.soft_failed = true;
                 } else {
-                    println!("============any_auth_event_rejected 2");
                     self.rejection_reason =
                         Some("one or more auth events are rejected".to_string());
                 }
@@ -263,7 +252,6 @@ impl OutlierPdu {
                     Err(e) => {
                         if let AppError::Matrix(MatrixError { ref kind, .. }) = e {
                             if *kind == core::error::ErrorKind::BadJson {
-                                println!("LLLLL");
                                 self.rejection_reason =
                                     Some(format!("failed to bad prev events: {}", e));
                             } else {
@@ -285,7 +273,7 @@ impl OutlierPdu {
                         )
                         .await
                         {
-                            println!("error fetching auth chain for {}: {}", event_id, e);
+                            warn!("error fetching auth chain for {}: {}", event_id, e);
                         }
                     }
                 }

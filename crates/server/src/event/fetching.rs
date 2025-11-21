@@ -33,42 +33,27 @@ pub async fn fetch_and_process_missing_events(
     room_version: &RoomVersionId,
     incoming_pdu: &PduEvent,
 ) -> AppResult<()> {
-    println!("=======  fetch_and_process_missing_events  0");
     let min_depth = timeline::first_pdu_in_room(room_id)
         .ok()
         .and_then(|pdu| pdu.map(|p| p.depth))
         .unwrap_or(0);
     let mut fetched_events = IndexMap::with_capacity(10);
 
-    println!("=======  fetch_and_process_missing_events  1");
     let earliest_events = room::state::get_forward_extremities(room_id)?;
     let mut known_events = HashSet::new();
     let mut missing_events = Vec::with_capacity(incoming_pdu.prev_events.len());
-    println!(
-        "=======  fetch_and_process_missing_events  2 {:?}",
-        incoming_pdu.prev_events
-    );
-    println!(
-        "=======  fetch_and_process_missing_events  3 {:#?}",
-        earliest_events
-    );
     for prev_id in &incoming_pdu.prev_events {
         let pdu = timeline::get_pdu(prev_id);
-        println!("=================found prev event id {}", prev_id);
         if let Ok(pdu) = &pdu {
-            println!("=================found prev event {:#?}", pdu);
             if pdu.rejected() {
-                println!("=================found prev event rejected");
                 missing_events.push(prev_id.to_owned());
             } else {
-                println!("=================found prev event accepted");
                 known_events.insert(prev_id.to_owned());
             }
         } else if !earliest_events.contains(prev_id) {
             missing_events.push(prev_id.to_owned());
         }
     }
-    println!("=======  fetch_and_process_missing_events  3");
     if missing_events.is_empty() {
         return Ok(());
     }
@@ -224,11 +209,9 @@ pub(super) async fn fetch_and_process_missing_state_by_ids(
     // we fetch the whole state.
     if missing_events.len() * 10 >= desired_count {
         debug!("requesting complete state from remote");
-        println!("cccccccccprocess_to_timeline_pdu1");
         fetch_and_process_missing_state(remote_server, room_id, room_version, event_id).await?;
     } else {
         debug!("fetching {} events from remote", missing_events.len());
-        println!("================fetch and process missing prev events===================");
         let failed_events =
             fetch_and_process_events(remote_server, room_id, room_version, &missing_events).await?;
         if !failed_events.is_empty() {
@@ -245,7 +228,6 @@ pub async fn fetch_and_process_missing_state(
     room_version: &RoomVersionId,
     event_id: &EventId,
 ) -> AppResult<FetchedState> {
-    println!("===========fetch_and_process_missing_state");
     debug!("fetching state events at event: {event_id}");
     let request = room_state_request(
         &origin.origin().await,
