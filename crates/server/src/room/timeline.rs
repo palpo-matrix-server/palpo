@@ -966,11 +966,11 @@ pub fn get_pdus(
     order_by: EventOrderBy,
 ) -> AppResult<IndexMap<Seqnum, SnPduEvent>> {
     let mut list: IndexMap<Seqnum, SnPduEvent> = IndexMap::with_capacity(limit.clamp(10, 100));
-    // let mut start_sn = if dir == Direction::Forward {
-    //     0
-    // } else {
-    //     data::curr_sn()? + 1
-    // };
+    let mut start_sn = if dir == Direction::Forward {
+        0
+    } else {
+        data::curr_sn()? + 1
+    };
 
     while list.len() < limit {
         let mut query = events::table
@@ -1069,7 +1069,7 @@ pub fn get_pdus(
             }
         }
         let events: Vec<(OwnedEventId, Seqnum)> = if dir == Direction::Forward {
-            // let query = query.filter(events::sn.gt(start_sn));
+            let query = query.filter(events::sn.gt(start_sn));
             match order_by {
                 EventOrderBy::StreamOrdering => query
                     .order(events::stream_ordering.desc())
@@ -1089,7 +1089,7 @@ pub fn get_pdus(
                     .collect(),
             }
         } else {
-            // let query = query.filter(events::sn.lt(start_sn));
+            let query = query.filter(events::sn.lt(start_sn));
             match order_by {
                 EventOrderBy::StreamOrdering => query
                     .order(events::sn.desc())
@@ -1110,17 +1110,19 @@ pub fn get_pdus(
         if events.is_empty() {
             break;
         }
-        // start_sn = if dir == Direction::Forward {
-        //     if let Some(sn) = events.iter().map(|(_, sn)| sn).max() {
-        //         *sn
-        //     } else {
-        //         break;
-        //     }
-        // } else if let Some(sn) = events.iter().map(|(_, sn)| sn).min() {
-        //     *sn
-        // } else {
-        //     break;
-        // };
+        println!("Fetched sssssssssssssssssstart_sn0  {start_sn}");
+        start_sn = if dir == Direction::Forward {
+            if let Some(sn) = events.iter().map(|(_, sn)| sn).max() {
+                *sn
+            } else {
+                break;
+            }
+        } else if let Some(sn) = events.iter().map(|(_, sn)| sn).min() {
+            *sn
+        } else {
+            break;
+        };
+        println!("Fetched sssssssssssssssssstart_sn1  {start_sn}");
         for (event_id, event_sn) in events {
             if let Ok(mut pdu) = get_pdu(&event_id) {
                 if let Some(user_id) = user_id {
