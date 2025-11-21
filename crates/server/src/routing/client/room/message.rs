@@ -13,7 +13,7 @@ use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::event::BatchToken;
 use crate::event::get_batch_token_by_sn;
-use crate::room::{timeline};
+use crate::room::timeline;
 use crate::routing::prelude::*;
 use crate::{PduBuilder, room};
 
