@@ -81,7 +81,7 @@ pub fn load_pdus_backward(
 pub fn load_pdus(
     user_id: Option<&UserId>,
     room_id: &RoomId,
-    since_tk: BatchToken,
+    since_tk: Option<BatchToken>,
     until_tk: Option<BatchToken>,
     limit: usize,
     filter: Option<&RoomEventFilter>,
@@ -98,39 +98,19 @@ pub fn load_pdus(
         let mut query = events::table
             .filter(events::room_id.eq(room_id))
             .into_boxed();
-        if let Some(until_tk) = until_tk {
-            if let (Some(since_depth), Some(until_depth)) =
-                (since_tk.event_depth, until_tk.event_depth)
-            {
-                let min_depth = since_depth.min(until_depth);
-                let max_depth = since_depth.max(until_depth);
-                query = query
-                    .filter(events::depth.le(max_depth))
-                    .filter(events::depth.ge(min_depth));
-            } else if let Some(since_depth) = since_tk.event_depth {
-                if dir == Direction::Forward {
-                    query = query.filter(events::depth.ge(since_depth));
-                } else {
-                    query = query.filter(events::depth.le(since_depth));
-                }
-            } else if let Some(until_depth) = until_tk.event_depth {
-                if dir == Direction::Forward {
-                    query = query.filter(events::depth.le(until_depth));
-                } else {
-                    query = query.filter(events::depth.ge(until_depth));
-                }
+        if dir == Direction::Forward {
+            if let Some(since_tk) = since_tk {
+                query = query.filter(events::sn.ge(since_tk.event_sn));
             }
-        } else if dir == Direction::Forward {
-            if let Some(since_depth) = since_tk.event_depth {
-                query = query.filter(events::depth.ge(since_depth));
+            if let Some(until_tk) = until_tk {
+                query = query.filter(events::sn.lt(until_tk.event_sn));
             }
         } else {
-            if let Some(since_depth) = since_tk.event_depth {
-                if dir == Direction::Forward {
-                    query = query.filter(events::depth.ge(since_depth));
-                } else {
-                    query = query.filter(events::depth.le(since_depth));
-                }
+            if let Some(since_tk) = since_tk {
+                query = query.filter(events::sn.lt(since_tk.event_sn));
+            }
+            if let Some(until_tk) = until_tk {
+                query = query.filter(events::sn.ge(until_tk.event_sn));
             }
         }
 
@@ -168,7 +148,7 @@ pub fn load_pdus(
         let events: Vec<(OwnedEventId, Seqnum)> = if dir == Direction::Forward {
             query
                 .filter(events::sn.gt(start_sn))
-                .order((events::depth.desc(),))
+                .order((events::depth.asc(), events::sn.asc()))
                 .limit(utils::usize_to_i64(limit))
                 .select((events::id, events::sn))
                 .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
@@ -178,7 +158,7 @@ pub fn load_pdus(
         } else {
             query
                 .filter(events::sn.lt(start_sn))
-                .order(events::depth.desc())
+                .order((events::depth.desc(), events::sn.desc()))
                 .limit(utils::usize_to_i64(limit))
                 .select((events::id, events::sn))
                 .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
