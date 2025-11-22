@@ -41,30 +41,24 @@ use crate::{
 pub fn load_all_pdus(
     user_id: Option<&UserId>,
     room_id: &RoomId,
-    until_sn: Option<BatchToken>,
+    until_tk: Option<BatchToken>,
 ) -> AppResult<IndexMap<i64, SnPduEvent>> {
-    load_pdus_forward(
-        user_id,
-        room_id,
-        BatchToken::MIN,
-        until_sn,
-        None,
-        usize::MAX,
-    )
+    load_pdus_forward(user_id, room_id, None, until_tk, None, usize::MAX)
 }
+
 pub fn load_pdus_forward(
     user_id: Option<&UserId>,
     room_id: &RoomId,
-    since: BatchToken,
-    until: Option<BatchToken>,
+    since_tk: Option<BatchToken>,
+    until_tk: Option<BatchToken>,
     filter: Option<&RoomEventFilter>,
     limit: usize,
 ) -> AppResult<IndexMap<i64, SnPduEvent>> {
     load_pdus(
         user_id,
         room_id,
-        since,
-        until,
+        since_tk,
+        until_tk,
         limit,
         filter,
         Direction::Forward,
@@ -73,16 +67,16 @@ pub fn load_pdus_forward(
 pub fn load_pdus_backward(
     user_id: Option<&UserId>,
     room_id: &RoomId,
-    since: BatchToken,
-    until: Option<BatchToken>,
+    since_tk: Option<BatchToken>,
+    until_tk: Option<BatchToken>,
     filter: Option<&RoomEventFilter>,
     limit: usize,
 ) -> AppResult<IndexMap<i64, SnPduEvent>> {
     load_pdus(
         user_id,
         room_id,
-        since,
-        until,
+        since_tk,
+        until_tk,
         limit,
         filter,
         Direction::Backward,
@@ -96,7 +90,7 @@ pub fn load_pdus_backward(
 pub fn load_pdus(
     user_id: Option<&UserId>,
     room_id: &RoomId,
-    since_tk: BatchToken,
+    since_tk: Option<BatchToken>,
     until_tk: Option<BatchToken>,
     limit: usize,
     filter: Option<&RoomEventFilter>,
@@ -113,16 +107,20 @@ pub fn load_pdus(
         let mut query = events::table
             .filter(events::room_id.eq(room_id))
             .into_boxed();
-        if let Some(until_tk) = until_tk {
-            let max_sn = until_tk.event_sn.max(since_tk.event_sn);
-            let min_sn = until_tk.event_sn.min(since_tk.event_sn);
-            query = query
-                .filter(events::sn.le(max_sn))
-                .filter(events::sn.ge(min_sn));
-        } else if dir == Direction::Forward {
-            query = query.filter(events::sn.ge(since_tk.event_sn));
+        if dir == Direction::Forward {
+            if let Some(since_tk) = since_tk {
+                query = query.filter(events::sn.ge(since_tk.event_sn));
+            }
+            if let Some(until_tk) = until_tk {
+                query = query.filter(events::sn.lt(until_tk.event_sn));
+            }
         } else {
-            query = query.filter(events::sn.le(since_tk.event_sn));
+            if let Some(since_tk) = since_tk {
+                query = query.filter(events::sn.lt(since_tk.event_sn));
+            }
+            if let Some(until_tk) = until_tk {
+                query = query.filter(events::sn.ge(until_tk.event_sn));
+            }
         }
 
         if let Some(filter) = filter {

@@ -976,7 +976,7 @@ pub(crate) fn load_timeline(
             timeline::stream::load_pdus_backward(
                 Some(user_id),
                 room_id,
-                max,
+                Some(max),
                 Some(min),
                 filter,
                 limit + 1,
@@ -985,7 +985,7 @@ pub(crate) fn load_timeline(
             timeline::stream::load_pdus_backward(
                 Some(user_id),
                 room_id,
-                BatchToken::MAX,
+                None,
                 Some(since),
                 filter,
                 limit + 1,
@@ -995,7 +995,7 @@ pub(crate) fn load_timeline(
         timeline::stream::load_pdus_backward(
             Some(user_id),
             room_id,
-            BatchToken::MAX,
+            None,
             None,
             filter,
             limit + 1,

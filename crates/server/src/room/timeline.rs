@@ -41,8 +41,6 @@ mod backfill;
 pub mod stream;
 pub mod topolo;
 pub use backfill::*;
-pub use stream::*;
-pub use topolo::*;
 
 pub static LAST_TIMELINE_COUNT_CACHE: LazyLock<Mutex<HashMap<OwnedRoomId, i64>>> =
     LazyLock::new(Default::default);

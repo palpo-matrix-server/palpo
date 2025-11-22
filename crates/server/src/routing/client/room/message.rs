@@ -107,7 +107,7 @@ pub(super) async fn get_messages(
             let events = timeline::topolo::load_pdus_forward(
                 Some(sender_id),
                 &args.room_id,
-                from_tk,
+                Some(from_tk),
                 until_tk,
                 Some(&args.filter),
                 limit,
@@ -144,7 +144,7 @@ pub(super) async fn get_messages(
             let mut events = timeline::topolo::load_pdus_backward(
                 Some(sender_id),
                 &args.room_id,
-                from_tk,
+                Some(from_tk),
                 until_tk,
                 Some(&args.filter),
                 limit,
@@ -153,7 +153,7 @@ pub(super) async fn get_messages(
                 events = timeline::topolo::load_pdus_backward(
                     Some(sender_id),
                     &args.room_id,
-                    from_tk,
+                    Some(from_tk),
                     until_tk,
                     Some(&args.filter),
                     limit,

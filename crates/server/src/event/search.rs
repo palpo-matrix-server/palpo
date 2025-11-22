@@ -138,7 +138,7 @@ fn calc_event_context(
     let before_pdus = timeline::stream::load_pdus_backward(
         Some(user_id),
         room_id,
-        BatchToken::new(event_sn - 1, None),
+        Some(BatchToken::new(event_sn - 1, None)),
         None,
         None,
         before_limit,
@@ -146,7 +146,7 @@ fn calc_event_context(
     let after_pdus = timeline::stream::load_pdus_forward(
         Some(user_id),
         room_id,
-        BatchToken::new(event_sn + 1, None),
+        Some(BatchToken::new(event_sn + 1, None)),
         None,
         None,
         after_limit,

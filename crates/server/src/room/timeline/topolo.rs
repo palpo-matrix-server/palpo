@@ -40,16 +40,16 @@ use crate::{
 pub fn load_pdus_forward(
     user_id: Option<&UserId>,
     room_id: &RoomId,
-    since: BatchToken,
-    until: Option<BatchToken>,
+    since_tk: Option<BatchToken>,
+    until_tk: Option<BatchToken>,
     filter: Option<&RoomEventFilter>,
     limit: usize,
 ) -> AppResult<IndexMap<i64, SnPduEvent>> {
     load_pdus(
         user_id,
         room_id,
-        since,
-        until,
+        since_tk,
+        until_tk,
         limit,
         filter,
         Direction::Forward,
@@ -58,16 +58,16 @@ pub fn load_pdus_forward(
 pub fn load_pdus_backward(
     user_id: Option<&UserId>,
     room_id: &RoomId,
-    since: BatchToken,
-    until: Option<BatchToken>,
+    since_tk: Option<BatchToken>,
+    until_tk: Option<BatchToken>,
     filter: Option<&RoomEventFilter>,
     limit: usize,
 ) -> AppResult<IndexMap<i64, SnPduEvent>> {
     load_pdus(
         user_id,
         room_id,
-        since,
-        until,
+        since_tk,
+        until_tk,
         limit,
         filter,
         Direction::Backward,

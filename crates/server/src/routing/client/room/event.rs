@@ -163,7 +163,7 @@ pub(super) fn get_context(
     let events_before = timeline::stream::load_pdus_backward(
         Some(sender_id),
         &room_id,
-        base_token,
+        Some(base_token),
         None,
         None,
         limit / 2,
@@ -195,7 +195,7 @@ pub(super) fn get_context(
     let events_after = timeline::stream::load_pdus_forward(
         Some(sender_id),
         &room_id,
-        base_token,
+        Some(base_token),
         None,
         None,
         limit / 2,

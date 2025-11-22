@@ -21,7 +21,7 @@ async fn get_history(
     let origin = depot.origin()?;
     debug!("got backfill request from: {}", origin);
 
-    let until = args
+    let until_tk = args
         .v
         .iter()
         .filter_map(|event_id| crate::event::get_batch_token(event_id).ok())
@@ -33,7 +33,7 @@ async fn get_history(
     let limit = args.limit.min(100);
 
     let all_events =
-        timeline::topolo::load_pdus_backward(None, &args.room_id, until, None, None, limit)?;
+        timeline::topolo::load_pdus_backward(None, &args.room_id, Some(until_tk), None, None, limit)?;
 
     let mut events = Vec::with_capacity(all_events.len());
     for (_, pdu) in all_events {
