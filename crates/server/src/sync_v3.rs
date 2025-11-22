@@ -711,7 +711,11 @@ async fn load_joined_room(
         };
 
     // Look for device list updates in this room
-    device_list_updates.extend(room::keys_changed_users(room_id, since_tk.event_sn(), None)?);
+    device_list_updates.extend(room::keys_changed_users(
+        room_id,
+        since_tk.event_sn(),
+        None,
+    )?);
 
     let mut limited = timeline.limited || joined_since_last_sync;
     if let Some((_, first_event)) = timeline.events.first()
@@ -992,14 +996,7 @@ pub(crate) fn load_timeline(
             )?
         }
     } else {
-        timeline::stream::load_pdus_backward(
-            Some(user_id),
-            room_id,
-            None,
-            None,
-            filter,
-            limit + 1,
-        )?
+        timeline::stream::load_pdus_backward(Some(user_id), room_id, None, None, filter, limit + 1)?
     };
 
     let mut limited = false;

@@ -12,7 +12,6 @@ use crate::core::{Direction, Seqnum};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::event::BatchToken;
-use crate::event::get_batch_token_by_sn;
 use crate::room::timeline;
 use crate::routing::prelude::*;
 use crate::{PduBuilder, room};
@@ -73,7 +72,7 @@ pub(super) async fn get_messages(
     // };
     let until_tk = args.to.as_ref().map(|to| to.parse()).transpose()?;
 
-    let mut from_tk: BatchToken = args
+    let from_tk: BatchToken = args
         .from
         .as_ref()
         .map(|from| from.parse())
@@ -141,6 +140,7 @@ pub(super) async fn get_messages(
             resp.chunk = events;
         }
         Direction::Backward => {
+            println!("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx 0");
             let mut events = timeline::topolo::load_pdus_backward(
                 Some(sender_id),
                 &args.room_id,
@@ -149,6 +149,7 @@ pub(super) async fn get_messages(
                 Some(&args.filter),
                 limit,
             )?;
+            println!("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx 1 {events:?}");
             if timeline::backfill_if_required(&args.room_id, &events).await? {
                 events = timeline::topolo::load_pdus_backward(
                     Some(sender_id),
@@ -158,6 +159,7 @@ pub(super) async fn get_messages(
                     Some(&args.filter),
                     limit,
                 )?;
+                println!("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx 2 {events:?}");
             }
 
             for (_, event) in &events {
@@ -177,15 +179,9 @@ pub(super) async fn get_messages(
             }
 
             next_token = events.last().map(|(_, pdu)| pdu.batch_token());
-
-            let events: Vec<_> = events
-                .into_iter()
-                .map(|(_, pdu)| pdu.to_room_event())
-                .collect();
-
             resp.start = from_tk.to_string();
             resp.end = next_token.map(|tk| tk.to_string());
-            resp.chunk = events;
+            resp.chunk = events.values().map(|pdu| pdu.to_room_event()).collect();
         }
     }
 

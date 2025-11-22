@@ -178,7 +178,13 @@ impl SnPduEvent {
         backfilled: bool,
     ) -> Result<Self, serde_json::Error> {
         let pdu = PduEvent::from_canonical_object(room_id, event_id, json)?;
-        Ok(Self::new(pdu, event_sn, is_outlier, soft_failed, backfilled))
+        Ok(Self::new(
+            pdu,
+            event_sn,
+            is_outlier,
+            soft_failed,
+            backfilled,
+        ))
     }
 
     pub fn from_json_value(

@@ -33,8 +33,14 @@ async fn get_history(
 
     let limit = args.limit.min(100);
 
-    let all_events =
-        timeline::topolo::load_pdus_backward(None, &args.room_id, Some(until_tk), None, None, limit)?;
+    let all_events = timeline::topolo::load_pdus_backward(
+        None,
+        &args.room_id,
+        Some(until_tk),
+        None,
+        None,
+        limit,
+    )?;
 
     let mut events = Vec::with_capacity(all_events.len());
     for (_, pdu) in all_events {

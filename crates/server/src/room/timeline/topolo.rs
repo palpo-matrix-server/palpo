@@ -82,8 +82,8 @@ pub fn load_pdus_backward(
 pub fn load_pdus(
     user_id: Option<&UserId>,
     room_id: &RoomId,
-    mut since_tk: Option<BatchToken>,
-    mut until_tk: Option<BatchToken>,
+     since_tk: Option<BatchToken>,
+     until_tk: Option<BatchToken>,
     limit: usize,
     filter: Option<&RoomEventFilter>,
     dir: Direction,
@@ -219,34 +219,32 @@ pub fn load_pdus(
                 event_id, event_sn
             );
             if let Ok(mut pdu) = super::get_pdu(&event_id) {
-                println!("=========");
+                println!("========= {event_id}");
                 if let Some(user_id) = user_id {
                     if !pdu.user_can_see(user_id)? {
+                        println!("Skipping for user can not see    {}", event_id);
                         continue;
                     }
+                    println!("========= 1         {event_id}");
                     if pdu.sender != user_id {
                         pdu.remove_transaction_id()?;
                     }
                     pdu.add_unsigned_membership(user_id)?;
                 }
+                println!("========= 2            {event_id}");
                 pdu.add_age()?;
                 list.insert(event_sn, pdu);
                 if list.len() >= limit {
+                println!("========= 3            {event_id}");
                     break;
                 }
+                println!("========= 4            {event_id}");
             }
         }
         if count < limit {
             break;
         }
     }
-
-    println!(
-        "Loaded  PDUs {:#?}",
-        events::table
-            .order_by(events::sn.desc())
-            .load::<DbEvent>(&mut connect()?)?
-    );
     println!("============list: {:#?}", list);
     Ok(list)
 }
