@@ -84,8 +84,8 @@ pub fn paginate_relations_with_filter(
         target,
         filter_event_type.as_ref(),
         filter_rel_type.as_ref(),
-        from.event_sn,
-        to.map(|t| t.event_sn),
+        from.event_sn(),
+        to.map(|t| t.event_sn()),
         dir,
         limit,
     )?;

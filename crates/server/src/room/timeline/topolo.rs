@@ -4,6 +4,7 @@ use std::iter::once;
 use std::sync::{LazyLock, Mutex};
 
 use diesel::prelude::*;
+use futures_util::stream;
 use indexmap::IndexMap;
 use serde::Deserialize;
 use serde_json::value::to_raw_value;
@@ -81,18 +82,17 @@ pub fn load_pdus_backward(
 pub fn load_pdus(
     user_id: Option<&UserId>,
     room_id: &RoomId,
-    since_tk: Option<BatchToken>,
-    until_tk: Option<BatchToken>,
+    mut since_tk: Option<BatchToken>,
+    mut until_tk: Option<BatchToken>,
     limit: usize,
     filter: Option<&RoomEventFilter>,
     dir: Direction,
 ) -> AppResult<IndexMap<Seqnum, SnPduEvent>> {
     let mut list: IndexMap<Seqnum, SnPduEvent> = IndexMap::with_capacity(limit.clamp(10, 100));
-    let mut start_sn = if dir == Direction::Forward {
-        0
-    } else {
-        data::curr_sn()? + 1
-    };
+    let mut offset = 0;
+    println!(
+        "============ Starting load_pdus since_tk: {since_tk:?} until_tk: {until_tk:?} limit: {limit} dir: {dir:?}"
+    );
 
     while list.len() < limit {
         let mut query = events::table
@@ -100,17 +100,57 @@ pub fn load_pdus(
             .into_boxed();
         if dir == Direction::Forward {
             if let Some(since_tk) = since_tk {
-                query = query.filter(events::sn.ge(since_tk.event_sn));
+                if let Some(topological_ordering) = since_tk.topological_ordering {
+                    query = query.filter(
+                        events::topological_ordering.ge(topological_ordering).or(
+                            events::topological_ordering
+                                .eq(topological_ordering)
+                                .and(events::stream_ordering.ge(since_tk.stream_ordering)),
+                        ),
+                    );
+                } else {
+                    query = query.filter(events::stream_ordering.ge(since_tk.stream_ordering));
+                }
             }
             if let Some(until_tk) = until_tk {
-                query = query.filter(events::sn.lt(until_tk.event_sn));
+                if let Some(topological_ordering) = until_tk.topological_ordering {
+                    query = query.filter(
+                        events::topological_ordering.le(topological_ordering).or(
+                            events::topological_ordering
+                                .eq(topological_ordering)
+                                .and(events::stream_ordering.le(until_tk.stream_ordering)),
+                        ),
+                    );
+                } else {
+                    query = query.filter(events::stream_ordering.le(until_tk.stream_ordering));
+                }
             }
         } else {
             if let Some(since_tk) = since_tk {
-                query = query.filter(events::sn.lt(since_tk.event_sn));
+                if let Some(topological_ordering) = since_tk.topological_ordering {
+                    query = query.filter(
+                        events::topological_ordering.le(topological_ordering).or(
+                            events::topological_ordering
+                                .eq(topological_ordering)
+                                .and(events::stream_ordering.le(since_tk.stream_ordering)),
+                        ),
+                    );
+                } else {
+                    query = query.filter(events::stream_ordering.le(since_tk.stream_ordering));
+                }
             }
             if let Some(until_tk) = until_tk {
-                query = query.filter(events::sn.ge(until_tk.event_sn));
+                if let Some(topological_ordering) = until_tk.topological_ordering {
+                    query = query.filter(
+                        events::topological_ordering.ge(topological_ordering).or(
+                            events::topological_ordering
+                                .eq(topological_ordering)
+                                .and(events::stream_ordering.ge(until_tk.stream_ordering)),
+                        ),
+                    );
+                } else {
+                    query = query.filter(events::stream_ordering.ge(until_tk.stream_ordering));
+                }
             }
         }
 
@@ -147,8 +187,8 @@ pub fn load_pdus(
         }
         let events: Vec<(OwnedEventId, Seqnum)> = if dir == Direction::Forward {
             query
-                .filter(events::sn.gt(start_sn))
-                .order((events::depth.asc(), events::sn.asc()))
+                .order(events::topological_ordering.asc())
+                .offset(offset)
                 .limit(utils::usize_to_i64(limit))
                 .select((events::id, events::sn))
                 .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
@@ -156,11 +196,13 @@ pub fn load_pdus(
                 .rev()
                 .collect()
         } else {
-            query
-                .filter(events::sn.lt(start_sn))
-                .order((events::depth.desc(), events::sn.desc()))
+            let query = query
+                .order(events::topological_ordering.desc())
+                .offset(offset)
                 .limit(utils::usize_to_i64(limit))
-                .select((events::id, events::sn))
+                .select((events::id, events::sn));
+            crate::data::print_query!(&query);
+            query
                 .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
                 .into_iter()
                 .collect()
@@ -168,19 +210,16 @@ pub fn load_pdus(
         if events.is_empty() {
             break;
         }
-        start_sn = if dir == Direction::Forward {
-            if let Some(sn) = events.iter().map(|(_, sn)| sn).max() {
-                *sn
-            } else {
-                break;
-            }
-        } else if let Some(sn) = events.iter().map(|(_, sn)| sn).min() {
-            *sn
-        } else {
-            break;
-        };
+        let count = events.len();
+        offset += count as i64;
+
         for (event_id, event_sn) in events {
+            println!(
+                "Loading PDU for event_id: {}          {}",
+                event_id, event_sn
+            );
             if let Ok(mut pdu) = super::get_pdu(&event_id) {
+                println!("=========");
                 if let Some(user_id) = user_id {
                     if !pdu.user_can_see(user_id)? {
                         continue;
@@ -197,6 +236,17 @@ pub fn load_pdus(
                 }
             }
         }
+        if count < limit {
+            break;
+        }
     }
+
+    println!(
+        "Loaded  PDUs {:#?}",
+        events::table
+            .order_by(events::sn.desc())
+            .load::<DbEvent>(&mut connect()?)?
+    );
+    println!("============list: {:#?}", list);
     Ok(list)
 }

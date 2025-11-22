@@ -349,6 +349,7 @@ pub async fn join_room(
                 value.clone(),
                 false,
                 false,
+                false,
             )
             .map_err(|e| {
                 warn!("invalid pdu in send_join response: {} {:?}", e, value);
@@ -462,6 +463,7 @@ pub async fn join_room(
         event_sn: join_event_sn,
         is_outlier: false,
         soft_failed: false,
+        backfilled: false,
     };
     timeline::append_pdu(
         &join_pdu,

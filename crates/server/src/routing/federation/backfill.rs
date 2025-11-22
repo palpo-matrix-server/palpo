@@ -21,11 +21,12 @@ async fn get_history(
     let origin = depot.origin()?;
     debug!("got backfill request from: {}", origin);
 
+    // TODO: WRJONg
     let until_tk = args
         .v
         .iter()
         .filter_map(|event_id| crate::event::get_batch_token(event_id).ok())
-        .max_by(|a, b| a.event_sn.cmp(&b.event_sn))
+        .max_by(|a, b| a.stream_ordering.cmp(&b.stream_ordering))
         .ok_or(MatrixError::invalid_param(
             "unknown event id in query string v",
         ))?;

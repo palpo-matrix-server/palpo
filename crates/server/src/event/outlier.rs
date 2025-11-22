@@ -124,6 +124,7 @@ impl OutlierPdu {
                     event_sn,
                     is_outlier: true,
                     soft_failed,
+                    backfilled,
                 },
                 json_data,
                 None,
@@ -151,6 +152,7 @@ impl OutlierPdu {
             event_sn,
             is_outlier: true,
             soft_failed,
+            backfilled,
         };
         update_backward_extremities(&pdu)?;
         Ok((pdu, json_data, event_guard))

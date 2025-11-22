@@ -82,20 +82,20 @@ pub(super) async fn get_messages(
             Direction::Forward => BatchToken::MIN,
             Direction::Backward => BatchToken::MAX,
         });
-    if from_tk.event_depth.is_none() {
-        from_tk = events::table
-            .filter(events::sn.le(from_tk.event_sn))
-            .order_by(events::sn.desc())
-            .select((events::sn, events::depth))
-            .first::<(Seqnum, i64)>(&mut connect()?)
-            .map(|(sn, depth)| BatchToken::new(sn, Some(depth)))?
-    }
+    // if from_tk.event_depth.is_none() {
+    //     from_tk = events::table
+    //         .filter(events::sn.le(from_tk.event_sn()))
+    //         .order_by(events::sn.desc())
+    //         .select((events::sn, events::depth))
+    //         .first::<(Seqnum, i64)>(&mut connect()?)
+    //         .map(|(sn, depth)| BatchToken::new(sn, Some(depth)))?
+    // }
 
     crate::room::lazy_loading::lazy_load_confirm_delivery(
         authed.user_id(),
         authed.device_id(),
         &args.room_id,
-        from_tk.event_sn,
+        from_tk.event_sn(),
     )?;
 
     let limit = args.limit.min(100);

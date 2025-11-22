@@ -44,14 +44,23 @@ pub struct SnPduEvent {
     pub is_outlier: bool,
     #[serde(skip, default = "default_false")]
     pub soft_failed: bool,
+    #[serde(skip, default = "default_false")]
+    pub backfilled: bool,
 }
 impl SnPduEvent {
-    pub fn new(pdu: PduEvent, event_sn: Seqnum, is_outlier: bool, soft_failed: bool) -> Self {
+    pub fn new(
+        pdu: PduEvent,
+        event_sn: Seqnum,
+        is_outlier: bool,
+        soft_failed: bool,
+        backfilled: bool,
+    ) -> Self {
         Self {
             pdu,
             event_sn,
             is_outlier,
             soft_failed,
+            backfilled,
         }
     }
 
@@ -166,9 +175,10 @@ impl SnPduEvent {
         json: CanonicalJsonObject,
         is_outlier: bool,
         soft_failed: bool,
+        backfilled: bool,
     ) -> Result<Self, serde_json::Error> {
         let pdu = PduEvent::from_canonical_object(room_id, event_id, json)?;
-        Ok(Self::new(pdu, event_sn, is_outlier, soft_failed))
+        Ok(Self::new(pdu, event_sn, is_outlier, soft_failed, backfilled))
     }
 
     pub fn from_json_value(
@@ -178,9 +188,16 @@ impl SnPduEvent {
         json: JsonValue,
         is_outlier: bool,
         soft_failed: bool,
+        backfilled: bool,
     ) -> AppResult<Self> {
         let pdu = PduEvent::from_json_value(room_id, event_id, json)?;
-        Ok(Self::new(pdu, event_sn, is_outlier, soft_failed))
+        Ok(Self::new(
+            pdu,
+            event_sn,
+            is_outlier,
+            soft_failed,
+            backfilled,
+        ))
     }
 
     pub fn into_inner(self) -> PduEvent {
@@ -189,8 +206,12 @@ impl SnPduEvent {
 
     pub fn batch_token(&self) -> BatchToken {
         BatchToken {
-            event_sn: self.event_sn,
-            event_depth: Some(self.depth as i64),
+            stream_ordering: if self.backfilled {
+                -self.event_sn
+            } else {
+                self.event_sn
+            },
+            topological_ordering: Some(self.depth as i64),
         }
     }
 }

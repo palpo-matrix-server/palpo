@@ -86,14 +86,12 @@ pub fn get_pdu_json(event_id: &EventId) -> AppResult<Option<CanonicalJsonObject>
 }
 
 /// Returns the pdu.
-///
-/// Checks the `eventid_outlierpdu` Tree if not found in the timeline.
 pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<SnPduEvent>> {
-    let Some((event_sn, room_id)) = events::table
+    let Some((event_sn, room_id, stream_ordering)) = events::table
         .filter(events::is_outlier.eq(false))
         .filter(events::id.eq(event_id))
-        .select((events::sn, events::room_id))
-        .first::<(Seqnum, OwnedRoomId)>(&mut connect()?)
+        .select((events::sn, events::room_id, events::stream_ordering))
+        .first::<(Seqnum, OwnedRoomId, i64)>(&mut connect()?)
         .optional()?
     else {
         return Ok(None);
@@ -104,8 +102,16 @@ pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<SnPduEvent>> 
         .first::<JsonValue>(&mut connect()?)
         .optional()?
         .map(|json| {
-            SnPduEvent::from_json_value(&room_id, event_id, event_sn, json, false, false)
-                .map_err(|_e| AppError::internal("invalid pdu in db"))
+            SnPduEvent::from_json_value(
+                &room_id,
+                event_id,
+                event_sn,
+                json,
+                false,
+                false,
+                stream_ordering < 0,
+            )
+            .map_err(|_e| AppError::internal("invalid pdu in db"))
         })
         .transpose()?;
     if let Some(pdu) = pdu.as_mut() {
@@ -139,6 +145,7 @@ pub fn get_pdu(event_id: &EventId) -> AppResult<SnPduEvent> {
         event_sn,
         is_outlier: event.is_outlier,
         soft_failed: event.soft_failed,
+        backfilled: event.stream_ordering < 0,
     })
 }
 
@@ -751,6 +758,7 @@ pub async fn hash_and_sign_event(
             event_sn,
             is_outlier: true,
             soft_failed: false,
+            backfilled: false,
         },
         pdu_json,
         event_guard,

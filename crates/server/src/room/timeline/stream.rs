@@ -1,23 +1,10 @@
-use std::borrow::Borrow;
-use std::collections::{HashMap, HashSet};
-use std::iter::once;
-use std::sync::{LazyLock, Mutex};
-
 use diesel::prelude::*;
 use indexmap::IndexMap;
-use serde::Deserialize;
-use serde_json::value::to_raw_value;
-use ulid::Ulid;
 
 use crate::core::client::filter::{RoomEventFilter, UrlFilter};
-use crate::core::events::push_rules::PushRulesEventContent;
-use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
-use crate::core::events::room::encrypted::Relation;
-use crate::core::events::room::member::MembershipState;
 use crate::core::events::{GlobalAccountDataEventType, StateEventType, TimelineEventType};
 use crate::core::federation::backfill::{BackfillReqArgs, BackfillResBody, backfill_request};
 use crate::core::identifiers::*;
-use crate::core::presence::PresenceState;
 use crate::core::push::{Action, Ruleset, Tweak};
 use crate::core::room_version_rules::RoomIdFormatVersion;
 use crate::core::serde::{
@@ -109,17 +96,17 @@ pub fn load_pdus(
             .into_boxed();
         if dir == Direction::Forward {
             if let Some(since_tk) = since_tk {
-                query = query.filter(events::sn.ge(since_tk.event_sn));
+                query = query.filter(events::stream_ordering.ge(since_tk.stream_ordering));
             }
             if let Some(until_tk) = until_tk {
-                query = query.filter(events::sn.lt(until_tk.event_sn));
+                query = query.filter(events::stream_ordering.lt(until_tk.stream_ordering));
             }
         } else {
             if let Some(since_tk) = since_tk {
-                query = query.filter(events::sn.lt(since_tk.event_sn));
+                query = query.filter(events::stream_ordering.lt(since_tk.stream_ordering));
             }
             if let Some(until_tk) = until_tk {
-                query = query.filter(events::sn.ge(until_tk.event_sn));
+                query = query.filter(events::stream_ordering.ge(until_tk.stream_ordering));
             }
         }
 
