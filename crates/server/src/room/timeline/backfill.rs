@@ -1,15 +1,8 @@
-use std::borrow::Borrow;
-use std::collections::{HashMap, HashSet};
-use std::iter::once;
-use std::sync::{LazyLock, Mutex};
-
 use diesel::prelude::*;
 use indexmap::IndexMap;
 use serde::Deserialize;
-use serde_json::value::to_raw_value;
-use ulid::Ulid;
 
-use crate::core::client::filter::{RoomEventFilter, UrlFilter};
+use crate::core::Seqnum;
 use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::encrypted::Relation;
@@ -17,7 +10,6 @@ use crate::core::events::room::member::MembershipState;
 use crate::core::events::{GlobalAccountDataEventType, StateEventType, TimelineEventType};
 use crate::core::federation::backfill::{BackfillReqArgs, BackfillResBody, backfill_request};
 use crate::core::identifiers::*;
-use crate::core::presence::PresenceState;
 use crate::core::push::{Action, Ruleset, Tweak};
 use crate::core::room_version_rules::RoomIdFormatVersion;
 use crate::core::serde::{
@@ -25,7 +17,6 @@ use crate::core::serde::{
     validate_canonical_json,
 };
 use crate::core::state::{Event, StateError, event_auth};
-use crate::core::{Direction, Seqnum, UnixMillis};
 use crate::data::room::{DbEvent, DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};

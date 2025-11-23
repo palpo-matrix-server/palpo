@@ -3,12 +3,12 @@ use std::collections::{BTreeMap, HashSet};
 use diesel::prelude::*;
 use serde_json::value::to_raw_value;
 
+use crate::core::Direction;
 use crate::core::client::message::{
     CreateMessageReqArgs, CreateMessageWithTxnReqArgs, MessagesReqArgs, MessagesResBody,
     SendMessageResBody,
 };
 use crate::core::events::{StateEventType, TimelineEventType};
-use crate::core::{Direction, Seqnum};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::event::BatchToken;
@@ -78,8 +78,8 @@ pub(super) async fn get_messages(
         .map(|from| from.parse())
         .transpose()?
         .unwrap_or(match args.dir {
-            Direction::Forward => BatchToken::MIN,
-            Direction::Backward => BatchToken::MAX,
+            Direction::Forward => BatchToken::LIVE_MIN,
+            Direction::Backward => BatchToken::LIVE_MAX,
         });
     // if from_tk.event_depth.is_none() {
     //     from_tk = events::table
@@ -128,7 +128,7 @@ pub(super) async fn get_messages(
                 lazy_loaded.insert(event.sender.clone());
             }
 
-            next_token = events.last().map(|(_, pdu)| pdu.batch_token());
+            next_token = events.last().map(|(_, pdu)| pdu.live_token());
 
             let events: Vec<_> = events
                 .into_iter()
@@ -178,7 +178,7 @@ pub(super) async fn get_messages(
                 lazy_loaded.insert(event.sender.clone());
             }
 
-            next_token = events.last().map(|(_, pdu)| pdu.batch_token());
+            next_token = events.last().map(|(_, pdu)| pdu.live_token());
             resp.start = from_tk.to_string();
             resp.end = next_token.map(|tk| tk.to_string());
             resp.chunk = events.values().map(|pdu| pdu.to_room_event()).collect();

@@ -1,18 +1,12 @@
 use diesel::prelude::*;
 use indexmap::IndexMap;
 
+use crate::core::{Seqnum, Direction};
 use crate::core::client::filter::{RoomEventFilter, UrlFilter};
 use crate::core::events::{GlobalAccountDataEventType, StateEventType, TimelineEventType};
 use crate::core::federation::backfill::{BackfillReqArgs, BackfillResBody, backfill_request};
 use crate::core::identifiers::*;
-use crate::core::push::{Action, Ruleset, Tweak};
-use crate::core::room_version_rules::RoomIdFormatVersion;
-use crate::core::serde::{
-    CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJsonValue, to_canonical_value,
-    validate_canonical_json,
-};
 use crate::core::state::{Event, StateError, event_auth};
-use crate::core::{Direction, Seqnum, UnixMillis};
 use crate::data::room::{DbEvent, DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
@@ -96,17 +90,17 @@ pub fn load_pdus(
             .into_boxed();
         if dir == Direction::Forward {
             if let Some(since_tk) = since_tk {
-                query = query.filter(events::stream_ordering.ge(since_tk.stream_ordering));
+                query = query.filter(events::stream_ordering.ge(since_tk.stream_ordering()));
             }
             if let Some(until_tk) = until_tk {
-                query = query.filter(events::stream_ordering.lt(until_tk.stream_ordering));
+                query = query.filter(events::stream_ordering.lt(until_tk.stream_ordering()));
             }
         } else {
             if let Some(since_tk) = since_tk {
-                query = query.filter(events::stream_ordering.lt(since_tk.stream_ordering));
+                query = query.filter(events::stream_ordering.lt(since_tk.stream_ordering()));
             }
             if let Some(until_tk) = until_tk {
-                query = query.filter(events::stream_ordering.ge(until_tk.stream_ordering));
+                query = query.filter(events::stream_ordering.ge(until_tk.stream_ordering()));
             }
         }
 

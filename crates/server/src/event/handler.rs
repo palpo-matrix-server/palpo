@@ -23,11 +23,11 @@ use crate::core::state::{Event, StateError, event_auth};
 use crate::core::{Seqnum, UnixMillis};
 use crate::data::room::DbEvent;
 use crate::data::{connect, schema::*};
-use crate::event::{OutlierPdu, PduEvent, SnPduEvent, handler, parse_fetched_pdu};
+use crate::event::{OutlierPdu, PduEvent, SnPduEvent, handler};
 use crate::room::state::{CompressedState, DeltaInfo};
 use crate::room::{state, timeline};
 use crate::sending::send_federation_request;
-use crate::{AppError, AppResult, MatrixError, exts::*, room, sending};
+use crate::{AppError, AppResult, MatrixError, exts::*, room};
 
 #[tracing::instrument(skip_all)]
 pub(crate) async fn process_incoming_pdu(

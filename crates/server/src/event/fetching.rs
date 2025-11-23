@@ -2,7 +2,6 @@ use std::collections::HashSet;
 
 use diesel::prelude::*;
 use indexmap::IndexMap;
-use palpo_core::MatrixError;
 use salvo::http::StatusError;
 
 use crate::core::federation::authorization::{EventAuthResBody, event_auth_request};

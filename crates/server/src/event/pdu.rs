@@ -210,14 +210,19 @@ impl SnPduEvent {
         self.pdu
     }
 
-    pub fn batch_token(&self) -> BatchToken {
-        BatchToken {
+    pub fn live_token(&self) -> BatchToken {
+        BatchToken::Live {
+            stream_ordering: self.event_sn,
+        }
+    }
+    pub fn historic_token(&self) -> BatchToken {
+        BatchToken::Historic {
             stream_ordering: if self.backfilled {
                 -self.event_sn
             } else {
                 self.event_sn
             },
-            topological_ordering: Some(self.depth as i64),
+            topological_ordering: self.depth as i64,
         }
     }
 }

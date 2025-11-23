@@ -166,7 +166,7 @@ async fn initial_sync(
     let events = timeline::stream::load_pdus_backward(
         Some(sender_id),
         room_id,
-        Some(BatchToken::zero()),
+        None,
         None,
         None,
         limit,

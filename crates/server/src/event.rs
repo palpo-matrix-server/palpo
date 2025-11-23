@@ -87,20 +87,28 @@ pub fn get_event_sn(event_id: &EventId) -> AppResult<Seqnum> {
         .map_err(Into::into)
 }
 
-pub fn get_batch_token(event_id: &EventId) -> AppResult<BatchToken> {
+pub fn get_live_token(event_id: &EventId) -> AppResult<BatchToken> {
     events::table
         .find(event_id)
         .select((events::sn, events::depth))
         .first::<(Seqnum, i64)>(&mut connect()?)
-        .map(|(sn, depth)| BatchToken::new(sn, Some(depth)))
+        .map(|(sn, depth)| BatchToken::new_live(sn))
         .map_err(Into::into)
 }
-pub fn get_batch_token_by_sn(event_sn: Seqnum) -> AppResult<BatchToken> {
+pub fn get_historic_token(event_id: &EventId) -> AppResult<BatchToken> {
+    events::table
+        .find(event_id)
+        .select((events::sn, events::depth))
+        .first::<(Seqnum, i64)>(&mut connect()?)
+        .map(|(sn, depth)| BatchToken::new_historic(sn, depth))
+        .map_err(Into::into)
+}
+pub fn get_historic_token_by_sn(event_sn: Seqnum) -> AppResult<BatchToken> {
     events::table
         .filter(events::sn.eq(event_sn))
         .select((events::sn, events::depth))
         .first::<(Seqnum, i64)>(&mut connect()?)
-        .map(|(sn, depth)| BatchToken::new(sn, Some(depth)))
+        .map(|(sn, depth)| BatchToken::new_historic(sn, depth))
         .map_err(Into::into)
 }
 

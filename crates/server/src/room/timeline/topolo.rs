@@ -1,24 +1,8 @@
-use std::borrow::Borrow;
-use std::collections::{HashMap, HashSet};
-use std::iter::once;
-use std::sync::{LazyLock, Mutex};
-
 use diesel::prelude::*;
-use futures_util::stream;
 use indexmap::IndexMap;
-use serde::Deserialize;
-use serde_json::value::to_raw_value;
-use ulid::Ulid;
 
 use crate::core::client::filter::{RoomEventFilter, UrlFilter};
-use crate::core::events::push_rules::PushRulesEventContent;
-use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
-use crate::core::events::room::encrypted::Relation;
-use crate::core::events::room::member::MembershipState;
-use crate::core::events::{GlobalAccountDataEventType, StateEventType, TimelineEventType};
-use crate::core::federation::backfill::{BackfillReqArgs, BackfillResBody, backfill_request};
 use crate::core::identifiers::*;
-use crate::core::presence::PresenceState;
 use crate::core::push::{Action, Ruleset, Tweak};
 use crate::core::room_version_rules::RoomIdFormatVersion;
 use crate::core::serde::{
@@ -82,8 +66,8 @@ pub fn load_pdus_backward(
 pub fn load_pdus(
     user_id: Option<&UserId>,
     room_id: &RoomId,
-     since_tk: Option<BatchToken>,
-     until_tk: Option<BatchToken>,
+    since_tk: Option<BatchToken>,
+    until_tk: Option<BatchToken>,
     limit: usize,
     filter: Option<&RoomEventFilter>,
     dir: Direction,
@@ -100,56 +84,74 @@ pub fn load_pdus(
             .into_boxed();
         if dir == Direction::Forward {
             if let Some(since_tk) = since_tk {
-                if let Some(topological_ordering) = since_tk.topological_ordering {
-                    query = query.filter(
-                        events::topological_ordering.ge(topological_ordering).or(
-                            events::topological_ordering
-                                .eq(topological_ordering)
-                                .and(events::stream_ordering.ge(since_tk.stream_ordering)),
-                        ),
-                    );
-                } else {
-                    query = query.filter(events::stream_ordering.ge(since_tk.stream_ordering));
+                match since_tk {
+                    BatchToken::Live { stream_ordering } => {
+                        query = query.filter(events::stream_ordering.ge(stream_ordering));
+                    }
+                    BatchToken::Historic {
+                        topological_ordering,
+                        stream_ordering,
+                    } => {
+                        query = query.filter(
+                            events::topological_ordering.ge(topological_ordering).or(
+                                events::topological_ordering
+                                    .eq(topological_ordering)
+                                    .and(events::stream_ordering.ge(stream_ordering)),
+                            ),
+                        );
+                    }
                 }
             }
             if let Some(until_tk) = until_tk {
-                if let Some(topological_ordering) = until_tk.topological_ordering {
-                    query = query.filter(
-                        events::topological_ordering.le(topological_ordering).or(
-                            events::topological_ordering
-                                .eq(topological_ordering)
-                                .and(events::stream_ordering.le(until_tk.stream_ordering)),
-                        ),
-                    );
-                } else {
-                    query = query.filter(events::stream_ordering.le(until_tk.stream_ordering));
+                match until_tk {
+                    BatchToken::Live { stream_ordering } => {
+                        query = query.filter(events::stream_ordering.le(stream_ordering));
+                    }
+                    BatchToken::Historic {
+                        topological_ordering,
+                        stream_ordering,
+                    } => {
+                        query = query.filter(
+                            events::topological_ordering.le(topological_ordering).or(
+                                events::topological_ordering
+                                    .eq(topological_ordering)
+                                    .and(events::stream_ordering.le(stream_ordering)),
+                            ),
+                        );
+                    }
                 }
             }
         } else {
             if let Some(since_tk) = since_tk {
-                if let Some(topological_ordering) = since_tk.topological_ordering {
-                    query = query.filter(
-                        events::topological_ordering.le(topological_ordering).or(
-                            events::topological_ordering
-                                .eq(topological_ordering)
-                                .and(events::stream_ordering.le(since_tk.stream_ordering)),
-                        ),
-                    );
-                } else {
-                    query = query.filter(events::stream_ordering.le(since_tk.stream_ordering));
+                match since_tk {
+                    BatchToken::Live { stream_ordering } => {
+                        query = query.filter(events::stream_ordering.le(stream_ordering));
+                    }
+                    BatchToken::Historic {
+                        topological_ordering,
+                        stream_ordering,
+                    } => {
+                        query = query.filter(
+                            events::topological_ordering.le(topological_ordering).or(
+                                events::topological_ordering
+                                    .eq(topological_ordering)
+                                    .and(events::stream_ordering.le(stream_ordering)),
+                            ),
+                        );
+                    }
                 }
             }
             if let Some(until_tk) = until_tk {
-                if let Some(topological_ordering) = until_tk.topological_ordering {
+                if let Some(topological_ordering) = until_tk.topological_ordering() {
                     query = query.filter(
                         events::topological_ordering.ge(topological_ordering).or(
                             events::topological_ordering
                                 .eq(topological_ordering)
-                                .and(events::stream_ordering.ge(until_tk.stream_ordering)),
+                                .and(events::stream_ordering.ge(until_tk.stream_ordering())),
                         ),
                     );
                 } else {
-                    query = query.filter(events::stream_ordering.ge(until_tk.stream_ordering));
+                    query = query.filter(events::stream_ordering.ge(until_tk.stream_ordering()));
                 }
             }
         }
@@ -235,7 +237,7 @@ pub fn load_pdus(
                 pdu.add_age()?;
                 list.insert(event_sn, pdu);
                 if list.len() >= limit {
-                println!("========= 3            {event_id}");
+                    println!("========= 3            {event_id}");
                     break;
                 }
                 println!("========= 4            {event_id}");
@@ -245,6 +247,12 @@ pub fn load_pdus(
             break;
         }
     }
-    println!("============list: {:#?}", list);
+    println!(
+        "Loaded  PDUs {:#?}",
+        events::table
+            .order_by(events::sn.desc())
+            .load::<DbEvent>(&mut connect()?)?
+    );
+    println!("============list: {:?}", list);
     Ok(list)
 }

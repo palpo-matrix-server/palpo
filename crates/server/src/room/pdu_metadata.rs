@@ -64,8 +64,8 @@ pub fn paginate_relations_with_filter(
         .map(|from| from.parse())
         .transpose()?
         .unwrap_or(match dir {
-            Direction::Forward => BatchToken::MIN,
-            Direction::Backward => BatchToken::MAX,
+            Direction::Forward => BatchToken::LIVE_MIN,
+            Direction::Backward => BatchToken::LIVE_MAX,
         });
     let to: Option<BatchToken> = to.map(|to| to.parse()).transpose()?;
 
@@ -93,10 +93,10 @@ pub fn paginate_relations_with_filter(
     let next_token = match dir {
         Direction::Forward => events
             .last()
-            .map(|(_, pdu)| BatchToken::new(pdu.event_sn + 1, None)),
+            .map(|(_, pdu)| BatchToken::new_live(pdu.event_sn + 1)),
         Direction::Backward => events
             .last()
-            .map(|(_, pdu)| BatchToken::new(pdu.event_sn - 1, None)),
+            .map(|(_, pdu)| BatchToken::new_live(pdu.event_sn - 1)),
     };
 
     let events: Vec<_> = events

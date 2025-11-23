@@ -136,7 +136,7 @@ pub(super) fn get_context(
     };
 
     let mut lazy_loaded = HashSet::new();
-    let base_token = crate::event::get_batch_token(&args.event_id)
+    let base_token = crate::event::get_live_token(&args.event_id)
         .map_err(|_| MatrixError::not_found("base event id not found"))?;
     let base_event = timeline::get_pdu(&args.event_id)?;
     let room_id = base_event.room_id.clone();
@@ -186,7 +186,7 @@ pub(super) fn get_context(
 
     let start_token = events_before
         .last()
-        .map(|(_, pdu)| pdu.batch_token())
+        .map(|(_, pdu)| pdu.historic_token())
         .unwrap_or_else(|| base_token);
     let events_before = events_before
         .into_iter()
@@ -224,7 +224,7 @@ pub(super) fn get_context(
     let state_ids = state::get_full_state_ids(frame_id).unwrap_or_default();
     let end_token = events_after
         .last()
-        .map(|(_, e)| e.batch_token())
+        .map(|(_, e)| e.live_token())
         .unwrap_or_else(|| base_token);
     let events_after: Vec<_> = events_after
         .into_iter()

@@ -104,15 +104,15 @@ async fn get_key_changes(
     let mut device_list_updates = HashSet::new();
     device_list_updates.extend(data::user::keys_changed_users(
         sender_id,
-        from_tk.stream_ordering,
-        Some(to_tk.stream_ordering),
+        from_tk.event_sn(),
+        Some(to_tk.event_sn()),
     )?);
 
     for room_id in data::user::joined_rooms(sender_id)? {
         device_list_updates.extend(room::keys_changed_users(
             &room_id,
-            from_tk.stream_ordering,
-            Some(to_tk.stream_ordering),
+            from_tk.event_sn(),
+            Some(to_tk.event_sn()),
         )?);
     }
     json_ok(KeyChangesResBody {
