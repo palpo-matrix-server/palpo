@@ -1,37 +1,13 @@
-use std::borrow::Borrow;
-use std::collections::{HashMap, HashSet};
-use std::iter::once;
-use std::sync::{LazyLock, Mutex};
-
 use diesel::prelude::*;
 use indexmap::IndexMap;
-use serde::Deserialize;
-use serde_json::value::to_raw_value;
-use ulid::Ulid;
 
 use crate::core::client::filter::{RoomEventFilter, UrlFilter};
-use crate::core::events::push_rules::PushRulesEventContent;
-use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
-use crate::core::events::room::encrypted::Relation;
-use crate::core::events::room::member::MembershipState;
-use crate::core::events::{GlobalAccountDataEventType, StateEventType, TimelineEventType};
-use crate::core::federation::backfill::{BackfillReqArgs, BackfillResBody, backfill_request};
 use crate::core::identifiers::*;
-use crate::core::presence::PresenceState;
-use crate::core::push::{Action, Ruleset, Tweak};
-use crate::core::room_version_rules::RoomIdFormatVersion;
-use crate::core::serde::{
-    CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJsonValue, to_canonical_value,
-    validate_canonical_json,
-};
-use crate::core::state::{Event, StateError, event_auth};
-use crate::core::{Direction, Seqnum, UnixMillis};
-use crate::data::room::{DbEvent, DbEventData, NewDbEvent};
+use crate::core::state::Event;
+use crate::core::{Direction, Seqnum};
+use crate::data::connect;
 use crate::data::schema::*;
-use crate::data::{connect, diesel_exists};
 use crate::event::{BatchToken, EventHash, PduBuilder, PduEvent, handler, parse_fetched_pdu};
-use crate::room::{push_action, state, timeline};
-use crate::utils::SeqnumQueueGuard;
 use crate::{
     AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, SnPduEvent, config, data,
     membership, room, utils,
@@ -40,16 +16,16 @@ use crate::{
 pub fn load_pdus_forward(
     user_id: Option<&UserId>,
     room_id: &RoomId,
-    since: BatchToken,
-    until: Option<BatchToken>,
+    since_tk: Option<BatchToken>,
+    until_tk: Option<BatchToken>,
     filter: Option<&RoomEventFilter>,
     limit: usize,
 ) -> AppResult<IndexMap<i64, SnPduEvent>> {
     load_pdus(
         user_id,
         room_id,
-        since,
-        until,
+        since_tk,
+        until_tk,
         limit,
         filter,
         Direction::Forward,
@@ -58,16 +34,16 @@ pub fn load_pdus_forward(
 pub fn load_pdus_backward(
     user_id: Option<&UserId>,
     room_id: &RoomId,
-    since: BatchToken,
-    until: Option<BatchToken>,
+    since_tk: Option<BatchToken>,
+    until_tk: Option<BatchToken>,
     filter: Option<&RoomEventFilter>,
     limit: usize,
 ) -> AppResult<IndexMap<i64, SnPduEvent>> {
     load_pdus(
         user_id,
         room_id,
-        since,
-        until,
+        since_tk,
+        until_tk,
         limit,
         filter,
         Direction::Backward,
@@ -81,55 +57,88 @@ pub fn load_pdus_backward(
 pub fn load_pdus(
     user_id: Option<&UserId>,
     room_id: &RoomId,
-    since_tk: BatchToken,
+    since_tk: Option<BatchToken>,
     until_tk: Option<BatchToken>,
     limit: usize,
     filter: Option<&RoomEventFilter>,
     dir: Direction,
 ) -> AppResult<IndexMap<Seqnum, SnPduEvent>> {
     let mut list: IndexMap<Seqnum, SnPduEvent> = IndexMap::with_capacity(limit.clamp(10, 100));
-    let mut start_sn = if dir == Direction::Forward {
-        0
-    } else {
-        data::curr_sn()? + 1
-    };
-
+    let mut offset = 0;
     while list.len() < limit {
         let mut query = events::table
             .filter(events::room_id.eq(room_id))
             .into_boxed();
-        if let Some(until_tk) = until_tk {
-            if let (Some(since_depth), Some(until_depth)) =
-                (since_tk.event_depth, until_tk.event_depth)
-            {
-                let min_depth = since_depth.min(until_depth);
-                let max_depth = since_depth.max(until_depth);
-                query = query
-                    .filter(events::depth.le(max_depth))
-                    .filter(events::depth.ge(min_depth));
-            } else if let Some(since_depth) = since_tk.event_depth {
-                if dir == Direction::Forward {
-                    query = query.filter(events::depth.ge(since_depth));
-                } else {
-                    query = query.filter(events::depth.le(since_depth));
-                }
-            } else if let Some(until_depth) = until_tk.event_depth {
-                if dir == Direction::Forward {
-                    query = query.filter(events::depth.le(until_depth));
-                } else {
-                    query = query.filter(events::depth.ge(until_depth));
+        if dir == Direction::Forward {
+            if let Some(since_tk) = since_tk {
+                match since_tk {
+                    BatchToken::Live { stream_ordering } => {
+                        query = query.filter(events::stream_ordering.ge(stream_ordering));
+                    }
+                    BatchToken::Historic {
+                        topological_ordering,
+                        stream_ordering,
+                    } => {
+                        query = query.filter(
+                            events::topological_ordering.ge(topological_ordering).or(
+                                events::topological_ordering
+                                    .eq(topological_ordering)
+                                    .and(events::stream_ordering.ge(stream_ordering)),
+                            ),
+                        );
+                    }
                 }
             }
-        } else if dir == Direction::Forward {
-            if let Some(since_depth) = since_tk.event_depth {
-                query = query.filter(events::depth.ge(since_depth));
+            if let Some(until_tk) = until_tk {
+                match until_tk {
+                    BatchToken::Live { stream_ordering } => {
+                        query = query.filter(events::stream_ordering.le(stream_ordering));
+                    }
+                    BatchToken::Historic {
+                        topological_ordering,
+                        stream_ordering,
+                    } => {
+                        query = query.filter(
+                            events::topological_ordering.le(topological_ordering).or(
+                                events::topological_ordering
+                                    .eq(topological_ordering)
+                                    .and(events::stream_ordering.le(stream_ordering)),
+                            ),
+                        );
+                    }
+                }
             }
         } else {
-            if let Some(since_depth) = since_tk.event_depth {
-                if dir == Direction::Forward {
-                    query = query.filter(events::depth.ge(since_depth));
+            if let Some(since_tk) = since_tk {
+                match since_tk {
+                    BatchToken::Live { stream_ordering } => {
+                        query = query.filter(events::stream_ordering.le(stream_ordering));
+                    }
+                    BatchToken::Historic {
+                        topological_ordering,
+                        stream_ordering,
+                    } => {
+                        query = query.filter(
+                            events::topological_ordering.le(topological_ordering).or(
+                                events::topological_ordering
+                                    .eq(topological_ordering)
+                                    .and(events::stream_ordering.le(stream_ordering)),
+                            ),
+                        );
+                    }
+                }
+            }
+            if let Some(until_tk) = until_tk {
+                if let Some(topological_ordering) = until_tk.topological_ordering() {
+                    query = query.filter(
+                        events::topological_ordering.ge(topological_ordering).or(
+                            events::topological_ordering
+                                .eq(topological_ordering)
+                                .and(events::stream_ordering.ge(until_tk.stream_ordering())),
+                        ),
+                    );
                 } else {
-                    query = query.filter(events::depth.le(since_depth));
+                    query = query.filter(events::stream_ordering.ge(until_tk.stream_ordering()));
                 }
             }
         }
@@ -167,8 +176,8 @@ pub fn load_pdus(
         }
         let events: Vec<(OwnedEventId, Seqnum)> = if dir == Direction::Forward {
             query
-                .filter(events::sn.gt(start_sn))
-                .order((events::depth.desc(),))
+                .order(events::topological_ordering.asc())
+                .offset(offset)
                 .limit(utils::usize_to_i64(limit))
                 .select((events::id, events::sn))
                 .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
@@ -176,11 +185,13 @@ pub fn load_pdus(
                 .rev()
                 .collect()
         } else {
-            query
-                .filter(events::sn.lt(start_sn))
-                .order(events::depth.desc())
+            let query = query
+                .order(events::topological_ordering.desc())
+                .offset(offset)
                 .limit(utils::usize_to_i64(limit))
-                .select((events::id, events::sn))
+                .select((events::id, events::sn));
+            crate::data::print_query!(&query);
+            query
                 .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
                 .into_iter()
                 .collect()
@@ -188,17 +199,9 @@ pub fn load_pdus(
         if events.is_empty() {
             break;
         }
-        start_sn = if dir == Direction::Forward {
-            if let Some(sn) = events.iter().map(|(_, sn)| sn).max() {
-                *sn
-            } else {
-                break;
-            }
-        } else if let Some(sn) = events.iter().map(|(_, sn)| sn).min() {
-            *sn
-        } else {
-            break;
-        };
+        let count = events.len();
+        offset += count as i64;
+
         for (event_id, event_sn) in events {
             if let Ok(mut pdu) = super::get_pdu(&event_id) {
                 if let Some(user_id) = user_id {
@@ -216,6 +219,9 @@ pub fn load_pdus(
                     break;
                 }
             }
+        }
+        if count < limit {
+            break;
         }
     }
     Ok(list)

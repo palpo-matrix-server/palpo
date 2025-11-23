@@ -27,7 +27,7 @@ use crate::core::serde::{
 use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::event::handler::{process_incoming_pdu, process_to_outlier_pdu};
+use crate::event::handler::process_incoming_pdu;
 use crate::event::{
     PduBuilder, PduEvent, ensure_event_sn, gen_event_id_canonical_json, parse_fetched_pdu,
 };
@@ -349,6 +349,7 @@ pub async fn join_room(
                 value.clone(),
                 false,
                 false,
+                false,
             )
             .map_err(|e| {
                 warn!("invalid pdu in send_join response: {} {:?}", e, value);
@@ -462,6 +463,7 @@ pub async fn join_room(
         event_sn: join_event_sn,
         is_outlier: false,
         soft_failed: false,
+        backfilled: false,
     };
     timeline::append_pdu(
         &join_pdu,

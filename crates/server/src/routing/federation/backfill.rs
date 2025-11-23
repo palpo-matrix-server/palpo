@@ -21,19 +21,26 @@ async fn get_history(
     let origin = depot.origin()?;
     debug!("got backfill request from: {}", origin);
 
-    let until = args
+    // TODO: WRONG implementation
+    let until_tk = args
         .v
         .iter()
-        .filter_map(|event_id| crate::event::get_batch_token(event_id).ok())
-        .max_by(|a, b| a.event_sn.cmp(&b.event_sn))
+        .filter_map(|event_id| crate::event::get_historic_token(event_id).ok())
+        .max_by(|a, b| a.stream_ordering().cmp(&b.stream_ordering()))
         .ok_or(MatrixError::invalid_param(
             "unknown event id in query string v",
         ))?;
 
     let limit = args.limit.min(100);
 
-    let all_events =
-        timeline::topolo::load_pdus_backward(None, &args.room_id, until, None, None, limit)?;
+    let all_events = timeline::topolo::load_pdus_backward(
+        None,
+        &args.room_id,
+        Some(until_tk),
+        None,
+        None,
+        limit,
+    )?;
 
     let mut events = Vec::with_capacity(all_events.len());
     for (_, pdu) in all_events {

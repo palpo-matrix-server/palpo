@@ -4,45 +4,38 @@ use std::iter::once;
 use std::sync::{LazyLock, Mutex};
 
 use diesel::prelude::*;
-use indexmap::IndexMap;
 use serde::Deserialize;
 use serde_json::value::to_raw_value;
 use ulid::Ulid;
 
-use crate::core::client::filter::{RoomEventFilter, UrlFilter};
 use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::encrypted::Relation;
 use crate::core::events::room::member::MembershipState;
 use crate::core::events::{GlobalAccountDataEventType, StateEventType, TimelineEventType};
-use crate::core::federation::backfill::{BackfillReqArgs, BackfillResBody, backfill_request};
 use crate::core::identifiers::*;
 use crate::core::presence::PresenceState;
 use crate::core::push::{Action, Ruleset, Tweak};
 use crate::core::room_version_rules::RoomIdFormatVersion;
 use crate::core::serde::{
-    CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJsonValue, to_canonical_value,
-    validate_canonical_json,
+    CanonicalJsonObject, CanonicalJsonValue, JsonValue, to_canonical_value, validate_canonical_json,
 };
 use crate::core::state::{Event, StateError, event_auth};
-use crate::core::{Direction, Seqnum, UnixMillis};
+use crate::core::{Seqnum, UnixMillis};
 use crate::data::room::{DbEvent, DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::event::{BatchToken, EventHash, PduBuilder, PduEvent, handler, parse_fetched_pdu};
+use crate::event::{EventHash, PduBuilder, PduEvent};
 use crate::room::{push_action, state, timeline};
 use crate::utils::SeqnumQueueGuard;
 use crate::{
-    AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, SnPduEvent, config, data,
-    membership, room, utils,
+    AppError, AppResult, MatrixError, RoomMutexGuard, SnPduEvent, config, data, membership, utils,
 };
 
 mod backfill;
 pub mod stream;
 pub mod topolo;
 pub use backfill::*;
-pub use stream::*;
-pub use topolo::*;
 
 pub static LAST_TIMELINE_COUNT_CACHE: LazyLock<Mutex<HashMap<OwnedRoomId, i64>>> =
     LazyLock::new(Default::default);
@@ -88,14 +81,12 @@ pub fn get_pdu_json(event_id: &EventId) -> AppResult<Option<CanonicalJsonObject>
 }
 
 /// Returns the pdu.
-///
-/// Checks the `eventid_outlierpdu` Tree if not found in the timeline.
 pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<SnPduEvent>> {
-    let Some((event_sn, room_id)) = events::table
+    let Some((event_sn, room_id, stream_ordering)) = events::table
         .filter(events::is_outlier.eq(false))
         .filter(events::id.eq(event_id))
-        .select((events::sn, events::room_id))
-        .first::<(Seqnum, OwnedRoomId)>(&mut connect()?)
+        .select((events::sn, events::room_id, events::stream_ordering))
+        .first::<(Seqnum, OwnedRoomId, i64)>(&mut connect()?)
         .optional()?
     else {
         return Ok(None);
@@ -106,8 +97,16 @@ pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<SnPduEvent>> 
         .first::<JsonValue>(&mut connect()?)
         .optional()?
         .map(|json| {
-            SnPduEvent::from_json_value(&room_id, event_id, event_sn, json, false, false)
-                .map_err(|_e| AppError::internal("invalid pdu in db"))
+            SnPduEvent::from_json_value(
+                &room_id,
+                event_id,
+                event_sn,
+                json,
+                false,
+                false,
+                stream_ordering < 0,
+            )
+            .map_err(|_e| AppError::internal("invalid pdu in db"))
         })
         .transpose()?;
     if let Some(pdu) = pdu.as_mut() {
@@ -141,6 +140,7 @@ pub fn get_pdu(event_id: &EventId) -> AppResult<SnPduEvent> {
         event_sn,
         is_outlier: event.is_outlier,
         soft_failed: event.soft_failed,
+        backfilled: event.stream_ordering < 0,
     })
 }
 
@@ -753,6 +753,7 @@ pub async fn hash_and_sign_event(
             event_sn,
             is_outlier: true,
             soft_failed: false,
+            backfilled: false,
         },
         pdu_json,
         event_guard,

@@ -3,16 +3,15 @@ use std::collections::{BTreeMap, HashSet};
 use diesel::prelude::*;
 use serde_json::value::to_raw_value;
 
+use crate::core::Direction;
 use crate::core::client::message::{
     CreateMessageReqArgs, CreateMessageWithTxnReqArgs, MessagesReqArgs, MessagesResBody,
     SendMessageResBody,
 };
 use crate::core::events::{StateEventType, TimelineEventType};
-use crate::core::{Direction, Seqnum};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::event::BatchToken;
-use crate::event::get_batch_token_by_sn;
 use crate::room::timeline;
 use crate::routing::prelude::*;
 use crate::{PduBuilder, room};
@@ -73,29 +72,29 @@ pub(super) async fn get_messages(
     // };
     let until_tk = args.to.as_ref().map(|to| to.parse()).transpose()?;
 
-    let mut from_tk: BatchToken = args
+    let from_tk: BatchToken = args
         .from
         .as_ref()
         .map(|from| from.parse())
         .transpose()?
         .unwrap_or(match args.dir {
-            Direction::Forward => BatchToken::MIN,
-            Direction::Backward => BatchToken::MAX,
+            Direction::Forward => BatchToken::LIVE_MIN,
+            Direction::Backward => BatchToken::LIVE_MAX,
         });
-    if from_tk.event_depth.is_none() {
-        from_tk = events::table
-            .filter(events::sn.le(from_tk.event_sn))
-            .order_by(events::sn.desc())
-            .select((events::sn, events::depth))
-            .first::<(Seqnum, i64)>(&mut connect()?)
-            .map(|(sn, depth)| BatchToken::new(sn, Some(depth)))?
-    }
+    // if from_tk.event_depth.is_none() {
+    //     from_tk = events::table
+    //         .filter(events::sn.le(from_tk.event_sn()))
+    //         .order_by(events::sn.desc())
+    //         .select((events::sn, events::depth))
+    //         .first::<(Seqnum, i64)>(&mut connect()?)
+    //         .map(|(sn, depth)| BatchToken::new(sn, Some(depth)))?
+    // }
 
     crate::room::lazy_loading::lazy_load_confirm_delivery(
         authed.user_id(),
         authed.device_id(),
         &args.room_id,
-        from_tk.event_sn,
+        from_tk.event_sn(),
     )?;
 
     let limit = args.limit.min(100);
@@ -107,7 +106,7 @@ pub(super) async fn get_messages(
             let events = timeline::topolo::load_pdus_forward(
                 Some(sender_id),
                 &args.room_id,
-                from_tk,
+                Some(from_tk),
                 until_tk,
                 Some(&args.filter),
                 limit,
@@ -129,7 +128,7 @@ pub(super) async fn get_messages(
                 lazy_loaded.insert(event.sender.clone());
             }
 
-            next_token = events.last().map(|(_, pdu)| pdu.batch_token());
+            next_token = events.last().map(|(_, pdu)| pdu.live_token());
 
             let events: Vec<_> = events
                 .into_iter()
@@ -144,7 +143,7 @@ pub(super) async fn get_messages(
             let mut events = timeline::topolo::load_pdus_backward(
                 Some(sender_id),
                 &args.room_id,
-                from_tk,
+                Some(from_tk),
                 until_tk,
                 Some(&args.filter),
                 limit,
@@ -153,7 +152,7 @@ pub(super) async fn get_messages(
                 events = timeline::topolo::load_pdus_backward(
                     Some(sender_id),
                     &args.room_id,
-                    from_tk,
+                    Some(from_tk),
                     until_tk,
                     Some(&args.filter),
                     limit,
@@ -176,16 +175,10 @@ pub(super) async fn get_messages(
                 lazy_loaded.insert(event.sender.clone());
             }
 
-            next_token = events.last().map(|(_, pdu)| pdu.batch_token());
-
-            let events: Vec<_> = events
-                .into_iter()
-                .map(|(_, pdu)| pdu.to_room_event())
-                .collect();
-
+            next_token = events.last().map(|(_, pdu)| pdu.live_token());
             resp.start = from_tk.to_string();
             resp.end = next_token.map(|tk| tk.to_string());
-            resp.chunk = events;
+            resp.chunk = events.values().map(|pdu| pdu.to_room_event()).collect();
         }
     }
 

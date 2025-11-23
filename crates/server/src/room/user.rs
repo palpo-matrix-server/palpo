@@ -317,7 +317,7 @@ pub fn left_rooms(
         ]))
         .into_boxed();
     let query = if let Some(since_tk) = since_tk {
-        query.filter(room_users::event_sn.ge(since_tk.event_sn))
+        query.filter(room_users::event_sn.ge(since_tk.event_sn()))
     } else {
         query.filter(room_users::forgotten.eq(false))
     };

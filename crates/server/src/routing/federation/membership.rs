@@ -224,6 +224,7 @@ async fn invite_user(
         event.clone(),
         false,
         false,
+        false,
     )
     .map_err(|e| {
         warn!("invalid invite event: {}", e);

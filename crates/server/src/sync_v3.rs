@@ -44,14 +44,14 @@ pub async fn sync_events(
     crate::seqnum_reach(curr_sn).await;
     let since_tk = if let Some(since_str) = args.since.as_ref() {
         let since_tk: BatchToken = since_str.parse()?;
-        if since_tk.event_sn > curr_sn {
+        if since_tk.stream_ordering() > curr_sn {
             return Ok(SyncEventsResBody::new(since_str.to_owned()));
         }
         Some(since_tk)
     } else {
         None
     };
-    let mut next_batch = BatchToken::new(curr_sn + 1, None);
+    let mut next_batch = BatchToken::new_live(curr_sn + 1);
 
     // Load filter
     let filter = match &args.filter {
@@ -78,7 +78,7 @@ pub async fn sync_events(
     // Look for device list updates of this account
     device_list_updates.extend(data::user::keys_changed_users(
         sender_id,
-        since_tk.unwrap_or_default().event_sn,
+        since_tk.unwrap_or(BatchToken::LIVE_MIN).event_sn(),
         None,
     )?);
 
@@ -89,7 +89,7 @@ pub async fn sync_events(
             device_id,
             room_id,
             since_tk,
-            Some(BatchToken::new(curr_sn, None)),
+            Some(BatchToken::new_live(curr_sn)),
             next_batch,
             full_state,
             &filter,
@@ -101,10 +101,8 @@ pub async fn sync_events(
         .await
         {
             Ok((joined_room, nb)) => {
-                if let Some(nb) = nb {
-                    if nb.event_sn < next_batch.event_sn {
+                if let Some(nb) = nb && nb.stream_ordering() < next_batch.stream_ordering() {
                         next_batch = nb;
-                    }
                 }
                 joined_room
             }
@@ -127,7 +125,7 @@ pub async fn sync_events(
             continue;
         };
         // Left before last sync
-        if since_tk.map(|t| t.event_sn) > Some(left_sn) {
+        if since_tk.map(|t| t.stream_ordering()) > Some(left_sn) {
             continue;
         }
         let left_room = match load_left_room(
@@ -135,7 +133,7 @@ pub async fn sync_events(
             device_id,
             room_id,
             since_tk,
-            Some(BatchToken::new(curr_sn, None)),
+            Some(BatchToken::new_live(curr_sn)),
             left_sn,
             next_batch,
             full_state,
@@ -155,16 +153,18 @@ pub async fn sync_events(
         left_rooms.insert(room_id.to_owned(), left_room);
     }
 
-    let invited_rooms: BTreeMap<_, _> =
-        data::user::invited_rooms(sender_id, since_tk.unwrap_or_default().event_sn)?
-            .into_iter()
-            .map(|(room_id, invite_state_events)| {
-                (
-                    room_id,
-                    InvitedRoom::new(InviteState::new(invite_state_events)),
-                )
-            })
-            .collect();
+    let invited_rooms: BTreeMap<_, _> = data::user::invited_rooms(
+        sender_id,
+        since_tk.unwrap_or(BatchToken::LIVE_MIN).stream_ordering(),
+    )?
+    .into_iter()
+    .map(|(room_id, invite_state_events)| {
+        (
+            room_id,
+            InvitedRoom::new(InviteState::new(invite_state_events)),
+        )
+    })
+    .collect();
 
     for left_room in left_rooms.keys() {
         for user_id in room::joined_users(left_room, None)? {
@@ -203,7 +203,7 @@ pub async fn sync_events(
             let knock_sn = room::user::knock_sn(sender_id, &room_id).ok();
 
             // Knocked before last sync
-            if since_tk.map(|t| t.event_sn) > knock_sn {
+            if since_tk.map(|t| t.event_sn()) > knock_sn {
                 return knocked_rooms;
             }
 
@@ -221,7 +221,7 @@ pub async fn sync_events(
     if config::get().presence.allow_local {
         // Take presence updates from this room
         for (user_id, presence_event) in
-            crate::data::user::presences_since(since_tk.unwrap_or_default().event_sn)?
+            crate::data::user::presences_since(since_tk.unwrap_or(BatchToken::LIVE_MIN).event_sn())?
         {
             if user_id == sender_id || !state::user_can_see_user(sender_id, &user_id)? {
                 continue;
@@ -266,14 +266,14 @@ pub async fn sync_events(
     data::user::device::remove_to_device_events(
         sender_id,
         device_id,
-        since_tk.unwrap_or_default().event_sn - 1,
+        since_tk.unwrap_or(BatchToken::LIVE_MIN).event_sn() - 1,
     )?;
 
     let account_data = GlobalAccountData {
         events: data::user::data_changes(
             None,
             sender_id,
-            since_tk.unwrap_or_default().event_sn,
+            since_tk.unwrap_or(BatchToken::LIVE_MIN).event_sn(),
             None,
         )?
         .into_iter()
@@ -302,8 +302,8 @@ pub async fn sync_events(
         events: data::user::device::get_to_device_events(
             sender_id,
             device_id,
-            since_tk.map(|s| s.event_sn),
-            Some(next_batch.event_sn),
+            since_tk.map(|s| s.event_sn()),
+            Some(next_batch.event_sn()),
         )?,
     };
 
@@ -338,7 +338,7 @@ async fn load_joined_room(
     joined_users: &mut HashSet<OwnedUserId>,
     left_users: &mut HashSet<OwnedUserId>,
 ) -> AppResult<(JoinedRoom, Option<BatchToken>)> {
-    if since_tk.map(|s| s.event_sn) > Some(data::curr_sn()?) {
+    if since_tk.map(|s| s.event_sn()) > Some(data::curr_sn()?) {
         return Ok((JoinedRoom::default(), None));
     }
     let lazy_load_enabled = filter.room.state.lazy_load_options.is_enabled()
@@ -355,7 +355,7 @@ async fn load_joined_room(
         return Ok((JoinedRoom::default(), None));
     };
     let since_frame_id =
-        crate::event::get_last_frame_id(room_id, since_tk.map(|t| t.event_sn)).ok();
+        crate::event::get_last_frame_id(room_id, since_tk.map(|t| t.event_sn())).ok();
 
     let timeline = load_timeline(
         sender_id,
@@ -368,14 +368,11 @@ async fn load_joined_room(
     let since_tk = if let Some(since_tk) = since_tk {
         since_tk
     } else {
-        BatchToken::new(
-            crate::room::user::join_sn(sender_id, room_id).unwrap_or_default(),
-            None,
-        )
+        BatchToken::new_live(crate::room::user::join_sn(sender_id, room_id).unwrap_or_default())
     };
 
     let send_notification_counts = !timeline.events.is_empty()
-        || room::user::last_read_notification(sender_id, room_id)? >= since_tk.event_sn;
+        || room::user::last_read_notification(sender_id, room_id)? >= since_tk.event_sn();
     let mut timeline_users = HashSet::new();
     let mut timeline_pdu_ids = HashSet::new();
     for (_, event) in &timeline.events {
@@ -386,7 +383,7 @@ async fn load_joined_room(
         sender_id,
         device_id,
         room_id,
-        since_tk.event_sn,
+        since_tk.event_sn(),
     )?;
     let (heroes, joined_member_count, invited_member_count, joined_since_last_sync, state_events) =
         if timeline.events.is_empty()
@@ -452,8 +449,8 @@ async fn load_joined_room(
             };
 
             let joined_since_last_sync =
-                room::user::join_sn(sender_id, room_id)? >= since_tk.event_sn;
-            if since_tk.event_sn == 0 || joined_since_last_sync {
+                room::user::join_sn(sender_id, room_id)? >= since_tk.event_sn();
+            if since_tk.event_sn() == 0 || joined_since_last_sync {
                 // Probably since = 0, we will do an initial sync
                 let (joined_member_count, invited_member_count, heroes) = calculate_counts()?;
                 let current_state_ids =
@@ -515,7 +512,7 @@ async fn load_joined_room(
                     device_id,
                     room_id,
                     lazy_loaded,
-                    next_batch.event_sn,
+                    next_batch.event_sn(),
                 );
 
                 // && encrypted_room || new_encrypted_room {
@@ -616,7 +613,7 @@ async fn load_joined_room(
                     device_id,
                     room_id,
                     lazy_loaded,
-                    next_batch.event_sn,
+                    next_batch.event_sn(),
                 );
 
                 let encrypted_room =
@@ -652,7 +649,7 @@ async fn load_joined_room(
                             MembershipState::Join => {
                                 // A new user joined an encrypted room
                                 // if !share_encrypted_room(sender_id, &user_id, &room_id)? {
-                                if since_tk.event_sn <= state_event.event_sn
+                                if since_tk.event_sn() <= state_event.event_sn
                                     && !room::user::shared_rooms(vec![
                                         sender_id.to_owned(),
                                         user_id.to_owned(),
@@ -711,7 +708,11 @@ async fn load_joined_room(
         };
 
     // Look for device list updates in this room
-    device_list_updates.extend(room::keys_changed_users(room_id, since_tk.event_sn, None)?);
+    device_list_updates.extend(room::keys_changed_users(
+        room_id,
+        since_tk.event_sn(),
+        None,
+    )?);
 
     let mut limited = timeline.limited || joined_since_last_sync;
     if let Some((_, first_event)) = timeline.events.first()
@@ -721,11 +722,11 @@ async fn load_joined_room(
     }
 
     let mut edus: Vec<RawJson<AnySyncEphemeralRoomEvent>> = Vec::new();
-    for (_, content) in data::room::receipt::read_receipts(room_id, since_tk.event_sn)? {
+    for (_, content) in data::room::receipt::read_receipts(room_id, since_tk.event_sn())? {
         let receipt = SyncReceiptEvent { content };
         edus.push(RawJson::new(&receipt)?.cast());
     }
-    if room::typing::last_typing_update(room_id).await? >= since_tk.event_sn {
+    if room::typing::last_typing_update(room_id).await? >= since_tk.event_sn() {
         edus.push(
             serde_json::from_str(&serde_json::to_string(
                 &room::typing::all_typings(room_id).await?,
@@ -735,7 +736,7 @@ async fn load_joined_room(
     }
 
     let account_events =
-        data::user::data_changes(Some(room_id), sender_id, since_tk.event_sn, None)?
+        data::user::data_changes(Some(room_id), sender_id, since_tk.event_sn(), None)?
             .into_iter()
             .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Room))
             .collect();
@@ -872,10 +873,10 @@ async fn load_left_room(
         Some(&filter.room.timeline),
     )?;
     let mut limited = timeline.limited;
-    let since_tk = since_tk.unwrap_or_default();
+    let since_tk = since_tk.unwrap_or(BatchToken::LIVE_MIN);
 
     let _send_notification_counts = !timeline.events.is_empty()
-        || room::user::last_read_notification(sender_id, room_id)? >= since_tk.event_sn;
+        || room::user::last_read_notification(sender_id, room_id)? >= since_tk.event_sn();
     let mut timeline_users = HashSet::new();
     let mut timeline_pdu_ids = HashSet::new();
     for (_, event) in &timeline.events {
@@ -958,25 +959,25 @@ pub struct TimelineData {
 pub(crate) fn load_timeline(
     user_id: &UserId,
     room_id: &RoomId,
-    since: Option<BatchToken>,
-    until: Option<BatchToken>,
+    since_tk: Option<BatchToken>,
+    until_tk: Option<BatchToken>,
     filter: Option<&RoomEventFilter>,
 ) -> AppResult<TimelineData> {
     let limit = filter.and_then(|f| f.limit).unwrap_or(10);
     let mut is_backward = false;
-    let mut timeline_pdus = if let Some(since) = since {
-        if let Some(until) = until {
-            let (min, max) = if until.event_sn > since.event_sn {
-                (since, until)
+    let mut timeline_pdus = if let Some(since_tk) = since_tk {
+        if let Some(until_tk) = until_tk {
+            let (min, max) = if until_tk.stream_ordering() > since_tk.stream_ordering() {
+                (since_tk, until_tk)
             } else {
                 is_backward = true;
-                (until, since)
+                (until_tk, since_tk)
             };
 
             timeline::stream::load_pdus_backward(
                 Some(user_id),
                 room_id,
-                max,
+                Some(max),
                 Some(min),
                 filter,
                 limit + 1,
@@ -985,21 +986,14 @@ pub(crate) fn load_timeline(
             timeline::stream::load_pdus_backward(
                 Some(user_id),
                 room_id,
-                BatchToken::MAX,
-                Some(since),
+                None,
+                Some(since_tk),
                 filter,
                 limit + 1,
             )?
         }
     } else {
-        timeline::stream::load_pdus_backward(
-            Some(user_id),
-            room_id,
-            BatchToken::MAX,
-            None,
-            filter,
-            limit + 1,
-        )?
+        timeline::stream::load_pdus_backward(Some(user_id), room_id, None, None, filter, limit + 1)?
     };
 
     let mut limited = false;
@@ -1034,7 +1028,7 @@ pub(crate) fn load_timeline(
             // prev_batch = timeline_pdus.last().map(|(sn, _)| *sn);
             next_batch = timeline_pdus
                 .first()
-                .map(|(sn, _)| BatchToken::new(*sn + 1, None));
+                .map(|(sn, _)| BatchToken::new_live(*sn + 1));
         }
     } else {
         let min_sn = pdu_sns.iter().min().cloned().unwrap_or_default();
@@ -1052,7 +1046,7 @@ pub(crate) fn load_timeline(
             // prev_batch = timeline_pdus.first().map(|(sn, _)| *sn);
             next_batch = timeline_pdus
                 .last()
-                .map(|(sn, _)| BatchToken::new(*sn + 1, None));
+                .map(|(sn, _)| BatchToken::new_live(*sn + 1));
         }
     }
     // if prev_batch.is_none() {
@@ -1065,11 +1059,11 @@ pub(crate) fn load_timeline(
     let prev_batch = if limited {
         timeline_pdus
             .first()
-            .map(|(_, pdu)| BatchToken::new(pdu.event_sn, Some(pdu.depth as i64)))
+            .map(|(_, pdu)| BatchToken::new_live(pdu.event_sn))
     } else {
         timeline_pdus
             .last()
-            .map(|(_, pdu)| BatchToken::new(pdu.event_sn, Some(pdu.depth as i64)))
+            .map(|(_, pdu)| BatchToken::new_live(pdu.event_sn))
     };
     Ok(TimelineData {
         events: timeline_pdus,

@@ -292,8 +292,8 @@ async fn process_rooms(
             crate::sync_v3::load_timeline(
                 sender_id,
                 room_id,
-                Some(BatchToken::new(*room_since_sn, None)),
-                Some(BatchToken::MAX),
+                Some(BatchToken::new_live(*room_since_sn)),
+                Some(BatchToken::LIVE_MAX),
                 Some(&RoomEventFilter::with_limit(*timeline_limit)),
             )?
         };

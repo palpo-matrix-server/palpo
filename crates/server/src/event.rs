@@ -87,20 +87,28 @@ pub fn get_event_sn(event_id: &EventId) -> AppResult<Seqnum> {
         .map_err(Into::into)
 }
 
-pub fn get_batch_token(event_id: &EventId) -> AppResult<BatchToken> {
+pub fn get_live_token(event_id: &EventId) -> AppResult<BatchToken> {
     events::table
         .find(event_id)
         .select((events::sn, events::depth))
         .first::<(Seqnum, i64)>(&mut connect()?)
-        .map(|(sn, depth)| BatchToken::new(sn, Some(depth)))
+        .map(|(sn, depth)| BatchToken::new_live(sn))
         .map_err(Into::into)
 }
-pub fn get_batch_token_by_sn(event_sn: Seqnum) -> AppResult<BatchToken> {
+pub fn get_historic_token(event_id: &EventId) -> AppResult<BatchToken> {
+    events::table
+        .find(event_id)
+        .select((events::sn, events::depth))
+        .first::<(Seqnum, i64)>(&mut connect()?)
+        .map(|(sn, depth)| BatchToken::new_historic(sn, depth))
+        .map_err(Into::into)
+}
+pub fn get_historic_token_by_sn(event_sn: Seqnum) -> AppResult<BatchToken> {
     events::table
         .filter(events::sn.eq(event_sn))
         .select((events::sn, events::depth))
         .first::<(Seqnum, i64)>(&mut connect()?)
-        .map(|(sn, depth)| BatchToken::new(sn, Some(depth)))
+        .map(|(sn, depth)| BatchToken::new_historic(sn, depth))
         .map_err(Into::into)
 }
 
@@ -225,13 +233,13 @@ pub fn parse_fetched_pdu(
     let parsed_room_id = value
         .get("room_id")
         .and_then(|id| RoomId::parse(id.as_str()?).ok());
-    if let Some(parsed_room_id) = parsed_room_id {
-        if &parsed_room_id != room_id {
-            return Err(MatrixError::invalid_param("mismatched room_id in fetched pdu").into());
-        }
+    if let Some(parsed_room_id) = parsed_room_id
+        && parsed_room_id != room_id
+    {
+        return Err(MatrixError::invalid_param("mismatched room_id in fetched pdu").into());
     }
 
-    let event_id = match crate::event::gen_event_id(&value, &room_version) {
+    let event_id = match crate::event::gen_event_id(&value, room_version) {
         Ok(t) => t,
         Err(_) => {
             // Event could not be converted to canonical json

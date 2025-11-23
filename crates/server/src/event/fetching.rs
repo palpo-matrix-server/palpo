@@ -2,7 +2,6 @@ use std::collections::HashSet;
 
 use diesel::prelude::*;
 use indexmap::IndexMap;
-use palpo_core::MatrixError;
 use salvo::http::StatusError;
 
 use crate::core::federation::authorization::{EventAuthResBody, event_auth_request};
@@ -133,10 +132,10 @@ pub async fn fetch_and_process_auth_chain(
     let request =
         event_auth_request(&remote_server.origin().await, room_id, event_id)?.into_inner();
     let response = send_federation_request(remote_server, request, None).await?;
-    if !response.status().is_success() {
-        if let Some(status) = StatusError::from_code(response.status()) {
-            return Err(status.into());
-        }
+    if !response.status().is_success()
+        && let Some(status) = StatusError::from_code(response.status())
+    {
+        return Err(status.into());
     }
     let res_body = response.json::<EventAuthResBody>().await?;
     let mut auth_events = Vec::new();
@@ -156,8 +155,8 @@ pub async fn fetch_and_process_auth_chain(
             let Some(outlier_pdu) = process_to_outlier_pdu(
                 remote_server,
                 &event_id,
-                &room_id,
-                &room_version,
+                room_id,
+                room_version,
                 event_value,
             )
             .await?

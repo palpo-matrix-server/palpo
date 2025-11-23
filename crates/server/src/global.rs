@@ -16,14 +16,14 @@ use tokio::sync::{Semaphore, broadcast};
 use crate::core::appservice::Registration;
 use crate::core::federation::discovery::{OldVerifyKey, ServerSigningKeys};
 use crate::core::identifiers::*;
-use crate::core::serde::{Base64, CanonicalJsonObject, JsonValue, RawJsonValue};
+use crate::core::serde::{Base64, JsonValue};
 use crate::core::{Seqnum, UnixMillis};
 use crate::data::misc::DbServerSigningKeys;
 use crate::data::schema::*;
 use crate::data::user::{NewDbUser, NewDbUserDevice};
 use crate::data::{connect, diesel_exists};
 use crate::utils::{MutexMap, MutexMapGuard, SeqnumQueue, SeqnumQueueFuture, SeqnumQueueGuard};
-use crate::{AppResult, MatrixError, SigningKeys};
+use crate::{AppResult, SigningKeys};
 
 pub const MXC_LENGTH: usize = 32;
 pub const DEVICE_ID_LENGTH: usize = 10;

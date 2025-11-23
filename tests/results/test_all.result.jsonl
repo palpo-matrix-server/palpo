@@ -1,3 +1,6 @@
+{"Action":"fail","Test":"TestDeviceListsUpdateOverFederation"}
+{"Action":"fail","Test":"TestDeviceListsUpdateOverFederation/stopped_server"}
+{"Action":"fail","Test":"TestFederationRedactSendsWithoutEvent"}
 {"Action":"fail","Test":"TestJumpToDateEndpoint"}
 {"Action":"fail","Test":"TestJumpToDateEndpoint/parallel"}
 {"Action":"fail","Test":"TestJumpToDateEndpoint/parallel/federation"}
@@ -6,7 +9,12 @@
 {"Action":"fail","Test":"TestKnocking/Users_in_the_room_see_a_user's_membership_update_when_they_knock#01"}
 {"Action":"fail","Test":"TestKnockingInMSC3787Room"}
 {"Action":"fail","Test":"TestKnockingInMSC3787Room/Users_in_the_room_see_a_user's_membership_update_when_they_knock#01"}
-{"Action":"fail","Test":"TestNetworkPartitionOrdering"}
+{"Action":"fail","Test":"TestPushRuleRoomUpgrade"}
+{"Action":"fail","Test":"TestPushRuleRoomUpgrade/parallel"}
+{"Action":"fail","Test":"TestPushRuleRoomUpgrade/parallel/joining_a_remote_manually_upgraded_room_carries_over_existing_push_rules"}
+{"Action":"fail","Test":"TestPushRuleRoomUpgrade/parallel/joining_a_remote_upgraded_room_carries_over_existing_push_rules"}
+{"Action":"fail","Test":"TestPushRuleRoomUpgrade/parallel/manually_upgrading_a_room_carries_over_existing_push_rules_for_local_users"}
+{"Action":"fail","Test":"TestPushRuleRoomUpgrade/parallel/upgrading_a_room_carries_over_existing_push_rules_for_local_users"}
 {"Action":"fail","Test":"TestSyncTimelineGap"}
 {"Action":"fail","Test":"TestSyncTimelineGap/full"}
 {"Action":"fail","Test":"TestSyncTimelineGap/incremental"}
@@ -111,10 +119,8 @@
 {"Action":"pass","Test":"TestDeviceListUpdates/when_remote_user_joins_a_room"}
 {"Action":"pass","Test":"TestDeviceListUpdates/when_remote_user_leaves_a_room"}
 {"Action":"pass","Test":"TestDeviceListUpdates/when_remote_user_rejoins_a_room"}
-{"Action":"pass","Test":"TestDeviceListsUpdateOverFederation"}
 {"Action":"pass","Test":"TestDeviceListsUpdateOverFederation/good_connectivity"}
 {"Action":"pass","Test":"TestDeviceListsUpdateOverFederation/interrupted_connectivity"}
-{"Action":"pass","Test":"TestDeviceListsUpdateOverFederation/stopped_server"}
 {"Action":"pass","Test":"TestDeviceListsUpdateOverFederationOnRoomJoin"}
 {"Action":"pass","Test":"TestDeviceManagement"}
 {"Action":"pass","Test":"TestDeviceManagement/DELETE_/device/{deviceId}"}
@@ -140,7 +146,6 @@
 {"Action":"pass","Test":"TestFederationKeyUploadQuery"}
 {"Action":"pass","Test":"TestFederationKeyUploadQuery/Can_claim_remote_one_time_key_using_POST"}
 {"Action":"pass","Test":"TestFederationKeyUploadQuery/Can_query_remote_device_keys_using_POST"}
-{"Action":"pass","Test":"TestFederationRedactSendsWithoutEvent"}
 {"Action":"pass","Test":"TestFederationRejectInvite"}
 {"Action":"pass","Test":"TestFederationRoomsInvite"}
 {"Action":"pass","Test":"TestFederationRoomsInvite/Parallel"}
@@ -181,6 +186,9 @@
 {"Action":"pass","Test":"TestInboundFederationProfile/Inbound_federation_can_query_profile_data"}
 {"Action":"pass","Test":"TestInboundFederationProfile/Non-numeric_ports_in_server_names_are_rejected"}
 {"Action":"pass","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents"}
+{"Action":"pass","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents/Outlier_should_be_rejected"}
+{"Action":"pass","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents/sent_event_1_should_be_rejected"}
+{"Action":"pass","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents/sent_event_2_should_be_rejected"}
 {"Action":"pass","Test":"TestInviteFromIgnoredUsersDoesNotAppearInSync"}
 {"Action":"pass","Test":"TestIsDirectFlagFederation"}
 {"Action":"pass","Test":"TestIsDirectFlagLocal"}
@@ -266,9 +274,11 @@
 {"Action":"pass","Test":"TestLeaveEventInviteRejection"}
 {"Action":"pass","Test":"TestLeaveEventVisibility"}
 {"Action":"pass","Test":"TestLeftRoomFixture"}
+{"Action":"pass","Test":"TestLeftRoomFixture/Can_get_'m.room.name'_state_for_a_departed_room"}
 {"Action":"pass","Test":"TestLeftRoomFixture/Can_get_rooms/{roomId}/members_for_a_departed_room"}
 {"Action":"pass","Test":"TestLeftRoomFixture/Can_get_rooms/{roomId}/messages_for_a_departed_room"}
 {"Action":"pass","Test":"TestLeftRoomFixture/Can_get_rooms/{roomId}/state_for_a_departed_room"}
+{"Action":"pass","Test":"TestLeftRoomFixture/Getting_messages_going_forward_is_limited_for_a_departed_room"}
 {"Action":"pass","Test":"TestLocalPngThumbnail"}
 {"Action":"pass","Test":"TestLocalPngThumbnail/test_/_matrix/client/v1/media_endpoint"}
 {"Action":"pass","Test":"TestLocalPngThumbnail/test_/_matrix/media/v3_endpoint"}
@@ -354,6 +364,7 @@
 {"Action":"pass","Test":"TestMembersLocal/Parallel/Existing_members_see_new_members'_presence_(in_initial_sync)"}
 {"Action":"pass","Test":"TestMembersLocal/Parallel/New_room_members_see_their_own_join_event"}
 {"Action":"pass","Test":"TestMembershipOnEvents"}
+{"Action":"pass","Test":"TestNetworkPartitionOrdering"}
 {"Action":"pass","Test":"TestNotPresentUserCannotBanOthers"}
 {"Action":"pass","Test":"TestOlderLeftRoomsNotInLeaveSection"}
 {"Action":"pass","Test":"TestOutboundFederationEventSizeGetMissingEvents"}
