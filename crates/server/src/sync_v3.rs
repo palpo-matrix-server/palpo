@@ -22,7 +22,6 @@ use crate::core::{Seqnum, UnixMillis};
 use crate::event::BatchToken;
 use crate::event::{EventHash, PduEvent, SnPduEvent};
 use crate::room::{state, timeline};
-use crate::utils::IterStream;
 use crate::{AppError, AppResult, config, data, extract_variant, room};
 
 pub const DEFAULT_BUMP_TYPES: &[TimelineEventType; 6] = &[

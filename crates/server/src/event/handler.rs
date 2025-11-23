@@ -199,21 +199,21 @@ pub async fn process_to_outlier_pdu(
         .first::<(OwnedRoomId, Seqnum, JsonValue)>(&mut connect()?)
         .optional()?
         && let Ok(val) = serde_json::from_value::<CanonicalJsonObject>(event_data.clone())
+        && let Ok(pdu) = timeline::get_pdu(event_id)
     {
-        if let Ok(pdu) = timeline::get_pdu(event_id) {
-            return Ok(Some(OutlierPdu {
-                pdu: pdu.into_inner(),
-                json_data: val,
-                soft_failed: false,
-                remote_server: remote_server.to_owned(),
-                room_id: room_id.to_owned(),
-                room_version: room_version.to_owned(),
-                event_sn: Some(event_sn),
-                rejected_auth_events: vec![],
-                rejected_prev_events: vec![],
-            }));
-        }
+        return Ok(Some(OutlierPdu {
+            pdu: pdu.into_inner(),
+            json_data: val,
+            soft_failed: false,
+            remote_server: remote_server.to_owned(),
+            room_id: room_id.to_owned(),
+            room_version: room_version.to_owned(),
+            event_sn: Some(event_sn),
+            rejected_auth_events: vec![],
+            rejected_prev_events: vec![],
+        }));
     }
+
     // 1.1. Remove unsigned field
     value.remove("unsigned");
 

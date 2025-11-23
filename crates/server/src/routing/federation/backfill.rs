@@ -1,7 +1,7 @@
 use salvo::prelude::*;
 
+use crate::core::UnixMillis;
 use crate::core::federation::backfill::{BackfillReqArgs, BackfillResBody};
-use crate::core::{UnixMillis, user_id};
 use crate::room::{state, timeline};
 use crate::{AuthArgs, DepotExt, JsonResult, MatrixError, config, json_ok};
 

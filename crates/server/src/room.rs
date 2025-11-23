@@ -434,7 +434,7 @@ pub fn admin_servers(
         .map(|(user_id, _)| user_id.server_name())
         .collect::<HashSet<_>>();
     if !include_self_server {
-        admin_servers.remove(&*config::server_name());
+        admin_servers.remove(config::server_name());
     }
     Ok(admin_servers.into_iter().map(|s| s.to_owned()).collect())
 }
