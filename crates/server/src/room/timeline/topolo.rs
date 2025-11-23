@@ -3,15 +3,11 @@ use indexmap::IndexMap;
 
 use crate::core::client::filter::{RoomEventFilter, UrlFilter};
 use crate::core::identifiers::*;
-use crate::core::state::Event;
 use crate::core::{Direction, Seqnum};
 use crate::data::connect;
 use crate::data::schema::*;
-use crate::event::{BatchToken, EventHash, PduBuilder, PduEvent, handler, parse_fetched_pdu};
-use crate::{
-    AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, SnPduEvent, config, data,
-    membership, room, utils,
-};
+use crate::event::BatchToken;
+use crate::{AppResult, SnPduEvent, utils};
 
 pub fn load_pdus_forward(
     user_id: Option<&UserId>,

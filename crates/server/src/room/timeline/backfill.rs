@@ -3,24 +3,14 @@ use indexmap::IndexMap;
 use serde::Deserialize;
 
 use crate::core::Seqnum;
-use crate::core::events::{TimelineEventType};
+use crate::core::events::TimelineEventType;
 use crate::core::federation::backfill::{BackfillReqArgs, BackfillResBody, backfill_request};
 use crate::core::identifiers::*;
-use crate::core::serde::{
-    CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJsonValue, to_canonical_value,
-    validate_canonical_json,
-};
-use crate::core::state::{Event, StateError, event_auth};
-use crate::data::room::{DbEvent, DbEventData, NewDbEvent};
+use crate::core::serde::RawJsonValue;
+use crate::data::connect;
 use crate::data::schema::*;
-use crate::data::{connect, diesel_exists};
-use crate::event::{BatchToken, EventHash, PduBuilder, PduEvent, handler, parse_fetched_pdu};
-use crate::room::{push_action, state, timeline};
-use crate::utils::SeqnumQueueGuard;
-use crate::{
-    AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, SnPduEvent, config, data,
-    membership, room, utils,
-};
+use crate::event::{handler, parse_fetched_pdu};
+use crate::{AppError, AppResult, GetUrlOrigin, SnPduEvent, room};
 
 #[tracing::instrument(skip_all)]
 pub async fn backfill_if_required(

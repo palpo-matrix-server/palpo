@@ -8,7 +8,6 @@ use salvo::http::StatusError;
 use crate::core::UnixMillis;
 use crate::core::events::StateEventType;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
-use crate::core::federation::event::{EventReqArgs, EventResBody, event_request};
 use crate::core::federation::knock::{
     MakeKnockReqArgs, MakeKnockResBody, SendKnockReqArgs, SendKnockReqBody, SendKnockResBody,
     send_knock_request,

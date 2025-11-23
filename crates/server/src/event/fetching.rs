@@ -132,10 +132,8 @@ pub async fn fetch_and_process_auth_chain(
     let request =
         event_auth_request(&remote_server.origin().await, room_id, event_id)?.into_inner();
     let response = send_federation_request(remote_server, request, None).await?;
-    if !response.status().is_success()
-        && let Some(status) = StatusError::from_code(response.status())
-    {
-        return Err(status.into());
+    if !response.status().is_success() && let Some(status) = StatusError::from_code(response.status()) {
+            return Err(status.into());
     }
     let res_body = response.json::<EventAuthResBody>().await?;
     let mut auth_events = Vec::new();
@@ -333,7 +331,7 @@ pub async fn fetch_and_process_events(
     }
 
     Ok(event_ids
-        .into_iter()
+        .iter()
         .filter(|e| !done_ids.contains(e))
         .cloned()
         .collect())
