@@ -18,11 +18,10 @@ use crate::core::presence::PresenceState;
 use crate::core::push::{Action, Ruleset, Tweak};
 use crate::core::room_version_rules::RoomIdFormatVersion;
 use crate::core::serde::{
-    CanonicalJsonObject, CanonicalJsonValue, JsonValue, to_canonical_value,
-    validate_canonical_json,
+    CanonicalJsonObject, CanonicalJsonValue, JsonValue, to_canonical_value, validate_canonical_json,
 };
 use crate::core::state::{Event, StateError, event_auth};
-use crate::core::{Direction, Seqnum, UnixMillis};
+use crate::core::{Seqnum, UnixMillis};
 use crate::data::room::{DbEvent, DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
@@ -30,8 +29,7 @@ use crate::event::{EventHash, PduBuilder, PduEvent};
 use crate::room::{push_action, state, timeline};
 use crate::utils::SeqnumQueueGuard;
 use crate::{
-    AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, SnPduEvent, config, data,
-    membership, room, utils,
+    AppError, AppResult, MatrixError, RoomMutexGuard, SnPduEvent, config, data, membership, utils,
 };
 
 mod backfill;

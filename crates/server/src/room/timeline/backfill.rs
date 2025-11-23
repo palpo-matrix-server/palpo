@@ -3,15 +3,9 @@ use indexmap::IndexMap;
 use serde::Deserialize;
 
 use crate::core::Seqnum;
-use crate::core::events::push_rules::PushRulesEventContent;
-use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
-use crate::core::events::room::encrypted::Relation;
-use crate::core::events::room::member::MembershipState;
-use crate::core::events::{GlobalAccountDataEventType, StateEventType, TimelineEventType};
+use crate::core::events::{TimelineEventType};
 use crate::core::federation::backfill::{BackfillReqArgs, BackfillResBody, backfill_request};
 use crate::core::identifiers::*;
-use crate::core::push::{Action, Ruleset, Tweak};
-use crate::core::room_version_rules::RoomIdFormatVersion;
 use crate::core::serde::{
     CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJsonValue, to_canonical_value,
     validate_canonical_json,

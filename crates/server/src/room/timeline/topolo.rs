@@ -3,20 +3,11 @@ use indexmap::IndexMap;
 
 use crate::core::client::filter::{RoomEventFilter, UrlFilter};
 use crate::core::identifiers::*;
-use crate::core::push::{Action, Ruleset, Tweak};
-use crate::core::room_version_rules::RoomIdFormatVersion;
-use crate::core::serde::{
-    CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJsonValue, to_canonical_value,
-    validate_canonical_json,
-};
-use crate::core::state::{Event, StateError, event_auth};
-use crate::core::{Direction, Seqnum, UnixMillis};
-use crate::data::room::{DbEvent, DbEventData, NewDbEvent};
+use crate::core::state::Event;
+use crate::core::{Direction, Seqnum};
+use crate::data::connect;
 use crate::data::schema::*;
-use crate::data::{connect, diesel_exists};
 use crate::event::{BatchToken, EventHash, PduBuilder, PduEvent, handler, parse_fetched_pdu};
-use crate::room::{push_action, state, timeline};
-use crate::utils::SeqnumQueueGuard;
 use crate::{
     AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, SnPduEvent, config, data,
     membership, room, utils,

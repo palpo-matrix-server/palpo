@@ -106,7 +106,7 @@ pub async fn knock_room(
         {
             Ok(pdu) => {
                 if let Err(e) = sending::send_pdu_room(
-                    &room_id,
+                    room_id,
                     &pdu.event_id,
                     &[sender_id.server_name().to_owned()],
                     &[],

@@ -13,8 +13,8 @@ pub use thread_msc4306::*;
 pub use thread_msc4308::*;
 
 use crate::{
-    Direction, OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedServerName, OwnedUserId,
-    PrivOwnedStr, RoomVersionId, UnixMillis,
+    OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedServerName, OwnedUserId, PrivOwnedStr,
+    RoomVersionId,
     client::{filter::RoomEventFilter, membership::InviteThreepid},
     events::{
         AnyInitialStateEvent, AnyRoomAccountDataEvent, AnyStateEvent, AnyTimelineEvent,

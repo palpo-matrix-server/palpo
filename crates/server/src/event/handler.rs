@@ -1,6 +1,5 @@
 use std::borrow::Borrow;
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::hash::Hash;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::iter::once;
 use std::sync::Arc;
 use std::time::Instant;
@@ -9,7 +8,7 @@ use diesel::prelude::*;
 use indexmap::IndexMap;
 use palpo_core::Direction;
 
-use super::fetching::{fetch_and_process_events, fetch_and_process_missing_state, fetch_state_ids};
+use super::fetching::fetch_and_process_missing_state;
 use super::resolver::{resolve_state, resolve_state_at_incoming};
 use crate::core::events::room::server_acl::RoomServerAclEventContent;
 use crate::core::events::{StateEventType, TimelineEventType};
@@ -368,7 +367,7 @@ pub async fn process_to_outlier_pdu(
         Some(_) | None
     ) {
         incoming_pdu.rejection_reason =
-            Some(format!("incoming event refers to wrong create event"));
+            Some("incoming event refers to wrong create event".to_owned());
     }
 
     if incoming_pdu.rejection_reason.is_none() {
@@ -698,7 +697,7 @@ pub async fn auth_check(
     let state_at_incoming_event = if let Some(state_at_incoming_event) = state_at_incoming_event {
         state_at_incoming_event.to_owned()
     } else if let Some(state_at_incoming_event) =
-        resolve_state_at_incoming(&incoming_pdu, room_id, &version_rules).await?
+        resolve_state_at_incoming(incoming_pdu, room_id, version_rules).await?
     {
         state_at_incoming_event
     } else {

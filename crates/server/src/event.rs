@@ -233,13 +233,13 @@ pub fn parse_fetched_pdu(
     let parsed_room_id = value
         .get("room_id")
         .and_then(|id| RoomId::parse(id.as_str()?).ok());
-    if let Some(parsed_room_id) = parsed_room_id {
-        if &parsed_room_id != room_id {
-            return Err(MatrixError::invalid_param("mismatched room_id in fetched pdu").into());
-        }
+    if let Some(parsed_room_id) = parsed_room_id
+        && parsed_room_id != room_id
+    {
+        return Err(MatrixError::invalid_param("mismatched room_id in fetched pdu").into());
     }
 
-    let event_id = match crate::event::gen_event_id(&value, &room_version) {
+    let event_id = match crate::event::gen_event_id(&value, room_version) {
         Ok(t) => t,
         Err(_) => {
             // Event could not be converted to canonical json

@@ -48,7 +48,7 @@ use crate::core::room::{JoinRule, Visibility};
 use crate::core::room_version_rules::{AuthorizationRules, RoomIdFormatVersion, RoomVersionRules};
 use crate::core::serde::{CanonicalJsonObject, JsonValue, RawJson};
 use crate::core::state::events::RoomCreateEvent;
-use crate::event::{BatchToken, PduBuilder};
+use crate::event::PduBuilder;
 use crate::room::{push_action, timeline};
 use crate::user::user_is_ignored;
 use crate::{
@@ -163,14 +163,8 @@ async fn initial_sync(
     }
 
     let limit = LIMIT_MAX;
-    let events = timeline::stream::load_pdus_backward(
-        Some(sender_id),
-        room_id,
-        None,
-        None,
-        None,
-        limit,
-    )?;
+    let events =
+        timeline::stream::load_pdus_backward(Some(sender_id), room_id, None, None, None, limit)?;
 
     let frame_id = room::get_frame_id(room_id, None).unwrap_or_default();
     let state: Vec<_> = room::state::get_full_state(frame_id)

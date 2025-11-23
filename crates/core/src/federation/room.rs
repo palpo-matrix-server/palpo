@@ -3,7 +3,7 @@ use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    Direction, OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedServerName, UnixMillis,
+    OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedServerName,
     client::filter::RoomEventFilter,
     events::{AnyStateEvent, AnyTimelineEvent},
     serde::RawJson,

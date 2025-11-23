@@ -101,10 +101,8 @@ pub async fn sync_events(
         .await
         {
             Ok((joined_room, nb)) => {
-                if let Some(nb) = nb {
-                    if nb.stream_ordering() < next_batch.stream_ordering() {
+                if let Some(nb) = nb && nb.stream_ordering() < next_batch.stream_ordering() {
                         next_batch = nb;
-                    }
                 }
                 joined_room
             }

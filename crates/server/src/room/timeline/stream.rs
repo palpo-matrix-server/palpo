@@ -1,22 +1,19 @@
 use diesel::prelude::*;
 use indexmap::IndexMap;
 
-use crate::core::{Seqnum, Direction};
 use crate::core::client::filter::{RoomEventFilter, UrlFilter};
 use crate::core::events::{GlobalAccountDataEventType, StateEventType, TimelineEventType};
 use crate::core::federation::backfill::{BackfillReqArgs, BackfillResBody, backfill_request};
 use crate::core::identifiers::*;
 use crate::core::state::{Event, StateError, event_auth};
+use crate::core::{Direction, Seqnum};
 use crate::data::room::{DbEvent, DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::event::{BatchToken, EventHash, PduBuilder, PduEvent, handler, parse_fetched_pdu};
 use crate::room::{push_action, state, timeline};
 use crate::utils::SeqnumQueueGuard;
-use crate::{
-    AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, SnPduEvent, config, data,
-    membership, room, utils,
-};
+use crate::{AppResult, SnPduEvent, data, utils};
 
 /// Returns an iterator over all PDUs in a room.
 pub fn load_all_pdus(

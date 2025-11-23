@@ -221,23 +221,21 @@ impl OutlierPdu {
             self.rejection_reason = Some("one or more prev events are rejected".to_string());
             return self.save_to_database(backfilled);
         }
-        if self.any_auth_event_rejected()? {
-            if let Err(e) = fetch_and_process_auth_chain(
+        if self.any_auth_event_rejected()?
+            && let Err(e) = fetch_and_process_auth_chain(
                 &self.remote_server,
                 &self.room_id,
                 &self.room_version,
                 &self.pdu.event_id,
             )
             .await
-            {
-                if let AppError::HttpStatus(_) = e {
-                    self.soft_failed = true;
-                } else {
-                    self.rejection_reason =
-                        Some("one or more auth events are rejected".to_string());
-                }
-                return self.save_to_database(backfilled);
+        {
+            if let AppError::HttpStatus(_) = e {
+                self.soft_failed = true;
+            } else {
+                self.rejection_reason = Some("one or more auth events are rejected".to_string());
             }
+            return self.save_to_database(backfilled);
         }
         let (_prev_events, missing_prev_event_ids) =
             timeline::get_may_missing_pdus(&self.room_id, &self.pdu.prev_events)?;

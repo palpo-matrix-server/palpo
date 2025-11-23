@@ -64,7 +64,7 @@ pub async fn invite_user(
             &pdu.event_id,
             pdu.event_sn,
             room_id,
-            &invitee_id,
+            invitee_id,
             MembershipState::Invite,
             inviter_id,
             Some(invite_room_state.clone()),
