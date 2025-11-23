@@ -74,10 +74,6 @@ pub fn load_pdus(
 ) -> AppResult<IndexMap<Seqnum, SnPduEvent>> {
     let mut list: IndexMap<Seqnum, SnPduEvent> = IndexMap::with_capacity(limit.clamp(10, 100));
     let mut offset = 0;
-    println!(
-        "============ Starting load_pdus since_tk: {since_tk:?} until_tk: {until_tk:?} limit: {limit} dir: {dir:?}"
-    );
-
     while list.len() < limit {
         let mut query = events::table
             .filter(events::room_id.eq(room_id))
@@ -216,43 +212,26 @@ pub fn load_pdus(
         offset += count as i64;
 
         for (event_id, event_sn) in events {
-            println!(
-                "Loading PDU for event_id: {}          {}",
-                event_id, event_sn
-            );
             if let Ok(mut pdu) = super::get_pdu(&event_id) {
-                println!("========= {event_id}");
                 if let Some(user_id) = user_id {
                     if !pdu.user_can_see(user_id)? {
-                        println!("Skipping for user can not see    {}", event_id);
                         continue;
                     }
-                    println!("========= 1         {event_id}");
                     if pdu.sender != user_id {
                         pdu.remove_transaction_id()?;
                     }
                     pdu.add_unsigned_membership(user_id)?;
                 }
-                println!("========= 2            {event_id}");
                 pdu.add_age()?;
                 list.insert(event_sn, pdu);
                 if list.len() >= limit {
-                    println!("========= 3            {event_id}");
                     break;
                 }
-                println!("========= 4            {event_id}");
             }
         }
         if count < limit {
             break;
         }
     }
-    println!(
-        "Loaded  PDUs {:#?}",
-        events::table
-            .order_by(events::sn.desc())
-            .load::<DbEvent>(&mut connect()?)?
-    );
-    println!("============list: {:?}", list);
     Ok(list)
 }

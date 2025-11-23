@@ -140,7 +140,6 @@ pub(super) async fn get_messages(
             resp.chunk = events;
         }
         Direction::Backward => {
-            println!("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx 0");
             let mut events = timeline::topolo::load_pdus_backward(
                 Some(sender_id),
                 &args.room_id,
@@ -149,7 +148,6 @@ pub(super) async fn get_messages(
                 Some(&args.filter),
                 limit,
             )?;
-            println!("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx 1 {events:?}");
             if timeline::backfill_if_required(&args.room_id, &events).await? {
                 events = timeline::topolo::load_pdus_backward(
                     Some(sender_id),
@@ -159,7 +157,6 @@ pub(super) async fn get_messages(
                     Some(&args.filter),
                     limit,
                 )?;
-                println!("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx 2 {events:?}");
             }
 
             for (_, event) in &events {
