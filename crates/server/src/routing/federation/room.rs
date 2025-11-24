@@ -311,7 +311,6 @@ async fn make_knock(
         );
     }
 
-    println!("===============make_knock 1  args{:#?}", args);
     let (_pdu, mut pdu_json, _event_guard) = timeline::hash_and_sign_event(
         PduBuilder::state(
             args.user_id.to_string(),
@@ -323,7 +322,6 @@ async fn make_knock(
         &state_lock,
     )
     .await?;
-    println!("===============make_knock 2  {:#?}", pdu_json);
     drop(state_lock);
 
     // room v3 and above removed the "event_id" field from remote PDU format

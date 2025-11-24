@@ -154,7 +154,6 @@ pub fn get_pdu_or_stripped(event_id: &EventId) -> AppResult<SnPduEvent> {
         ))
         .first::<(Seqnum, OwnedRoomId, JsonValue)>(&mut connect()?)
     else {
-            println!("=======in knock_room 9  ----  5");
         let (event_sn, room_id, mut stripped_data) = event_points::table
             .filter(event_points::event_id.eq(event_id))
             .select((
@@ -163,9 +162,7 @@ pub fn get_pdu_or_stripped(event_id: &EventId) -> AppResult<SnPduEvent> {
                 event_points::stripped_data,
             ))
             .first::<(Seqnum, OwnedRoomId, Option<JsonValue>)>(&mut connect()?)?;
-            println!("=======in knock_room 9  ----  6");
         if let Some(mut stripped_data) = stripped_data {
-            println!("=======in knock_room 9  ----  7");
             let Some(json) = stripped_data.as_object_mut() else {
                 return Err(AppError::internal("invalid stripped pdu in db"));
             };
@@ -174,7 +171,6 @@ pub fn get_pdu_or_stripped(event_id: &EventId) -> AppResult<SnPduEvent> {
             json.insert("depth".to_owned(), json!(0));
             json.insert("origin_server_ts".to_owned(), json!(0));
             json.insert("hashes".to_owned(), json!({"sha256":"aaa"}));
-            println!("=======in knock_room 9  ----  8");
             let pdu = match PduEvent::from_json_value(&room_id, event_id, json!(json)) {
                 Ok(pdu) => pdu,
                 Err(e) => {
@@ -182,7 +178,6 @@ pub fn get_pdu_or_stripped(event_id: &EventId) -> AppResult<SnPduEvent> {
                     return Err(AppError::internal("invalid stripped pdu in db"));
                 }
             };
-            println!("=======in knock_room 9  ----  9");
             return Ok(SnPduEvent {
                 pdu,
                 event_sn,
@@ -191,7 +186,6 @@ pub fn get_pdu_or_stripped(event_id: &EventId) -> AppResult<SnPduEvent> {
                 backfilled: false,
             });
         } else {
-            println!("=======in knock_room 9  ----  10");
             return Err(AppError::internal("invalid pdu in db"));
         }
     };

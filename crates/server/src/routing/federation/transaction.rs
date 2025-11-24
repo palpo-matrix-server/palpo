@@ -86,10 +86,7 @@ async fn process_pdus(
                 continue;
             }
         });
-
-        // We do not add the event_id field to the pdu here because of signature and hashes checks
     }
-    println!("==============parsed_pdus: {parsed_pdus:#?}===============");
     let mut resolved_map = BTreeMap::new();
     for (event_id, value, room_id, room_version_id) in parsed_pdus {
         // crate::server::check_running()?;

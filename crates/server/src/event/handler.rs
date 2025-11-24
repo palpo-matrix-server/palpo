@@ -42,13 +42,11 @@ pub(crate) async fn process_incoming_pdu(
         return Err(MatrixError::not_found("room is unknown to this server").into());
     }
 
-    println!("=========value: {value:#?}=========");
     let event = events::table
         .filter(events::id.eq(event_id))
         .first::<DbEvent>(&mut connect()?);
     if let Ok(event) = event {
         if !event.is_outlier {
-            println!("=============process_incoming_pdu 0");
             return Ok(());
         }
         if event.is_rejected || event.soft_failed {
@@ -60,7 +58,6 @@ pub(crate) async fn process_incoming_pdu(
                 .execute(&mut connect()?)
                 .ok();
         }
-        println!("=============process_incoming_pdu 1");
     }
 
     // 1.2 Check if the room is disabled
@@ -72,7 +69,6 @@ pub(crate) async fn process_incoming_pdu(
         .into());
     }
 
-    println!("=============process_incoming_pdu 2");
     // 1.3.1 Check room ACL on origin field/server
     handler::acl_check(remote_server, room_id)?;
 
@@ -90,31 +86,25 @@ pub(crate) async fn process_incoming_pdu(
         handler::acl_check(sender.server_name(), room_id)?;
     }
 
-    println!("=============process_incoming_pdu 31");
     // 1. Skip the PDU if we already have it as a timeline event
     if state::get_pdu_frame_id(event_id).is_ok() {
-        println!("=============process_incoming_pdu 4");
         return Ok(());
     }
 
     let Some(outlier_pdu) =
         process_to_outlier_pdu(remote_server, event_id, room_id, room_version_id, value).await?
     else {
-        println!("=============process_incoming_pdu 5");
         return Ok(());
     };
 
-    println!("=============process_incoming_pdu 5 -1 {backfilled}");
     let (incoming_pdu, val, event_guard) = outlier_pdu.process_incoming(backfilled).await?;
 
     if incoming_pdu.rejected() {
-        println!("=============process_incoming_pdu 6");
         return Ok(());
     }
     check_room_id(room_id, &incoming_pdu)?;
     // 8. if not timeline event: stop
     if !is_timeline_event {
-        println!("=============process_incoming_pdu 7");
         return Ok(());
     }
     // Skip old events
@@ -130,7 +120,6 @@ pub(crate) async fn process_incoming_pdu(
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
-    println!("=============process_incoming_pdu 8");
     if let Err(e) = process_to_timeline_pdu(incoming_pdu, val, remote_server, room_id).await {
         error!("failed to process incoming pdu to timeline {}", e);
     } else {

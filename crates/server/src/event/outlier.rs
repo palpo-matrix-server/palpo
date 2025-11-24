@@ -138,10 +138,6 @@ impl OutlierPdu {
         db_event.is_rejected = pdu.rejection_reason.is_some();
         db_event.rejection_reason = pdu.rejection_reason.clone();
         db_event.save()?;
-        println!(
-            "=============save_to_database {} {:#?}",
-            pdu.event_id, json_data
-        );
         DbEventData {
             event_id: pdu.event_id.clone(),
             event_sn,

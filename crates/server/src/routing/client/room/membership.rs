@@ -701,7 +701,6 @@ pub(crate) async fn knock_room(
     req: &mut Request,
     depot: &mut Depot,
 ) -> EmptyResult {
-    println!("====================knock room 0");
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
     let (room_id, servers) = match OwnedRoomId::try_from(args.room_id_or_alias) {
@@ -768,10 +767,7 @@ pub(crate) async fn knock_room(
             (room_id, servers)
         }
     };
-
-    println!("====================knock room 9");
     crate::membership::knock_room(sender_id, &room_id, body.reason.clone(), &servers).await?;
-    println!("====================knock room 10");
 
     empty_ok()
 }
