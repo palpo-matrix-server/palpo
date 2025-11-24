@@ -138,6 +138,10 @@ impl OutlierPdu {
         db_event.is_rejected = pdu.rejection_reason.is_some();
         db_event.rejection_reason = pdu.rejection_reason.clone();
         db_event.save()?;
+        println!(
+            "=============save_to_database {} {:#?}",
+            pdu.event_id, json_data
+        );
         DbEventData {
             event_id: pdu.event_id.clone(),
             event_sn,
@@ -162,11 +166,16 @@ impl OutlierPdu {
         mut self,
         backfilled: bool,
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
+        print!(
+            "=============process_incoming_pdu 0 {backfilled} {:#?}",
+            self.pdu
+        );
         if (!self.soft_failed && !self.rejected())
             || (self.rejected()
                 && self.rejected_prev_events.is_empty()
                 && self.rejected_auth_events.is_empty())
         {
+            print!("=============process_incoming_pdu 1 {backfilled}");
             return self.save_to_database(backfilled);
         }
 
@@ -179,6 +188,7 @@ impl OutlierPdu {
         )
         .await
         {
+            print!("=============process_incoming_pdu 2 {backfilled}");
             if let AppError::Matrix(MatrixError { ref kind, .. }) = e {
                 if *kind == core::error::ErrorKind::BadJson {
                     self.rejection_reason = Some(format!("bad prev events: {}", e));
@@ -191,6 +201,7 @@ impl OutlierPdu {
             }
         }
 
+        print!("=============process_incoming_pdu 3 {backfilled}");
         self.process_pulled(backfilled).await
     }
 
@@ -213,11 +224,14 @@ impl OutlierPdu {
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
         let version_rules = crate::room::get_version_rules(&self.room_version)?;
 
+        print!("=============process_pulled 0 {backfilled}");
         if !self.soft_failed || self.rejected() {
+            print!("=============process_pulled 1 {backfilled}");
             return self.save_to_database(backfilled);
         }
 
         if self.any_prev_event_rejected()? {
+            print!("=============process_pulled 2 {backfilled}");
             self.rejection_reason = Some("one or more prev events are rejected".to_string());
             return self.save_to_database(backfilled);
         }
@@ -230,6 +244,7 @@ impl OutlierPdu {
             )
             .await
         {
+            print!("=============process_pulled 3 {backfilled}");
             if let AppError::HttpStatus(_) = e {
                 self.soft_failed = true;
             } else {
@@ -284,6 +299,7 @@ impl OutlierPdu {
             }
         }
 
+        print!("=============process_pulled 4 {backfilled}");
         if self.pdu.rejection_reason.is_none() {
             if let Err(e) = auth_check(&self.pdu, &self.room_id, &version_rules, None).await {
                 match e {
@@ -298,6 +314,7 @@ impl OutlierPdu {
                 self.soft_failed = false;
             }
         }
+        print!("=============process_pulled 5 {backfilled}");
         self.save_to_database(backfilled)
     }
 }

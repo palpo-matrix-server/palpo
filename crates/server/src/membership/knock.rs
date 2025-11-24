@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::iter::once;
 use std::sync::Arc;
 
+use diesel::prelude::*;
 use salvo::http::StatusError;
 
 use crate::core::UnixMillis;
@@ -16,6 +17,7 @@ use crate::core::identifiers::*;
 use crate::core::room::JoinRule;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_canonical_value};
 use crate::data::room::NewDbEvent;
+use crate::data::schema::*;
 use crate::event::{PduBuilder, PduEvent, ensure_event_sn, fetching, gen_event_id, handler};
 use crate::room::state::{CompressedEvent, DeltaInfo};
 use crate::room::{self, state, timeline};
@@ -30,10 +32,11 @@ pub async fn knock_room(
     reason: Option<String>,
     servers: &[OwnedServerName],
 ) -> AppResult<Option<SnPduEvent>> {
+    println!("=======in knock_room 0");
     if room::user::is_invited(sender_id, room_id)? {
         warn!("{sender_id} is already invited in {room_id} but attempted to knock");
         return Err(MatrixError::forbidden(
-            "You cannot knock on a room you are already invited/accepted to.",
+            "you cannot knock on a room you are already invited/accepted to.",
             None,
         )
         .into());
@@ -42,12 +45,13 @@ pub async fn knock_room(
     if room::user::is_joined(sender_id, room_id)? {
         warn!("{sender_id} is already joined in {room_id} but attempted to knock");
         return Err(MatrixError::forbidden(
-            "You cannot knock on a room you are already joined in.",
+            "you cannot knock on a room you are already joined in.",
             None,
         )
         .into());
     }
 
+    println!("=======in knock_room 1");
     if room::user::is_knocked(sender_id, room_id)? {
         warn!("{sender_id} is already knocked in {room_id}");
         return Ok(None);
@@ -58,12 +62,13 @@ pub async fn knock_room(
     {
         warn!("{sender_id} is banned from {room_id} but attempted to knock");
         return Err(MatrixError::forbidden(
-            "You cannot knock on a room you are banned from.",
+            "you cannot knock on a room you are banned from.",
             None,
         )
         .into());
     }
 
+    println!("=======in knock_room 2");
     let conf = config::get();
     if room::is_server_joined(&conf.server_name, room_id).unwrap_or(false) {
         use RoomVersionId::*;
@@ -115,13 +120,14 @@ pub async fn knock_room(
                 return Ok(Some(pdu));
             }
             Err(e) => {
-                tracing::error!("Failed to knock room {room_id} with conflict error: {e}");
+                tracing::error!("failed to knock room {room_id} with conflict error: {e}");
                 if servers.is_empty() || servers.iter().all(|s| s.is_local()) {
                     return Err(e);
                 }
             }
         }
     }
+    println!("=======in knock_room 3");
     info!("knocking {room_id} over federation");
 
     let (make_knock_response, remote_server) =
@@ -138,6 +144,7 @@ pub async fn knock_room(
     }
     crate::room::ensure_room(room_id, &room_version)?;
 
+    println!("=======in knock_room 4");
     let mut knock_event_stub: CanonicalJsonObject =
         serde_json::from_str(make_knock_response.event.get()).map_err(|e| {
             StatusError::internal_server_error().brief(format!(
@@ -145,14 +152,10 @@ pub async fn knock_room(
             ))
         })?;
 
-    knock_event_stub.insert(
-        "origin".to_owned(),
-        CanonicalJsonValue::String(conf.server_name.as_str().to_owned()),
-    );
-    knock_event_stub.insert(
-        "origin_server_ts".to_owned(),
-        CanonicalJsonValue::Integer(UnixMillis::now().get() as i64),
-    );
+    // knock_event_stub.insert(
+    //     "origin".to_owned(),
+    //     CanonicalJsonValue::String(conf.server_name.as_str().to_owned()),
+    // );
     knock_event_stub.insert(
         "content".to_owned(),
         to_canonical_value(RoomMemberEventContent {
@@ -165,10 +168,12 @@ pub async fn knock_room(
         .expect("event is valid, we just created it"),
     );
 
+    println!("=======in knock_room 5");
     // In order to create a compatible ref hash (EventID) the `hashes` field needs
     // to be present
     crate::server_key::hash_and_sign_event(&mut knock_event_stub, &room_version)?;
 
+    println!("=======in knock_room 6");
     // Generate event id
     let event_id = gen_event_id(&knock_event_stub, &room_version)?;
 
@@ -178,6 +183,7 @@ pub async fn knock_room(
         CanonicalJsonValue::String(event_id.clone().into()),
     );
 
+    println!("=======in knock_room 7");
     // It has enough fields to be called a proper event now
     let knock_event = knock_event_stub;
 
@@ -194,28 +200,30 @@ pub async fn knock_room(
     )?
     .into_inner();
 
+    println!("=======in knock_room 8");
     let send_knock_body =
         crate::sending::send_federation_request(&remote_server, send_knock_request, None)
             .await?
             .json::<SendKnockResBody>()
             .await?;
-
     info!("send knock finished");
 
     info!("parsing knock event");
     let parsed_knock_pdu = PduEvent::from_canonical_object(room_id, &event_id, knock_event.clone())
         .map_err(|e| {
-            StatusError::internal_server_error().brief(format!("Invalid knock event PDU: {e:?}"))
+            StatusError::internal_server_error().brief(format!("invalid knock event PDU: {e:?}"))
         })?;
 
     info!("going through send_knock response knock state events");
 
+    println!("=======in knock_room 9");
     // TODO: how to handle this? snpase save this state to unsigned field.
     let knock_state = send_knock_body
         .knock_room_state
         .iter()
         .map(|event| serde_json::from_str::<CanonicalJsonObject>(event.clone().into_inner().get()))
         .filter_map(Result::ok);
+    println!("=======in knock_room 9  -- 1 knock_state {knock_state:?}");
 
     let mut state_map = HashMap::new();
 
@@ -229,35 +237,38 @@ pub async fn knock_room(
             continue;
         };
 
-        let Ok(_state_key) = serde_json::from_value::<String>(state_key.clone().into()) else {
+        let Ok(state_key) = serde_json::from_value::<String>(state_key.clone().into()) else {
             warn!("send_knock stripped state event has invalid state_key: {value:?}");
             continue;
         };
-        let Ok(_event_type) = serde_json::from_value::<StateEventType>(event_type.clone().into())
+        let Ok(event_type) = serde_json::from_value::<StateEventType>(event_type.clone().into())
         else {
             warn!("send_knock stripped state event has invalid event type: {value:?}");
             continue;
         };
+        println!("=======in knock_room 9  -- 3");
 
         let pdu = if let Some(pdu) = timeline::get_pdu(&event_id).optional()? {
+            println!("=======in knock_room 9  ----  1");
             pdu
         } else {
-            let res_body = fetching::fetch_event(&remote_server, &event_id).await?;
-            if let Err(e) = handler::process_incoming_pdu(
-                &remote_server,
-                &event_id,
-                room_id,
-                &room_version,
-                serde_json::from_str(res_body.pdu.get())?,
-                true,
-                false,
-            )
-            .await
-            {
-                error!("Failed to process event {event_id} from send_knock: {e}");
-            }
-            timeline::get_pdu(&event_id)?
+            println!("=======in knock_room 9  ----  2");
+            let (event_sn, guard) = ensure_event_sn(room_id, &event_id)?;
+            // let mut value = value;
+            // value.insert(
+            //     "room_id".to_owned(),
+            //     CanonicalJsonValue::String(room_id.to_string()),
+            // );
+            println!("=======in knock_room 9  ----  3 {value:#?}");
+            diesel::update(event_points::table.filter(event_points::event_id.eq(&event_id)))
+                .set(event_points::stripped_data.eq(serde_json::to_value(value)?))
+                .execute(&mut crate::data::connect()?)?;
+            println!("=======in knock_room 9  ----  4");
+            drop(guard);
+            println!("=======in knock_room 9  ----  4 -- 0");
+            timeline::get_pdu_or_stripped(&event_id)?
         };
+        println!("=======in knock_room 9  -- x");
 
         if let Some(state_key) = &pdu.state_key {
             let state_key_id = state::ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
@@ -265,9 +276,11 @@ pub async fn knock_room(
         }
     }
 
+    println!("=======in knock_room 10");
     info!("appending room knock event locally");
     let event_id = parsed_knock_pdu.event_id.clone();
     let (event_sn, event_guard) = ensure_event_sn(room_id, &event_id)?;
+    println!("=======in knock_room 11");
     NewDbEvent {
         id: event_id.to_owned(),
         sn: event_sn,
@@ -310,6 +323,7 @@ pub async fn knock_room(
         .map(|(k, (_event_id, event_sn))| Ok(CompressedEvent::new(k, event_sn)))
         .collect::<AppResult<_>>()?;
 
+    println!("=======in knock_room 12");
     debug!("saving compressed state");
     let DeltaInfo {
         frame_id,
@@ -333,10 +347,12 @@ pub async fn knock_room(
         Some(send_knock_body.knock_room_state),
     )?;
 
+    println!("=======in knock_room 13");
     info!("setting final room state for new room");
     // We set the room state after inserting the pdu, so that we never have a moment
     // in time where events in the current room state do not exist
     let _ = state::set_room_state(room_id, frame_id);
+    println!("=======in knock_room 14");
     drop(event_guard);
     Ok(Some(knock_pdu))
 }
@@ -347,7 +363,7 @@ async fn make_knock_request(
     servers: &[OwnedServerName],
 ) -> AppResult<(MakeKnockResBody, OwnedServerName)> {
     let mut make_knock_response_and_server = Err(AppError::HttpStatus(
-        StatusError::internal_server_error().brief("No server available to assist in knocking."),
+        StatusError::internal_server_error().brief("no server available to assist in knocking"),
     ));
 
     let mut make_knock_counter: usize = 0;
@@ -391,7 +407,7 @@ async fn make_knock_request(
 				 assist in knocking."
             );
             make_knock_response_and_server = Err(StatusError::internal_server_error()
-                .brief("No server available to assist in knocking.")
+                .brief("no server available to assist in knocking")
                 .into());
 
             return make_knock_response_and_server;

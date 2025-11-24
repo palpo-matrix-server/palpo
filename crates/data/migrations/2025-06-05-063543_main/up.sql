@@ -439,6 +439,7 @@ CREATE TABLE event_points
     room_id text NOT NULL,
     thread_id text,
     frame_id bigint,
+    stripped_data json,
     CONSTRAINT event_points_udx UNIQUE (event_id, event_sn)
 );
 

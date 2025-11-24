@@ -100,8 +100,10 @@ pub async fn sync_events(
         .await
         {
             Ok((joined_room, nb)) => {
-                if let Some(nb) = nb && nb.stream_ordering() < next_batch.stream_ordering() {
-                        next_batch = nb;
+                if let Some(nb) = nb
+                    && nb.stream_ordering() < next_batch.stream_ordering()
+                {
+                    next_batch = nb;
                 }
                 joined_room
             }
@@ -201,6 +203,7 @@ pub async fn sync_events(
         |mut knocked_rooms: BTreeMap<_, _>, (room_id, knock_state)| {
             let knock_sn = room::user::knock_sn(sender_id, &room_id).ok();
 
+            println!("<<<<<<<<<<<,,knocked_rooms {room_id} {knock_sn:?}  {knock_state:#?}");
             // Knocked before last sync
             if since_tk.map(|t| t.event_sn()) > knock_sn {
                 return knocked_rooms;

@@ -33,8 +33,7 @@ pub fn backfill_request(origin: &str, args: BackfillReqArgs) -> SendResult<SendR
     url.query_pairs_mut()
         .append_pair("limit", &args.limit.to_string());
     for event_id in args.v {
-        url.query_pairs_mut()
-            .append_pair("v", event_id.as_ref());
+        url.query_pairs_mut().append_pair("v", event_id.as_ref());
     }
 
     Ok(crate::sending::get(url))

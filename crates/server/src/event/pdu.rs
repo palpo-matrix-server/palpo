@@ -340,8 +340,10 @@ pub struct PduEvent {
     pub content: Box<RawJsonValue>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state_key: Option<String>,
+    #[serde(default)]
     pub prev_events: Vec<OwnedEventId>,
     pub depth: u64,
+    #[serde(default)]
     pub auth_events: Vec<OwnedEventId>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub redacts: Option<OwnedEventId>,
