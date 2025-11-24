@@ -5,7 +5,7 @@ use std::sync::{LazyLock, Mutex};
 
 use diesel::prelude::*;
 use serde::Deserialize;
-use serde_json::value::to_raw_value;
+use serde_json::{json, value::to_raw_value};
 use ulid::Ulid;
 
 use crate::core::events::push_rules::PushRulesEventContent;
@@ -132,6 +132,66 @@ pub fn get_pdu(event_id: &EventId) -> AppResult<SnPduEvent> {
             event_datas::json_data,
         ))
         .first::<(Seqnum, OwnedRoomId, JsonValue)>(&mut connect()?)?;
+    let mut pdu = PduEvent::from_json_value(&room_id, event_id, json)
+        .map_err(|_e| AppError::internal("invalid pdu in db"))?;
+    pdu.rejection_reason = event.rejection_reason;
+    Ok(SnPduEvent {
+        pdu,
+        event_sn,
+        is_outlier: event.is_outlier,
+        soft_failed: event.soft_failed,
+        backfilled: event.stream_ordering < 0,
+    })
+}
+
+pub fn get_pdu_or_stripped(event_id: &EventId) -> AppResult<SnPduEvent> {
+    let Ok((event_sn, room_id, json)) = event_datas::table
+        .filter(event_datas::event_id.eq(event_id))
+        .select((
+            event_datas::event_sn,
+            event_datas::room_id,
+            event_datas::json_data,
+        ))
+        .first::<(Seqnum, OwnedRoomId, JsonValue)>(&mut connect()?)
+    else {
+        let (event_sn, room_id, mut stripped_data) = event_points::table
+            .filter(event_points::event_id.eq(event_id))
+            .select((
+                event_points::event_sn,
+                event_points::room_id,
+                event_points::stripped_data,
+            ))
+            .first::<(Seqnum, OwnedRoomId, Option<JsonValue>)>(&mut connect()?)?;
+        if let Some(mut stripped_data) = stripped_data {
+            let Some(json) = stripped_data.as_object_mut() else {
+                return Err(AppError::internal("invalid stripped pdu in db"));
+            };
+            json.insert("event_id".to_owned(), json!(event_id));
+            json.insert("room_id".to_owned(), json!(room_id));
+            json.insert("depth".to_owned(), json!(0));
+            json.insert("origin_server_ts".to_owned(), json!(0));
+            json.insert("hashes".to_owned(), json!({"sha256":"aaa"}));
+            let pdu = match PduEvent::from_json_value(&room_id, event_id, json!(json)) {
+                Ok(pdu) => pdu,
+                Err(e) => {
+                    error!("invalid stripped pdu in db for event {}: {:?}", event_id, e);
+                    return Err(AppError::internal("invalid stripped pdu in db"));
+                }
+            };
+            return Ok(SnPduEvent {
+                pdu,
+                event_sn,
+                is_outlier: true,
+                soft_failed: false,
+                backfilled: false,
+            });
+        } else {
+            return Err(AppError::internal("invalid pdu in db"));
+        }
+    };
+    let event = events::table
+        .filter(events::id.eq(event_id))
+        .first::<DbEvent>(&mut connect()?)?;
     let mut pdu = PduEvent::from_json_value(&room_id, event_id, json)
         .map_err(|_e| AppError::internal("invalid pdu in db"))?;
     pdu.rejection_reason = event.rejection_reason;
@@ -633,7 +693,7 @@ pub async fn hash_and_sign_event(
     };
 
     let fetch_event = async |event_id: OwnedEventId| {
-        get_pdu(&event_id)
+        get_pdu_or_stripped(&event_id)
             .map(|s| s.pdu)
             .map_err(|_| StateError::other("missing PDU 6"))
     };

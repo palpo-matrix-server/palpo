@@ -767,7 +767,6 @@ pub(crate) async fn knock_room(
             (room_id, servers)
         }
     };
-
     crate::membership::knock_room(sender_id, &room_id, body.reason.clone(), &servers).await?;
 
     empty_ok()

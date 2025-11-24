@@ -713,7 +713,7 @@ pub async fn auth_check(
             auth_rules,
             incoming_pdu,
             &async |event_id| {
-                timeline::get_pdu(&event_id).map(|e|e.into_inner())
+                timeline::get_pdu_or_stripped( &event_id).map(|e|e.into_inner())
                     .map_err(|_| StateError::other("missing pdu in auth check event fetch"))
             },
             &async |k, s| {

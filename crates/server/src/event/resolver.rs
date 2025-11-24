@@ -72,12 +72,14 @@ pub async fn resolve_state(
             .iter()
             .map(|set| set.iter().map(|id| id.to_owned()).collect::<HashSet<_>>())
             .collect::<Vec<_>>(),
-        &async |id| timeline::get_pdu(&id).map_err(|_| StateError::other("missing pdu 4")),
+        &async |id| {
+            timeline::get_pdu_or_stripped(&id).map_err(|_| StateError::other("missing pdu 4"))
+        },
         |map| {
             let mut subgraph = HashSet::new();
             for event_ids in map.values() {
                 for event_id in event_ids {
-                    if let Ok(pdu) = timeline::get_pdu(event_id) {
+                    if let Ok(pdu) = timeline::get_pdu_or_stripped(event_id) {
                         subgraph.extend(pdu.auth_events.iter().cloned());
                         subgraph.extend(pdu.prev_events.iter().cloned());
                     }
@@ -136,7 +138,7 @@ pub async fn resolve_state(
 //     };
 
 //     debug!("using cached state");
-//     let prev_pdu = timeline::get_pdu(prev_event)?;
+//     let prev_pdu = timeline::get_pdu_or_stripped(prev_event)?;
 
 //     if let Some(state_key) = &prev_pdu.state_key {
 //         let state_key_id =
@@ -158,7 +160,7 @@ pub(super) async fn resolve_state_at_incoming(
     let mut extremity_state_hashes = HashMap::new();
 
     for prev_event_id in &incoming_pdu.prev_events {
-        let Ok(prev_event) = timeline::get_pdu(prev_event_id) else {
+        let Ok(prev_event) = timeline::get_pdu_or_stripped(prev_event_id) else {
             return Ok(None);
         };
 
@@ -227,7 +229,7 @@ pub(super) async fn resolve_state_at_incoming(
             .map(|set| set.iter().map(|id| id.to_owned()).collect::<HashSet<_>>())
             .collect::<Vec<_>>(),
         &async |event_id| {
-            timeline::get_pdu(&event_id)
+            timeline::get_pdu_or_stripped(&event_id)
                 .map(|s| s.pdu)
                 .map_err(|_| StateError::other("missing pdu 5"))
         },
@@ -235,7 +237,7 @@ pub(super) async fn resolve_state_at_incoming(
             let mut subgraph = HashSet::new();
             for event_ids in map.values() {
                 for event_id in event_ids {
-                    if let Ok(pdu) = timeline::get_pdu(event_id) {
+                    if let Ok(pdu) = timeline::get_pdu_or_stripped(event_id) {
                         subgraph.extend(pdu.auth_events.iter().cloned());
                         subgraph.extend(pdu.prev_events.iter().cloned());
                     }

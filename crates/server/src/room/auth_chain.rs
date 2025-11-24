@@ -6,6 +6,7 @@ use std::time::Instant;
 use diesel::prelude::*;
 use lru_cache::LruCache;
 
+use crate::admin::room;
 use crate::core::Seqnum;
 use crate::core::identifiers::*;
 use crate::data::connect;
@@ -122,7 +123,7 @@ fn get_event_auth_chain(room_id: &RoomId, event_id: &EventId) -> AppResult<Vec<S
     while let Some(event_id) = todo.pop_front() {
         trace!(?event_id, "processing auth event");
 
-        let pdu = timeline::get_pdu(&event_id)?;
+        let pdu = timeline::get_pdu_or_stripped(&event_id)?;
         if pdu.room_id != room_id {
             tracing::error!(
                 ?event_id,

@@ -472,7 +472,7 @@ pub fn get_state(
     state_key: &str,
 ) -> AppResult<SnPduEvent> {
     let event_id = get_state_event_id(frame_id, event_type, state_key)?;
-    timeline::get_pdu(&event_id)
+    timeline::get_pdu_or_stripped(&event_id)
 }
 pub fn get_state_content<T>(
     frame_id: i64,

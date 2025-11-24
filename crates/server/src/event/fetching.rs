@@ -79,7 +79,7 @@ pub async fn fetch_and_process_missing_events(
             continue;
         }
 
-        if fetched_events.contains_key(&event_id) || timeline::get_pdu(&event_id).is_ok() {
+        if fetched_events.contains_key(&event_id) || timeline::get_pdu_or_stripped(&event_id).is_ok() {
             known_events.insert(event_id.clone());
             continue;
         }
@@ -132,8 +132,10 @@ pub async fn fetch_and_process_auth_chain(
     let request =
         event_auth_request(&remote_server.origin().await, room_id, event_id)?.into_inner();
     let response = send_federation_request(remote_server, request, None).await?;
-    if !response.status().is_success() && let Some(status) = StatusError::from_code(response.status()) {
-            return Err(status.into());
+    if !response.status().is_success()
+        && let Some(status) = StatusError::from_code(response.status())
+    {
+        return Err(status.into());
     }
     let res_body = response.json::<EventAuthResBody>().await?;
     let mut auth_events = Vec::new();

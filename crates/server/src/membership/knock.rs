@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::iter::once;
 use std::sync::Arc;
 
+use diesel::prelude::*;
 use salvo::http::StatusError;
 
 use crate::core::UnixMillis;
@@ -16,6 +17,7 @@ use crate::core::identifiers::*;
 use crate::core::room::JoinRule;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_canonical_value};
 use crate::data::room::NewDbEvent;
+use crate::data::schema::*;
 use crate::event::{PduBuilder, PduEvent, ensure_event_sn, fetching, gen_event_id, handler};
 use crate::room::state::{CompressedEvent, DeltaInfo};
 use crate::room::{self, state, timeline};
@@ -33,7 +35,7 @@ pub async fn knock_room(
     if room::user::is_invited(sender_id, room_id)? {
         warn!("{sender_id} is already invited in {room_id} but attempted to knock");
         return Err(MatrixError::forbidden(
-            "You cannot knock on a room you are already invited/accepted to.",
+            "you cannot knock on a room you are already invited/accepted to.",
             None,
         )
         .into());
@@ -42,7 +44,7 @@ pub async fn knock_room(
     if room::user::is_joined(sender_id, room_id)? {
         warn!("{sender_id} is already joined in {room_id} but attempted to knock");
         return Err(MatrixError::forbidden(
-            "You cannot knock on a room you are already joined in.",
+            "you cannot knock on a room you are already joined in.",
             None,
         )
         .into());
@@ -58,7 +60,7 @@ pub async fn knock_room(
     {
         warn!("{sender_id} is banned from {room_id} but attempted to knock");
         return Err(MatrixError::forbidden(
-            "You cannot knock on a room you are banned from.",
+            "you cannot knock on a room you are banned from.",
             None,
         )
         .into());
@@ -115,7 +117,7 @@ pub async fn knock_room(
                 return Ok(Some(pdu));
             }
             Err(e) => {
-                tracing::error!("Failed to knock room {room_id} with conflict error: {e}");
+                tracing::error!("failed to knock room {room_id} with conflict error: {e}");
                 if servers.is_empty() || servers.iter().all(|s| s.is_local()) {
                     return Err(e);
                 }
@@ -145,14 +147,10 @@ pub async fn knock_room(
             ))
         })?;
 
-    knock_event_stub.insert(
-        "origin".to_owned(),
-        CanonicalJsonValue::String(conf.server_name.as_str().to_owned()),
-    );
-    knock_event_stub.insert(
-        "origin_server_ts".to_owned(),
-        CanonicalJsonValue::Integer(UnixMillis::now().get() as i64),
-    );
+    // knock_event_stub.insert(
+    //     "origin".to_owned(),
+    //     CanonicalJsonValue::String(conf.server_name.as_str().to_owned()),
+    // );
     knock_event_stub.insert(
         "content".to_owned(),
         to_canonical_value(RoomMemberEventContent {
@@ -199,13 +197,12 @@ pub async fn knock_room(
             .await?
             .json::<SendKnockResBody>()
             .await?;
-
     info!("send knock finished");
 
     info!("parsing knock event");
     let parsed_knock_pdu = PduEvent::from_canonical_object(room_id, &event_id, knock_event.clone())
         .map_err(|e| {
-            StatusError::internal_server_error().brief(format!("Invalid knock event PDU: {e:?}"))
+            StatusError::internal_server_error().brief(format!("invalid knock event PDU: {e:?}"))
         })?;
 
     info!("going through send_knock response knock state events");
@@ -242,21 +239,12 @@ pub async fn knock_room(
         let pdu = if let Some(pdu) = timeline::get_pdu(&event_id).optional()? {
             pdu
         } else {
-            let res_body = fetching::fetch_event(&remote_server, &event_id).await?;
-            if let Err(e) = handler::process_incoming_pdu(
-                &remote_server,
-                &event_id,
-                room_id,
-                &room_version,
-                serde_json::from_str(res_body.pdu.get())?,
-                true,
-                false,
-            )
-            .await
-            {
-                error!("Failed to process event {event_id} from send_knock: {e}");
-            }
-            timeline::get_pdu(&event_id)?
+            let (_event_sn, guard) = ensure_event_sn(room_id, &event_id)?;
+            diesel::update(event_points::table.filter(event_points::event_id.eq(&event_id)))
+                .set(event_points::stripped_data.eq(serde_json::to_value(value)?))
+                .execute(&mut crate::data::connect()?)?;
+            drop(guard);
+            timeline::get_pdu_or_stripped(&event_id)?
         };
 
         if let Some(state_key) = &pdu.state_key {
@@ -347,7 +335,7 @@ async fn make_knock_request(
     servers: &[OwnedServerName],
 ) -> AppResult<(MakeKnockResBody, OwnedServerName)> {
     let mut make_knock_response_and_server = Err(AppError::HttpStatus(
-        StatusError::internal_server_error().brief("No server available to assist in knocking."),
+        StatusError::internal_server_error().brief("no server available to assist in knocking"),
     ));
 
     let mut make_knock_counter: usize = 0;
@@ -391,7 +379,7 @@ async fn make_knock_request(
 				 assist in knocking."
             );
             make_knock_response_and_server = Err(StatusError::internal_server_error()
-                .brief("No server available to assist in knocking.")
+                .brief("no server available to assist in knocking")
                 .into());
 
             return make_knock_response_and_server;

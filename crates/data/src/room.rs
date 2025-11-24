@@ -197,8 +197,8 @@ pub struct DbEventData {
     pub event_sn: Seqnum,
     pub room_id: OwnedRoomId,
     pub internal_metadata: Option<JsonValue>,
-    pub json_data: JsonValue,
     pub format_version: Option<i64>,
+    pub json_data: JsonValue,
 }
 
 impl DbEventData {

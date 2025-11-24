@@ -128,7 +128,7 @@ async fn send_knock(
     let body: SendKnockReqBody = body.into_inner();
 
     if args.room_id.is_remote() {
-        return Err(MatrixError::not_found("Room is unknown to this server.").into());
+        return Err(MatrixError::not_found("room is unknown to this server").into());
     }
 
     // ACL check origin server
@@ -137,28 +137,30 @@ async fn send_knock(
     let room_version = crate::room::get_version(&args.room_id)?;
 
     if matches!(room_version, V1 | V2 | V3 | V4 | V5 | V6) {
-        return Err(MatrixError::forbidden("Room version does not support knocking.", None).into());
+        return Err(MatrixError::forbidden("room version does not support knocking", None).into());
     }
 
     let Ok((event_id, value)) = gen_event_id_canonical_json(&body.0, &room_version) else {
         // Event could not be converted to canonical json
-        return Err(
-            MatrixError::invalid_param("Could not convert event to canonical json.").into(),
-        );
+        return Err(MatrixError::invalid_param("could not convert event to canonical json").into());
     };
+    println!(
+        "===============send_knock 0  args{:#?} event_id{:#?} value{:#?}",
+        args, event_id, value
+    );
 
     let event_type: StateEventType = serde_json::from_value(
         value
             .get("type")
-            .ok_or_else(|| MatrixError::invalid_param("Event has no event type."))?
+            .ok_or_else(|| MatrixError::invalid_param("event has no event type"))?
             .clone()
             .into(),
     )
-    .map_err(|e| MatrixError::invalid_param(format!("Event has invalid event type: {e}")))?;
+    .map_err(|e| MatrixError::invalid_param(format!("event has invalid event type: {e}")))?;
 
     if event_type != StateEventType::RoomMember {
         return Err(MatrixError::invalid_param(
-            "Not allowed to send non-membership state event to knock endpoint.",
+            "not allowed to send non-membership state event to knock endpoint",
         )
         .into());
     }
@@ -166,17 +168,17 @@ async fn send_knock(
     let content: RoomMemberEventContent = serde_json::from_value(
         value
             .get("content")
-            .ok_or_else(|| MatrixError::invalid_param("Membership event has no content"))?
+            .ok_or_else(|| MatrixError::invalid_param("membership event has no content"))?
             .clone()
             .into(),
     )
     .map_err(|e| {
-        MatrixError::invalid_param(format!("Event has invalid membership content: {e}"))
+        MatrixError::invalid_param(format!("event has invalid membership content: {e}"))
     })?;
 
     if content.membership != MembershipState::Knock {
         return Err(MatrixError::invalid_param(
-            "Not allowed to send a non-knock membership event to knock endpoint.",
+            "not allowed to send a non-knock membership event to knock endpoint",
         )
         .into());
     }
@@ -185,11 +187,11 @@ async fn send_knock(
     let sender: OwnedUserId = serde_json::from_value(
         value
             .get("sender")
-            .ok_or_else(|| MatrixError::invalid_param("Event has no sender user ID."))?
+            .ok_or_else(|| MatrixError::invalid_param("event has no sender user id"))?
             .clone()
             .into(),
     )
-    .map_err(|e| MatrixError::invalid_param(format!("Event sender is not a valid user ID: {e}")))?;
+    .map_err(|e| MatrixError::invalid_param(format!("event sender is not a valid user id: {e}")))?;
 
     handler::acl_check(sender.server_name(), &args.room_id)?;
 
@@ -204,11 +206,11 @@ async fn send_knock(
     let state_key: OwnedUserId = serde_json::from_value(
         value
             .get("state_key")
-            .ok_or_else(|| MatrixError::invalid_param("Event does not have a state_key"))?
+            .ok_or_else(|| MatrixError::invalid_param("event does not have a state_key"))?
             .clone()
             .into(),
     )
-    .map_err(|e| MatrixError::bad_json(format!("Event does not have a valid state_key: {e}")))?;
+    .map_err(|e| MatrixError::bad_json(format!("event does not have a valid state_key: {e}")))?;
 
     if state_key != sender {
         return Err(
@@ -226,12 +228,12 @@ async fn send_knock(
     .map_err(|e| MatrixError::bad_json(format!("event has an invalid origin server name: {e}")))?;
 
     let mut event: JsonObject = serde_json::from_str(body.0.get())
-        .map_err(|e| MatrixError::invalid_param(format!("Invalid knock event PDU: {e}")))?;
+        .map_err(|e| MatrixError::invalid_param(format!("invalid knock event PDU: {e}")))?;
 
     event.insert("event_id".to_owned(), "$placeholder".into());
 
     let pdu: PduEvent = PduEvent::from_json_value(&args.room_id, &event_id, event.into())
-        .map_err(|e| MatrixError::invalid_param(format!("invalid knock event PDU: {e}")))?;
+        .map_err(|e| MatrixError::invalid_param(format!("invalid knock event pdu: {e}")))?;
 
     handler::process_incoming_pdu(
         &origin,
@@ -324,7 +326,7 @@ async fn make_knock(
 
     // room v3 and above removed the "event_id" field from remote PDU format
     crate::federation::maybe_strip_event_id(&mut pdu_json, &room_version_id);
-
+    pdu_json.remove("hashes");
     json_ok(MakeKnockResBody {
         room_version: room_version_id,
         event: to_raw_value(&pdu_json).expect("CanonicalJson can be serialized to JSON"),
