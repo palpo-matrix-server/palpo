@@ -140,6 +140,7 @@ pub async fn knock_room(
     }
     crate::room::ensure_room(room_id, &room_version)?;
 
+    println!("mmmmmmmake knock response event: {}", make_knock_response.event.get());
     let mut knock_event_stub: CanonicalJsonObject =
         serde_json::from_str(make_knock_response.event.get()).map_err(|e| {
             StatusError::internal_server_error().brief(format!(
@@ -169,6 +170,7 @@ pub async fn knock_room(
 
     // Generate event id
     let event_id = gen_event_id(&knock_event_stub, &room_version)?;
+    println!("===============local gen_event_id {event_id} {room_version:?} json: {knock_event_stub:?}");
 
     // Add event_id
     knock_event_stub.insert(
@@ -240,6 +242,7 @@ pub async fn knock_room(
             pdu
         } else {
             let (_event_sn, guard) = ensure_event_sn(room_id, &event_id)?;
+            println!("============lLLLLLLLLLL event_id:{event_id}  value: {value:#?}=============");
             diesel::update(event_points::table.filter(event_points::event_id.eq(&event_id)))
                 .set(event_points::stripped_data.eq(serde_json::to_value(value)?))
                 .execute(&mut crate::data::connect()?)?;
@@ -277,6 +280,7 @@ pub async fn knock_room(
         rejection_reason: None,
     }
     .save()?;
+    println!("lllllllllll knock_pdu: {parsed_knock_pdu:#?}");
     let knock_pdu = SnPduEvent {
         pdu: parsed_knock_pdu,
         event_sn,
@@ -311,6 +315,7 @@ pub async fn knock_room(
     let frame_id = state::append_to_state(&knock_pdu)?;
 
     info!("updating membership locally to knock state with provided stripped state events");
+    println!("================knock_room_state: {:#?}", send_knock_body.knock_room_state);
     crate::membership::update_membership(
         &event_id,
         knock_pdu.event_sn,

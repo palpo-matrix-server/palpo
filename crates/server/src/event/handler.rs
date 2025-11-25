@@ -42,11 +42,13 @@ pub(crate) async fn process_incoming_pdu(
         return Err(MatrixError::not_found("room is unknown to this server").into());
     }
 
+    println!("=========process_incoming_pdu {} {}", event_id, room_id);
     let event = events::table
         .filter(events::id.eq(event_id))
         .first::<DbEvent>(&mut connect()?);
     if let Ok(event) = event {
         if !event.is_outlier {
+            println!("=========not outlier {}", event_id);
             return Ok(());
         }
         if event.is_rejected || event.soft_failed {
@@ -60,6 +62,7 @@ pub(crate) async fn process_incoming_pdu(
         }
     }
 
+    println!("=========process_incoming_pdu 1 {} {}", event_id, room_id);
     // 1.2 Check if the room is disabled
     if crate::room::is_disabled(room_id)? {
         return Err(MatrixError::forbidden(
@@ -91,14 +94,17 @@ pub(crate) async fn process_incoming_pdu(
         return Ok(());
     }
 
+    println!("=========process_incoming_pdu 2 {} {:?}", event_id, value);
     let Some(outlier_pdu) =
         process_to_outlier_pdu(remote_server, event_id, room_id, room_version_id, value).await?
     else {
         return Ok(());
     };
 
+    println!("=========process_incoming_pdu 3 {} ", event_id);
     let (incoming_pdu, val, event_guard) = outlier_pdu.process_incoming(backfilled).await?;
 
+    println!("=========process_incoming_pdu 4 {val:#?}");
     if incoming_pdu.rejected() {
         return Ok(());
     }
@@ -189,6 +195,7 @@ pub async fn process_to_outlier_pdu(
     room_version: &RoomVersionId,
     mut value: CanonicalJsonObject,
 ) -> AppResult<Option<OutlierPdu>> {
+        println!("=====================process_to_outlier_pdu 0");
     if let Some((room_id, event_sn, event_data)) = event_datas::table
         .filter(event_datas::event_id.eq(event_id))
         .select((
@@ -200,7 +207,11 @@ pub async fn process_to_outlier_pdu(
         .optional()?
         && let Ok(val) = serde_json::from_value::<CanonicalJsonObject>(event_data.clone())
         && let Ok(pdu) = timeline::get_pdu(event_id)
+        && !pdu.soft_failed
+        && !pdu.is_outlier
+        && !pdu.rejected()
     {
+        println!("=====================process_to_outlier_pdu 2");
         return Ok(Some(OutlierPdu {
             pdu: pdu.into_inner(),
             json_data: val,
@@ -214,6 +225,7 @@ pub async fn process_to_outlier_pdu(
         }));
     }
 
+        println!("=====================process_to_outlier_pdu 3");
     // 1.1. Remove unsigned field
     value.remove("unsigned");
 
@@ -258,6 +270,7 @@ pub async fn process_to_outlier_pdu(
             return Err(MatrixError::invalid_param("signature verification failed").into());
         }
     };
+        println!("=====================process_to_outlier_pdu 4 val: {val:#?}");
 
     // Now that we have checked the signature and hashes we can add the eventID and convert
     // to our PduEvent type
@@ -385,6 +398,7 @@ pub async fn process_to_outlier_pdu(
         }
     }
 
+        println!("=====================process_to_outlier_pdu end {val:#?}");
     Ok(Some(OutlierPdu {
         pdu: incoming_pdu,
         soft_failed,

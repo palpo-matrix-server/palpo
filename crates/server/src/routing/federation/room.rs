@@ -1,3 +1,4 @@
+use clap::error;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;
@@ -227,14 +228,13 @@ async fn send_knock(
     )
     .map_err(|e| MatrixError::bad_json(format!("event has an invalid origin server name: {e}")))?;
 
-    let mut event: JsonObject = serde_json::from_str(body.0.get())
+    let event: JsonObject = serde_json::from_str(body.0.get())
         .map_err(|e| MatrixError::invalid_param(format!("invalid knock event PDU: {e}")))?;
-
-    event.insert("event_id".to_owned(), "$placeholder".into());
 
     let pdu: PduEvent = PduEvent::from_json_value(&args.room_id, &event_id, event.into())
         .map_err(|e| MatrixError::invalid_param(format!("invalid knock event pdu: {e}")))?;
 
+    println!("==========call process_incoming_pdu  {:?}", value);
     handler::process_incoming_pdu(
         &origin,
         &event_id,
@@ -245,7 +245,13 @@ async fn send_knock(
         false,
     )
     .await
-    .map_err(|_| MatrixError::invalid_param("could not accept as timeline event"))?;
+    .map_err(|e| {
+        error!(
+            error = %e,
+            room_id = %args.room_id, "could not accept as timeline event {}", event_id
+        );
+        MatrixError::invalid_param(format!("could not accept as timeline event"))
+    })?;
 
     data::room::add_joined_server(&args.room_id, &origin)?;
 
@@ -324,12 +330,12 @@ async fn make_knock(
     .await?;
     drop(state_lock);
 
+    println!("<<<<<<<<make knock response pdu_json: {pdu_json:#?}");
     // room v3 and above removed the "event_id" field from remote PDU format
     crate::federation::maybe_strip_event_id(&mut pdu_json, &room_version_id);
-    pdu_json.remove("hashes");
     json_ok(MakeKnockResBody {
         room_version: room_version_id,
-        event: to_raw_value(&pdu_json).expect("CanonicalJson can be serialized to JSON"),
+        event: to_raw_value(&pdu_json).expect("CanonicalJson can be serialized to json"),
     })
 }
 

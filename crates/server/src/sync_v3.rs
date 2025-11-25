@@ -208,6 +208,7 @@ pub async fn sync_events(
                 return knocked_rooms;
             }
 
+            println!("================knocked_rooms: {:#?}", knock_state);
             let knocked_room = KnockedRoom {
                 knock_state: KnockState {
                     events: knock_state,
