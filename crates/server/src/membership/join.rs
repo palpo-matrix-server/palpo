@@ -160,14 +160,14 @@ pub async fn join_room(
         .and_then(|s| OwnedUserId::try_from(s.unwrap_or_default()).ok());
 
     // TODO: Is origin needed?
-    // join_event_stub.insert(
-    //     "origin".to_owned(),
-    //     CanonicalJsonValue::String(config::get().server_name.as_str().to_owned()),
-    // );
-    // join_event_stub.insert(
-    //     "origin_server_ts".to_owned(),
-    //     CanonicalJsonValue::Integer(UnixMillis::now().get() as i64),
-    // );
+    join_event_stub.insert(
+        "origin".to_owned(),
+        CanonicalJsonValue::String(config::get().server_name.as_str().to_owned()),
+    );
+    join_event_stub.insert(
+        "origin_server_ts".to_owned(),
+        CanonicalJsonValue::Integer(UnixMillis::now().get() as i64),
+    );
     join_event_stub.insert(
         "content".to_owned(),
         to_canonical_value(RoomMemberEventContent {

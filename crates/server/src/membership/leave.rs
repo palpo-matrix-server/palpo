@@ -175,10 +175,10 @@ async fn leave_room_remote(
 
     println!("leave_event_stub before: {leave_event_stub:#?}");
     // TODO: Is origin needed?
-    // leave_event_stub.insert(
-    //     "origin".to_owned(),
-    //     CanonicalJsonValue::String(config::get().server_name.as_str().to_owned()),
-    // );
+    leave_event_stub.insert(
+        "origin".to_owned(),
+        CanonicalJsonValue::String(config::get().server_name.as_str().to_owned()),
+    );
     // leave_event_stub.insert(
     //     "origin_server_ts".to_owned(),
     //     CanonicalJsonValue::Integer(UnixMillis::now().get() as i64),
