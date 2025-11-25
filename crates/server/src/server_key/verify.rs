@@ -52,9 +52,7 @@ pub async fn verify_event(
 ) -> AppResult<Verified> {
     let room_version = room_version.unwrap_or(&RoomVersionId::V11);
     let version_rules = crate::room::get_version_rules(room_version)?;
-    println!("=======verify_event  0");
     let keys = get_event_keys(event, &version_rules).await?;
-    println!("=======verify_event  keys: {keys:?}");
     signatures::verify_event(&keys, event, &version_rules).map_err(Into::into)
 }
 

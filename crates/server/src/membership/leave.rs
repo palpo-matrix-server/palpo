@@ -44,6 +44,7 @@ pub async fn leave_room(
             return Ok(());
         }
     }
+    println!("cccccccccccccccccccall leave room_remote {} {}", user_id, room_id);
     match leave_room_remote(user_id, room_id).await {
         Ok((event_id, event_sn)) => {
             let last_state = state::get_user_state(user_id, room_id)?;
@@ -172,15 +173,16 @@ async fn leave_room_remote(
         serde_json::from_str::<CanonicalJsonObject>(make_leave_response.event.get())
             .map_err(|_| AppError::public("invalid make_leave event json received from server"))?;
 
+    println!("leave_event_stub before: {leave_event_stub:#?}");
     // TODO: Is origin needed?
-    leave_event_stub.insert(
-        "origin".to_owned(),
-        CanonicalJsonValue::String(config::get().server_name.as_str().to_owned()),
-    );
-    leave_event_stub.insert(
-        "origin_server_ts".to_owned(),
-        CanonicalJsonValue::Integer(UnixMillis::now().get() as i64),
-    );
+    // leave_event_stub.insert(
+    //     "origin".to_owned(),
+    //     CanonicalJsonValue::String(config::get().server_name.as_str().to_owned()),
+    // );
+    // leave_event_stub.insert(
+    //     "origin_server_ts".to_owned(),
+    //     CanonicalJsonValue::Integer(UnixMillis::now().get() as i64),
+    // );
     // We don't leave the event id in the pdu because that's only allowed in v1 or v2 rooms
     leave_event_stub.remove("event_id");
 
@@ -191,7 +193,6 @@ async fn leave_room_remote(
     // Generate event id
     let event_id = crate::event::gen_event_id(&leave_event_stub, &room_version_id)?;
 
-    // TODO: event_sn??, outlier but has sn??
     let (event_sn, event_guard) = ensure_event_sn(room_id, &event_id)?;
     NewDbEvent {
         id: event_id.to_owned(),
@@ -214,6 +215,8 @@ async fn leave_room_remote(
         rejection_reason: None,
     }
     .save()?;
+    println!("leave_event_stub after:  {event_id} {leave_event_stub:#?}");
+
     // Add event_id back
     leave_event_stub.insert(
         "event_id".to_owned(),
