@@ -193,11 +193,6 @@ pub fn send_pdu_servers<S: Iterator<Item = OwnedServerName>>(
     let requests = servers
         .into_iter()
         .filter_map(|server| {
-            println!(
-                "================send_pdu_servers preparing {} {}",
-                server,
-                config::get().server_name,
-            );
             if server == config::get().server_name {
                 warn!("not sending pdu to ourself: {server}");
                 None
@@ -210,7 +205,6 @@ pub fn send_pdu_servers<S: Iterator<Item = OwnedServerName>>(
         })
         .collect::<Vec<_>>();
 
-    println!("================send_pdu_servers preparing2 {:?}", requests);
     let keys = queue_requests(
         &requests
             .iter()
@@ -218,12 +212,6 @@ pub fn send_pdu_servers<S: Iterator<Item = OwnedServerName>>(
             .collect::<Vec<_>>(),
     )?;
     for ((outgoing_kind, event_type), key) in requests.into_iter().zip(keys) {
-        println!(
-            "================send_pdu_servers {} {:?} {}",
-            outgoing_kind.name(),
-            event_type,
-            key
-        );
         if let Err(e) = sender().send((outgoing_kind.to_owned(), event_type, key)) {
             error!("failed to send pdu: {}", e);
         }

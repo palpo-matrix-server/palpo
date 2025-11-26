@@ -49,10 +49,6 @@ pub async fn leave_room(
             return Ok(());
         }
     }
-    println!(
-        "cccccccccccccccccccall leave room_remote {} {}",
-        user_id, room_id
-    );
     match leave_room_remote(user_id, room_id).await {
         Ok((event_id, event_sn)) => {
             let last_state = state::get_user_state(user_id, room_id)?;
@@ -127,7 +123,6 @@ async fn leave_room_remote(
     user_id: &UserId,
     room_id: &RoomId,
 ) -> AppResult<(OwnedEventId, Seqnum)> {
-    println!("================leave_room_remote {} {}", user_id, room_id);
     let mut make_leave_response_and_server =
         Err(AppError::public("no server available to assist in leaving"));
     let invite_state = state::get_user_state(user_id, room_id)?
@@ -182,7 +177,6 @@ async fn leave_room_remote(
         serde_json::from_str::<CanonicalJsonObject>(make_leave_response.event.get())
             .map_err(|_| AppError::public("invalid make_leave event json received from server"))?;
 
-    println!("leave_event_stub before: {leave_event_stub:#?}");
     // TODO: Is origin needed?
     leave_event_stub.insert(
         "origin".to_owned(),
@@ -203,8 +197,6 @@ async fn leave_room_remote(
 
     // Generate event id
     let event_id = crate::event::gen_event_id(&leave_event_stub, &room_version_id)?;
-
-    println!("leave_event_stub after:  {event_id} {leave_event_stub:#?}");
 
     // Add event_id back
     leave_event_stub.insert(
@@ -258,7 +250,6 @@ async fn leave_room_remote(
         soft_failed: false,
         backfilled: false,
     };
-    println!("========append_to_timeline pdu 6  frame_id");
     timeline::append_pdu(
         &leave_pdu,
         leave_event_stub.clone(),

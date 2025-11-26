@@ -460,7 +460,6 @@ where
 
     crate::event::search::save_pdu(pdu, &pdu_json)?;
 
-    println!("=========call append_to_state 3  x {:?}", pdu);
     let frame_id = state::append_to_state(pdu)?;
     // We set the room state after inserting the pdu, so that we never have a moment in time
     // where events in the current room state do not exist
@@ -880,7 +879,6 @@ pub async fn build_and_append_pdu(
     }
 
     let event_id = pdu.event_id.clone();
-            println!("========append_to_timeline pdu 7  frame_id");
     append_pdu(
         &pdu,
         pdu_json,

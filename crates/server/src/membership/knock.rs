@@ -136,10 +136,6 @@ pub async fn knock_room(
     }
     crate::room::ensure_room(room_id, &room_version)?;
 
-    println!(
-        "mmmmmmmake knock response event: {}",
-        make_knock_response.event.get()
-    );
     let mut knock_event_stub: CanonicalJsonObject =
         serde_json::from_str(make_knock_response.event.get()).map_err(|e| {
             StatusError::internal_server_error().brief(format!(
@@ -169,9 +165,6 @@ pub async fn knock_room(
 
     // Generate event id
     let event_id = gen_event_id(&knock_event_stub, &room_version)?;
-    println!(
-        "===============local gen_event_id {event_id} {room_version:?} json: {knock_event_stub:?}"
-    );
 
     // Add event_id
     knock_event_stub.insert(
@@ -234,7 +227,6 @@ pub async fn knock_room(
         rejection_reason: None,
     }
     .save()?;
-    println!("lllllllllll knock_pdu: {parsed_knock_pdu:#?}");
     let knock_pdu = SnPduEvent {
         pdu: parsed_knock_pdu,
         event_sn,
@@ -242,7 +234,6 @@ pub async fn knock_room(
         soft_failed: false,
         backfilled: false,
     };
-    println!("========append_to_timeline pdu 6  frame_id");
     timeline::append_pdu(
         &knock_pdu,
         knock_event,

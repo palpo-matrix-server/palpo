@@ -42,13 +42,11 @@ pub(crate) async fn process_incoming_pdu(
         return Err(MatrixError::not_found("room is unknown to this server").into());
     }
 
-    println!("=========process_incoming_pdu {} {}", event_id, room_id);
     let event = events::table
         .filter(events::id.eq(event_id))
         .first::<DbEvent>(&mut connect()?);
     if let Ok(event) = event {
         if !event.is_outlier {
-            println!("=========not outlier {}", event_id);
             return Ok(());
         }
         if event.is_rejected || event.soft_failed {
@@ -62,7 +60,6 @@ pub(crate) async fn process_incoming_pdu(
         }
     }
 
-    println!("=========process_incoming_pdu 1 {} {}", event_id, room_id);
     // 1.2 Check if the room is disabled
     if crate::room::is_disabled(room_id)? {
         return Err(MatrixError::forbidden(
@@ -71,11 +68,9 @@ pub(crate) async fn process_incoming_pdu(
         )
         .into());
     }
-    println!("=========process_incoming_pdu 1 -- 1");
 
     // 1.3.1 Check room ACL on origin field/server
     handler::acl_check(remote_server, room_id)?;
-    println!("=========process_incoming_pdu 1 -- 2");
 
     // 1.3.2 Check room ACL on sender's server name
     let sender: OwnedUserId = serde_json::from_value(
@@ -86,41 +81,29 @@ pub(crate) async fn process_incoming_pdu(
             .into(),
     )
     .map_err(|_| MatrixError::bad_json("user id in sender is invalid."))?;
-    println!("=========process_incoming_pdu 1 -- 3");
 
     if sender.server_name().ne(remote_server) {
         handler::acl_check(sender.server_name(), room_id)?;
     }
-    println!(
-        "=========process_incoming_pdu 1 -- 3  {:?}",
-        state::get_pdu_frame_id(event_id)
-    );
     // 1. Skip the PDU if we already have it as a timeline event
     if state::get_pdu_frame_id(event_id).is_ok() {
-        println!("=========process_incoming_pdu 1 -- 4 {:#?}", timeline::get_pdu(event_id));
         return Ok(());
     }
 
-    println!("=========process_incoming_pdu 2 {} {:?}", event_id, value);
     let Some(outlier_pdu) =
         process_to_outlier_pdu(remote_server, event_id, room_id, room_version_id, value).await?
     else {
         return Ok(());
     };
 
-    println!("=========process_incoming_pdu 3 {} ", event_id);
     let (incoming_pdu, val, event_guard) = outlier_pdu.process_incoming(backfilled).await?;
 
-    println!("=========process_incoming_pdu 4 {val:#?}  {incoming_pdu:?}");
     if incoming_pdu.rejected() {
-        println!("=========process_incoming_pdu 5");
         return Ok(());
     }
-    println!("=========process_incoming_pdu 6");
     check_room_id(room_id, &incoming_pdu)?;
     // 8. if not timeline event: stop
     if !is_timeline_event {
-        println!("=========process_incoming_pdu 7");
         return Ok(());
     }
     // Skip old events
@@ -136,15 +119,11 @@ pub(crate) async fn process_incoming_pdu(
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
-    println!("=========process_incoming_pdu 8");
     if let Err(e) = process_to_timeline_pdu(incoming_pdu, val, remote_server, room_id).await {
-        println!("=========process_incoming_pdu 9");
         error!("failed to process incoming pdu to timeline {}", e);
     } else {
-        println!("=========process_incoming_pdu 10");
         debug!("succeed to process incoming pdu to timeline {}", event_id);
     }
-    println!("=========process_incoming_pdu 11");
     drop(event_guard);
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
         .write()
@@ -209,7 +188,6 @@ pub async fn process_to_outlier_pdu(
     room_version: &RoomVersionId,
     mut value: CanonicalJsonObject,
 ) -> AppResult<Option<OutlierPdu>> {
-    println!("=====================process_to_outlier_pdu 0");
     if let Some((room_id, event_sn, event_data)) = event_datas::table
         .filter(event_datas::event_id.eq(event_id))
         .select((
@@ -225,7 +203,6 @@ pub async fn process_to_outlier_pdu(
         && !pdu.is_outlier
         && !pdu.rejected()
     {
-        println!("=====================process_to_outlier_pdu 2");
         return Ok(Some(OutlierPdu {
             pdu: pdu.into_inner(),
             json_data: val,
@@ -239,7 +216,6 @@ pub async fn process_to_outlier_pdu(
         }));
     }
 
-    println!("=====================process_to_outlier_pdu 3");
     // 1.1. Remove unsigned field
     value.remove("unsigned");
 
@@ -284,7 +260,6 @@ pub async fn process_to_outlier_pdu(
             return Err(MatrixError::invalid_param("signature verification failed").into());
         }
     };
-    println!("=====================process_to_outlier_pdu 4  {event_id}  val: {val:#?}");
 
     // Now that we have checked the signature and hashes we can add the eventID and convert
     // to our PduEvent type
@@ -299,22 +274,15 @@ pub async fn process_to_outlier_pdu(
     )
     .map_err(|_| AppError::internal("event is not a valid PDU."))?;
 
-    println!("=====================process_to_outlier_pdu 5");
     check_room_id(room_id, &incoming_pdu)?;
 
     let server_joined = crate::room::is_server_joined(crate::config::server_name(), room_id)?;
     if !server_joined {
-        println!(
-            "=====================process_to_outlier_pdu state_key: {:?}  servername: {}",
-            incoming_pdu.state_key,
-            crate::config::server_name()
-        );
         if let Some(state_key) = incoming_pdu.state_key.as_deref()
             && incoming_pdu.event_ty == TimelineEventType::RoomMember
         // && state_key.ends_with(&*format!(":{}", crate::config::server_name()))
         {
             debug!("added pdu as outlier");
-            println!("=====================process_to_outlier_pdu 6");
             return Ok(Some(OutlierPdu {
                 pdu: incoming_pdu,
                 json_data: val,
@@ -327,7 +295,6 @@ pub async fn process_to_outlier_pdu(
                 rejected_prev_events: vec![],
             }));
         }
-        println!("=====================process_to_outlier_pdu 7");
         return Ok(None);
     }
 
@@ -351,7 +318,6 @@ pub async fn process_to_outlier_pdu(
             }
         })
         .collect::<Vec<_>>();
-    println!("=====================process_to_outlier_pdu 8");
     if !rejected_prev_events.is_empty() {
         incoming_pdu.rejection_reason = Some(format!(
             "event's prev events rejected: {rejected_prev_events:?}"
@@ -368,7 +334,6 @@ pub async fn process_to_outlier_pdu(
         );
         soft_failed = true;
     }
-    println!("=====================process_to_outlier_pdu 9");
     let rejected_auth_events = auth_events
         .iter()
         .filter_map(|pdu| {
@@ -398,7 +363,6 @@ pub async fn process_to_outlier_pdu(
         })
         .collect::<HashMap<(StateEventType, _), _>>();
 
-    println!("=====================process_to_outlier_pdu 10");
     // The original create event must be in the auth events
     if !matches!(
         auth_events.get(&(StateEventType::RoomCreate, "".to_owned())),
@@ -408,7 +372,6 @@ pub async fn process_to_outlier_pdu(
             Some("incoming event refers to wrong create event".to_owned());
     }
 
-    println!("=====================process_to_outlier_pdu 11");
     if incoming_pdu.rejection_reason.is_none() {
         if let Err(e) = auth_check(&incoming_pdu, room_id, &version_rules, None).await {
             match e {
@@ -424,7 +387,6 @@ pub async fn process_to_outlier_pdu(
         }
     }
 
-    println!("=====================process_to_outlier_pdu end {val:#?}");
     Ok(Some(OutlierPdu {
         pdu: incoming_pdu,
         soft_failed,
@@ -527,7 +489,6 @@ pub async fn process_to_timeline_pdu(
             state::force_state(room_id, frame_id, appended, disposed)?;
 
             debug!("appended incoming pdu");
-            println!("========append_to_timeline pdu 4  frame_id");
             timeline::append_pdu(&incoming_pdu, json_data, extremities, &state_lock).await?;
             state::set_event_state(
                 &incoming_pdu.event_id,
@@ -660,7 +621,6 @@ pub async fn process_to_timeline_pdu(
         return Err(MatrixError::invalid_param("event has been soft failed").into());
     } else {
         debug!("appended incoming pdu");
-            println!("========append_to_timeline pdu 5  frame_id");
         timeline::append_pdu(&incoming_pdu, json_data, extremities, &state_lock).await?;
         state::set_event_state(
             &incoming_pdu.event_id,

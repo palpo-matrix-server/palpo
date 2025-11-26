@@ -145,10 +145,6 @@ async fn send_knock(
         // Event could not be converted to canonical json
         return Err(MatrixError::invalid_param("could not convert event to canonical json").into());
     };
-    println!(
-        "===============send_knock 0  args{:#?} event_id{:#?} value{:#?}",
-        args, event_id, value
-    );
 
     let event_type: StateEventType = serde_json::from_value(
         value
@@ -234,7 +230,6 @@ async fn send_knock(
     let pdu: PduEvent = PduEvent::from_json_value(&args.room_id, &event_id, event.into())
         .map_err(|e| MatrixError::invalid_param(format!("invalid knock event pdu: {e}")))?;
 
-    println!("==========call process_incoming_pdu  {:?}", value);
     handler::process_incoming_pdu(
         &origin,
         &event_id,
@@ -330,7 +325,6 @@ async fn make_knock(
     .await?;
     drop(state_lock);
 
-    println!("<<<<<<<<make knock response pdu_json: {pdu_json:#?}");
     // room v3 and above removed the "event_id" field from remote PDU format
     crate::federation::maybe_strip_event_id(&mut pdu_json, &room_version_id);
     json_ok(MakeKnockResBody {

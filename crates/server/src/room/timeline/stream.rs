@@ -181,6 +181,5 @@ pub fn load_pdus(
             }
         }
     }
-    println!("=============load_pdus loaded pdus  {:#?}", list);
     Ok(list)
 }

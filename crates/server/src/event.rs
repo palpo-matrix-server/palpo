@@ -50,7 +50,6 @@ pub fn ensure_event_sn(
     room_id: &RoomId,
     event_id: &EventId,
 ) -> AppResult<(Seqnum, Option<SeqnumQueueGuard>)> {
-    println!("========ensure_event_sn {} {}", room_id, event_id);
     if let Some(sn) = event_points::table
         .find(event_id)
         .select(event_points::event_sn)
@@ -201,7 +200,6 @@ pub fn get_last_frame_id(room_id: &RoomId, before_sn: Option<Seqnum>) -> AppResu
     }
 }
 pub fn update_frame_id(event_id: &EventId, frame_id: i64) -> AppResult<()> {
-    println!("========update_frame_id {} {}", event_id, frame_id);
     diesel::update(event_points::table.find(event_id))
         .set(event_points::frame_id.eq(frame_id))
         .execute(&mut connect()?)?;
@@ -212,7 +210,6 @@ pub fn update_frame_id(event_id: &EventId, frame_id: i64) -> AppResult<()> {
 }
 
 pub fn update_frame_id_by_sn(event_sn: Seqnum, frame_id: i64) -> AppResult<()> {
-    println!("========update_frame_id_by_sn {} {}", event_sn, frame_id);
     diesel::update(event_points::table.filter(event_points::event_sn.eq(event_sn)))
         .set(event_points::frame_id.eq(frame_id))
         .execute(&mut connect()?)?;

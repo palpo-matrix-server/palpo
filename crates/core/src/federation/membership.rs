@@ -410,7 +410,6 @@ pub struct SendJoinArgs {
 // };
 
 pub fn make_join_request(origin: &str, args: MakeJoinReqArgs) -> SendResult<SendRequest> {
-    println!("==================federatiion  make join request  1");
     let ver = args.ver.iter().map(|v| format!("ver={v}")).join("&");
     let ver = if ver.is_empty() {
         ""
@@ -418,7 +417,6 @@ pub fn make_join_request(origin: &str, args: MakeJoinReqArgs) -> SendResult<Send
         &*format!("?{ver}")
     };
 
-    println!("==================federatiion  make join request  2");
     let url = Url::parse(&format!(
         "{origin}/_matrix/federation/v1/make_join/{}/{}{}",
         args.room_id, args.user_id, ver

@@ -135,12 +135,10 @@ pub async fn join_room(
     }
 
     info!("joining {room_id} over federation");
-    println!("========servers: {servers:?}");
     let (make_join_response, remote_server) =
         make_join_request(sender_id, room_id, &servers).await?;
 
     info!("make join finished");
-    println!("=================make_join_response: {make_join_response:#?}");
     let room_version = match make_join_response.room_version {
         Some(room_version) if config::supported_room_versions().contains(&room_version) => {
             room_version
@@ -469,7 +467,6 @@ pub async fn join_room(
         soft_failed: false,
         backfilled: false,
     };
-    println!("========join_pdu: {join_pdu:?}");
     timeline::append_pdu(
         &join_pdu,
         join_event,
@@ -477,7 +474,6 @@ pub async fn join_room(
         &state_lock,
     )
     .await?;
-    println!("========call append_to_state 1 {}", join_pdu.event_id);
     let frame_id_after_join = state::append_to_state(&join_pdu)?;
     drop(event_guard);
 
@@ -555,7 +551,6 @@ async fn make_join_request(
         .brief("no server available to assist in joining")
         .into());
 
-    println!("========ccc make_join_request 0");
     for remote_server in servers {
         if remote_server == &config::get().server_name {
             continue;
