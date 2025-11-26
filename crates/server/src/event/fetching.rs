@@ -79,7 +79,7 @@ pub async fn fetch_and_process_missing_events(
             continue;
         }
 
-        if fetched_events.contains_key(&event_id) || timeline::get_pdu_or_stripped(&event_id).is_ok() {
+        if fetched_events.contains_key(&event_id) || timeline::get_pdu(&event_id).is_ok() {
             known_events.insert(event_id.clone());
             continue;
         }

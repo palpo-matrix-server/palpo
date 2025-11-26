@@ -85,7 +85,6 @@ pub(crate) async fn process_incoming_pdu(
     if sender.server_name().ne(remote_server) {
         handler::acl_check(sender.server_name(), room_id)?;
     }
-
     // 1. Skip the PDU if we already have it as a timeline event
     if state::get_pdu_frame_id(event_id).is_ok() {
         return Ok(());
@@ -200,6 +199,9 @@ pub async fn process_to_outlier_pdu(
         .optional()?
         && let Ok(val) = serde_json::from_value::<CanonicalJsonObject>(event_data.clone())
         && let Ok(pdu) = timeline::get_pdu(event_id)
+        && !pdu.soft_failed
+        && !pdu.is_outlier
+        && !pdu.rejected()
     {
         return Ok(Some(OutlierPdu {
             pdu: pdu.into_inner(),
@@ -233,7 +235,7 @@ pub async fn process_to_outlier_pdu(
                 .map_err(|_| MatrixError::invalid_param("time must be after the unix epoch"))?,
         )
     };
-    let mut val = match crate::server_key::verify_event(&value, Some(room_version)).await {
+    let mut val = match crate::server_key::verify_event(&value, room_version).await {
         Ok(Verified::Signatures) => {
             // Redact
             warn!("calculated hash does not match: {}", event_id);
@@ -278,7 +280,7 @@ pub async fn process_to_outlier_pdu(
     if !server_joined {
         if let Some(state_key) = incoming_pdu.state_key.as_deref()
             && incoming_pdu.event_ty == TimelineEventType::RoomMember
-            && state_key.ends_with(&*format!(":{}", crate::config::server_name()))
+        // && state_key.ends_with(&*format!(":{}", crate::config::server_name()))
         {
             debug!("added pdu as outlier");
             return Ok(Some(OutlierPdu {
@@ -713,7 +715,7 @@ pub async fn auth_check(
             auth_rules,
             incoming_pdu,
             &async |event_id| {
-                timeline::get_pdu_or_stripped( &event_id).map(|e|e.into_inner())
+                timeline::get_pdu( &event_id).map(|e|e.into_inner())
                     .map_err(|_| StateError::other("missing pdu in auth check event fetch"))
             },
             &async |k, s| {

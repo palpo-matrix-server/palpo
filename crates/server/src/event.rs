@@ -92,7 +92,7 @@ pub fn get_live_token(event_id: &EventId) -> AppResult<BatchToken> {
         .find(event_id)
         .select((events::sn, events::depth))
         .first::<(Seqnum, i64)>(&mut connect()?)
-        .map(|(sn, depth)| BatchToken::new_live(sn))
+        .map(|(sn, _depth)| BatchToken::new_live(sn))
         .map_err(Into::into)
 }
 pub fn get_historic_token(event_id: &EventId) -> AppResult<BatchToken> {

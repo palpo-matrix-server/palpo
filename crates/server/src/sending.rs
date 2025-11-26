@@ -204,16 +204,17 @@ pub fn send_pdu_servers<S: Iterator<Item = OwnedServerName>>(
             }
         })
         .collect::<Vec<_>>();
+
     let keys = queue_requests(
         &requests
             .iter()
             .map(|(o, e)| (o, e.clone()))
             .collect::<Vec<_>>(),
     )?;
-    for ((outgoing_kind, event), key) in requests.into_iter().zip(keys) {
-        sender()
-            .send((outgoing_kind.to_owned(), event, key))
-            .unwrap();
+    for ((outgoing_kind, event_type), key) in requests.into_iter().zip(keys) {
+        if let Err(e) = sender().send((outgoing_kind.to_owned(), event_type, key)) {
+            error!("failed to send pdu: {}", e);
+        }
     }
 
     Ok(())

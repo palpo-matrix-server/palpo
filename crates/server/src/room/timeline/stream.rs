@@ -129,6 +129,7 @@ pub fn load_pdus(
         let events: Vec<(OwnedEventId, Seqnum)> = if dir == Direction::Forward {
             query
                 .filter(events::sn.gt(start_sn))
+                .filter(events::is_outlier.eq(false))
                 .order(events::stream_ordering.desc())
                 .limit(utils::usize_to_i64(limit))
                 .select((events::id, events::sn))
@@ -139,6 +140,7 @@ pub fn load_pdus(
         } else {
             query
                 .filter(events::sn.lt(start_sn))
+                .filter(events::is_outlier.eq(false))
                 .order(events::sn.desc())
                 .limit(utils::usize_to_i64(limit))
                 .select((events::id, events::sn))

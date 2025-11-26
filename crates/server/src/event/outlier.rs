@@ -162,16 +162,11 @@ impl OutlierPdu {
         mut self,
         backfilled: bool,
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
-        print!(
-            "=============process_incoming_pdu 0 {backfilled} {:#?}",
-            self.pdu
-        );
         if (!self.soft_failed && !self.rejected())
             || (self.rejected()
                 && self.rejected_prev_events.is_empty()
                 && self.rejected_auth_events.is_empty())
         {
-            print!("=============process_incoming_pdu 1 {backfilled}");
             return self.save_to_database(backfilled);
         }
 
@@ -184,7 +179,6 @@ impl OutlierPdu {
         )
         .await
         {
-            print!("=============process_incoming_pdu 2 {backfilled}");
             if let AppError::Matrix(MatrixError { ref kind, .. }) = e {
                 if *kind == core::error::ErrorKind::BadJson {
                     self.rejection_reason = Some(format!("bad prev events: {}", e));
@@ -197,7 +191,6 @@ impl OutlierPdu {
             }
         }
 
-        print!("=============process_incoming_pdu 3 {backfilled}");
         self.process_pulled(backfilled).await
     }
 

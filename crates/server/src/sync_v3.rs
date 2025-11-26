@@ -478,7 +478,7 @@ async fn load_joined_room(
                     }
                     if event_ty != StateEventType::RoomMember {
                         let Ok(pdu) = timeline::get_pdu(&event_id) else {
-                            error!("pdu in state not found: {}", event_id);
+                            warn!("pdu in state not found: {} event_type: {}", event_id, event_ty);
                             continue;
                         };
                         if pdu.can_pass_filter(&filter.room.state) {
@@ -491,7 +491,7 @@ async fn load_joined_room(
                     || *sender_id == state_key
                     {
                         let Ok(pdu) = timeline::get_pdu(&event_id) else {
-                            error!("pdu in state not found: {}", event_id);
+                            warn!("pdu in state not found: {} state_key: {}", event_id, state_key);
                             continue;
                         };
 
@@ -557,7 +557,7 @@ async fn load_joined_room(
                             let pdu = match timeline::get_pdu(&id) {
                                 Ok(pdu) => pdu,
                                 Err(_) => {
-                                    error!("pdu in state not found: {}", id);
+                                    warn!("pdu in state not found: {}", id);
                                     continue;
                                 }
                             };
@@ -906,7 +906,7 @@ async fn load_left_room(
             let pdu = match timeline::get_pdu(&event_id) {
                 Ok(pdu) => pdu,
                 _ => {
-                    error!("pdu in state not found: {}", event_id);
+                    warn!("pdu in state not found: {} state_key: {}", event_id, state_key);
                     continue;
                 }
             };
