@@ -66,10 +66,6 @@ Our test server is for **evaluation and testing purposes only**:
 3. Enter `https://test.palpo.im`
 4. Register or login
 
-**Production Server**:
-- **URL**: [https://matrix.palpo.im](https://matrix.palpo.im)
-- This is a more stable instance, but still under active development
-
 ---
 
 ## 📦 Installation
