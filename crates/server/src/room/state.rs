@@ -151,6 +151,7 @@ pub fn set_event_state(
     let prev_frame_id = get_room_frame_id(room_id, None).ok();
     let hash_data = utils::hash_keys(state_ids_compressed.iter().map(|s| &s[..]));
     if let Ok(frame_id) = get_frame_id(room_id, &hash_data) {
+        println!("=========set_event_state 1  frame_id {}", frame_id);
         update_frame_id(event_id, frame_id)?;
         Ok(frame_id)
     } else {
@@ -178,6 +179,7 @@ pub fn set_event_state(
             (state_ids_compressed, Arc::new(CompressedState::new()))
         };
 
+        println!("=========set_event_state 2  frame_id {}", frame_id);
         update_frame_id(event_id, frame_id)?;
         calc_and_save_state_delta(
             room_id,
@@ -231,6 +233,7 @@ pub fn append_to_state(new_pdu: &SnPduEvent) -> AppResult<i64> {
 
         let hash_data = utils::hash_keys([new_compressed_event.as_bytes()].into_iter());
         let frame_id = ensure_frame(&new_pdu.room_id, hash_data)?;
+        println!("=========append_to_state 1  frame_id {}", frame_id);
         update_frame_id(&new_pdu.event_id, frame_id)?;
         calc_and_save_state_delta(
             &new_pdu.room_id,
@@ -244,6 +247,8 @@ pub fn append_to_state(new_pdu: &SnPduEvent) -> AppResult<i64> {
     } else {
         let frame_id = prev_frame_id
             .ok_or_else(|| MatrixError::invalid_param("Room previous point must exists."))?;
+        
+        println!("=========append_to_state 2  frame_id {}", frame_id);
         update_frame_id(&new_pdu.event_id, frame_id)?;
         Ok(frame_id)
     }
@@ -472,7 +477,7 @@ pub fn get_state(
     state_key: &str,
 ) -> AppResult<SnPduEvent> {
     let event_id = get_state_event_id(frame_id, event_type, state_key)?;
-    timeline::get_pdu_or_stripped(&event_id)
+    timeline::get_pdu(&event_id)
 }
 pub fn get_state_content<T>(
     frame_id: i64,

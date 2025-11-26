@@ -1,4 +1,9 @@
+use std::borrow::Borrow;
 use std::collections::HashSet;
+use std::iter::once;
+
+
+use salvo::http::StatusError;
 
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
@@ -10,7 +15,7 @@ use crate::data::room::{DbEventData, NewDbEvent};
 use crate::event::{PduBuilder, ensure_event_sn};
 use crate::membership::federation::membership::{SendLeaveReqArgsV2, send_leave_request_v2};
 use crate::room::{self, state, timeline};
-use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, config, data, membership};
+use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, PduEvent, SnPduEvent, config, data, membership};
 
 // Make a user leave all their joined rooms
 pub async fn leave_all_rooms(user_id: &UserId) -> AppResult<()> {
@@ -44,7 +49,10 @@ pub async fn leave_room(
             return Ok(());
         }
     }
-    println!("cccccccccccccccccccall leave room_remote {} {}", user_id, room_id);
+    println!(
+        "cccccccccccccccccccall leave room_remote {} {}",
+        user_id, room_id
+    );
     match leave_room_remote(user_id, room_id).await {
         Ok((event_id, event_sn)) => {
             let last_state = state::get_user_state(user_id, room_id)?;
@@ -119,6 +127,7 @@ async fn leave_room_remote(
     user_id: &UserId,
     room_id: &RoomId,
 ) -> AppResult<(OwnedEventId, Seqnum)> {
+    println!("================leave_room_remote {} {}", user_id, room_id);
     let mut make_leave_response_and_server =
         Err(AppError::public("no server available to assist in leaving"));
     let invite_state = state::get_user_state(user_id, room_id)?
@@ -179,10 +188,12 @@ async fn leave_room_remote(
         "origin".to_owned(),
         CanonicalJsonValue::String(config::get().server_name.as_str().to_owned()),
     );
-    // leave_event_stub.insert(
-    //     "origin_server_ts".to_owned(),
-    //     CanonicalJsonValue::Integer(UnixMillis::now().get() as i64),
-    // );
+    if !leave_event_stub.contains_key("origin_server_ts") {
+        leave_event_stub.insert(
+            "origin_server_ts".to_owned(),
+            CanonicalJsonValue::Integer(UnixMillis::now().get() as i64),
+        );
+    }
     // We don't leave the event id in the pdu because that's only allowed in v1 or v2 rooms
     leave_event_stub.remove("event_id");
 
@@ -192,6 +203,14 @@ async fn leave_room_remote(
 
     // Generate event id
     let event_id = crate::event::gen_event_id(&leave_event_stub, &room_version_id)?;
+
+    println!("leave_event_stub after:  {event_id} {leave_event_stub:#?}");
+
+    // Add event_id back
+    leave_event_stub.insert(
+        "event_id".to_owned(),
+        CanonicalJsonValue::String(event_id.as_str().to_owned()),
+    );
 
     let (event_sn, event_guard) = ensure_event_sn(room_id, &event_id)?;
     NewDbEvent {
@@ -209,19 +228,12 @@ async fn leave_room_remote(
         contains_url: false,
         worker_id: None,
         state_key: Some(user_id.to_string()),
-        is_outlier: true,
+        is_outlier: false,
         soft_failed: false,
         is_rejected: false,
         rejection_reason: None,
     }
     .save()?;
-    println!("leave_event_stub after:  {event_id} {leave_event_stub:#?}");
-
-    // Add event_id back
-    leave_event_stub.insert(
-        "event_id".to_owned(),
-        CanonicalJsonValue::String(event_id.as_str().to_owned()),
-    );
 
     DbEventData {
         event_id: event_id.clone(),
@@ -232,11 +244,32 @@ async fn leave_room_remote(
         format_version: None,
     }
     .save()?;
+    let parsed_leave_pdu =
+        PduEvent::from_canonical_object(room_id, &event_id, leave_event_stub.clone()).map_err(
+            |e| {
+                StatusError::internal_server_error()
+                    .brief(format!("invalid leave event PDU: {e:?}"))
+            },
+        )?;
+    let leave_pdu = SnPduEvent {
+        pdu: parsed_leave_pdu,
+        event_sn,
+        is_outlier: false,
+        soft_failed: false,
+        backfilled: false,
+    };
+    println!("========append_to_timeline pdu 6  frame_id");
+    timeline::append_pdu(
+        &leave_pdu,
+        leave_event_stub.clone(),
+        once(event_id.borrow()),
+        &room::lock_state(room_id).await,
+    )
+    .await?;
     drop(event_guard);
 
     // It has enough fields to be called a proper event now
     let leave_event = leave_event_stub;
-
     let request = send_leave_request_v2(
         &remote_server.origin().await,
         SendLeaveReqArgsV2 {
@@ -249,5 +282,6 @@ async fn leave_room_remote(
     )?
     .into_inner();
     crate::sending::send_federation_request(&remote_server, request, None).await?;
+
     Ok((event_id, event_sn))
 }

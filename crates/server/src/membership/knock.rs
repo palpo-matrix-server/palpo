@@ -3,11 +3,9 @@ use std::collections::HashMap;
 use std::iter::once;
 use std::sync::Arc;
 
-use diesel::prelude::*;
 use salvo::http::StatusError;
 
 use crate::core::UnixMillis;
-use crate::core::events::StateEventType;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::federation::knock::{
     MakeKnockReqArgs, MakeKnockResBody, SendKnockReqArgs, SendKnockReqBody, SendKnockResBody,
@@ -17,12 +15,10 @@ use crate::core::identifiers::*;
 use crate::core::room::JoinRule;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_canonical_value};
 use crate::data::room::NewDbEvent;
-use crate::data::schema::*;
 use crate::event::{PduBuilder, PduEvent, ensure_event_sn, fetching, gen_event_id, handler};
-use crate::room::state::{CompressedEvent, DeltaInfo};
 use crate::room::{self, state, timeline};
 use crate::{
-    AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, OptionalExtension, SnPduEvent,
+    AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, SnPduEvent,
     config, sending,
 };
 
@@ -140,7 +136,10 @@ pub async fn knock_room(
     }
     crate::room::ensure_room(room_id, &room_version)?;
 
-    println!("mmmmmmmake knock response event: {}", make_knock_response.event.get());
+    println!(
+        "mmmmmmmake knock response event: {}",
+        make_knock_response.event.get()
+    );
     let mut knock_event_stub: CanonicalJsonObject =
         serde_json::from_str(make_knock_response.event.get()).map_err(|e| {
             StatusError::internal_server_error().brief(format!(
@@ -170,7 +169,9 @@ pub async fn knock_room(
 
     // Generate event id
     let event_id = gen_event_id(&knock_event_stub, &room_version)?;
-    println!("===============local gen_event_id {event_id} {room_version:?} json: {knock_event_stub:?}");
+    println!(
+        "===============local gen_event_id {event_id} {room_version:?} json: {knock_event_stub:?}"
+    );
 
     // Add event_id
     knock_event_stub.insert(
@@ -194,7 +195,7 @@ pub async fn knock_room(
     )?
     .into_inner();
 
-    let send_knock_body =
+    let _send_knock_body =
         crate::sending::send_federation_request(&remote_server, send_knock_request, None)
             .await?
             .json::<SendKnockResBody>()
@@ -208,53 +209,6 @@ pub async fn knock_room(
         })?;
 
     info!("going through send_knock response knock state events");
-
-    // TODO: how to handle this? snpase save this state to unsigned field.
-    let knock_state = send_knock_body
-        .knock_room_state
-        .iter()
-        .map(|event| serde_json::from_str::<CanonicalJsonObject>(event.clone().into_inner().get()))
-        .filter_map(Result::ok);
-
-    let mut state_map = HashMap::new();
-
-    for value in knock_state {
-        let Some(state_key) = value.get("state_key") else {
-            warn!("send_knock stripped state event missing state_key: {value:?}");
-            continue;
-        };
-        let Some(event_type) = value.get("type") else {
-            warn!("send_knock stripped state event missing event type: {value:?}");
-            continue;
-        };
-
-        let Ok(_state_key) = serde_json::from_value::<String>(state_key.clone().into()) else {
-            warn!("send_knock stripped state event has invalid state_key: {value:?}");
-            continue;
-        };
-        let Ok(_event_type) = serde_json::from_value::<StateEventType>(event_type.clone().into())
-        else {
-            warn!("send_knock stripped state event has invalid event type: {value:?}");
-            continue;
-        };
-
-        let pdu = if let Some(pdu) = timeline::get_pdu(&event_id).optional()? {
-            pdu
-        } else {
-            let (_event_sn, guard) = ensure_event_sn(room_id, &event_id)?;
-            println!("============lLLLLLLLLLL event_id:{event_id}  value: {value:#?}=============");
-            diesel::update(event_points::table.filter(event_points::event_id.eq(&event_id)))
-                .set(event_points::stripped_data.eq(serde_json::to_value(value)?))
-                .execute(&mut crate::data::connect()?)?;
-            drop(guard);
-            timeline::get_pdu_or_stripped(&event_id)?
-        };
-
-        if let Some(state_key) = &pdu.state_key {
-            let state_key_id = state::ensure_field_id(&pdu.event_ty.to_string().into(), state_key)?;
-            state_map.insert(state_key_id, (pdu.event_id.clone(), pdu.event_sn));
-        }
-    }
 
     info!("appending room knock event locally");
     let event_id = parsed_knock_pdu.event_id.clone();
@@ -288,6 +242,7 @@ pub async fn knock_room(
         soft_failed: false,
         backfilled: false,
     };
+    println!("========append_to_timeline pdu 6  frame_id");
     timeline::append_pdu(
         &knock_pdu,
         knock_event,
@@ -296,40 +251,6 @@ pub async fn knock_room(
     )
     .await?;
 
-    info!("compressing state from send_knock");
-    let compressed = state_map
-        .into_iter()
-        .map(|(k, (_event_id, event_sn))| Ok(CompressedEvent::new(k, event_sn)))
-        .collect::<AppResult<_>>()?;
-
-    debug!("saving compressed state");
-    let DeltaInfo {
-        frame_id,
-        appended,
-        disposed,
-    } = state::save_state(room_id, Arc::new(compressed))?;
-
-    debug!("forcing state for new room");
-    state::force_state(room_id, frame_id, appended, disposed)?;
-
-    let frame_id = state::append_to_state(&knock_pdu)?;
-
-    info!("updating membership locally to knock state with provided stripped state events");
-    println!("================knock_room_state: {:#?}", send_knock_body.knock_room_state);
-    crate::membership::update_membership(
-        &event_id,
-        knock_pdu.event_sn,
-        room_id,
-        sender_id,
-        MembershipState::Knock,
-        sender_id,
-        Some(send_knock_body.knock_room_state),
-    )?;
-
-    info!("setting final room state for new room");
-    // We set the room state after inserting the pdu, so that we never have a moment
-    // in time where events in the current room state do not exist
-    let _ = state::set_room_state(room_id, frame_id);
     drop(event_guard);
     Ok(Some(knock_pdu))
 }

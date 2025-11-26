@@ -370,7 +370,7 @@ pub(super) async fn sign_json(ctx: &Context<'_>) -> AppResult<()> {
     .await
 }
 
-pub(super) async fn verify_json(ctx: &Context<'_>) -> AppResult<()> {
+pub(super) async fn verify_json(ctx: &Context<'_>, room_version: &RoomVersionId) -> AppResult<()> {
     if ctx.body.len() < 2 || !ctx.body[0].trim().starts_with("```") || ctx.body.last().unwrap_or(&"").trim() != "```" {
         return Err(AppError::public(
             "Expected code block in command body. Add --help for details.",
@@ -380,7 +380,7 @@ pub(super) async fn verify_json(ctx: &Context<'_>) -> AppResult<()> {
     let string = ctx.body[1..ctx.body.len().checked_sub(1).unwrap()].join("\n");
     match serde_json::from_str::<CanonicalJsonObject>(&string) {
         Err(e) => return Err(AppError::public(format!("invalid json: {e}"))),
-        Ok(value) => match crate::server_key::verify_json(&value, None).await {
+        Ok(value) => match crate::server_key::verify_json(&value, room_version).await {
             Err(e) => return Err(AppError::public(format!("signature verification failed: {e}"))),
             Ok(()) => write!(ctx, "Signature correct"),
         },
@@ -388,7 +388,7 @@ pub(super) async fn verify_json(ctx: &Context<'_>) -> AppResult<()> {
     .await
 }
 
-pub(super) async fn verify_pdu(ctx: &Context<'_>, event_id: OwnedEventId) -> AppResult<()> {
+pub(super) async fn verify_pdu(ctx: &Context<'_>, event_id: OwnedEventId, room_version: &RoomVersionId) -> AppResult<()> {
     use crate::core::signatures::Verified;
 
     let Some(mut event) = timeline::get_pdu_json(&event_id)? else {
@@ -396,7 +396,7 @@ pub(super) async fn verify_pdu(ctx: &Context<'_>, event_id: OwnedEventId) -> App
     };
 
     event.remove("event_id");
-    let msg = match crate::server_key::verify_event(&event, None).await {
+    let msg = match crate::server_key::verify_event(&event, room_version).await {
         Err(e) => return Err(e),
         Ok(Verified::Signatures) => "signatures OK, but content hash failed (redaction).",
         Ok(Verified::All) => "signatures and hashes OK.",
