@@ -451,7 +451,7 @@ pub fn copy_push_rules_from_room_to_room(
             AnyPushRuleRef::Room(rule) => {
                 println!("Found room rule: {:?}", rule);
                 let new_rule = NewPushRule::Room(NewSimplePushRule::new(
-                    rule.rule_id.clone(),
+                    new_room_id.to_owned(),
                     rule.actions.clone(),
                 ));
                 new_rules.push(new_rule);
