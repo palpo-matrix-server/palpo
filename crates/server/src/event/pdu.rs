@@ -225,6 +225,16 @@ impl SnPduEvent {
             topological_ordering: self.depth as i64,
         }
     }
+    pub fn prev_historic_token(&self) -> BatchToken {
+        BatchToken::Historic {
+            stream_ordering: if self.backfilled {
+                -self.event_sn - 1
+            } else {
+                self.event_sn - 1
+            },
+            topological_ordering: self.depth as i64,
+        }
+    }
 }
 impl AsRef<PduEvent> for SnPduEvent {
     fn as_ref(&self) -> &PduEvent {

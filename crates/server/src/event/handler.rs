@@ -505,10 +505,6 @@ pub async fn process_to_timeline_pdu(
         resolve_state_at_incoming(&incoming_pdu, room_id, &version_rules).await?;
     let state_at_incoming_event = if let Some(state_at_incoming_event) = state_at_incoming_event {
         state_at_incoming_event
-    } else if incoming_pdu.soft_failed {
-        return Err(AppError::internal(
-            "cannot process soft-failed event without state at event",
-        ));
     } else {
         fetch_and_process_missing_state(
             remote_server,

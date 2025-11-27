@@ -1,5 +1,6 @@
 use diesel::prelude::*;
 use indexmap::IndexMap;
+use palpo_data::print_query;
 
 use crate::core::client::filter::{RoomEventFilter, UrlFilter};
 use crate::core::identifiers::*;
@@ -76,7 +77,7 @@ pub fn load_pdus(
                         stream_ordering,
                     } => {
                         query = query.filter(
-                            events::topological_ordering.ge(topological_ordering).or(
+                            events::topological_ordering.gt(topological_ordering).or(
                                 events::topological_ordering
                                     .eq(topological_ordering)
                                     .and(events::stream_ordering.ge(stream_ordering)),
@@ -95,7 +96,7 @@ pub fn load_pdus(
                         stream_ordering,
                     } => {
                         query = query.filter(
-                            events::topological_ordering.le(topological_ordering).or(
+                            events::topological_ordering.lt(topological_ordering).or(
                                 events::topological_ordering
                                     .eq(topological_ordering)
                                     .and(events::stream_ordering.le(stream_ordering)),
@@ -115,7 +116,7 @@ pub fn load_pdus(
                         stream_ordering,
                     } => {
                         query = query.filter(
-                            events::topological_ordering.le(topological_ordering).or(
+                            events::topological_ordering.lt(topological_ordering).or(
                                 events::topological_ordering
                                     .eq(topological_ordering)
                                     .and(events::stream_ordering.le(stream_ordering)),
@@ -127,7 +128,7 @@ pub fn load_pdus(
             if let Some(until_tk) = until_tk {
                 if let Some(topological_ordering) = until_tk.topological_ordering() {
                     query = query.filter(
-                        events::topological_ordering.ge(topological_ordering).or(
+                        events::topological_ordering.gt(topological_ordering).or(
                             events::topological_ordering
                                 .eq(topological_ordering)
                                 .and(events::stream_ordering.ge(until_tk.stream_ordering())),
@@ -170,25 +171,28 @@ pub fn load_pdus(
                 query = query.filter(events::ty.eq_any(types));
             }
         }
-        let events: Vec<(OwnedEventId, Seqnum)> = if dir == Direction::Forward {
+        println!("CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCc0");
+        let events: Vec<(OwnedEventId, Seqnum, i64)> = if dir == Direction::Forward {
+            println!("CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCc1");
             query
                 .order(events::topological_ordering.asc())
                 .offset(offset)
                 .limit(utils::usize_to_i64(limit))
-                .select((events::id, events::sn))
-                .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
+                .select((events::id, events::sn, events::stream_ordering))
+                .load::<(OwnedEventId, Seqnum, i64)>(&mut connect()?)?
                 .into_iter()
                 .rev()
                 .collect()
         } else {
-            let query = query
+            query = query
                 .order(events::topological_ordering.desc())
                 .offset(offset)
-                .limit(utils::usize_to_i64(limit))
-                .select((events::id, events::sn));
-            crate::data::print_query!(&query);
+                .limit(utils::usize_to_i64(limit));
+            println!("CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCc2");
+            print_query!(&query);
             query
-                .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
+                .select((events::id, events::sn, events::stream_ordering))
+                .load::<(OwnedEventId, Seqnum, i64)>(&mut connect()?)?
                 .into_iter()
                 .collect()
         };
@@ -198,7 +202,8 @@ pub fn load_pdus(
         let count = events.len();
         offset += count as i64;
 
-        for (event_id, event_sn) in events {
+        println!("======================================xx=======events: {events:?}");
+        for (event_id, event_sn, _) in events {
             if let Ok(mut pdu) = super::get_pdu(&event_id) {
                 if let Some(user_id) = user_id {
                     if !pdu.user_can_see(user_id)? {
