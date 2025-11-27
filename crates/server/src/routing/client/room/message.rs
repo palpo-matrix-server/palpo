@@ -156,8 +156,6 @@ pub(super) async fn get_messages(
                 )?;
             }
 
-            println!("==========args: {args:?} ====events: {events:?}");
-
             for (_, event) in &events {
                 /* TODO: Remove this when these are resolved:
                  * https://github.com/vector-im/element-android/issues/3417

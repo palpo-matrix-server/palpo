@@ -171,9 +171,7 @@ pub fn load_pdus(
                 query = query.filter(events::ty.eq_any(types));
             }
         }
-        println!("CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCc0");
         let events: Vec<(OwnedEventId, Seqnum, i64)> = if dir == Direction::Forward {
-            println!("CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCc1");
             query
                 .order(events::topological_ordering.asc())
                 .offset(offset)
@@ -188,7 +186,6 @@ pub fn load_pdus(
                 .order(events::topological_ordering.desc())
                 .offset(offset)
                 .limit(utils::usize_to_i64(limit));
-            println!("CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCc2");
             print_query!(&query);
             query
                 .select((events::id, events::sn, events::stream_ordering))
@@ -202,7 +199,6 @@ pub fn load_pdus(
         let count = events.len();
         offset += count as i64;
 
-        println!("======================================xx=======events: {events:?}");
         for (event_id, event_sn, _) in events {
             if let Ok(mut pdu) = super::get_pdu(&event_id) {
                 if let Some(user_id) = user_id {
