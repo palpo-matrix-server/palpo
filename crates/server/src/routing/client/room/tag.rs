@@ -7,7 +7,9 @@ use crate::core::client::tag::{OperateTagReqArgs, TagsResBody, UpsertTagReqBody}
 use crate::core::events::RoomAccountDataEventType;
 use crate::core::events::tag::TagEventContent;
 use crate::core::user::UserRoomReqArgs;
-use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, data, empty_ok, json_ok};
+use crate::{
+    AuthArgs, DepotExt, EmptyResult, JsonResult, OptionalExtension, data, empty_ok, json_ok,
+};
 
 /// #GET /_matrix/client/r0/user/{user_id}/rooms/{room_idd}/tags
 /// Returns tags on the room.
@@ -25,10 +27,8 @@ pub(super) async fn list_tags(
         authed.user_id(),
         Some(&args.room_id),
         &RoomAccountDataEventType::Tag.to_string(),
-    )?
-    .unwrap_or_else(|| TagEventContent {
-        tags: BTreeMap::new(),
-    });
+    )
+    .unwrap_or_default();
 
     json_ok(TagsResBody {
         tags: user_data_content.tags,
@@ -52,10 +52,8 @@ pub(super) async fn upsert_tag(
         authed.user_id(),
         Some(&args.room_id),
         &RoomAccountDataEventType::Tag.to_string(),
-    )?
-    .unwrap_or_else(|| TagEventContent {
-        tags: BTreeMap::new(),
-    });
+    )
+    .unwrap_or_default();
 
     user_data_content
         .tags
@@ -86,10 +84,8 @@ pub(super) async fn delete_tag(
         authed.user_id(),
         Some(&args.room_id),
         &RoomAccountDataEventType::Tag.to_string(),
-    )?
-    .unwrap_or_else(|| TagEventContent {
-        tags: BTreeMap::new(),
-    });
+    )
+    .unwrap_or_default();
 
     user_data_content.tags.remove(&args.tag.clone().into());
 

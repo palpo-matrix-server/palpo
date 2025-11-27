@@ -467,6 +467,40 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
+    push_rule_streams (id) {
+        id -> Int8,
+        event_stream_ordering -> Int8,
+        user_id -> Text,
+        rule_id -> Text,
+        op -> Text,
+        priority_class -> Nullable<Int2>,
+        priority -> Nullable<Int4>,
+        conditions -> Nullable<Json>,
+        actions -> Nullable<Json>,
+        instance_name -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
+    push_rules (id) {
+        id -> Int8,
+        user_id -> Text,
+        rule_id -> Text,
+        priority_class -> Int4,
+        priority -> Int4,
+        conditions -> Json,
+        actions -> Json,
+        enabled -> Bool,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     room_aliases (alias_id) {
         alias_id -> Text,
         room_id -> Text,
@@ -544,8 +578,6 @@ diesel::table! {
         room_id -> Text,
         tag -> Text,
         content -> Json,
-        created_by -> Text,
-        created_at -> Int8,
     }
 }
 
@@ -1019,6 +1051,9 @@ diesel::table! {
         ty -> Nullable<Text>,
         is_admin -> Bool,
         is_guest -> Bool,
+        is_local -> Bool,
+        localpart -> Text,
+        server_name -> Text,
         appservice_id -> Nullable<Text>,
         shadow_banned -> Bool,
         consent_at -> Nullable<Int8>,
@@ -1065,6 +1100,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     media_thumbnails,
     media_url_previews,
     outgoing_requests,
+    push_rule_streams,
+    push_rules,
     room_aliases,
     room_joined_servers,
     room_lookup_servers,

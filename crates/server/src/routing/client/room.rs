@@ -564,6 +564,12 @@ async fn upgrade(
     )
     .await?;
 
+    let local_user_ids = room::user::local_users(&room_id)?;
+    for user_id in &local_user_ids {
+        room::user::copy_room_tags_and_direct_to_room(user_id, &room_id, &new_room_id)?;
+        room::user::copy_push_rules_from_room_to_room(user_id, &room_id, &new_room_id)?;
+    }
+
     // Return the replacement room id
     json_ok(UpgradeRoomResBody {
         replacement_room: new_room_id,

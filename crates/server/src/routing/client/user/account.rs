@@ -7,8 +7,10 @@ use crate::core::events::AnyGlobalAccountDataEventContent;
 use crate::core::identifiers::*;
 use crate::core::serde::{JsonValue, RawJson};
 use crate::core::user::{UserEventTypeReqArgs, UserRoomEventTypeReqArgs};
-use crate::data;
-use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, json_ok};
+use crate::{
+    AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, OptionalExtension, data, empty_ok,
+    json_ok,
+};
 
 #[derive(Deserialize)]
 struct ExtractGlobalEventContent {
@@ -26,7 +28,7 @@ pub(super) async fn get_global_data(
     let authed = depot.authed_info()?;
 
     let content =
-        data::user::get_data::<JsonValue>(authed.user_id(), None, &args.event_type.to_string())?
+        data::user::get_data::<JsonValue>(authed.user_id(), None, &args.event_type.to_string())
             .ok_or(MatrixError::not_found("User data not found."))?;
 
     json_ok(GlobalAccountDataResBody(RawJson::from_value(&content)?))
@@ -75,7 +77,8 @@ pub(super) async fn get_room_data(
         authed.user_id(),
         Some(&*args.room_id),
         &args.event_type.to_string(),
-    )?
+    )
+    .optional()?
     .ok_or(MatrixError::not_found("User data not found."))?;
 
     json_ok(RoomAccountDataResBody(RawJson::from_value(&content)?))

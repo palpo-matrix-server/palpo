@@ -15,6 +15,7 @@ pub use data::*;
 pub mod key;
 pub mod pusher;
 // pub mod push_rule;
+// pub mod push_rule::*;
 pub use key::*;
 pub mod key_backup;
 pub use key_backup::*;
@@ -41,6 +42,9 @@ pub struct DbUser {
     pub ty: Option<String>,
     pub is_admin: bool,
     pub is_guest: bool,
+    pub is_local: bool,
+    pub localpart: String,
+    pub server_name: String,
     pub appservice_id: Option<String>,
     pub shadow_banned: bool,
     pub consent_at: Option<UnixMillis>,
@@ -62,6 +66,9 @@ pub struct NewDbUser {
     pub ty: Option<String>,
     pub is_admin: bool,
     pub is_guest: bool,
+    pub is_local: bool,
+    pub localpart: String,
+    pub server_name: String,
     pub appservice_id: Option<String>,
     pub created_at: UnixMillis,
 }

@@ -145,7 +145,11 @@ pub(super) async fn get_messages(
                 Some(&args.filter),
                 limit,
             )?;
+            println!("================================before backfill_if_required");
             if timeline::backfill_if_required(&args.room_id, &events).await? {
+                println!(
+                    "================================before backfill_if_required back fill...."
+                );
                 events = timeline::topolo::load_pdus_backward(
                     Some(sender_id),
                     &args.room_id,
@@ -155,6 +159,7 @@ pub(super) async fn get_messages(
                     limit,
                 )?;
             }
+            println!("================================before backfill_if_required 2");
 
             for (_, event) in &events {
                 /* TODO: Remove this when these are resolved:

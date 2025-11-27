@@ -90,7 +90,7 @@ pub fn get_data<E: DeserializeOwned>(
     user_id: &UserId,
     room_id: Option<&RoomId>,
     kind: &str,
-) -> DataResult<Option<E>> {
+) -> DataResult<E> {
     let row = user_datas::table
         .filter(user_datas::user_id.eq(user_id))
         .filter(
@@ -100,13 +100,8 @@ pub fn get_data<E: DeserializeOwned>(
         )
         .filter(user_datas::data_type.eq(kind))
         .order_by(user_datas::id.desc())
-        .first::<DbUserData>(&mut connect()?)
-        .optional()?;
-    if let Some(row) = row {
-        Ok(Some(serde_json::from_value(row.json_data)?))
-    } else {
-        Ok(None)
-    }
+        .first::<DbUserData>(&mut connect()?)?;
+    Ok(serde_json::from_value(row.json_data)?)
 }
 
 /// Searches the account data for a specific kind.

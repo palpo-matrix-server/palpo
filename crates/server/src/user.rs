@@ -8,11 +8,12 @@ pub mod presence;
 // mod ldap;
 // pub use ldap::*;
 pub mod session;
+pub use presence::*;
 
 use std::mem;
 
 use diesel::prelude::*;
-pub use presence::*;
+use serde::de::DeserializeOwned;
 
 use crate::core::UnixMillis;
 use crate::core::events::GlobalAccountDataEventType;
@@ -24,7 +25,7 @@ use crate::data::schema::*;
 use crate::data::user::{DbUser, DbUserData, NewDbPassword, NewDbUser};
 use crate::data::{DataResult, connect};
 use crate::room::timeline;
-use crate::{AppError, AppResult, MatrixError, PduBuilder, data, room};
+use crate::{AppError, AppResult, IsRemoteOrLocal, MatrixError, PduBuilder, data, room};
 
 pub fn create_user(user_id: impl Into<OwnedUserId>, password: Option<&str>) -> AppResult<DbUser> {
     let user_id = user_id.into();
@@ -33,6 +34,9 @@ pub fn create_user(user_id: impl Into<OwnedUserId>, password: Option<&str>) -> A
         ty: None,
         is_admin: false,
         is_guest: password.is_none(),
+        is_local: user_id.is_local(),
+        localpart: user_id.localpart().to_owned(),
+        server_name: user_id.server_name().to_owned(),
         appservice_id: None,
         created_at: UnixMillis::now(),
     };
@@ -277,6 +281,23 @@ pub fn set_data(
 ) -> DataResult<DbUserData> {
     let user_data = data::user::set_data(user_id, room_id, event_type, json_data)?;
     Ok(user_data)
+}
+
+pub fn get_data<E: DeserializeOwned>(
+    user_id: &UserId,
+    room_id: Option<&RoomId>,
+    kind: &str,
+) -> DataResult<E> {
+    let data = data::user::get_data::<E>(user_id, room_id, kind)?;
+    Ok(data)
+}
+
+pub fn get_global_datas(user_id: &UserId) -> DataResult<Vec<DbUserData>> {
+    let datas = user_datas::table
+        .filter(user_datas::user_id.eq(user_id))
+        .filter(user_datas::room_id.is_null())
+        .load::<DbUserData>(&mut connect()?)?;
+    Ok(datas)
 }
 
 pub async fn delete_all_media(user_id: &UserId) -> AppResult<i64> {
