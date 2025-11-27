@@ -479,12 +479,7 @@ async fn send_leave(
         false,
     )
     .await?;
-    if let Err(e) = crate::sending::send_pdu_room(
-        &args.room_id,
-        &event_id,
-        &[],
-        &[],
-    ) {
+    if let Err(e) = crate::sending::send_pdu_room(&args.room_id, &event_id, &[], &[]) {
         error!("failed to notify leave event: {e}");
     }
     empty_ok()

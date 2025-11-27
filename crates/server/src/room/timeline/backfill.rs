@@ -77,7 +77,7 @@ pub async fn backfill_if_required(
         return Ok(false);
     };
 
-        println!("backfill_if_required: will backfill");
+    println!("backfill_if_required: will backfill");
     let admin_servers = room::admin_servers(room_id, false)?;
 
     let room_version = room::get_version(room_id)?;

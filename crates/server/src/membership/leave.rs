@@ -2,7 +2,6 @@ use std::borrow::Borrow;
 use std::collections::HashSet;
 use std::iter::once;
 
-
 use salvo::http::StatusError;
 
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
@@ -15,7 +14,9 @@ use crate::data::room::{DbEventData, NewDbEvent};
 use crate::event::{PduBuilder, ensure_event_sn};
 use crate::membership::federation::membership::{SendLeaveReqArgsV2, send_leave_request_v2};
 use crate::room::{self, state, timeline};
-use crate::{AppError, AppResult, GetUrlOrigin, MatrixError, PduEvent, SnPduEvent, config, data, membership};
+use crate::{
+    AppError, AppResult, GetUrlOrigin, MatrixError, PduEvent, SnPduEvent, config, data, membership,
+};
 
 // Make a user leave all their joined rooms
 pub async fn leave_all_rooms(user_id: &UserId) -> AppResult<()> {

@@ -72,9 +72,7 @@ pub async fn resolve_state(
             .iter()
             .map(|set| set.iter().map(|id| id.to_owned()).collect::<HashSet<_>>())
             .collect::<Vec<_>>(),
-        &async |id| {
-            timeline::get_pdu(&id).map_err(|_| StateError::other("missing pdu 4"))
-        },
+        &async |id| timeline::get_pdu(&id).map_err(|_| StateError::other("missing pdu 4")),
         |map| {
             let mut subgraph = HashSet::new();
             for event_ids in map.values() {

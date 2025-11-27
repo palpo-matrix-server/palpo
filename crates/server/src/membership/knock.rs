@@ -18,8 +18,7 @@ use crate::data::room::NewDbEvent;
 use crate::event::{PduBuilder, PduEvent, ensure_event_sn, fetching, gen_event_id, handler};
 use crate::room::{self, state, timeline};
 use crate::{
-    AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, SnPduEvent,
-    config, sending,
+    AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, SnPduEvent, config, sending,
 };
 
 pub async fn knock_room(
