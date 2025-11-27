@@ -270,12 +270,13 @@ pub fn invite_state(
     user_id: &UserId,
     room_id: &RoomId,
 ) -> AppResult<Vec<RawJson<AnyStrippedStateEvent>>> {
-    if let Ok(state) = room_users::table
+    if let Some(state) = room_users::table
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::room_id.eq(room_id))
         .filter(room_users::membership.eq(MembershipState::Invite.to_string()))
         .select(room_users::state_data)
         .first::<Option<JsonValue>>(&mut connect()?)
+        .unwrap_or_default()
     {
         Ok(serde_json::from_value(state)?)
     } else {
@@ -369,7 +370,7 @@ pub fn copy_room_tags_and_direct_to_room(
     old_room_id: &RoomId,
     new_room_id: &RoomId,
 ) -> AppResult<()> {
-    let Ok(direct_rooms) = crate::user::get_data::<IndexMap<String, Vec<OwnedRoomId>>>(
+    let Ok(mut direct_rooms) = crate::user::get_data::<IndexMap<String, Vec<OwnedRoomId>>>(
         user_id,
         None,
         &GlobalAccountDataEventType::Direct.to_string(),
