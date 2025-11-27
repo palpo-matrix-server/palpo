@@ -18,9 +18,6 @@ use crate::{PduBuilder, room};
 
 /// #GET /_matrix/client/r0/rooms/{room_id}/messages
 /// Allows paginating through room history.
-///
-/// - Only works if the user is joined (TODO: always allow, but only show events where the user was
-/// joined, depending on history_visibility)
 #[endpoint]
 pub(super) async fn get_messages(
     _aa: AuthArgs,
@@ -175,7 +172,7 @@ pub(super) async fn get_messages(
                 lazy_loaded.insert(event.sender.clone());
             }
 
-            next_token = events.last().map(|(_, pdu)| pdu.live_token());
+            next_token = events.last().map(|(_, pdu)| pdu.prev_historic_token());
             resp.start = from_tk.to_string();
             resp.end = next_token.map(|tk| tk.to_string());
             resp.chunk = events.values().map(|pdu| pdu.to_room_event()).collect();
