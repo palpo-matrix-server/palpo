@@ -36,6 +36,24 @@ pub struct NewDbRoom {
     pub created_at: UnixMillis,
 }
 
+#[derive(Insertable, Identifiable, Queryable, Debug, Clone)]
+#[diesel(table_name = room_tags)]
+pub struct DbRoomTag {
+    pub id: i64,
+    pub user_id: OwnedUserId,
+    pub room_id: OwnedRoomId,
+    pub tag: String,
+    pub content: JsonValue,
+}
+#[derive(Insertable, Debug, Clone)]
+#[diesel(table_name = room_tags)]
+pub struct NewDbRoomTag {
+    pub user_id: OwnedUserId,
+    pub room_id: OwnedRoomId,
+    pub tag: String,
+    pub content: JsonValue,
+}
+
 #[derive(Insertable, Identifiable, Queryable, AsChangeset, Debug, Clone)]
 #[diesel(table_name = stats_room_currents, primary_key(room_id))]
 pub struct DbRoomCurrent {

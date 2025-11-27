@@ -13,7 +13,9 @@ use crate::core::push::{
 use crate::core::push::{
     NewConditionalPushRule, NewPatternedPushRule, NewPushRule, NewSimplePushRule, RuleKind,
 };
-use crate::{DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, hoops, json_ok};
+use crate::{
+    DepotExt, EmptyResult, JsonResult, MatrixError, OptionalExtension, empty_ok, hoops, json_ok,
+};
 
 pub fn authed_router() -> Router {
     Router::with_path("pushrules")
@@ -132,8 +134,8 @@ async fn set_rule(args: SetRuleReqArgs, req: &mut Request, depot: &mut Depot) ->
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
-    )?
-    .ok_or(MatrixError::not_found("PushRules event not found."))?;
+    )
+    .unwrap_or_default();
 
     if let Err(error) =
         user_data_content
@@ -224,8 +226,8 @@ async fn list_rules(depot: &mut Depot) -> JsonResult<RulesResBody> {
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
-    )?
-    .ok_or(MatrixError::not_found("push rules event not found"))?;
+    )
+    .unwrap_or_default();
 
     json_ok(RulesResBody {
         global: user_data_content.global,
@@ -251,8 +253,8 @@ async fn get_actions(
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
-    )?
-    .ok_or(MatrixError::not_found("PushRules event not found."))?;
+    )
+    .unwrap_or_default();
 
     let actions = user_data_content
         .global
@@ -283,8 +285,8 @@ fn set_actions(
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
-    )?
-    .ok_or(MatrixError::not_found("push rules event not found"))?;
+    )
+    .map_err(|_| MatrixError::not_found("push rules event not found"))?;
 
     if user_data_content
         .global
@@ -320,8 +322,7 @@ fn get_enabled(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> JsonResult<Rule
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
-    )?
-    .ok_or(MatrixError::not_found("PushRules event not found."))?;
+    )?;
 
     let enabled = user_data_content
         .global
@@ -352,8 +353,7 @@ fn set_enabled(
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
-    )?
-    .ok_or(MatrixError::not_found("push rule event not found"))?;
+    )?;
 
     if user_data_content
         .global

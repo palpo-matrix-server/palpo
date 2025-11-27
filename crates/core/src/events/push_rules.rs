@@ -11,7 +11,7 @@ use crate::push::Ruleset;
 /// The content of an `m.push_rules` event.
 ///
 /// Describes all push rules for a user.
-#[derive(ToSchema, Deserialize, Serialize, Clone, Debug, EventContent)]
+#[derive(ToSchema, Deserialize, Serialize, Clone, Default, Debug, EventContent)]
 #[palpo_event(type = "m.push_rules", kind = GlobalAccountData)]
 pub struct PushRulesEventContent {
     /// The global ruleset.

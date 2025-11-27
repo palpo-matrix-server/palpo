@@ -64,13 +64,20 @@ pub async fn backfill_if_required(
         prev_event = event_id;
     }
 
+    println!(
+        "backfill_if_required: number_of_gaps={}, found_big_gap={} fill_from={:?}",
+        number_of_gaps, found_big_gap, fill_from
+    );
     if number_of_gaps < 3 && !found_big_gap {
+        println!("backfill_if_required: no need to backfill");
         return Ok(false);
     };
     let Some(fill_from) = fill_from else {
+        println!("backfill_if_required: no need to backfill2");
         return Ok(false);
     };
 
+        println!("backfill_if_required: will backfill");
     let admin_servers = room::admin_servers(room_id, false)?;
 
     let room_version = room::get_version(room_id)?;

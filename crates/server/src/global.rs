@@ -194,6 +194,9 @@ pub fn appservices() -> &'static Vec<Registration> {
                         ty: None,
                         is_admin: false,
                         is_guest: false,
+                        is_local: true,
+                        localpart: user_id.localpart().to_owned(),
+                        server_name: user_id.server_name().to_owned(),
                         appservice_id: Some(registration.id.clone()),
                         created_at: UnixMillis::now(),
                     })

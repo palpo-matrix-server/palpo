@@ -9,7 +9,10 @@ use crate::core::{
 };
 use crate::room::timeline;
 use crate::user::full_user_deactivate;
-use crate::{AppError, AppResult, IsRemoteOrLocal, PduBuilder, config, data, membership, utils};
+use crate::{
+    AppError, AppResult, IsRemoteOrLocal, OptionalExtension, PduBuilder, config, data, membership,
+    utils,
+};
 
 const AUTO_GEN_PASSWORD_LENGTH: usize = 25;
 const BULK_JOIN_REASON: &str = "Bulk force joining this room as initiated by the server admin.";
@@ -638,7 +641,7 @@ pub(super) async fn put_room_tag(
         &user_id,
         Some(&room_id),
         &RoomAccountDataEventType::Tag.to_string(),
-    )?
+    )
     .unwrap_or_default();
 
     tags_event_content
@@ -669,7 +672,7 @@ pub(super) async fn delete_room_tag(
         &user_id,
         Some(&room_id),
         &RoomAccountDataEventType::Tag.to_string(),
-    )?
+    )
     .unwrap_or_default();
 
     tags_event_content.tags.remove(&tag.clone().into());
@@ -698,7 +701,7 @@ pub(super) async fn get_room_tags(
         &user_id,
         Some(&room_id),
         &RoomAccountDataEventType::Tag.to_string(),
-    )?
+    )
     .unwrap_or_default();
 
     ctx.write_str(&format!("```\n{:#?}\n```", tags_event_content.tags))

@@ -176,12 +176,12 @@ pub fn update_membership(
                     };
 
                     // Copy direct chat flag
-                    if let Some(mut direct_event_content) =
+                    if let Ok(mut direct_event_content) =
                         crate::data::user::get_data::<DirectEventContent>(
                             user_id,
                             None,
                             &GlobalAccountDataEventType::Direct.to_string(),
-                        )?
+                        )
                     {
                         let mut room_ids_updated = false;
 
