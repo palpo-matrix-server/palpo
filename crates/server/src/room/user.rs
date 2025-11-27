@@ -275,7 +275,7 @@ pub fn invite_state(
         .filter(room_users::room_id.eq(room_id))
         .filter(room_users::membership.eq(MembershipState::Invite.to_string()))
         .select(room_users::state_data)
-        .first::<Option<JsonValue>>(&mut connect()?).ok().flatten()
+        .first::<Option<JsonValue>>(&mut connect()?)
     {
         Ok(serde_json::from_value(state)?)
     } else {
@@ -346,7 +346,7 @@ pub fn get_tags(user_id: &UserId, room_id: &RoomId) -> AppResult<Vec<DbRoomTag>>
     let tags = room_tags::table
         .filter(room_tags::user_id.eq(user_id))
         .filter(room_tags::room_id.eq(room_id))
-        .load::<DbRoomTag>(&mut connect()?);
+        .load::<DbRoomTag>(&mut connect()?)?;
     Ok(tags)
 }
 pub fn local_users(room_id: &RoomId) -> AppResult<Vec<OwnedUserId>> {
@@ -369,21 +369,21 @@ pub fn copy_room_tags_and_direct_to_room(
     old_room_id: &RoomId,
     new_room_id: &RoomId,
 ) -> AppResult<()> {
-    let Some(direct_rooms) = crate::user::get_data::<IndexMap<String, Vec<OwnedRoomId>>>(
+    let Ok(direct_rooms) = crate::user::get_data::<IndexMap<String, Vec<OwnedRoomId>>>(
         user_id,
         None,
-        AccountDataTypes::Direct.as_str(),
-    )
-    .optional()?
-    else {
+        &GlobalAccountDataEventType::Direct.to_string(),
+    ) else {
         return Ok(());
     };
 
+    let old_room_id = old_room_id.to_owned();
     for (key, room_ids) in direct_rooms.iter_mut() {
-        if room_ids.contains(old_room_id) {
-            room_ids.retain(|r| r != old_room_id);
-            if !room_ids.contains(new_room_id) {
-                room_ids.push(new_room_id.clone());
+        if room_ids.contains(&old_room_id) {
+            room_ids.retain(|r| r != &old_room_id);
+            let new_room_id = new_room_id.to_owned();
+            if !room_ids.contains(&new_room_id) {
+                room_ids.push(new_room_id);
             }
         }
     }
@@ -391,11 +391,11 @@ pub fn copy_room_tags_and_direct_to_room(
     crate::user::set_data(
         user_id,
         None,
-        AccountDataTypes::Direct.as_str(),
+        &GlobalAccountDataEventType::Direct.to_string(),
         serde_json::to_value(direct_rooms)?,
     )?;
 
-    let room_tags = get_tags(user_id, old_room_id)?;
+    let room_tags = get_tags(user_id, &old_room_id)?;
     for tag in room_tags {
         let DbRoomTag {
             user_id,
@@ -404,10 +404,10 @@ pub fn copy_room_tags_and_direct_to_room(
             ..
         } = tag;
         let new_tag = NewDbRoomTag {
-            user_id: user_id.to_owned(),
+            user_id,
             room_id: new_room_id.to_owned(),
-            tag: tag.tag.clone(),
-            content: tag.content.clone(),
+            tag,
+            content,
         };
         diesel::insert_into(room_tags::table)
             .values(&new_tag)
@@ -459,7 +459,7 @@ pub fn copy_push_rules_from_room_to_room(
         }
     }
     for new_rule in new_rules {
-        user_data_content.global.push(new_rule);
+        user_data_content.global.insert(new_rule, None, None);
     }
 
     crate::data::user::set_data(

@@ -194,7 +194,7 @@ async fn login(
                     is_guest: false,
                     is_local: user_id.server_name().is_local(),
                     localpart: user_id.localpart().to_string(),
-                    server_name: user_id.server_name().to_string(),
+                    server_name: user_id.server_name().to_owned(),
                     appservice_id: None,
                     created_at: UnixMillis::now(),
                 };

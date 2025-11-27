@@ -1141,7 +1141,7 @@ async fn create_or_get_user(
     let new_user = crate::data::user::NewDbUser {
         is_local: parsed_user_id.server_name().is_local(),
         localpart: parsed_user_id.localpart().to_string(),
-        server_name: parsed_user_id.server_name().to_string(),
+        server_name: parsed_user_id.server_name().to_owned(),
         id: parsed_user_id,
         ty: Some("oidc".to_string()),
         is_admin: false,

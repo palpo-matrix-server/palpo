@@ -253,7 +253,8 @@ async fn get_actions(
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
-    ).unwrap_or_default();
+    )
+    .unwrap_or_default();
 
     let actions = user_data_content
         .global
@@ -285,8 +286,7 @@ fn set_actions(
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
     )
-    .optional()?
-    .ok_or(MatrixError::not_found("push rules event not found"))?;
+    .map_err(|_| MatrixError::not_found("push rules event not found"))?;
 
     if user_data_content
         .global
@@ -322,9 +322,7 @@ fn get_enabled(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> JsonResult<Rule
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
-    )
-    .optional()?
-    .ok_or(MatrixError::not_found("PushRules event not found."))?;
+    )?;
 
     let enabled = user_data_content
         .global
@@ -355,9 +353,7 @@ fn set_enabled(
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
-    )
-    .optional()?
-    .ok_or(MatrixError::not_found("push rule event not found"))?;
+    )?;
 
     if user_data_content
         .global

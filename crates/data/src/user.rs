@@ -44,7 +44,7 @@ pub struct DbUser {
     pub is_guest: bool,
     pub is_local: bool,
     pub localpart: String,
-    pub server_name: String,
+    pub server_name: OwnedServerName,
     pub appservice_id: Option<String>,
     pub shadow_banned: bool,
     pub consent_at: Option<UnixMillis>,
@@ -68,7 +68,7 @@ pub struct NewDbUser {
     pub is_guest: bool,
     pub is_local: bool,
     pub localpart: String,
-    pub server_name: String,
+    pub server_name: OwnedServerName,
     pub appservice_id: Option<String>,
     pub created_at: UnixMillis,
 }

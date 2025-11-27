@@ -29,7 +29,7 @@ pub(super) async fn get_global_data(
 
     let content =
         data::user::get_data::<JsonValue>(authed.user_id(), None, &args.event_type.to_string())
-            .ok_or(MatrixError::not_found("User data not found."))?;
+            .map_err(|_| MatrixError::not_found("user data not found"))?;
 
     json_ok(GlobalAccountDataResBody(RawJson::from_value(&content)?))
 }
@@ -78,8 +78,7 @@ pub(super) async fn get_room_data(
         Some(&*args.room_id),
         &args.event_type.to_string(),
     )
-    .optional()?
-    .ok_or(MatrixError::not_found("User data not found."))?;
+    .map_err(|_| MatrixError::not_found("user data not found"))?;
 
     json_ok(RoomAccountDataResBody(RawJson::from_value(&content)?))
 }
