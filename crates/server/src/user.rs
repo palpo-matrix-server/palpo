@@ -25,7 +25,15 @@ use crate::data::schema::*;
 use crate::data::user::{DbUser, DbUserData, NewDbPassword, NewDbUser};
 use crate::data::{DataResult, connect};
 use crate::room::timeline;
-use crate::{AppError, AppResult, IsRemoteOrLocal, MatrixError, PduBuilder, data, room};
+use crate::{AppError, AppResult, IsRemoteOrLocal, MatrixError, PduBuilder, config, data, room};
+
+pub fn is_username_available(username: &str) -> AppResult<bool> {
+    let user_id = UserId::parse(format!("@{}:{}", username, config::server_name()))
+        .map_err(|_| AppError::internal("invalid username format"))?;
+    user_id.validate_strict()?;
+    let available = !data::user::user_exists(&user_id)?;
+    Ok(available)
+}
 
 pub fn create_user(user_id: impl Into<OwnedUserId>, password: Option<&str>) -> AppResult<DbUser> {
     let user_id = user_id.into();
