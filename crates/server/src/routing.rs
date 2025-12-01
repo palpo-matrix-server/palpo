@@ -1,3 +1,4 @@
+mod admin;
 mod appservice;
 mod client;
 mod federation;
@@ -41,6 +42,7 @@ pub fn root() -> Router {
                 .push(identity::router())
                 .push(appservice::router()),
         )
+        .push(admin::router())
         .push(
             Router::with_path(".well-known/matrix")
                 .push(Router::with_path("client").get(well_known_client))
