@@ -1,5 +1,4 @@
-mod background_update;
-mod device;
+mod event;
 mod federation;
 mod media;
 mod register;
@@ -8,7 +7,6 @@ mod scheduled_task;
 mod server_notice;
 mod statistic;
 mod user;
-mod event;
 
 use std::collections::BTreeMap;
 
@@ -32,8 +30,7 @@ pub fn router() -> Router {
     for v in ["_palpo/admin", "_synapse/admin"] {
         admin = admin.push(
             Router::with_path(v)
-                .push(background_update::router())
-                .push(device::router())
+                .get(home)
                 .push(event::router())
                 .push(federation::router())
                 .push(media::router())
@@ -46,4 +43,9 @@ pub fn router() -> Router {
         )
     }
     admin
+}
+
+#[handler]
+async fn home() -> &'static str {
+    "Palpo Admin API"
 }
