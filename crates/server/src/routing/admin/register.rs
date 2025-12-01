@@ -29,10 +29,9 @@ struct AvailableResBody {
 fn check_username_available(
     _aa: AuthArgs,
     username: QueryParam<String, true>,
-    depot: &mut Depot,
 ) -> JsonResult<AvailableResBody> {
-    if user::is_username_available(&username)? {
-        Err(MatrixError::user_in_use("desired user id is already taken").into())
+    if !user::is_username_available(&username)? {
+        Err(MatrixError::user_in_use("desired user id is invalid or already taken").into())
     } else {
         json_ok(AvailableResBody { available: true })
     }
