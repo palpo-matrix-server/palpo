@@ -460,7 +460,9 @@ pub fn copy_push_rules_from_room_to_room(
         }
     }
     for new_rule in new_rules {
-        user_data_content.global.insert(new_rule, None, None);
+        if let Err(e) = user_data_content.global.insert(new_rule, None, None) {
+            error!("failed to insert copied push rule: {}", e);
+        }
     }
 
     crate::data::user::set_data(
