@@ -257,7 +257,6 @@ fn set_read_markers(
         let mut receipt_content = BTreeMap::new();
         receipt_content.insert(event.to_owned(), receipts);
 
-            println!("=============receipt_content 1: {:?}", receipt_content);
         room::receipt::update_read(
             sender_id,
             &room_id,
@@ -265,7 +264,7 @@ fn set_read_markers(
                 content: ReceiptEventContent(receipt_content),
                 room_id: room_id.clone(),
             },
-            true
+            true,
         )?;
         let event_sn = crate::event::get_event_sn(event)?;
         push_action::remove_actions_until(sender_id, &room_id, event_sn, None)?;

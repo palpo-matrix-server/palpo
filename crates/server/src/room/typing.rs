@@ -19,7 +19,12 @@ pub static TYPING_UPDATE_SENDER: LazyLock<broadcast::Sender<OwnedRoomId>> =
 
 /// Sets a user as typing until the timeout timestamp is reached or roomremove_typing is
 /// called.
-pub async fn add_typing(user_id: &UserId, room_id: &RoomId, timeout: u64, broadcast: bool) -> AppResult<()> {
+pub async fn add_typing(
+    user_id: &UserId,
+    room_id: &RoomId,
+    timeout: u64,
+    broadcast: bool,
+) -> AppResult<()> {
     TYPING
         .write()
         .await

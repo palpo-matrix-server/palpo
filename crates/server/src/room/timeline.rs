@@ -448,8 +448,16 @@ where
             if let Some(new_room_id) = content.replacement_room {
                 let local_user_ids = super::user::local_users(&pdu.room_id)?;
                 for user_id in &local_user_ids {
-                    super::user::copy_room_tags_and_direct_to_room(user_id, &pdu.room_id, &new_room_id)?;
-                    super::user::copy_push_rules_from_room_to_room(user_id, &pdu.room_id, &new_room_id)?;
+                    super::user::copy_room_tags_and_direct_to_room(
+                        user_id,
+                        &pdu.room_id,
+                        &new_room_id,
+                    )?;
+                    super::user::copy_push_rules_from_room_to_room(
+                        user_id,
+                        &pdu.room_id,
+                        &new_room_id,
+                    )?;
                 }
             }
         }

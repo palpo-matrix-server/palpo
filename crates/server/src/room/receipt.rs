@@ -22,21 +22,18 @@ pub fn update_read(
     event: &ReceiptEvent,
     broadcast: bool,
 ) -> AppResult<()> {
-    println!("============update_read 1>>>>>: {}", event.content.len());
     for (event_id, receipts) in event.content.clone() {
         let Ok(event_sn) = crate::event::get_event_sn(&event_id) else {
             continue;
         };
-        println!("============update_read 2>>>>>: {}", receipts.len());
+        let mut conn = connect()?;
         for (receipt_ty, user_receipts) in receipts {
-            println!("============update_read 3>>>>>: {}", user_receipts.len());
             if let Some(receipt) = user_receipts.get(user_id) {
                 let thread_id = match &receipt.thread {
                     crate::core::events::receipt::ReceiptThread::Thread(id) => Some(id.clone()),
                     _ => None,
                 };
                 let receipt_at = receipt.ts.unwrap_or_else(UnixMillis::now);
-                println!("=============receipt user_updates 3   thread_id: {thread_id:?}");
                 let receipt = DbReceipt {
                     sn: next_sn()?,
                     ty: receipt_ty.to_string(),
@@ -48,11 +45,12 @@ pub fn update_read(
                     json_data: serde_json::to_value(receipt)?,
                     receipt_at,
                 };
-                println!("=============receipt user_updates 3  --1 {receipt:?}");
-                diesel::insert_into(event_receipts::table)
+                if let Err(e) = diesel::insert_into(event_receipts::table)
                     .values(&receipt)
-                    .execute(&mut connect()?)?;
-                println!("=============receipt user_updates 4");
+                    .execute(&mut conn)
+                {
+                    error!("failed to insert receipt: {}", e);
+                }
             }
         }
     }
@@ -67,7 +65,6 @@ pub fn update_read(
             ),
         )])),
     )]);
-    println!("=============sending receipt edu: {:?}", receipts);
     let edu = Edu::Receipt(ReceiptContent::new(receipts));
     if broadcast {
         sending::send_edu_room(room_id, &edu)?;
