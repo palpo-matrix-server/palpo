@@ -95,14 +95,14 @@ rustyline-async = { version = "0.4.7" }
 regex = "1.12.2"
 reqwest = { version = "0.12.24", features = ["json"] }
 ring = "0.17.14"
-salvo = { version = "0.84.2" }
+salvo = { version = "0.85.0" }
 sanitize-filename = "0.6.0"
 scheduled-thread-pool = "0.2.0"
 secrecy = "0.10.3"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_html_form = "0.2.8"
 serde_json = { version = "1.0.145" }
-serde_yaml = { version = "0.9.32" }
+serde-saphyr = { version = "0.0.10" }
 serde_regex = { version = "1.1.0" }
 smallvec = { version = "1.15.1" }
 sha2 = "0.10.8"
