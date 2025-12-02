@@ -53,7 +53,7 @@ pub(super) async fn register(ctx: &Context<'_>) -> AppResult<()> {
 
     let range = 1..(body_len - 1);
     let appservice_config_body = body[range].join("\n");
-    let parsed_config = serde_yaml::from_str::<Registration>(&appservice_config_body);
+    let parsed_config = serde_saphyr::from_str::<Registration>(&appservice_config_body);
     match parsed_config {
         Err(e) => {
             return Err(AppError::public(format!(
@@ -93,7 +93,7 @@ pub(super) async fn show_appservice_config(
     match crate::appservice::get_registration(&appservice_identifier)? {
         None => return Err(AppError::public("Appservice does not exist.")),
         Some(config) => {
-            let config_str = serde_yaml::to_string(&config)?;
+            let config_str = serde_saphyr::to_string(&config)?;
             write!(
                 ctx,
                 "Config for {appservice_identifier}:\n\n```yaml\n{config_str}\n```"

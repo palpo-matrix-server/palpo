@@ -84,7 +84,7 @@ scheduled-thread-pool = { workspace = true }
 secrecy = { workspace = true }
 serde = { workspace = true, features = ["derive", "rc"] }
 serde_json = { workspace = true }
-serde_yaml = { workspace = true }
+serde-saphyr = { workspace = true }
 sha1 = { workspace = true }
 smallvec = { workspace = true }
 strum = { workspace = true }
