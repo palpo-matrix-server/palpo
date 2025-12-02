@@ -302,8 +302,8 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
-    event_receipts (id) {
-        id -> Int8,
+    event_receipts (sn) {
+        sn -> Int8,
         ty -> Text,
         room_id -> Text,
         user_id -> Text,

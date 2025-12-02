@@ -9,24 +9,36 @@ use crate::core::events::receipt::{
 };
 use crate::core::federation::transaction::Edu;
 use crate::core::identifiers::*;
-use crate::data::connect;
-use crate::data::room::NewDbReceipt;
+use crate::data::room::DbReceipt;
 use crate::data::schema::*;
+use crate::data::{connect, next_sn};
 use crate::{AppResult, sending};
 
 /// Replaces the previous read receipt.
 #[tracing::instrument]
-pub fn update_read(user_id: &UserId, room_id: &RoomId, event: &ReceiptEvent) -> AppResult<()> {
+pub fn update_read(
+    user_id: &UserId,
+    room_id: &RoomId,
+    event: &ReceiptEvent,
+    broadcast: bool,
+) -> AppResult<()> {
+    println!("============update_read 1>>>>>: {}", event.content.len());
     for (event_id, receipts) in event.content.clone() {
-        let event_sn = crate::event::get_event_sn(&event_id)?;
+        let Ok(event_sn) = crate::event::get_event_sn(&event_id) else {
+            continue;
+        };
+        println!("============update_read 2>>>>>: {}", receipts.len());
         for (receipt_ty, user_receipts) in receipts {
+            println!("============update_read 3>>>>>: {}", user_receipts.len());
             if let Some(receipt) = user_receipts.get(user_id) {
                 let thread_id = match &receipt.thread {
                     crate::core::events::receipt::ReceiptThread::Thread(id) => Some(id.clone()),
                     _ => None,
                 };
                 let receipt_at = receipt.ts.unwrap_or_else(UnixMillis::now);
-                let receipt = NewDbReceipt {
+                println!("=============receipt user_updates 3   thread_id: {thread_id:?}");
+                let receipt = DbReceipt {
+                    sn: next_sn()?,
                     ty: receipt_ty.to_string(),
                     room_id: room_id.to_owned(),
                     user_id: user_id.to_owned(),
@@ -36,9 +48,11 @@ pub fn update_read(user_id: &UserId, room_id: &RoomId, event: &ReceiptEvent) -> 
                     json_data: serde_json::to_value(receipt)?,
                     receipt_at,
                 };
+                println!("=============receipt user_updates 3  --1 {receipt:?}");
                 diesel::insert_into(event_receipts::table)
                     .values(&receipt)
                     .execute(&mut connect()?)?;
+                println!("=============receipt user_updates 4");
             }
         }
     }
@@ -53,8 +67,11 @@ pub fn update_read(user_id: &UserId, room_id: &RoomId, event: &ReceiptEvent) -> 
             ),
         )])),
     )]);
+    println!("=============sending receipt edu: {:?}", receipts);
     let edu = Edu::Receipt(ReceiptContent::new(receipts));
-    sending::send_edu_room(room_id, &edu)?;
+    if broadcast {
+        sending::send_edu_room(room_id, &edu)?;
+    }
     Ok(())
 }
 
@@ -64,7 +81,7 @@ pub fn last_private_read(user_id: &UserId, room_id: &RoomId) -> AppResult<Receip
         .filter(event_receipts::room_id.eq(room_id))
         .filter(event_receipts::user_id.eq(user_id))
         .filter(event_receipts::ty.eq(ReceiptType::ReadPrivate.to_string()))
-        .order_by(event_receipts::id.desc())
+        .order_by(event_receipts::sn.desc())
         .select(event_receipts::event_id)
         .first::<OwnedEventId>(&mut connect()?)?;
 

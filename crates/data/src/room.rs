@@ -122,23 +122,10 @@ pub struct DbRoomStateDelta {
     pub disposed: Vec<u8>,
 }
 
-#[derive(Identifiable, Queryable, Debug, Clone)]
-#[diesel(table_name = event_receipts)]
+#[derive(Identifiable, Insertable, AsChangeset, Queryable, Debug, Clone)]
+#[diesel(table_name = event_receipts, primary_key(sn))]
 pub struct DbReceipt {
-    pub id: i64,
-    pub ty: String,
-    pub room_id: OwnedRoomId,
-    pub user_id: OwnedUserId,
-    pub event_id: OwnedEventId,
-    pub event_sn: Seqnum,
-    pub thread_id: Option<OwnedEventId>,
-    pub json_data: JsonValue,
-    pub receipt_at: UnixMillis,
-}
-
-#[derive(Insertable, AsChangeset, Debug, Clone)]
-#[diesel(table_name = event_receipts)]
-pub struct NewDbReceipt {
+    pub sn: Seqnum,
     pub ty: String,
     pub room_id: OwnedRoomId,
     pub user_id: OwnedUserId,

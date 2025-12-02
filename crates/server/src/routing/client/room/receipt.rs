@@ -23,6 +23,7 @@ pub(super) fn send_receipt(
     body: JsonBody<CreateReceiptReqBody>,
     depot: &mut Depot,
 ) -> EmptyResult {
+    println!("===================cccccccccccccc send_receipt called");
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
     let body = body.into_inner();
@@ -63,13 +64,14 @@ pub(super) fn send_receipt(
             let mut receipt_content = BTreeMap::new();
             receipt_content.insert(args.event_id.clone(), receipts);
 
+            println!("=============receipt_content 0: {:?}", receipt_content);
             room::receipt::update_read(
                 sender_id,
                 &args.room_id,
                 &ReceiptEvent {
                     content: ReceiptEventContent(receipt_content),
                     room_id: args.room_id.clone(),
-                },
+                },true
             )?;
             push_action::remove_actions_until(sender_id, &args.room_id, event_sn, thread_id)?;
         }
@@ -92,5 +94,6 @@ pub(super) fn send_receipt(
     ) {
         push_action::refresh_notify_summary(sender_id, &args.room_id)?;
     }
+    println!("===================cccccccccccccc send_receipt done");
     empty_ok()
 }

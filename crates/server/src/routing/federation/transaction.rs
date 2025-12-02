@@ -122,6 +122,7 @@ async fn process_pdus(
 }
 
 async fn process_edus(edus: Vec<Edu>, origin: &ServerName) {
+    println!("=============process_edus: {:#?}", edus);
     for edu in edus {
         match edu {
             Edu::Presence(presence) => process_edu_presence(origin, presence).await,
@@ -131,7 +132,7 @@ async fn process_edus(edus: Vec<Edu>, origin: &ServerName) {
             Edu::DirectToDevice(content) => process_edu_direct_to_device(origin, content).await,
             Edu::SigningKeyUpdate(content) => process_edu_signing_key_update(origin, content).await,
             Edu::_Custom(ref _custom) => {
-                warn!("received custom/unknown EDU");
+                warn!("received custom/unknown edu");
             }
         }
     }
@@ -146,7 +147,7 @@ async fn process_edu_presence(origin: &ServerName, presence: PresenceContent) {
         if update.user_id.server_name() != origin {
             warn!(
                 %update.user_id, %origin,
-                "received presence EDU for user not belonging to origin"
+                "received presence edu for user not belonging to origin"
             );
             continue;
         }
@@ -174,6 +175,7 @@ async fn process_edu_receipt(origin: &ServerName, receipt: ReceiptContent) {
     // 	return;
     // }
 
+    println!("=============process_edu_receipt: {:?}", receipt);
     for (room_id, room_updates) in receipt {
         if handler::acl_check(origin, &room_id).is_err() {
             warn!(
@@ -184,19 +186,21 @@ async fn process_edu_receipt(origin: &ServerName, receipt: ReceiptContent) {
         }
 
         for (user_id, user_updates) in room_updates.read {
-            if user_id.server_name() != origin {
-                warn!(
-                    %user_id, %origin,
-                    "received read receipt edu for user not belonging to origin"
-                );
-                continue;
-            }
+            // if user_id.server_name() != origin {
+            //     warn!(
+            //         %user_id, %origin,
+            //         "received read receipt edu for user not belonging to origin"
+            //     );
+            //     continue;
+            // }
 
+            println!("=============receipt user_updates 0: {:?}", user_updates);
             if room::joined_users(&room_id, None)
                 .unwrap_or_default()
                 .iter()
                 .any(|member| member.server_name() == user_id.server_name())
             {
+            println!("=============receipt user_updates 1");
                 for event_id in &user_updates.event_ids {
                     let user_receipts =
                         BTreeMap::from([(user_id.clone(), user_updates.data.clone())]);
@@ -207,7 +211,8 @@ async fn process_edu_receipt(origin: &ServerName, receipt: ReceiptContent) {
                         room_id: room_id.clone(),
                     };
 
-                    let _ = room::receipt::update_read(&user_id, &room_id, &event);
+            println!("=============receipt user_updates 2");
+                    let _ = room::receipt::update_read(&user_id, &room_id, &event, false);
                 }
             } else {
                 warn!(
@@ -249,9 +254,9 @@ async fn process_edu_typing(origin: &ServerName, typing: TypingContent) {
                     .federation_timeout
                     .saturating_mul(1000),
             );
-            let _ = room::typing::add_typing(&typing.user_id, &typing.room_id, timeout).await;
+            let _ = room::typing::add_typing(&typing.user_id, &typing.room_id, timeout, false).await;
         } else {
-            let _ = room::typing::remove_typing(&typing.user_id, &typing.room_id).await;
+            let _ = room::typing::remove_typing(&typing.user_id, &typing.room_id, false).await;
         }
     } else {
         warn!(
