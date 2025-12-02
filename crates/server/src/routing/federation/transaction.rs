@@ -131,7 +131,7 @@ async fn process_edus(edus: Vec<Edu>, origin: &ServerName) {
             Edu::DirectToDevice(content) => process_edu_direct_to_device(origin, content).await,
             Edu::SigningKeyUpdate(content) => process_edu_signing_key_update(origin, content).await,
             Edu::_Custom(ref _custom) => {
-                warn!("received custom/unknown EDU");
+                warn!("received custom/unknown edu");
             }
         }
     }
@@ -146,7 +146,7 @@ async fn process_edu_presence(origin: &ServerName, presence: PresenceContent) {
         if update.user_id.server_name() != origin {
             warn!(
                 %update.user_id, %origin,
-                "received presence EDU for user not belonging to origin"
+                "received presence edu for user not belonging to origin"
             );
             continue;
         }
@@ -184,13 +184,13 @@ async fn process_edu_receipt(origin: &ServerName, receipt: ReceiptContent) {
         }
 
         for (user_id, user_updates) in room_updates.read {
-            if user_id.server_name() != origin {
-                warn!(
-                    %user_id, %origin,
-                    "received read receipt edu for user not belonging to origin"
-                );
-                continue;
-            }
+            // if user_id.server_name() != origin {
+            //     warn!(
+            //         %user_id, %origin,
+            //         "received read receipt edu for user not belonging to origin"
+            //     );
+            //     continue;
+            // }
 
             if room::joined_users(&room_id, None)
                 .unwrap_or_default()
@@ -207,7 +207,7 @@ async fn process_edu_receipt(origin: &ServerName, receipt: ReceiptContent) {
                         room_id: room_id.clone(),
                     };
 
-                    let _ = room::receipt::update_read(&user_id, &room_id, &event);
+                    let _ = room::receipt::update_read(&user_id, &room_id, &event, false);
                 }
             } else {
                 warn!(
@@ -249,9 +249,10 @@ async fn process_edu_typing(origin: &ServerName, typing: TypingContent) {
                     .federation_timeout
                     .saturating_mul(1000),
             );
-            let _ = room::typing::add_typing(&typing.user_id, &typing.room_id, timeout).await;
+            let _ =
+                room::typing::add_typing(&typing.user_id, &typing.room_id, timeout, false).await;
         } else {
-            let _ = room::typing::remove_typing(&typing.user_id, &typing.room_id).await;
+            let _ = room::typing::remove_typing(&typing.user_id, &typing.room_id, false).await;
         }
     } else {
         warn!(

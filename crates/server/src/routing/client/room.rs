@@ -264,6 +264,7 @@ fn set_read_markers(
                 content: ReceiptEventContent(receipt_content),
                 room_id: room_id.clone(),
             },
+            true,
         )?;
         let event_sn = crate::event::get_event_sn(event)?;
         push_action::remove_actions_until(sender_id, &room_id, event_sn, None)?;
@@ -413,7 +414,7 @@ async fn upgrade(
 
     // Send a m.room.tombstone event to the old room to indicate that it is not intended to be used any further
     // Fail if the sender does not have the required permissions
-    let tombstone_event_id = timeline::build_and_append_pdu(
+    timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomTombstone,
             content: to_raw_value(&RoomTombstoneEventContent {
@@ -428,9 +429,7 @@ async fn upgrade(
         &crate::room::get_version(&room_id)?,
         &state_lock,
     )
-    .await?
-    .pdu
-    .event_id;
+    .await?;
 
     // // Use the m.room.tombstone event as the predecessor
     // let predecessor = Some(crate::core::events::room::create::PreviousRoom::new(

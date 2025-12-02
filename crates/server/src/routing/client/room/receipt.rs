@@ -70,6 +70,7 @@ pub(super) fn send_receipt(
                     content: ReceiptEventContent(receipt_content),
                     room_id: args.room_id.clone(),
                 },
+                true,
             )?;
             push_action::remove_actions_until(sender_id, &args.room_id, event_sn, thread_id)?;
         }

@@ -8,9 +8,9 @@ use crate::core::events::receipt::{Receipt, ReceiptEventContent, ReceiptType};
 use crate::core::identifiers::*;
 use crate::core::serde::JsonValue;
 use crate::core::{Seqnum, UnixMillis};
-use crate::room::{DbReceipt, NewDbReceipt};
-use crate::schema::*;
+use crate::room::DbReceipt;
 use crate::{DataResult, connect};
+use crate::{next_sn, schema::*};
 
 /// Returns an iterator over the most recent read_receipts in a room that happened after the event with id `since`.
 pub fn read_receipts(
@@ -19,9 +19,9 @@ pub fn read_receipts(
 ) -> DataResult<BTreeMap<OwnedUserId, ReceiptEventContent>> {
     let _list: Vec<(OwnedUserId, Seqnum, RawJson<AnySyncEphemeralRoomEvent>)> = Vec::new();
     let receipts = event_receipts::table
-        .filter(event_receipts::event_sn.ge(since_sn))
+        .filter(event_receipts::sn.ge(since_sn))
         .filter(event_receipts::room_id.eq(room_id))
-        .order_by(event_receipts::id.desc())
+        .order_by(event_receipts::sn.desc())
         .load::<DbReceipt>(&mut connect()?)?;
     let unthread_receipts = receipts
         .iter()
@@ -76,7 +76,8 @@ pub fn set_private_read(
     event_sn: Seqnum,
 ) -> DataResult<()> {
     diesel::insert_into(event_receipts::table)
-        .values(&NewDbReceipt {
+        .values(&DbReceipt {
+            sn: next_sn()?,
             ty: ReceiptType::ReadPrivate.to_string(),
             room_id: room_id.to_owned(),
             user_id: user_id.to_owned(),

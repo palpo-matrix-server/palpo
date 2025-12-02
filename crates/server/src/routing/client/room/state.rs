@@ -277,10 +277,11 @@ pub async fn send_typing(
             authed.user_id(),
             &args.room_id,
             duration.as_millis() as u64 + UnixMillis::now().get(),
+            true,
         )
         .await?;
     } else {
-        room::typing::remove_typing(authed.user_id(), &args.room_id).await?;
+        room::typing::remove_typing(authed.user_id(), &args.room_id, true).await?;
     }
     empty_ok()
 }

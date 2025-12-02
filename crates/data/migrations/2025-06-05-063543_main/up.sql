@@ -722,7 +722,7 @@ CREATE TABLE IF NOT EXISTS event_relations
 
 DROP TABLE IF EXISTS event_receipts CASCADE;
 CREATE TABLE event_receipts (
-    id bigserial NOT NULL PRIMARY KEY,
+    sn bigint NOT NULL PRIMARY KEY,
     ty text NOT NULL,
     room_id text NOT NULL,
     user_id text NOT NULL,

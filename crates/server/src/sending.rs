@@ -236,7 +236,7 @@ pub fn send_edu_servers<S: Iterator<Item = OwnedServerName>>(
     edu: &Edu,
 ) -> AppResult<()> {
     let mut serialized = EduBuf::new();
-    serde_json::to_writer(&mut serialized, &edu).expect("Serialized Edu");
+    serde_json::to_writer(&mut serialized, &edu).expect("serialized edu");
 
     let requests = servers
         .into_iter()
@@ -264,7 +264,7 @@ pub fn send_edu_servers<S: Iterator<Item = OwnedServerName>>(
 #[tracing::instrument(skip(server, edu), level = "debug")]
 pub fn send_edu_server(server: &ServerName, edu: &Edu) -> AppResult<()> {
     let mut serialized = EduBuf::new();
-    serde_json::to_writer(&mut serialized, &edu).expect("Serialized Edu");
+    serde_json::to_writer(&mut serialized, &edu).expect("serialized edu");
 
     let outgoing_kind = OutgoingKind::Normal(server.to_owned());
     let event = SendingEventType::Edu(serialized.to_owned());
@@ -279,7 +279,7 @@ pub fn send_edu_server(server: &ServerName, edu: &Edu) -> AppResult<()> {
 #[tracing::instrument(skip(server, edu))]
 pub fn send_reliable_edu(server: &ServerName, edu: &Edu, id: &str) -> AppResult<()> {
     let mut serialized = EduBuf::new();
-    serde_json::to_writer(&mut serialized, &edu).expect("Serialized Edu");
+    serde_json::to_writer(&mut serialized, &edu).expect("serialized edu");
 
     let outgoing_kind = OutgoingKind::Normal(server.to_owned());
     let event = SendingEventType::Edu(serialized);

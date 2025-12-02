@@ -19,7 +19,12 @@ pub static TYPING_UPDATE_SENDER: LazyLock<broadcast::Sender<OwnedRoomId>> =
 
 /// Sets a user as typing until the timeout timestamp is reached or roomremove_typing is
 /// called.
-pub async fn add_typing(user_id: &UserId, room_id: &RoomId, timeout: u64) -> AppResult<()> {
+pub async fn add_typing(
+    user_id: &UserId,
+    room_id: &RoomId,
+    timeout: u64,
+    broadcast: bool,
+) -> AppResult<()> {
     TYPING
         .write()
         .await
@@ -44,14 +49,14 @@ pub async fn add_typing(user_id: &UserId, room_id: &RoomId, timeout: u64) -> App
 
     let _ = TYPING_UPDATE_SENDER.send(room_id.to_owned());
 
-    if user_id.is_local() {
+    if broadcast && user_id.is_local() {
         federation_send(room_id, user_id, true).await.ok();
     }
     Ok(())
 }
 
 /// Removes a user from typing before the timeout is reached.
-pub async fn remove_typing(user_id: &UserId, room_id: &RoomId) -> AppResult<()> {
+pub async fn remove_typing(user_id: &UserId, room_id: &RoomId, broadcast: bool) -> AppResult<()> {
     TYPING
         .write()
         .await
@@ -64,7 +69,7 @@ pub async fn remove_typing(user_id: &UserId, room_id: &RoomId) -> AppResult<()> 
         .insert(room_id.to_owned(), data::next_sn()?);
     let _ = TYPING_UPDATE_SENDER.send(room_id.to_owned());
 
-    if user_id.is_local() {
+    if broadcast && user_id.is_local() {
         federation_send(room_id, user_id, false).await.ok();
     }
     Ok(())
