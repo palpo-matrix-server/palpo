@@ -85,7 +85,7 @@ pub enum AppError {
     #[error("CargoTomlError: `{0}`")]
     CargoToml(#[from] cargo_toml::Error),
     #[error("YamlError: `{0}`")]
-    Yaml(#[from] serde_saphyr::Error),
+    Yaml(#[from] serde_saphyr::ser_error::Error),
     #[error("Command error: `{0}`")]
     Clap(#[from] clap::Error),
     #[error("SystemTimeError: `{0}`")]
