@@ -253,6 +253,7 @@ pub fn get_allowed_master_key(
     let key_data = e2e_cross_signing_keys::table
         .filter(e2e_cross_signing_keys::user_id.eq(user_id))
         .filter(e2e_cross_signing_keys::key_type.eq("master"))
+        .order_by(e2e_cross_signing_keys::id.desc())
         .select(e2e_cross_signing_keys::key_data)
         .first::<JsonValue>(&mut connect()?)
         .optional()?;
@@ -268,6 +269,7 @@ pub fn get_self_signing_key(user_id: &UserId) -> AppResult<Option<CrossSigningKe
     let key_data = e2e_cross_signing_keys::table
         .filter(e2e_cross_signing_keys::user_id.eq(user_id))
         .filter(e2e_cross_signing_keys::key_type.eq("self_signing"))
+        .order_by(e2e_cross_signing_keys::id.desc())
         .select(e2e_cross_signing_keys::key_data)
         .first::<JsonValue>(&mut connect()?)
         .optional()?;
@@ -285,6 +287,7 @@ pub fn get_allowed_self_signing_key(
     let key_data = e2e_cross_signing_keys::table
         .filter(e2e_cross_signing_keys::user_id.eq(user_id))
         .filter(e2e_cross_signing_keys::key_type.eq("self_signing"))
+        .order_by(e2e_cross_signing_keys::id.desc())
         .select(e2e_cross_signing_keys::key_data)
         .first::<JsonValue>(&mut connect()?)
         .optional()?;
@@ -300,6 +303,7 @@ pub fn get_user_signing_key(user_id: &UserId) -> AppResult<Option<CrossSigningKe
     e2e_cross_signing_keys::table
         .filter(e2e_cross_signing_keys::user_id.eq(user_id))
         .filter(e2e_cross_signing_keys::key_type.eq("user_signing"))
+        .order_by(e2e_cross_signing_keys::id.desc())
         .select(e2e_cross_signing_keys::key_data)
         .first::<JsonValue>(&mut connect()?)
         .map(|data| serde_json::from_value(data).ok())

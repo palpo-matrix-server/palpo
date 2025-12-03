@@ -1,10 +1,8 @@
-{"Action":"fail","Test":"TestFederationRedactSendsWithoutEvent"}
 {"Action":"fail","Test":"TestInboundFederationRejectsEventsWithRejectedAuthEvents"}
 {"Action":"fail","Test":"TestJumpToDateEndpoint"}
 {"Action":"fail","Test":"TestJumpToDateEndpoint/parallel"}
 {"Action":"fail","Test":"TestJumpToDateEndpoint/parallel/federation"}
 {"Action":"fail","Test":"TestJumpToDateEndpoint/parallel/federation/can_paginate_after_getting_remote_event_from_timestamp_to_event_endpoint"}
-{"Action":"fail","Test":"TestMSC3967"}
 {"Action":"fail","Test":"TestMessagesOverFederation"}
 {"Action":"fail","Test":"TestMessagesOverFederation/Visible_shared_history_after_re-joining_room_(backfill)"}
 {"Action":"fail","Test":"TestMessagesOverFederation/Visible_shared_history_after_re-joining_room_(backfill)/`messagesRequestLimit`_is_lower_than_the_number_of_messages_backfilled_(assumed)"}
@@ -141,6 +139,7 @@
 {"Action":"pass","Test":"TestFederationKeyUploadQuery"}
 {"Action":"pass","Test":"TestFederationKeyUploadQuery/Can_claim_remote_one_time_key_using_POST"}
 {"Action":"pass","Test":"TestFederationKeyUploadQuery/Can_query_remote_device_keys_using_POST"}
+{"Action":"pass","Test":"TestFederationRedactSendsWithoutEvent"}
 {"Action":"pass","Test":"TestFederationRejectInvite"}
 {"Action":"pass","Test":"TestFederationRoomsInvite"}
 {"Action":"pass","Test":"TestFederationRoomsInvite/Parallel"}
@@ -291,6 +290,7 @@
 {"Action":"pass","Test":"TestLogout/Can_logout_current_device"}
 {"Action":"pass","Test":"TestLogout/Request_to_logout_with_invalid_an_access_token_is_rejected"}
 {"Action":"pass","Test":"TestLogout/Request_to_logout_without_an_access_token_is_rejected"}
+{"Action":"pass","Test":"TestMSC3967"}
 {"Action":"pass","Test":"TestMSC4289PrivilegedRoomCreators"}
 {"Action":"pass","Test":"TestMSC4289PrivilegedRoomCreators/PL_event_is_missing_creator_in_users_map"}
 {"Action":"pass","Test":"TestMSC4289PrivilegedRoomCreators/admin_with_>PL100_cannot_kick_creator"}
