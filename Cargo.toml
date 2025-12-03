@@ -140,3 +140,7 @@ result_large_err = "allow"
 type_complexity = "allow"
 too_many_arguments = "allow"
 large_enum_variant = "allow"
+
+[profile.release]
+codegen-units = 1
+lto = true
