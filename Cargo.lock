@@ -3339,7 +3339,7 @@ dependencies = [
 
 [[package]]
 name = "palpo"
-version = "0.1.6"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3424,7 +3424,7 @@ dependencies = [
 
 [[package]]
 name = "palpo-core"
-version = "0.1.6"
+version = "0.2.0"
 dependencies = [
  "as_variant",
  "assert_matches2",
@@ -3491,7 +3491,7 @@ dependencies = [
 
 [[package]]
 name = "palpo-core-macros"
-version = "0.1.6"
+version = "0.2.0"
 dependencies = [
  "palpo-identifiers-validation",
  "proc-macro-crate",
@@ -3504,7 +3504,7 @@ dependencies = [
 
 [[package]]
 name = "palpo-data"
-version = "0.1.6"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3572,14 +3572,14 @@ dependencies = [
 
 [[package]]
 name = "palpo-identifiers-validation"
-version = "0.1.6"
+version = "0.2.0"
 dependencies = [
  "thiserror 2.0.17",
 ]
 
 [[package]]
 name = "palpo-server-macros"
-version = "0.1.6"
+version = "0.2.0"
 dependencies = [
  "palpo-identifiers-validation",
  "proc-macro-crate",
