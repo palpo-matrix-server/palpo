@@ -355,9 +355,14 @@ impl ConditionalPushRule {
             rule_id: PredefinedOverrideRuleId::PollResponse.to_string(),
             default: true,
             enabled: true,
-            conditions: vec![EventPropertyIs {
+            // conditions: vec![EventPropertyIs {
+            //     key: "type".to_owned(),
+            //     value: "org.matrix.msc3381.poll.response".into(),
+            // }],
+            // complement test use event match
+            conditions: vec![EventMatch {
                 key: "type".to_owned(),
-                value: "org.matrix.msc3381.poll.response".into(),
+                pattern: "org.matrix.msc3381.poll.response".into(),
             }],
             actions: vec![],
         }
@@ -484,9 +489,14 @@ impl ConditionalPushRule {
                 RoomMemberCount {
                     is: RoomMemberCountIs::from(2),
                 },
-                EventPropertyIs {
-                    key: "type".to_owned(),
-                    value: "org.matrix.msc3381.poll.start".into(),
+                // complement test use event match
+                // EventPropertyIs {
+                //     key: "type".to_owned(),
+                //     value: "org.matrix.msc3381.poll.start".into(),
+                // },
+                EventMatch {
+                    key: "type".into(),
+                    pattern: "org.matrix.msc3381.poll.start".into(),
                 },
             ],
             actions: vec![
@@ -508,9 +518,14 @@ impl ConditionalPushRule {
             rule_id: PredefinedUnderrideRuleId::PollStart.to_string(),
             default: true,
             enabled: true,
-            conditions: vec![EventPropertyIs {
+            // conditions: vec![EventPropertyIs {
+            //     key: "type".to_owned(),
+            //     value: "org.matrix.msc3381.poll.start".into(),
+            // }],
+            // complement test use event match
+            conditions: vec![EventMatch {
                 key: "type".to_owned(),
-                value: "org.matrix.msc3381.poll.start".into(),
+                pattern: "org.matrix.msc3381.poll.start".into(),
             }],
             actions: vec![Action::Notify],
         }
@@ -532,9 +547,14 @@ impl ConditionalPushRule {
                 RoomMemberCount {
                     is: RoomMemberCountIs::from(2),
                 },
-                EventPropertyIs {
+                // complement test use event match
+                // EventPropertyIs {
+                //     key: "type".to_owned(),
+                //     value: "org.matrix.msc3381.poll.end".into(),
+                // },
+                EventMatch {
                     key: "type".to_owned(),
-                    value: "org.matrix.msc3381.poll.end".into(),
+                    pattern: "org.matrix.msc3381.poll.end".into(),
                 },
             ],
             actions: vec![
@@ -556,9 +576,14 @@ impl ConditionalPushRule {
             rule_id: PredefinedUnderrideRuleId::PollEnd.to_string(),
             default: true,
             enabled: true,
-            conditions: vec![EventPropertyIs {
+            // conditions: vec![EventPropertyIs {
+            //     key: "type".to_owned(),
+            //     value: "org.matrix.msc3381.poll.end".into(),
+            // }],
+            // complement test use event match
+            conditions: vec![EventMatch {
                 key: "type".to_owned(),
-                value: "org.matrix.msc3381.poll.end".into(),
+                pattern: "org.matrix.msc3381.poll.end".into(),
             }],
             actions: vec![Action::Notify],
         }

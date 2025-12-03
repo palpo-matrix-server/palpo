@@ -58,7 +58,7 @@ fn get_rule(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> JsonResult<RuleRes
         authed.user_id(),
         &GlobalAccountDataEventType::PushRules.to_string(),
     )?
-    .ok_or(MatrixError::not_found("PushRules event not found."))?;
+    .ok_or(MatrixError::not_found("push rule event not found."))?;
 
     let rule = user_data_content
         .global
