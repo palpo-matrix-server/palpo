@@ -416,7 +416,8 @@ pub async fn process_to_timeline_pdu(
             "cannot process rejected event to timeline",
         ));
     }
-    info!("process to timeline event {}", incoming_pdu.event_id);
+    debug!("process to timeline event {}", incoming_pdu.event_id);
+    println!("process to timeline event {:?}", incoming_pdu);
     let room_version_id = &room::get_version(room_id)?;
     let version_rules = crate::room::get_version_rules(room_version_id)?;
 
