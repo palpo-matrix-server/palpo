@@ -580,9 +580,9 @@ CREATE TABLE IF NOT EXISTS e2e_cross_signing_keys
     key_type text NOT NULL,
     key_data json NOT NULL
 );
-CREATE UNIQUE INDEX IF NOT EXISTS e2e_cross_signing_keys_udx
-    ON e2e_cross_signing_keys USING btree
-    (user_id ASC NULLS LAST, key_type ASC NULLS LAST);
+-- CREATE UNIQUE INDEX IF NOT EXISTS e2e_cross_signing_keys_udx
+--     ON e2e_cross_signing_keys USING btree
+--     (user_id ASC NULLS LAST, key_type ASC NULLS LAST);
 
 
 DROP TABLE IF EXISTS e2e_cross_signing_sigs CASCADE;
