@@ -4,6 +4,7 @@ mod federation;
 mod identity;
 mod media;
 mod push;
+mod synapse_admin;
 
 use salvo::prelude::*;
 use salvo::serve_static::StaticDir;
@@ -42,6 +43,7 @@ pub fn root() -> Router {
                 .push(appservice::router())
                 .push(push::router()),
         )
+        .push(synapse_admin::router())
         .push(
             Router::with_path(".well-known/matrix")
                 .push(Router::with_path("client").get(well_known_client))
