@@ -117,29 +117,6 @@ We use [Complement](https://github.com/matrix-org/complement) for comprehensive 
 - **Test Coverage**: Continuously improving compliance with Matrix spec
 - **Federation**: Active testing with other homeserver implementations
 
-### Supported Features
-
-✅ **Client-Server API**
-- User registration and authentication
-- Room creation and management
-- Message sending and retrieval
-- Typing indicators and read receipts
-- Presence tracking
-- Media upload and download
-- Search functionality
-
-✅ **Server-Server API (Federation)**
-- Event signing and verification
-- Room state resolution
-- Backfill and history visibility
-- Public room directory federation
-- Server key exchange
-
-✅ **End-to-End Encryption**
-- Device management
-- Key sharing and backup
-- Cross-signing support
-
 ---
 
 ## 🤝 Contributing
