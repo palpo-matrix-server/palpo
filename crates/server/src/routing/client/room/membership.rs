@@ -17,18 +17,19 @@ use crate::core::events::room::member::{MembershipState, RoomMemberEventContent}
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::query::{ProfileReqArgs, profile_request};
 use crate::core::identifiers::*;
+use crate::core::state::Event;
 use crate::core::user::ProfileResBody;
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::data::user::DbProfile;
-use crate::event::{PduBuilder, SnPduEvent};
+use crate::event::{BatchToken, PduBuilder, SnPduEvent};
 use crate::exts::*;
 use crate::membership::banned_room_check;
 use crate::room::{state, timeline};
 use crate::sending::send_federation_request;
 use crate::{
     AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, data, empty_ok,
-    json_ok, room, utils,
+    json_ok, room, sending, utils,
 };
 
 /// #POST /_matrix/client/r0/rooms/{room_id}/members
@@ -51,7 +52,7 @@ pub(super) fn get_members(
             Some(leave_sn)
         } else {
             return Err(MatrixError::forbidden(
-                "You don't have permission to view this room.",
+                "you don't have permission to view this room",
                 None,
             )
             .into());
@@ -60,26 +61,26 @@ pub(super) fn get_members(
         None
     };
 
-    let frame_id = if let Some(at_sn) = &args.at {
-        if let Ok(at_sn) = at_sn.parse::<Seqnum>() {
+    let frame_id = if let Some(at_tk) = &args.at {
+        if let Ok(at_tk) = at_tk.parse::<BatchToken>() {
             if let Some(usn) = until_sn {
-                until_sn = Some(usn.min(at_sn));
+                until_sn = Some(usn.min(at_tk.event_sn()));
             } else {
-                until_sn = Some(at_sn);
+                until_sn = Some(at_tk.event_sn());
             }
             event_points::table
                 .filter(event_points::room_id.eq(&args.room_id))
-                .filter(event_points::event_sn.le(at_sn))
+                .filter(event_points::event_sn.le(at_tk.event_sn()))
                 .filter(event_points::frame_id.is_not_null())
                 .order(event_points::frame_id.desc())
                 .select(event_points::frame_id)
                 .first::<Option<i64>>(&mut connect()?)?
                 .unwrap_or_default()
         } else {
-            return Err(MatrixError::bad_state("Invalid at parameter.").into());
+            return Err(MatrixError::bad_state("invalid at parameter").into());
         }
     } else {
-        crate::room::get_frame_id(&args.room_id, until_sn)?
+        crate::room::get_frame_id(&args.room_id, until_sn).unwrap_or_default()
     };
     let states: Vec<_> = state::get_full_state(frame_id)?
         .into_iter()
@@ -165,7 +166,7 @@ pub(super) fn joined_members(
     //     if let Ok(leave_sn) = crate::room::user::leave_sn(sender_id, &room_id) {
     //         Some(leave_sn)
     //     } else {
-    //         return Err(MatrixError::forbidden("You don't have permission to view this room.", None).into());
+    //         return Err(MatrixError::forbidden("you don't have permission to view this room", None).into());
     //     }
     // } else {
     //     None
@@ -173,7 +174,7 @@ pub(super) fn joined_members(
     // the sender user must be in the room
     if !state::user_can_see_events(sender_id, &room_id)? {
         return Err(
-            MatrixError::forbidden("You don't have permission to view this room.", None).into(),
+            MatrixError::forbidden("you don't have permission to view this room", None).into(),
         );
     }
 
@@ -534,7 +535,7 @@ pub(super) async fn ban_user(
         }
     };
 
-    timeline::build_and_append_pdu(
+    let pdu = timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&event).expect("event is valid, we just created it"),
@@ -547,6 +548,14 @@ pub(super) async fn ban_user(
         &state_lock,
     )
     .await?;
+    if let Err(e) = sending::send_pdu_room(
+        &room_id,
+        &pdu.event_id,
+        &[body.user_id.server_name().to_owned()],
+        &[],
+    ) {
+        error!("failed to notify banned user server: {e}");
+    }
 
     empty_ok()
 }
@@ -581,7 +590,7 @@ pub(super) async fn unban_user(
     event.membership = MembershipState::Leave;
     event.reason = body.reason.clone();
 
-    timeline::build_and_append_pdu(
+    let pdu = timeline::build_and_append_pdu(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,
             content: to_raw_value(&event).expect("event is valid, we just created it"),
@@ -594,6 +603,15 @@ pub(super) async fn unban_user(
         &state_lock,
     )
     .await?;
+
+    if let Err(e) = sending::send_pdu_room(
+        &room_id,
+        &pdu.event_id,
+        &[body.user_id.server_name().to_owned()],
+        &[],
+    ) {
+        error!("failed to notify banned user server: {e}");
+    }
 
     empty_ok()
 }
@@ -611,7 +629,12 @@ pub(super) async fn kick_user(
     let room_id = room_id.into_inner();
 
     let state_lock = room::lock_state(&room_id).await;
-    let Ok(event) = room::get_member(&room_id, &body.user_id) else {
+    let Ok(event) = room::get_state(
+        &room_id,
+        &StateEventType::RoomMember,
+        body.user_id.as_str(),
+        None,
+    ) else {
         return Err(MatrixError::forbidden(
             "users cannot kick users from a room they are not in",
             None,
@@ -619,21 +642,26 @@ pub(super) async fn kick_user(
         .into());
     };
 
+    let event_content: RoomMemberEventContent = event.get_content()?;
     if !matches!(
-        event.membership,
+        event_content.membership,
         MembershipState::Invite | MembershipState::Knock | MembershipState::Join,
     ) {
         return Err(MatrixError::forbidden(
             format!(
                 "cannot kick a user who is not apart of the room (current membership: {})",
-                event.membership
+                event_content.membership
             ),
             None,
         )
         .into());
     }
 
-    timeline::build_and_append_pdu(
+    if event_content.membership == MembershipState::Invite && event.sender() != authed.user_id() {
+        return empty_ok();
+    }
+
+    let pdu = timeline::build_and_append_pdu(
         PduBuilder::state(
             body.user_id.to_string(),
             &RoomMemberEventContent {
@@ -642,7 +670,7 @@ pub(super) async fn kick_user(
                 is_direct: None,
                 join_authorized_via_users_server: None,
                 third_party_invite: None,
-                ..event
+                ..event_content
             },
         ),
         authed.user_id(),
@@ -652,9 +680,19 @@ pub(super) async fn kick_user(
     )
     .await?;
 
+    if let Err(e) = sending::send_pdu_room(
+        &room_id,
+        &pdu.event_id,
+        &[body.user_id.server_name().to_owned()],
+        &[],
+    ) {
+        error!("failed to notify banned user server: {e}");
+    }
+
     empty_ok()
 }
 
+/// #POST /_matrix/client/v3/knock/{room_id_or_alias}
 #[endpoint]
 pub(crate) async fn knock_room(
     _aa: AuthArgs,
@@ -729,7 +767,7 @@ pub(crate) async fn knock_room(
             (room_id, servers)
         }
     };
-
     crate::membership::knock_room(sender_id, &room_id, body.reason.clone(), &servers).await?;
+
     empty_ok()
 }

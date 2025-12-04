@@ -5,8 +5,7 @@
 use crate::macros::StringEnum;
 
 use super::{
-    Action, ConditionalPushRule, PatternedPushRule, PushCondition::*, RoomMemberCountIs, RuleKind,
-    Ruleset, Tweak,
+    Action, ConditionalPushRule, PushCondition::*, RoomMemberCountIs, RuleKind, Ruleset, Tweak,
 };
 use crate::{PrivOwnedStr, UserId};
 
@@ -38,6 +37,12 @@ impl Ruleset {
                 ConditionalPushRule::suppress_edits(),
                 #[cfg(feature = "unstable-msc3930")]
                 ConditionalPushRule::poll_response(),
+            ]
+            .into(),
+            #[cfg(feature = "unstable-msc4306")]
+            postcontent: [
+                ConditionalPushRule::unsubscribed_thread(),
+                ConditionalPushRule::subscribed_thread(),
             ]
             .into(),
             underride: [
@@ -220,6 +225,7 @@ impl ConditionalPushRule {
         }
     }
 
+    // do not remove for complement test `TestThreadedReceipts`.
     /// Matches any message whose content is unencrypted and contains the user's current display
     /// name in the room in which it was sent.
     ///
@@ -279,29 +285,6 @@ impl ConditionalPushRule {
                 SenderNotificationPermission {
                     key: "room".to_owned(),
                 },
-            ],
-        }
-    }
-
-    /// Matches any message whose content is unencrypted and contains the text `@room`, signifying
-    /// the whole room should be notified of the event.
-    ///
-    /// Since Matrix 1.7, this rule only matches if the event's content does not contain an
-    /// `m.mentions` property.
-    #[deprecated = "Since Matrix 1.7. Use the m.mentions property with ConditionalPushRule::is_room_mention() instead."]
-    pub fn roomnotif() -> Self {
-        #[allow(deprecated)]
-        Self {
-            actions: vec![Action::Notify, Action::SetTweak(Tweak::Highlight(true))],
-            default: true,
-            enabled: true,
-            rule_id: PredefinedOverrideRuleId::RoomNotif.to_string(),
-            conditions: vec![
-                EventMatch {
-                    key: "content.body".into(),
-                    pattern: "@room".into(),
-                },
-                SenderNotificationPermission { key: "room".into() },
             ],
         }
     }
@@ -372,35 +355,16 @@ impl ConditionalPushRule {
             rule_id: PredefinedOverrideRuleId::PollResponse.to_string(),
             default: true,
             enabled: true,
-            conditions: vec![EventPropertyIs {
+            // conditions: vec![EventPropertyIs {
+            //     key: "type".to_owned(),
+            //     value: "org.matrix.msc3381.poll.response".into(),
+            // }],
+            // complement test use event match
+            conditions: vec![EventMatch {
                 key: "type".to_owned(),
-                value: "org.matrix.msc3381.poll.response".into(),
+                pattern: "org.matrix.msc3381.poll.response".into(),
             }],
             actions: vec![],
-        }
-    }
-}
-
-/// Default content push rules
-impl PatternedPushRule {
-    /// Matches any message whose content is unencrypted and contains the local part of the user's
-    /// Matrix ID, separated by word boundaries.
-    ///
-    /// Since Matrix 1.7, this rule only matches if the event's content does not contain an
-    /// `m.mentions` property.
-    #[deprecated = "Since Matrix 1.7. Use the m.mentions property with ConditionalPushRule::is_user_mention() instead."]
-    pub fn contains_user_name(user_id: &UserId) -> Self {
-        #[allow(deprecated)]
-        Self {
-            rule_id: PredefinedContentRuleId::ContainsUserName.to_string(),
-            enabled: true,
-            default: true,
-            pattern: user_id.localpart().into(),
-            actions: vec![
-                Action::Notify,
-                Action::SetTweak(Tweak::Sound("default".into())),
-                Action::SetTweak(Tweak::Highlight(true)),
-            ],
         }
     }
 }
@@ -525,9 +489,14 @@ impl ConditionalPushRule {
                 RoomMemberCount {
                     is: RoomMemberCountIs::from(2),
                 },
-                EventPropertyIs {
-                    key: "type".to_owned(),
-                    value: "org.matrix.msc3381.poll.start".into(),
+                // complement test use event match
+                // EventPropertyIs {
+                //     key: "type".to_owned(),
+                //     value: "org.matrix.msc3381.poll.start".into(),
+                // },
+                EventMatch {
+                    key: "type".into(),
+                    pattern: "org.matrix.msc3381.poll.start".into(),
                 },
             ],
             actions: vec![
@@ -549,9 +518,14 @@ impl ConditionalPushRule {
             rule_id: PredefinedUnderrideRuleId::PollStart.to_string(),
             default: true,
             enabled: true,
-            conditions: vec![EventPropertyIs {
+            // conditions: vec![EventPropertyIs {
+            //     key: "type".to_owned(),
+            //     value: "org.matrix.msc3381.poll.start".into(),
+            // }],
+            // complement test use event match
+            conditions: vec![EventMatch {
                 key: "type".to_owned(),
-                value: "org.matrix.msc3381.poll.start".into(),
+                pattern: "org.matrix.msc3381.poll.start".into(),
             }],
             actions: vec![Action::Notify],
         }
@@ -573,9 +547,14 @@ impl ConditionalPushRule {
                 RoomMemberCount {
                     is: RoomMemberCountIs::from(2),
                 },
-                EventPropertyIs {
+                // complement test use event match
+                // EventPropertyIs {
+                //     key: "type".to_owned(),
+                //     value: "org.matrix.msc3381.poll.end".into(),
+                // },
+                EventMatch {
                     key: "type".to_owned(),
-                    value: "org.matrix.msc3381.poll.end".into(),
+                    pattern: "org.matrix.msc3381.poll.end".into(),
                 },
             ],
             actions: vec![
@@ -597,11 +576,51 @@ impl ConditionalPushRule {
             rule_id: PredefinedUnderrideRuleId::PollEnd.to_string(),
             default: true,
             enabled: true,
-            conditions: vec![EventPropertyIs {
+            // conditions: vec![EventPropertyIs {
+            //     key: "type".to_owned(),
+            //     value: "org.matrix.msc3381.poll.end".into(),
+            // }],
+            // complement test use event match
+            conditions: vec![EventMatch {
                 key: "type".to_owned(),
-                value: "org.matrix.msc3381.poll.end".into(),
+                pattern: "org.matrix.msc3381.poll.end".into(),
             }],
             actions: vec![Action::Notify],
+        }
+    }
+
+    /// Matches an event that's part of a thread, that is *not* subscribed to, by the current user.
+    ///
+    /// Thread subscriptions are defined in [MSC4306].
+    ///
+    /// [MSC4306]: https://github.com/matrix-org/matrix-spec-proposals/pull/4306
+    #[cfg(feature = "unstable-msc4306")]
+    pub fn unsubscribed_thread() -> Self {
+        Self {
+            rule_id: PredefinedUnderrideRuleId::UnsubscribedThread.to_string(),
+            default: true,
+            enabled: true,
+            conditions: vec![ThreadSubscription { subscribed: false }],
+            actions: vec![],
+        }
+    }
+
+    /// Matches an event that's part of a thread, that *is* subscribed to, by the current user.
+    ///
+    /// Thread subscriptions are defined in [MSC4306].
+    ///
+    /// [MSC4306]: https://github.com/matrix-org/matrix-spec-proposals/pull/4306
+    #[cfg(feature = "unstable-msc4306")]
+    pub fn subscribed_thread() -> Self {
+        Self {
+            rule_id: PredefinedUnderrideRuleId::SubscribedThread.to_string(),
+            default: true,
+            enabled: true,
+            conditions: vec![ThreadSubscription { subscribed: true }],
+            actions: vec![
+                Action::Notify,
+                Action::SetTweak(Tweak::Sound("default".into())),
+            ],
         }
     }
 }
@@ -648,7 +667,7 @@ impl AsRef<str> for PredefinedRuleId {
 
 /// The rule IDs of the predefined override server push rules.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, StringEnum)]
+#[derive(Clone, StringEnum)]
 #[palpo_enum(rename_all = ".m.rule.snake_case")]
 #[non_exhaustive]
 pub enum PredefinedOverrideRuleId {
@@ -714,7 +733,7 @@ impl PredefinedOverrideRuleId {
 
 /// The rule IDs of the predefined underride server push rules.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, StringEnum)]
+#[derive(Clone, StringEnum)]
 #[palpo_enum(rename_all = ".m.rule.snake_case")]
 #[non_exhaustive]
 pub enum PredefinedUnderrideRuleId {
@@ -769,6 +788,24 @@ pub enum PredefinedUnderrideRuleId {
     #[palpo_enum(rename = ".org.matrix.msc3930.rule.poll_end")]
     PollEnd,
 
+    /// `.m.rule.unsubscribed_thread`
+    ///
+    /// This uses the unstable prefix defined in [MSC4306].
+    ///
+    /// [MSC4306]: https://github.com/matrix-org/matrix-spec-proposals/pull/4306
+    #[cfg(feature = "unstable-msc4306")]
+    #[palpo_enum(rename = ".io.element.msc4306.rule.unsubscribed_thread")]
+    UnsubscribedThread,
+
+    /// `.m.rule.subscribed_thread`
+    ///
+    /// This uses the unstable prefix defined in [MSC4306].
+    ///
+    /// [MSC4306]: https://github.com/matrix-org/matrix-spec-proposals/pull/4306
+    #[cfg(feature = "unstable-msc4306")]
+    #[palpo_enum(rename = ".io.element.msc4306.rule.subscribed_thread")]
+    SubscribedThread,
+
     #[doc(hidden)]
     _Custom(PrivOwnedStr),
 }
@@ -782,7 +819,7 @@ impl PredefinedUnderrideRuleId {
 
 /// The rule IDs of the predefined content server push rules.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, StringEnum)]
+#[derive(Clone, StringEnum)]
 #[palpo_enum(rename_all = ".m.rule.snake_case")]
 #[non_exhaustive]
 pub enum PredefinedContentRuleId {

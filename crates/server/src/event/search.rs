@@ -15,6 +15,7 @@ use crate::core::serde::canonical_json::CanonicalJsonValue;
 use crate::data::full_text_search::*;
 use crate::data::schema::*;
 use crate::data::{self, connect};
+use crate::event::BatchToken;
 use crate::room::{state, timeline};
 use crate::{AppResult, MatrixError, SnPduEvent};
 
@@ -36,7 +37,7 @@ pub fn search_pdus(
     for room_id in &room_ids {
         if !crate::room::user::is_joined(user_id, room_id)? {
             return Err(MatrixError::forbidden(
-                "You don't have permission to view this room.",
+                "you don't have permission to view this room",
                 None,
             )
             .into());
@@ -77,9 +78,9 @@ pub fn search_pdus(
             .then_order_by(event_searches::event_sn.desc())
             .load::<(f32, OwnedEventId, i64, i64)>(&mut connect()?)?
     };
-    let _ids: Vec<i64> = event_searches::table
-        .select(event_searches::id)
-        .load(&mut connect()?)?;
+    // let _ids: Vec<i64> = event_searches::table
+    //     .select(event_searches::id)
+    //     .load(&mut connect()?)?;
     let count: i64 = base_query.count().first(&mut connect()?)?;
     let next_batch = if items.len() < limit {
         None
@@ -134,10 +135,22 @@ fn calc_event_context(
     after_limit: usize,
     include_profile: bool,
 ) -> AppResult<EventContextResult> {
-    let before_pdus =
-        timeline::get_pdus_backward(user_id, room_id, event_sn - 1, None, None, before_limit)?;
-    let after_pdus =
-        timeline::get_pdus_forward(user_id, room_id, event_sn + 1, None, None, after_limit)?;
+    let before_pdus = timeline::stream::load_pdus_backward(
+        Some(user_id),
+        room_id,
+        Some(BatchToken::new_live(event_sn - 1)),
+        None,
+        None,
+        before_limit,
+    )?;
+    let after_pdus = timeline::stream::load_pdus_forward(
+        Some(user_id),
+        room_id,
+        Some(BatchToken::new_live(event_sn + 1)),
+        None,
+        None,
+        after_limit,
+    )?;
     let mut profile = BTreeMap::new();
     if include_profile && let Ok(frame_id) = crate::event::get_frame_id(room_id, event_sn) {
         let RoomMemberEventContent {
@@ -158,7 +171,6 @@ fn calc_event_context(
         end: after_pdus.last().map(|(sn, _)| sn.to_string()),
         events_before: before_pdus
             .into_iter()
-            .rev()
             .map(|(_, pdu)| pdu.to_room_event())
             .collect(),
         events_after: after_pdus

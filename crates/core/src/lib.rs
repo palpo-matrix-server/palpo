@@ -33,6 +33,7 @@ pub use error::{MatrixError, UnknownVersionError};
 pub mod sending;
 #[macro_use]
 extern crate tracing;
+pub mod auth_scheme;
 pub mod http_headers;
 pub mod media;
 pub mod state;
@@ -47,7 +48,6 @@ extern crate self as palpo_core;
 use std::fmt;
 
 use ::serde::{Deserialize, Serialize};
-use as_variant::as_variant;
 use salvo::oapi::{Components, RefOr, Schema, ToSchema};
 
 pub use self::identifiers::*;
@@ -72,63 +72,6 @@ impl ToSchema for PrivOwnedStr {
     fn to_schema(components: &mut Components) -> RefOr<Schema> {
         <String>::to_schema(components)
     }
-}
-
-/// Core types used to define the requests and responses for each endpoint in
-/// the various [Matrix API specifications][apis].
-///
-/// [apis]: https://spec.matrix.org/latest/#matrix-apis
-/// An enum to control whether an access token should be added to outgoing
-/// requests
-#[derive(Clone, Copy, Debug)]
-#[allow(clippy::exhaustive_enums)]
-pub enum SendAccessToken<'a> {
-    /// Add the given access token to the request only if the `METADATA` on the
-    /// request requires it.
-    IfRequired(&'a str),
-
-    /// Always add the access token.
-    Always(&'a str),
-
-    /// Don't add an access token.
-    ///
-    /// This will lead to an error if the request endpoint requires
-    /// authentication
-    None,
-}
-
-impl<'a> SendAccessToken<'a> {
-    /// Get the access token for an endpoint that requires one.
-    ///
-    /// Returns `Some(_)` if `self` contains an access token.
-    pub fn get_required_for_endpoint(self) -> Option<&'a str> {
-        as_variant!(self, Self::IfRequired | Self::Always)
-    }
-
-    /// Get the access token for an endpoint that should not require one.
-    ///
-    /// Returns `Some(_)` only if `self` is `SendAccessToken::Always(_)`.
-    pub fn get_not_required_for_endpoint(self) -> Option<&'a str> {
-        as_variant!(self, Self::Always)
-    }
-}
-
-/// Authentication scheme used by the endpoint.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-#[allow(clippy::exhaustive_enums)]
-pub enum AuthScheme {
-    /// No authentication is performed.
-    None,
-
-    /// Authentication is performed by including an access token in the
-    /// `Authentication` http header, or an `access_token` query parameter.
-    ///
-    /// It is recommended to use the header over the query parameter.
-    AccessToken,
-
-    /// Authentication is performed by including X-Matrix signatures in the
-    /// request headers, as defined in the federation API.
-    ServerSignatures,
 }
 
 /// The direction to return events from.

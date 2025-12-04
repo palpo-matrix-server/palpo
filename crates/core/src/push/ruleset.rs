@@ -2,7 +2,6 @@
 //!
 //! [predefined push rules]: https://spec.matrix.org/latest/client-server-api/#predefined-rules
 
-use crate::macros::StringEnum;
 use indexmap::IndexSet;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
@@ -13,7 +12,7 @@ use super::{
     PatternedPushRule, PushConditionRoomCtx, RuleKind, RuleNotFoundError, RulesetIter,
     SimplePushRule, insert_and_move_rule,
 };
-use crate::{OwnedRoomId, OwnedUserId, PrivOwnedStr, push::RemovePushRuleError, serde::RawJson};
+use crate::{OwnedRoomId, OwnedUserId, push::RemovePushRuleError, serde::RawJson};
 
 /// A push ruleset scopes a set of rules according to some criteria.
 ///
@@ -27,6 +26,13 @@ pub struct Ruleset {
     #[serde(default, skip_serializing_if = "IndexSet::is_empty")]
     #[salvo(schema(value_type = HashSet<PatternedPushRule>))]
     pub content: IndexSet<PatternedPushRule>,
+
+    /// These rules are identical to override rules, but have a lower priority than `room` and
+    /// `sender` rules.
+    #[cfg(feature = "unstable-msc4306")]
+    #[serde(default, skip_serializing_if = "IndexSet::is_empty")]
+    #[salvo(schema(value_type = Object, additional_properties = true))]
+    pub postcontent: IndexSet<ConditionalPushRule>,
 
     /// These user-configured rules are given the highest priority.
     ///
@@ -118,6 +124,16 @@ impl Ruleset {
 
                 insert_and_move_rule(&mut self.override_, rule, default_position, after, before)
             }
+            #[cfg(feature = "unstable-msc4306")]
+            NewPushRule::PostContent(r) => {
+                let mut rule = ConditionalPushRule::from(r);
+
+                if let Some(prev_rule) = self.postcontent.get(rule.rule_id.as_str()) {
+                    rule.enabled = prev_rule.enabled;
+                }
+
+                insert_and_move_rule(&mut self.postcontent, rule, 0, after, before)
+            }
             NewPushRule::Underride(r) => {
                 let mut rule = ConditionalPushRule::from(r);
 
@@ -168,6 +184,11 @@ impl Ruleset {
             RuleKind::Sender => self.sender.get(rule_id).map(AnyPushRuleRef::Sender),
             RuleKind::Room => self.room.get(rule_id).map(AnyPushRuleRef::Room),
             RuleKind::Content => self.content.get(rule_id).map(AnyPushRuleRef::Content),
+            #[cfg(feature = "unstable-msc4306")]
+            RuleKind::PostContent => self
+                .postcontent
+                .get(rule_id)
+                .map(AnyPushRuleRef::PostContent),
             RuleKind::_Custom(_) => None,
         }
     }
@@ -217,6 +238,16 @@ impl Ruleset {
                 let mut rule = self.content.get(rule_id).ok_or(RuleNotFoundError)?.clone();
                 rule.enabled = enabled;
                 self.content.replace(rule);
+            }
+            #[cfg(feature = "unstable-msc4306")]
+            RuleKind::PostContent => {
+                let mut rule = self
+                    .postcontent
+                    .get(rule_id)
+                    .ok_or(RuleNotFoundError)?
+                    .clone();
+                rule.enabled = enabled;
+                self.postcontent.replace(rule);
             }
             RuleKind::_Custom(_) => return Err(RuleNotFoundError),
         }
@@ -270,6 +301,16 @@ impl Ruleset {
                 rule.actions = actions;
                 self.content.replace(rule);
             }
+            #[cfg(feature = "unstable-msc4306")]
+            RuleKind::PostContent => {
+                let mut rule = self
+                    .postcontent
+                    .get(rule_id)
+                    .ok_or(RuleNotFoundError)?
+                    .clone();
+                rule.actions = actions;
+                self.postcontent.replace(rule);
+            }
             RuleKind::_Custom(_) => return Err(RuleNotFoundError),
         }
 
@@ -284,7 +325,7 @@ impl Ruleset {
     /// * `context` - The context of the message and room at the time of the
     ///   event.
     #[instrument(skip_all, fields(context.room_id = %context.room_id))]
-    pub fn get_match<T>(
+    pub async fn get_match<T>(
         &self,
         event: &RawJson<T>,
         context: &PushConditionRoomCtx,
@@ -296,10 +337,16 @@ impl Ruleset {
             .is_some_and(|sender| sender == context.user_id)
         {
             // no need to look at the rules if the event was by the user themselves
-            None
-        } else {
-            self.iter().find(|rule| rule.applies(&event, context))
+            return None;
         }
+
+        for rule in self {
+            if rule.applies(&event, context).await {
+                return Some(rule);
+            }
+        }
+
+        None
     }
 
     /// Get the push actions that apply to this event.
@@ -312,8 +359,13 @@ impl Ruleset {
     /// * `context` - The context of the message and room at the time of the
     ///   event.
     #[instrument(skip_all, fields(context.room_id = %context.room_id))]
-    pub fn get_actions<T>(&self, event: &RawJson<T>, context: &PushConditionRoomCtx) -> &[Action] {
+    pub async fn get_actions<T>(
+        &self,
+        event: &RawJson<T>,
+        context: &PushConditionRoomCtx,
+    ) -> &[Action] {
         self.get_match(event, context)
+            .await
             .map(|rule| rule.actions())
             .unwrap_or(&[])
     }
@@ -352,193 +404,15 @@ impl Ruleset {
             RuleKind::Content => {
                 self.content.shift_remove(rule_id);
             }
+            #[cfg(feature = "unstable-msc4306")]
+            RuleKind::PostContent => {
+                self.postcontent.shift_remove(rule_id);
+            }
             // This has been handled in the `self.get` call earlier.
             RuleKind::_Custom(_) => unreachable!(),
         }
 
         Ok(())
-    }
-}
-
-/// The rule IDs of the predefined server push rules.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-#[non_exhaustive]
-pub enum PredefinedRuleId {
-    /// User-configured rules that override all other kinds.
-    Override(PredefinedOverrideRuleId),
-
-    /// Lowest priority user-defined rules.
-    Underride(PredefinedUnderrideRuleId),
-
-    /// Content-specific rules.
-    Content(PredefinedContentRuleId),
-}
-
-impl PredefinedRuleId {
-    /// Creates a string slice from this `PredefinedRuleId`.
-    pub fn as_str(&self) -> &str {
-        match self {
-            Self::Override(id) => id.as_str(),
-            Self::Underride(id) => id.as_str(),
-            Self::Content(id) => id.as_str(),
-        }
-    }
-
-    /// Get the kind of this `PredefinedRuleId`.
-    pub fn kind(&self) -> RuleKind {
-        match self {
-            Self::Override(id) => id.kind(),
-            Self::Underride(id) => id.kind(),
-            Self::Content(id) => id.kind(),
-        }
-    }
-}
-
-impl AsRef<str> for PredefinedRuleId {
-    fn as_ref(&self) -> &str {
-        self.as_str()
-    }
-}
-
-/// The rule IDs of the predefined override server push rules.
-#[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, StringEnum)]
-#[palpo_enum(rename_all = ".m.rule.snake_case")]
-#[non_exhaustive]
-pub enum PredefinedOverrideRuleId {
-    /// `.m.rule.master`
-    Master,
-
-    /// `.m.rule.suppress_notices`
-    SuppressNotices,
-
-    /// `.m.rule.invite_for_me`
-    InviteForMe,
-
-    /// `.m.rule.member_event`
-    MemberEvent,
-
-    /// `.m.rule.is_user_mention`
-    IsUserMention,
-
-    /// `.m.rule.is_room_mention`
-    IsRoomMention,
-
-    /// `.m.rule.tombstone`
-    Tombstone,
-
-    /// `.m.rule.reaction`
-    Reaction,
-
-    /// `.m.rule.room.server_acl`
-    #[palpo_enum(rename = ".m.rule.room.server_acl")]
-    RoomServerAcl,
-
-    /// `.m.rule.suppress_edits`
-    SuppressEdits,
-
-    /// `.m.rule.poll_response`
-    ///
-    /// This uses the unstable prefix defined in [MSC3930].
-    ///
-    /// [MSC3930]: https://github.com/matrix-org/matrix-spec-proposals/pull/3930
-    #[cfg(feature = "unstable-msc3930")]
-    #[palpo_enum(rename = ".org.matrix.msc3930.rule.poll_response")]
-    PollResponse,
-
-    #[doc(hidden)]
-    _Custom(PrivOwnedStr),
-}
-
-impl PredefinedOverrideRuleId {
-    /// Get the kind of this `PredefinedOverrideRuleId`.
-    pub fn kind(&self) -> RuleKind {
-        RuleKind::Override
-    }
-}
-
-/// The rule IDs of the predefined underride server push rules.
-#[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, StringEnum)]
-#[palpo_enum(rename_all = ".m.rule.snake_case")]
-#[non_exhaustive]
-pub enum PredefinedUnderrideRuleId {
-    /// `.m.rule.call`
-    Call,
-
-    /// `.m.rule.encrypted_room_one_to_one`
-    EncryptedRoomOneToOne,
-
-    /// `.m.rule.room_one_to_one`
-    RoomOneToOne,
-
-    /// `.m.rule.message`
-    Message,
-
-    /// `.m.rule.encrypted`
-    Encrypted,
-
-    /// `.m.rule.poll_start_one_to_one`
-    ///
-    /// This uses the unstable prefix defined in [MSC3930].
-    ///
-    /// [MSC3930]: https://github.com/matrix-org/matrix-spec-proposals/pull/3930
-    #[cfg(feature = "unstable-msc3930")]
-    #[palpo_enum(rename = ".org.matrix.msc3930.rule.poll_start_one_to_one")]
-    PollStartOneToOne,
-
-    /// `.m.rule.poll_start`
-    ///
-    /// This uses the unstable prefix defined in [MSC3930].
-    ///
-    /// [MSC3930]: https://github.com/matrix-org/matrix-spec-proposals/pull/3930
-    #[cfg(feature = "unstable-msc3930")]
-    #[palpo_enum(rename = ".org.matrix.msc3930.rule.poll_start")]
-    PollStart,
-
-    /// `.m.rule.poll_end_one_to_one`
-    ///
-    /// This uses the unstable prefix defined in [MSC3930].
-    ///
-    /// [MSC3930]: https://github.com/matrix-org/matrix-spec-proposals/pull/3930
-    #[cfg(feature = "unstable-msc3930")]
-    #[palpo_enum(rename = ".org.matrix.msc3930.rule.poll_end_one_to_one")]
-    PollEndOneToOne,
-
-    /// `.m.rule.poll_end`
-    ///
-    /// This uses the unstable prefix defined in [MSC3930].
-    ///
-    /// [MSC3930]: https://github.com/matrix-org/matrix-spec-proposals/pull/3930
-    #[cfg(feature = "unstable-msc3930")]
-    #[palpo_enum(rename = ".org.matrix.msc3930.rule.poll_end")]
-    PollEnd,
-
-    #[doc(hidden)]
-    _Custom(PrivOwnedStr),
-}
-
-impl PredefinedUnderrideRuleId {
-    /// Get the kind of this `PredefinedUnderrideRuleId`.
-    pub fn kind(&self) -> RuleKind {
-        RuleKind::Underride
-    }
-}
-
-/// The rule IDs of the predefined content server push rules.
-#[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, StringEnum)]
-#[palpo_enum(rename_all = ".m.rule.snake_case")]
-#[non_exhaustive]
-pub enum PredefinedContentRuleId {
-    #[doc(hidden)]
-    _Custom(PrivOwnedStr),
-}
-
-impl PredefinedContentRuleId {
-    /// Get the kind of this `PredefinedContentRuleId`.
-    pub fn kind(&self) -> RuleKind {
-        RuleKind::Content
     }
 }
 

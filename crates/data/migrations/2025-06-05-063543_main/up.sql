@@ -71,6 +71,9 @@ CREATE TABLE users (
     ty text,
     is_admin boolean NOT NULL DEFAULT false,
     is_guest boolean NOT NULL DEFAULT false,
+    is_local boolean NOT NULL DEFAULT true,
+    localpart text NOT NULL,
+    server_name text NOT NULL,
     appservice_id text,
     shadow_banned boolean NOT NULL DEFAULT false,
     consent_at bigint,
@@ -168,9 +171,7 @@ CREATE TABLE room_tags (
     user_id text NOT NULL,
     room_id text NOT NULL,
     tag text NOT NULL,
-    content json NOT NULL,
-    created_by text NOT NULL,
-    created_at bigint NOT NULL 
+    content json NOT NULL
 );
 ALTER TABLE ONLY room_tags
     ADD CONSTRAINT room_tag_udx UNIQUE (user_id, room_id, tag);
@@ -414,6 +415,7 @@ CREATE TABLE events (
     is_outlier boolean NOT NULL,
     is_redacted boolean NOT NULL DEFAULT false,
     soft_failed boolean NOT NULL DEFAULT false,
+    is_rejected boolean NOT NULL DEFAULT false,
     rejection_reason text,
     CONSTRAINT events_id_sn_udx UNIQUE (id, sn)
 );
@@ -438,6 +440,7 @@ CREATE TABLE event_points
     room_id text NOT NULL,
     thread_id text,
     frame_id bigint,
+    stripped_state json,
     CONSTRAINT event_points_udx UNIQUE (event_id, event_sn)
 );
 
@@ -577,9 +580,9 @@ CREATE TABLE IF NOT EXISTS e2e_cross_signing_keys
     key_type text NOT NULL,
     key_data json NOT NULL
 );
-CREATE UNIQUE INDEX IF NOT EXISTS e2e_cross_signing_keys_udx
-    ON e2e_cross_signing_keys USING btree
-    (user_id ASC NULLS LAST, key_type ASC NULLS LAST);
+-- CREATE UNIQUE INDEX IF NOT EXISTS e2e_cross_signing_keys_udx
+--     ON e2e_cross_signing_keys USING btree
+--     (user_id ASC NULLS LAST, key_type ASC NULLS LAST);
 
 
 DROP TABLE IF EXISTS e2e_cross_signing_sigs CASCADE;
@@ -719,7 +722,7 @@ CREATE TABLE IF NOT EXISTS event_relations
 
 DROP TABLE IF EXISTS event_receipts CASCADE;
 CREATE TABLE event_receipts (
-    id bigserial NOT NULL PRIMARY KEY,
+    sn bigint NOT NULL PRIMARY KEY,
     ty text NOT NULL,
     room_id text NOT NULL,
     user_id text NOT NULL,
@@ -986,8 +989,8 @@ CREATE TABLE IF NOT EXISTS banned_rooms
     CONSTRAINT banned_rooms_room_id_ukey UNIQUE (room_id)
 );
 
--- DROP TABLE IF EXISTS public.sliding_sync_connections;
--- CREATE TABLE IF NOT EXISTS public.sliding_sync_connections
+-- DROP TABLE IF EXISTS sliding_sync_connections;
+-- CREATE TABLE IF NOT EXISTS sliding_sync_connections
 -- (
 --     id bigserial NOT NULL PRIMARY KEY,
 --     user_id text NOT NULL,
@@ -996,19 +999,62 @@ CREATE TABLE IF NOT EXISTS banned_rooms
 --     created_at bigint NOT NULL
 -- );
 -- CREATE INDEX IF NOT EXISTS sliding_sync_connections_idx
---     ON public.sliding_sync_connections USING btree
+--     ON sliding_sync_connections USING btree
 --     (user_id ASC NULLS LAST, device_id ASC NULLS LAST, conn_id ASC NULLS LAST);
 -- CREATE INDEX IF NOT EXISTS sliding_sync_connections_create_at_idx
---     ON public.sliding_sync_connections USING btree
+--     ON sliding_sync_connections USING btree
 --     (created_at ASC NULLS LAST);
 
--- DROP TABLE IF EXISTS public.sliding_sync_required_states;
--- CREATE TABLE IF NOT EXISTS public.sliding_sync_required_states
+-- DROP TABLE IF EXISTS sliding_sync_required_states;
+-- CREATE TABLE IF NOT EXISTS sliding_sync_required_states
 -- (
 --     id bigserial NOT NULL PRIMARY KEY,
 --     connection_id bigint NOT NULL,
 --     required_state text NOT NULL
 -- );
 -- CREATE INDEX IF NOT EXISTS sliding_sync_required_state_conn_pos
---     ON public.sliding_sync_required_states USING btree
+--     ON sliding_sync_required_states USING btree
 --     (connection_id ASC NULLS LAST);
+
+DROP TABLE IF EXISTS timeline_gaps;
+CREATE TABLE IF NOT EXISTS timeline_gaps (
+    id bigserial NOT NULL PRIMARY KEY,
+    room_id TEXT NOT NULL,
+    event_sn BIGINT NOT NULL
+);
+
+CREATE INDEX timeline_gaps_room_id ON timeline_gaps(room_id, event_sn);
+
+
+-- DROP TABLE IF EXISTS push_rules;
+-- CREATE TABLE IF NOT EXISTS push_rules
+-- (
+--     id bigserial PRIMARY KEY NOT NULL,
+--     user_id text NOT NULL,
+--     rule_id text NOT NULL,
+--     conditions json,
+--     actions json NOT NULL,
+--     pattern text,
+--     enabled boolean NOT NULL DEFAULT true,
+--     priority integer NOT NULL DEFAULT 0,
+--     CONSTRAINT push_rules_user_id_rule_id_key UNIQUE (user_id, rule_id)
+-- );
+-- CREATE INDEX IF NOT EXISTS push_rules_user_id
+--     ON push_rules USING btree
+--     (user_id ASC NULLS LAST)
+--     WITH (fillfactor=100, deduplicate_items=True);
+
+-- DROP TABLE IF EXISTS push_rule_streams;
+-- CREATE TABLE IF NOT EXISTS push_rule_streams
+-- (
+--     id bigserial PRIMARY KEY NOT NULL,
+--     event_stream_ordering bigint NOT NULL,
+--     user_id text NOT NULL,
+--     rule_id text NOT NULL,
+--     op text NOT NULL,
+--     priority_class smallint,
+--     priority integer,
+--     conditions json,
+--     actions json,
+--     instance_name text
+-- );

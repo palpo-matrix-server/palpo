@@ -6,10 +6,7 @@ use serde::{Deserialize, de::IgnoredAny};
 
 use super::Event;
 use crate::room_version_rules::RoomVersionRules;
-use crate::{
-    OwnedUserId, RoomVersionId, UserId, room_version_rules::AuthorizationRules,
-    serde::from_raw_json_value, state::StateResult,
-};
+use crate::{OwnedUserId, RoomVersionId, UserId, serde::from_raw_json_value, state::StateResult};
 
 /// A helper type for an [`Event`] of type `m.room.create`.
 ///
@@ -142,6 +139,10 @@ impl<E: Event> RoomCreateEvent<E> {
                 format!("invalid `creator` field in `m.room.create` event: {err}")
             })?;
         Ok(content.creator.is_some())
+    }
+
+    pub fn into_inner(self) -> E {
+        self.0
     }
 }
 

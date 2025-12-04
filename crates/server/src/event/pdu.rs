@@ -19,9 +19,10 @@ use crate::core::events::{
 };
 use crate::core::identifiers::*;
 use crate::core::serde::{
-    CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJson, RawJsonValue,
+    CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJson, RawJsonValue, default_false,
 };
 use crate::core::{Seqnum, UnixMillis, UserId};
+use crate::event::BatchToken;
 use crate::room::state;
 use crate::{AppError, AppResult, room};
 
@@ -38,10 +39,29 @@ pub struct SnPduEvent {
     pub pdu: PduEvent,
     #[serde(skip_serializing)]
     pub event_sn: Seqnum,
+
+    #[serde(skip, default)]
+    pub is_outlier: bool,
+    #[serde(skip, default = "default_false")]
+    pub soft_failed: bool,
+    #[serde(skip, default = "default_false")]
+    pub backfilled: bool,
 }
 impl SnPduEvent {
-    pub fn new(pdu: PduEvent, event_sn: Seqnum) -> Self {
-        Self { pdu, event_sn }
+    pub fn new(
+        pdu: PduEvent,
+        event_sn: Seqnum,
+        is_outlier: bool,
+        soft_failed: bool,
+        backfilled: bool,
+    ) -> Self {
+        Self {
+            pdu,
+            event_sn,
+            is_outlier,
+            soft_failed,
+            backfilled,
+        }
     }
 
     pub fn user_can_see(&self, user_id: &UserId) -> AppResult<bool> {
@@ -57,8 +77,14 @@ impl SnPduEvent {
                 return Ok(true);
             }
         }
-        let Ok(frame_id) = state::get_pdu_frame_id(&self.event_id) else {
-            return Ok(false);
+        let frame_id = match state::get_pdu_frame_id(&self.event_id) {
+            Ok(frame_id) => frame_id,
+            Err(_) => match state::get_room_frame_id(&self.room_id, None) {
+                Ok(frame_id) => frame_id,
+                Err(_) => {
+                    return Ok(false);
+                }
+            },
         };
 
         if let Some(visibility) = state::USER_VISIBILITY_CACHE
@@ -143,12 +169,22 @@ impl SnPduEvent {
     }
 
     pub fn from_canonical_object(
+        room_id: &RoomId,
         event_id: &EventId,
         event_sn: Seqnum,
         json: CanonicalJsonObject,
+        is_outlier: bool,
+        soft_failed: bool,
+        backfilled: bool,
     ) -> Result<Self, serde_json::Error> {
-        let pdu = PduEvent::from_canonical_object(event_id, json)?;
-        Ok(Self::new(pdu, event_sn))
+        let pdu = PduEvent::from_canonical_object(room_id, event_id, json)?;
+        Ok(Self::new(
+            pdu,
+            event_sn,
+            is_outlier,
+            soft_failed,
+            backfilled,
+        ))
     }
 
     pub fn from_json_value(
@@ -156,9 +192,48 @@ impl SnPduEvent {
         event_id: &EventId,
         event_sn: Seqnum,
         json: JsonValue,
+        is_outlier: bool,
+        soft_failed: bool,
+        backfilled: bool,
     ) -> AppResult<Self> {
         let pdu = PduEvent::from_json_value(room_id, event_id, json)?;
-        Ok(Self::new(pdu, event_sn))
+        Ok(Self::new(
+            pdu,
+            event_sn,
+            is_outlier,
+            soft_failed,
+            backfilled,
+        ))
+    }
+
+    pub fn into_inner(self) -> PduEvent {
+        self.pdu
+    }
+
+    pub fn live_token(&self) -> BatchToken {
+        BatchToken::Live {
+            stream_ordering: self.event_sn,
+        }
+    }
+    pub fn historic_token(&self) -> BatchToken {
+        BatchToken::Historic {
+            stream_ordering: if self.backfilled {
+                -self.event_sn
+            } else {
+                self.event_sn
+            },
+            topological_ordering: self.depth as i64,
+        }
+    }
+    pub fn prev_historic_token(&self) -> BatchToken {
+        BatchToken::Historic {
+            stream_ordering: if self.backfilled {
+                -self.event_sn - 1
+            } else {
+                self.event_sn - 1
+            },
+            topological_ordering: self.depth as i64,
+        }
     }
 }
 impl AsRef<PduEvent> for SnPduEvent {
@@ -183,19 +258,19 @@ impl Deref for SnPduEvent {
         &self.pdu
     }
 }
-impl TryFrom<(PduEvent, Option<Seqnum>)> for SnPduEvent {
-    type Error = AppError;
+// impl TryFrom<(PduEvent, Option<Seqnum>)> for SnPduEvent {
+//     type Error = AppError;
 
-    fn try_from((pdu, event_sn): (PduEvent, Option<Seqnum>)) -> Result<Self, Self::Error> {
-        if let Some(sn) = event_sn {
-            Ok(SnPduEvent::new(pdu, sn))
-        } else {
-            Err(AppError::internal(
-                "Cannot convert PDU without event_sn to SnPduEvent.",
-            ))
-        }
-    }
-}
+//     fn try_from((pdu, event_sn): (PduEvent, Option<Seqnum>)) -> Result<Self, Self::Error> {
+//         if let Some(sn) = event_sn {
+//             Ok(SnPduEvent::new(pdu, sn))
+//         } else {
+//             Err(AppError::internal(
+//                 "Cannot convert PDU without event_sn to SnPduEvent.",
+//             ))
+//         }
+//     }
+// }
 impl crate::core::state::Event for SnPduEvent {
     type Id = OwnedEventId;
 
@@ -240,7 +315,7 @@ impl crate::core::state::Event for SnPduEvent {
     }
 
     fn rejected(&self) -> bool {
-        self.rejection_reason.is_some()
+        self.pdu.rejected()
     }
 }
 
@@ -275,8 +350,10 @@ pub struct PduEvent {
     pub content: Box<RawJsonValue>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state_key: Option<String>,
+    #[serde(default)]
     pub prev_events: Vec<OwnedEventId>,
     pub depth: u64,
+    #[serde(default)]
     pub auth_events: Vec<OwnedEventId>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub redacts: Option<OwnedEventId>,
@@ -288,7 +365,7 @@ pub struct PduEvent {
     #[serde(default, flatten, skip_serializing_if = "BTreeMap::is_empty")]
     pub extra_data: BTreeMap<String, JsonValue>,
 
-    #[serde(skip)]
+    #[serde(skip, default)]
     pub rejection_reason: Option<String>,
 }
 
@@ -492,6 +569,16 @@ impl PduEvent {
 
     #[tracing::instrument]
     pub fn to_stripped_state_event(&self) -> RawJson<AnyStrippedStateEvent> {
+        if self.event_ty == TimelineEventType::RoomCreate {
+            let version_rules = crate::room::get_version(&self.room_id)
+                .and_then(|version| crate::room::get_version_rules(&version));
+            if let Ok(version_rules) = version_rules
+                && version_rules.authorization.room_create_event_id_as_room_id
+            {
+                return serde_json::from_value(json!(self))
+                    .expect("RawJson::from_value always works");
+            }
+        }
         let data = json!({
             "content": self.content,
             "type": self.event_ty,
@@ -534,11 +621,13 @@ impl PduEvent {
 
         serde_json::from_value(data).expect("RawJson::from_value always works")
     }
-    
+
     pub fn from_canonical_object(
+        room_id: &RoomId,
         event_id: &EventId,
         mut json: CanonicalJsonObject,
     ) -> Result<Self, serde_json::Error> {
+        json.insert("room_id".to_owned(), room_id.as_str().into());
         json.insert(
             "event_id".to_owned(),
             CanonicalJsonValue::String(event_id.as_str().to_owned()),
@@ -558,7 +647,7 @@ impl PduEvent {
 
             serde_json::from_value(serde_json::Value::Object(obj)).map_err(Into::into)
         } else {
-            Err(AppError::public("Invalid JSON value"))
+            Err(AppError::public("invalid json value"))
         }
     }
 
@@ -567,10 +656,6 @@ impl PduEvent {
         T: for<'de> Deserialize<'de>,
     {
         serde_json::from_str(self.content.get())
-    }
-
-    pub fn is_rejected(&self) -> bool {
-        self.rejection_reason.is_some()
     }
 
     pub fn is_room_state(&self) -> bool {
@@ -707,7 +792,7 @@ impl PduBuilder {
         Self {
             event_type: content.event_type().into(),
             content: to_raw_value(content)
-                .expect("Builder failed to serialize state event content to RawValue"),
+                .expect("builder failed to serialize state event content to RawValue"),
             state_key: Some(state_key),
             ..Self::default()
         }
@@ -720,7 +805,7 @@ impl PduBuilder {
         Self {
             event_type: content.event_type().into(),
             content: to_raw_value(content)
-                .expect("Builder failed to serialize timeline event content to RawValue"),
+                .expect("builder failed to serialize timeline event content to RawValue"),
             ..Self::default()
         }
     }

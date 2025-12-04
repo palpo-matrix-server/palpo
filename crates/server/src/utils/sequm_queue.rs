@@ -1,7 +1,8 @@
 use std::collections::BTreeSet;
+use std::fmt::{self, Debug, Display, Formatter};
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::{Context, Poll};
-use std::{fmt::Debug, sync::Arc};
 
 use crate::core::Seqnum;
 
@@ -79,5 +80,17 @@ impl Drop for SeqnumQueueGuard {
     fn drop(&mut self) {
         let mut queue = self.queue.lock().expect("locked");
         queue.remove(&self.value);
+    }
+}
+
+impl Display for SeqnumQueueGuard {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "SeqnumQueueGuard({})", self.value)
+    }
+}
+
+impl Debug for SeqnumQueueGuard {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "SeqnumQueueGuard({})", self.value)
     }
 }

@@ -38,6 +38,11 @@ impl<'de> Deserialize<'de> for PushCondition {
                 let helper: PushConditionSerDeHelper = from_raw_json_value(&json)?;
                 Ok(helper.into())
             }
+            #[cfg(feature = "unstable-msc4306")]
+            "io.element.msc4306.thread_subscription" => {
+                let helper: PushConditionSerDeHelper = from_raw_json_value(&json)?;
+                Ok(helper.into())
+            }
             _ => from_raw_json_value(&json).map(Self::_Custom),
         }
     }
@@ -86,7 +91,7 @@ enum PushConditionSerDeHelper {
     },
 
     /// Apply the rule only to rooms that support a given feature.
-
+    #[cfg(feature = "unstable-msc3931")]
     #[serde(rename = "org.matrix.msc3931.room_version_supports")]
     RoomVersionSupports {
         /// The feature the room must support for the push rule to apply.
@@ -102,6 +107,17 @@ enum PushConditionSerDeHelper {
         key: String,
         value: ScalarJsonValue,
     },
+
+    /// Matches a thread event based on the user's thread subscription status, as defined by
+    /// [MSC4306].
+    ///
+    /// [MSC4306]: https://github.com/matrix-org/matrix-spec-proposals/pull/4306
+    #[cfg(feature = "unstable-msc4306")]
+    #[serde(rename = "io.element.msc4306.thread_subscription")]
+    ThreadSubscription {
+        /// Whether the user must be subscribed to the thread for the condition to match.
+        subscribed: bool,
+    },
 }
 
 impl From<PushConditionSerDeHelper> for PushCondition {
@@ -110,12 +126,13 @@ impl From<PushConditionSerDeHelper> for PushCondition {
             PushConditionSerDeHelper::EventMatch { key, pattern } => {
                 Self::EventMatch { key, pattern }
             }
+            #[allow(deprecated)]
             PushConditionSerDeHelper::ContainsDisplayName => Self::ContainsDisplayName,
             PushConditionSerDeHelper::RoomMemberCount { is } => Self::RoomMemberCount { is },
             PushConditionSerDeHelper::SenderNotificationPermission { key } => {
                 Self::SenderNotificationPermission { key }
             }
-
+            #[cfg(feature = "unstable-msc3931")]
             PushConditionSerDeHelper::RoomVersionSupports { feature } => {
                 Self::RoomVersionSupports { feature }
             }
@@ -125,6 +142,10 @@ impl From<PushConditionSerDeHelper> for PushCondition {
             PushConditionSerDeHelper::EventPropertyContains { key, value } => {
                 Self::EventPropertyContains { key, value }
             }
+            #[cfg(feature = "unstable-msc4306")]
+            PushConditionSerDeHelper::ThreadSubscription { subscribed } => {
+                Self::ThreadSubscription { subscribed }
+            }
         }
     }
 }
@@ -133,16 +154,21 @@ impl From<PushCondition> for PushConditionSerDeHelper {
     fn from(value: PushCondition) -> Self {
         match value {
             PushCondition::EventMatch { key, pattern } => Self::EventMatch { key, pattern },
+            #[allow(deprecated)]
             PushCondition::ContainsDisplayName => Self::ContainsDisplayName,
             PushCondition::RoomMemberCount { is } => Self::RoomMemberCount { is },
             PushCondition::SenderNotificationPermission { key } => {
                 Self::SenderNotificationPermission { key }
             }
-
+            #[cfg(feature = "unstable-msc3931")]
             PushCondition::RoomVersionSupports { feature } => Self::RoomVersionSupports { feature },
             PushCondition::EventPropertyIs { key, value } => Self::EventPropertyIs { key, value },
             PushCondition::EventPropertyContains { key, value } => {
                 Self::EventPropertyContains { key, value }
+            }
+            #[cfg(feature = "unstable-msc4306")]
+            PushCondition::ThreadSubscription { subscribed } => {
+                Self::ThreadSubscription { subscribed }
             }
             PushCondition::_Custom(_) => unimplemented!(),
         }

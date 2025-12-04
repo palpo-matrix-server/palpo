@@ -58,13 +58,13 @@ async fn register(
     if body.is_default() {
         let payload = req.payload().await?;
         if let Err(e) = serde_json::from_slice::<JsonValue>(payload) {
-            return Err(MatrixError::not_json(format!("Invalid json data: {e}")).into());
+            return Err(MatrixError::not_json(format!("invalid json data: {e}")).into());
         }
     }
 
     let conf = crate::config::get();
     if !conf.allow_registration && !aa.from_appservice && conf.registration_token.is_none() {
-        return Err(MatrixError::forbidden("Registration has been disabled.", None).into());
+        return Err(MatrixError::forbidden("registration has been disabled", None).into());
     }
 
     let is_guest = body.kind == RegistrationKind::Guest;
@@ -76,9 +76,10 @@ async fn register(
                     .filter(|user_id| {
                         !user_id.is_historical() && user_id.server_name() == conf.server_name
                     })
-                    .ok_or(MatrixError::invalid_username("Username is invalid."))?;
+                    .ok_or(MatrixError::invalid_username("username is invalid"))?;
+            proposed_user_id.validate_strict()?;
             if data::user::user_exists(&proposed_user_id)? {
-                return Err(MatrixError::user_in_use("Desired user ID is already taken.").into());
+                return Err(MatrixError::user_in_use("desired user id is already taken").into());
             }
             proposed_user_id
         }
@@ -86,8 +87,8 @@ async fn register(
             let proposed_user_id = UserId::parse_with_server_name(
                 utils::random_string(RANDOM_USER_ID_LENGTH).to_lowercase(),
                 &conf.server_name,
-            )
-            .unwrap();
+            )?;
+            proposed_user_id.validate_strict()?;
             if !data::user::user_exists(&proposed_user_id)? {
                 break proposed_user_id;
             }

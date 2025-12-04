@@ -14,7 +14,7 @@ use crate::{PrivOwnedStr, room::JoinRule};
 /// server is assumed to only return rooms the user is allowed to join in a
 /// space hierarchy listing response.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, Clone, Default, PartialEq, Eq, StringEnum)]
+#[derive(ToSchema, Clone, Default, StringEnum)]
 #[palpo_enum(rename_all = "snake_case")]
 pub enum SpaceRoomJoinRule {
     /// A user who wishes to join the room must first receive an invite to the

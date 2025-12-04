@@ -26,16 +26,16 @@ use crate::{
 // };
 
 pub fn backfill_request(origin: &str, args: BackfillReqArgs) -> SendResult<SendRequest> {
-    let url = Url::parse(&format!(
-        "{origin}/_matrix/federation/v1/backfill/{}&limit={}&{}",
+    let mut url = Url::parse(&format!(
+        "{origin}/_matrix/federation/v1/backfill/{}",
         &args.room_id,
-        args.limit,
-        args.v
-            .iter()
-            .map(|v| format!("v={v}"))
-            .collect::<Vec<_>>()
-            .join("&")
     ))?;
+    url.query_pairs_mut()
+        .append_pair("limit", &args.limit.to_string());
+    for event_id in args.v {
+        url.query_pairs_mut().append_pair("v", event_id.as_ref());
+    }
+
     Ok(crate::sending::get(url))
 }
 

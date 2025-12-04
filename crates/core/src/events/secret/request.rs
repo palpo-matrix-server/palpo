@@ -118,7 +118,7 @@ impl TryFrom<RequestActionJsonRepr> for RequestAction {
 
 /// The name of a secret.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, Clone, PartialEq, Eq, PartialOrd, Ord, StringEnum)]
+#[derive(ToSchema, Clone, StringEnum)]
 pub enum SecretName {
     /// Cross-signing master key (m.cross_signing.master).
     #[palpo_enum(rename = "m.cross_signing.master")]

@@ -91,7 +91,7 @@ async fn local_room_summary(
     let encryption = room::get_encryption(room_id).ok();
     let num_joined_members = room::joined_member_count(room_id).unwrap_or(0);
     let membership = sender_id.map(|sender_id| {
-        room::get_member(room_id, sender_id)
+        room::get_member(room_id, sender_id, None)
             .map_or(MembershipState::Leave, |content| content.membership)
     });
 

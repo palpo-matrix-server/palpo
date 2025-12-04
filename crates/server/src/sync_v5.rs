@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::sync::{Arc, LazyLock, Mutex};
 
 use crate::core::Seqnum;
@@ -10,9 +10,10 @@ use crate::core::events::receipt::{SyncReceiptEvent, combine_receipt_event_conte
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{AnyRawAccountDataEvent, StateEventType, TimelineEventType};
 use crate::core::identifiers::*;
+use crate::event::BatchToken;
 use crate::event::ignored_filter;
 use crate::room::{self, filter_rooms, state, timeline};
-use crate::sync_v3::{DEFAULT_BUMP_TYPES, share_encrypted_room};
+use crate::sync_v3::{DEFAULT_BUMP_TYPES, TimelineData, share_encrypted_room};
 use crate::{AppResult, data, extract_variant};
 
 #[derive(Debug, Default)]
@@ -100,7 +101,7 @@ pub async fn sync_events(
         sync_info,
         &all_invited_rooms,
         &todo_rooms,
-        &known_rooms,
+        known_rooms,
         &mut res_body,
     )
     .await?;
@@ -278,16 +279,21 @@ async fn process_rooms(
         let mut timestamp: Option<_> = None;
         let mut invite_state = None;
         let new_room_id: &RoomId = (*room_id).as_ref();
-        let (timeline_pdus, limited) = if all_invited_rooms.contains(&new_room_id) {
+        let timeline = if all_invited_rooms.contains(&new_room_id) {
             // TODO: figure out a timestamp we can use for remote invites
             invite_state = crate::room::user::invite_state(sender_id, room_id).ok();
-            (Vec::new(), true)
+            TimelineData {
+                events: Default::default(),
+                limited: false,
+                prev_batch: None,
+                next_batch: None,
+            }
         } else {
             crate::sync_v3::load_timeline(
                 sender_id,
                 room_id,
-                Some(*room_since_sn),
-                Some(Seqnum::MAX),
+                Some(BatchToken::new_live(*room_since_sn)),
+                Some(BatchToken::LIVE_MAX),
                 Some(&RoomEventFilter::with_limit(*timeline_limit)),
             )?
         };
@@ -340,24 +346,26 @@ async fn process_rooms(
         }
 
         if room_since_sn != &0
-            && timeline_pdus.is_empty()
+            && timeline.events.is_empty()
             && invite_state.is_none()
             && receipt_size == 0
         {
             continue;
         }
 
-        let prev_batch = timeline_pdus
+        let prev_batch = timeline
+            .events
             .first()
             .and_then(|(sn, _)| if *sn == 0 { None } else { Some(sn.to_string()) });
 
-        let room_events: Vec<_> = timeline_pdus
+        let room_events: Vec<_> = timeline
+            .events
             .iter()
-            .filter_map(|item| ignored_filter(item.clone(), sender_id))
+            .filter(|item| ignored_filter(*item, sender_id))
             .map(|(_, pdu)| pdu.to_sync_room_event())
             .collect();
 
-        for (_, pdu) in timeline_pdus {
+        for (_, pdu) in &timeline.events {
             let ts = pdu.origin_server_ts;
             if DEFAULT_BUMP_TYPES.binary_search(&pdu.event_ty).is_ok()
                 && timestamp.is_none_or(|time| time <= ts)
@@ -370,7 +378,7 @@ async fn process_rooms(
             .iter()
             .filter_map(|state| {
                 let state_key = match state.1.as_str() {
-                    "$LAZY" => return None,
+                    "$LAZY" | "*" => return None,
                     "$ME" => sender_id.as_str(),
                     _ => state.1.as_str(),
                 };
@@ -404,13 +412,13 @@ async fn process_rooms(
             .into_iter()
             .filter(|member| *member != sender_id)
             .filter_map(|user_id| {
-                room::get_member(room_id, &user_id).ok().map(|member| {
-                    sync_events::v5::SyncRoomHero {
+                room::get_member(room_id, &user_id, None)
+                    .ok()
+                    .map(|member| sync_events::v5::SyncRoomHero {
                         user_id,
                         name: member.display_name,
                         avatar: member.avatar_url,
-                    }
-                })
+                    })
             })
             .take(5)
             .collect();
@@ -469,7 +477,7 @@ async fn process_rooms(
                 timeline: room_events,
                 required_state,
                 prev_batch,
-                limited,
+                limited: timeline.limited,
                 joined_count: Some(
                     crate::room::joined_member_count(room_id)
                         .unwrap_or(0)
@@ -571,12 +579,12 @@ fn collect_e2ee(
             if encrypted_room {
                 let current_state_ids = state::get_full_state_ids(current_frame_id)?;
 
-                let since_state_ids: HashMap<_, _> = state::get_full_state_ids(since_frame_id)?;
+                let since_state_ids = state::get_full_state_ids(since_frame_id)?;
 
                 for (key, id) in current_state_ids {
                     if since_state_ids.get(&key) != Some(&id) {
                         let Ok(pdu) = timeline::get_pdu(&id) else {
-                            error!("Pdu in state not found: {id}");
+                            error!("pdu in state not found: {id}");
                             continue;
                         };
                         if pdu.event_ty == TimelineEventType::RoomMember
@@ -741,7 +749,7 @@ pub fn update_sync_request_with_cache(
     let cached = Arc::clone(
         cache
             .entry((user_id, device_id, req_body.conn_id.clone()))
-            .or_insert_with(Default::default),
+            .or_default(),
     );
     let cached = &mut cached.lock().unwrap();
     drop(cache);
@@ -842,11 +850,7 @@ pub fn update_sync_subscriptions(
     subscriptions: BTreeMap<OwnedRoomId, sync_events::v5::RoomSubscription>,
 ) {
     let mut cache = CONNECTIONS.lock().unwrap();
-    let cached = Arc::clone(
-        cache
-            .entry((user_id, device_id, conn_id))
-            .or_insert_with(Default::default),
-    );
+    let cached = Arc::clone(cache.entry((user_id, device_id, conn_id)).or_default());
     let cached = &mut cached.lock().unwrap();
     drop(cache);
 
@@ -862,11 +866,7 @@ pub fn update_sync_known_rooms(
     since_sn: i64,
 ) {
     let mut cache = CONNECTIONS.lock().unwrap();
-    let cached = Arc::clone(
-        cache
-            .entry((user_id, device_id, conn_id))
-            .or_insert_with(Default::default),
-    );
+    let cached = Arc::clone(cache.entry((user_id, device_id, conn_id)).or_default());
     let cached = &mut cached.lock().unwrap();
     drop(cache);
 
@@ -893,11 +893,7 @@ pub fn mark_required_state_sent(
     event_sn: Seqnum,
 ) {
     let mut cache = CONNECTIONS.lock().unwrap();
-    let cached = Arc::clone(
-        cache
-            .entry((user_id, device_id, conn_id))
-            .or_insert_with(Default::default),
-    );
+    let cached = Arc::clone(cache.entry((user_id, device_id, conn_id)).or_default());
     let cached = &mut cached.lock().unwrap();
     drop(cache);
     cached.required_state.insert(event_sn);

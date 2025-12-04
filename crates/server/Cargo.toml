@@ -83,6 +83,7 @@ palpo-core = { workspace = true, features = [
     "unstable-msc2967",
     "unstable-msc3061",
     "unstable-msc3202",
+    "unstable-msc3230",
     "unstable-msc3245",
     "unstable-msc3245-v1-compat",
     "unstable-msc3246",
@@ -119,7 +120,14 @@ palpo-core = { workspace = true, features = [
     "unstable-msc4186",
     "unstable-msc4203",
     "unstable-msc4230",
+    "unstable-msc4268",
     "unstable-msc4274",
+    "unstable-msc4278",
+    "unstable-msc4306",
+    "unstable-msc4308",
+    "unstable-msc4310",
+    "unstable-msc4319",
+    "unstable-msc4359",
     "unstable-pdu",
     "unstable-unspecified",
 ] }
@@ -152,7 +160,7 @@ secrecy = { workspace = true }
 serde = { workspace = true, features = ["derive", "rc"] }
 serde_json = { workspace = true }
 serde_regex = { workspace = true }
-serde_yaml = { workspace = true }
+serde-saphyr = { workspace = true }
 sha1 = { workspace = true }
 smallvec = { workspace = true }
 strum = { workspace = true }
@@ -185,20 +193,7 @@ ulid = { workspace = true }
 url = { workspace = true }
 uuid = { version = "1.1.2", features = ["v4"] }
 webpage = { workspace = true }
-sha2 = {workspace = true}
-# notify = "5.1.0"
+sha2 = { workspace = true }
 
 [lints]
 workspace = true
-
-# [patch.crates-io]
-# salvo = { git = "https://github.com/salvo-rs/salvo.git" }
-# salvo_core = { path = "D:/Soncai/salvo-rs/salvo/crates/core" }
-# salvo_macros = { path = "D:/Kenorld/salvo-rs/salvo/macros" }
-# salvo_extra = { path = "D:/Kenorld/salvo-rs/salvo/extra" }
-
-# [profile.dev]
-# debug = true
-# codegen-units = 1
-# incremental = true
-# opt-level = 1

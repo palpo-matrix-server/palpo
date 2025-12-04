@@ -122,6 +122,7 @@ use crate::{
     core::{MatrixError, OwnedDeviceId, UnixMillis},
     data,
     data::user::DbUser,
+    exts::*,
     json_ok,
 };
 
@@ -1107,10 +1108,10 @@ async fn create_or_get_user(
         .map_err(|_| MatrixError::invalid_param("Invalid Matrix user ID format"))?;
 
     // Check if user already exists
-    if let Ok(existing_user) = users::table
+    let exist_user = users::table
         .filter(users::id.eq(&parsed_user_id))
-        .first::<DbUser>(&mut connect()?)
-    {
+        .first::<DbUser>(&mut connect()?);
+    if let Ok(exist_user) = exist_user {
         tracing::debug!("Found existing user account: {}", user_id);
 
         // Note: We intentionally do NOT update the profile for existing users
@@ -1119,12 +1120,12 @@ async fn create_or_get_user(
         //
         // Alternative: You could add a config option to control this behavior:
         // if oidc_config.update_profile_on_login {
-        //     if let Err(e) = set_user_profile(&existing_user.id, display_name, user_info.picture.as_deref()).await {
+        //     if let Err(e) = set_user_profile(&exist_user.id, display_name, user_info.picture.as_deref()).await {
         //         tracing::warn!("Failed to update profile for existing user: {}", e);
         //     }
         // }
 
-        return Ok(existing_user);
+        return Ok(exist_user);
     }
 
     // Check if user registration is allowed
@@ -1138,6 +1139,9 @@ async fn create_or_get_user(
 
     // Create new user account
     let new_user = crate::data::user::NewDbUser {
+        is_local: parsed_user_id.server_name().is_local(),
+        localpart: parsed_user_id.localpart().to_string(),
+        server_name: parsed_user_id.server_name().to_owned(),
         id: parsed_user_id,
         ty: Some("oidc".to_string()),
         is_admin: false,

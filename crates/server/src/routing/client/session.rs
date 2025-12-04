@@ -15,7 +15,7 @@ use crate::data::schema::*;
 use crate::data::user::{DbUser, NewDbUser};
 use crate::{
     AppError, AuthArgs, DEVICE_ID_LENGTH, DepotExt, EmptyResult, JsonResult, MatrixError,
-    SESSION_ID_LENGTH, TOKEN_LENGTH, config, data, empty_ok, hoops, json_ok, user, utils,
+    SESSION_ID_LENGTH, TOKEN_LENGTH, config, data, empty_ok, exts::*, hoops, json_ok, user, utils,
 };
 
 pub fn public_router() -> Router {
@@ -192,6 +192,9 @@ async fn login(
                     ty: Some("jwt".to_owned()),
                     is_admin: false,
                     is_guest: false,
+                    is_local: user_id.server_name().is_local(),
+                    localpart: user_id.localpart().to_string(),
+                    server_name: user_id.server_name().to_owned(),
                     appservice_id: None,
                     created_at: UnixMillis::now(),
                 };
@@ -299,7 +302,7 @@ async fn get_access_token(
 
     if !conf.login_via_existing_session {
         return Err(
-            MatrixError::forbidden("Login via an existing session is not enabled", None).into(),
+            MatrixError::forbidden("login via an existing session is not enabled", None).into(),
         );
     }
 

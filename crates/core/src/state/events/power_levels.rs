@@ -16,8 +16,8 @@ use crate::{
     OwnedUserId, UserId,
     room_version_rules::AuthorizationRules,
     serde::{
-        DebugAsRefStr, DisplayAsRefStr, JsonObject, OrdAsRefStr, PartialEqAsRefStr,
-        PartialOrdAsRefStr, btreemap_deserialize_v1_power_level_values, deserialize_v1_power_level,
+        DebugAsRefStr, DisplayAsRefStr, EqAsRefStr, JsonObject, OrdAsRefStr,
+        btreemap_deserialize_v1_power_level_values, deserialize_v1_power_level,
         from_raw_json_value,
     },
 };
@@ -338,16 +338,7 @@ impl<E: Event> RoomPowerLevelsEventOptionExt for Option<RoomPowerLevelsEvent<E>>
 }
 
 /// Fields in the `content` of an `m.room.power_levels` event with an integer value.
-#[derive(
-    DebugAsRefStr,
-    Clone,
-    Copy,
-    DisplayAsRefStr,
-    PartialEqAsRefStr,
-    Eq,
-    PartialOrdAsRefStr,
-    OrdAsRefStr,
-)]
+#[derive(DebugAsRefStr, Clone, Copy, DisplayAsRefStr, EqAsRefStr, OrdAsRefStr)]
 #[non_exhaustive]
 pub enum RoomPowerLevelsIntField {
     /// `users_default`

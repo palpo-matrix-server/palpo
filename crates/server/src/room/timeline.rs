@@ -5,36 +5,37 @@ use std::sync::{LazyLock, Mutex};
 
 use diesel::prelude::*;
 use serde::Deserialize;
-use serde_json::value::to_raw_value;
+use serde_json::{json, value::to_raw_value};
 use ulid::Ulid;
 
-use crate::core::client::filter::{RoomEventFilter, UrlFilter};
 use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::encrypted::Relation;
 use crate::core::events::room::member::MembershipState;
-use crate::core::events::room::power_levels::RoomPowerLevelsEventContent;
 use crate::core::events::{GlobalAccountDataEventType, StateEventType, TimelineEventType};
-use crate::core::federation::backfill::{BackfillReqArgs, BackfillResBody, backfill_request};
 use crate::core::identifiers::*;
 use crate::core::presence::PresenceState;
 use crate::core::push::{Action, Ruleset, Tweak};
 use crate::core::room_version_rules::RoomIdFormatVersion;
 use crate::core::serde::{
-    CanonicalJsonObject, CanonicalJsonValue, JsonValue, RawJsonValue, to_canonical_value,
+    CanonicalJsonObject, CanonicalJsonValue, JsonValue, to_canonical_value, validate_canonical_json,
 };
-use crate::core::state::{Event, StateError};
-use crate::core::{Direction, Seqnum, UnixMillis, user_id};
-use crate::data::room::{DbEventData, NewDbEvent};
+use crate::core::state::{Event, StateError, event_auth};
+use crate::core::{Seqnum, UnixMillis};
+use crate::data::room::{DbEvent, DbEventData, NewDbEvent};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::event::{EventHash, PduBuilder, PduEvent, handler};
+use crate::event::{EventHash, PduBuilder, PduEvent};
 use crate::room::{push_action, state, timeline};
 use crate::utils::SeqnumQueueGuard;
 use crate::{
-    AppError, AppResult, GetUrlOrigin, MatrixError, RoomMutexGuard, SnPduEvent, config, data,
-    membership, utils,
+    AppError, AppResult, MatrixError, RoomMutexGuard, SnPduEvent, config, data, membership, utils,
 };
+
+mod backfill;
+pub mod stream;
+pub mod topolo;
+pub use backfill::*;
 
 pub static LAST_TIMELINE_COUNT_CACHE: LazyLock<Mutex<HashMap<OwnedRoomId, i64>>> =
     LazyLock::new(Default::default);
@@ -50,7 +51,7 @@ pub fn first_pdu_in_room(room_id: &RoomId) -> AppResult<Option<PduEvent>> {
         .optional()?
         .map(|(event_id, json)| {
             PduEvent::from_json_value(room_id, &event_id, json)
-                .map_err(|_e| AppError::internal("Invalid PDU in db."))
+                .map_err(|_e| AppError::internal("invalid pdu in db"))
         })
         .transpose()
 }
@@ -74,47 +75,55 @@ pub fn get_pdu_json(event_id: &EventId) -> AppResult<Option<CanonicalJsonObject>
         .first::<JsonValue>(&mut connect()?)
         .optional()?
         .map(|json| {
-            serde_json::from_value(json).map_err(|_e| AppError::internal("Invalid PDU in db."))
+            serde_json::from_value(json).map_err(|_e| AppError::internal("invalid pdu in db"))
         })
         .transpose()
 }
 
 /// Returns the pdu.
-///
-/// Checks the `eventid_outlierpdu` Tree if not found in the timeline.
 pub fn get_non_outlier_pdu(event_id: &EventId) -> AppResult<Option<SnPduEvent>> {
-    let Some((event_sn, room_id)) = events::table
+    let Some((event_sn, room_id, stream_ordering)) = events::table
         .filter(events::is_outlier.eq(false))
         .filter(events::id.eq(event_id))
-        .select((events::sn, events::room_id))
-        .first::<(Seqnum, OwnedRoomId)>(&mut connect()?)
+        .select((events::sn, events::room_id, events::stream_ordering))
+        .first::<(Seqnum, OwnedRoomId, i64)>(&mut connect()?)
         .optional()?
     else {
         return Ok(None);
     };
-    event_datas::table
+    let mut pdu = event_datas::table
         .filter(event_datas::event_id.eq(event_id))
         .select(event_datas::json_data)
         .first::<JsonValue>(&mut connect()?)
         .optional()?
         .map(|json| {
-            SnPduEvent::from_json_value(&room_id, event_id, event_sn, json)
-                .map_err(|_e| AppError::internal("Invalid PDU in db."))
+            SnPduEvent::from_json_value(
+                &room_id,
+                event_id,
+                event_sn,
+                json,
+                false,
+                false,
+                stream_ordering < 0,
+            )
+            .map_err(|_e| AppError::internal("invalid pdu in db"))
         })
-        .transpose()
-}
-
-pub fn has_non_outlier_pdu(event_id: &EventId) -> AppResult<bool> {
-    diesel_exists!(
-        events::table
+        .transpose()?;
+    if let Some(pdu) = pdu.as_mut() {
+        let event = events::table
             .filter(events::id.eq(event_id))
-            .filter(events::is_outlier.eq(false)),
-        &mut connect()?
-    )
-    .map_err(Into::into)
+            .first::<DbEvent>(&mut connect()?)?;
+        pdu.is_outlier = event.is_outlier;
+        pdu.soft_failed = event.soft_failed;
+        pdu.rejection_reason = event.rejection_reason;
+    }
+    Ok(pdu)
 }
 
 pub fn get_pdu(event_id: &EventId) -> AppResult<SnPduEvent> {
+    let event = events::table
+        .filter(events::id.eq(event_id))
+        .first::<DbEvent>(&mut connect()?)?;
     let (event_sn, room_id, json) = event_datas::table
         .filter(event_datas::event_id.eq(event_id))
         .select((
@@ -123,9 +132,16 @@ pub fn get_pdu(event_id: &EventId) -> AppResult<SnPduEvent> {
             event_datas::json_data,
         ))
         .first::<(Seqnum, OwnedRoomId, JsonValue)>(&mut connect()?)?;
-    let pdu = PduEvent::from_json_value(&room_id, event_id, json)
-        .map_err(|_e| AppError::internal("Invalid PDU in db."))?;
-    Ok(SnPduEvent::new(pdu, event_sn))
+    let mut pdu = PduEvent::from_json_value(&room_id, event_id, json)
+        .map_err(|_e| AppError::internal("invalid pdu in db"))?;
+    pdu.rejection_reason = event.rejection_reason;
+    Ok(SnPduEvent {
+        pdu,
+        event_sn,
+        is_outlier: event.is_outlier,
+        soft_failed: event.soft_failed,
+        backfilled: event.stream_ordering < 0,
+    })
 }
 
 pub fn get_may_missing_pdus(
@@ -135,24 +151,15 @@ pub fn get_may_missing_pdus(
     let events = event_datas::table
         .filter(event_datas::room_id.eq(room_id))
         .filter(event_datas::event_id.eq_any(event_ids))
-        .select((
-            event_datas::event_id,
-            event_datas::event_sn,
-            event_datas::json_data,
-        ))
-        .load::<(OwnedEventId, Seqnum, JsonValue)>(&mut connect()?)?;
+        .select(event_datas::event_id)
+        .load::<OwnedEventId>(&mut connect()?)?;
 
     let mut pdus = Vec::with_capacity(events.len());
     let mut missing_ids = event_ids.iter().cloned().collect::<HashSet<_>>();
-    for (event_id, event_sn, json) in events {
-        let mut pdu = SnPduEvent::from_json_value(room_id, &event_id, event_sn, json)
-            .map_err(|_e| AppError::internal("Invalid PDU in db."))?;
-        pdu.rejection_reason = events::table
-            .filter(events::id.eq(&event_id))
-            .select(events::rejection_reason)
-            .first::<Option<String>>(&mut connect()?)
-            .optional()?
-            .flatten();
+    for event_id in events {
+        let Ok(pdu) = timeline::get_pdu(&event_id) else {
+            continue;
+        };
         pdus.push(pdu);
         missing_ids.remove(&event_id);
     }
@@ -310,7 +317,9 @@ where
                 &power_levels,
                 &sync_pdu,
                 &pdu.room_id,
-            )? {
+            )
+            .await?
+            {
                 match action {
                     Action::Notify => notify = true,
                     Action::SetTweak(Tweak::Highlight(true)) => {
@@ -348,10 +357,9 @@ where
         }
         TimelineEventType::SpaceChild => {
             if let Some(_state_key) = &pdu.state_key {
-                super::space::ROOM_ID_SPACE_CHUNK_CACHE
-                    .lock()
-                    .unwrap()
-                    .remove(&pdu.room_id);
+                let mut cache = super::space::ROOM_ID_SPACE_CHUNK_CACHE.lock().unwrap();
+                cache.remove(&(pdu.room_id.clone(), false));
+                cache.remove(&(pdu.room_id.clone(), true));
             }
         }
         TimelineEventType::RoomMember => {
@@ -427,6 +435,32 @@ where
                 }
             }
         }
+        TimelineEventType::RoomTombstone => {
+            #[derive(Deserialize)]
+            struct ExtractReplacementRoom {
+                replacement_room: Option<OwnedRoomId>,
+            }
+
+            let content = pdu
+                .get_content::<ExtractReplacementRoom>()
+                .map_err(|_| AppError::internal("invalid content in tombstone pdu"))?;
+
+            if let Some(new_room_id) = content.replacement_room {
+                let local_user_ids = super::user::local_users(&pdu.room_id)?;
+                for user_id in &local_user_ids {
+                    super::user::copy_room_tags_and_direct_to_room(
+                        user_id,
+                        &pdu.room_id,
+                        &new_room_id,
+                    )?;
+                    super::user::copy_push_rules_from_room_to_room(
+                        user_id,
+                        &pdu.room_id,
+                        &new_room_id,
+                    )?;
+                }
+            }
+        }
         _ => {}
     }
 
@@ -451,6 +485,11 @@ where
     }
 
     crate::event::search::save_pdu(pdu, &pdu_json)?;
+
+    let frame_id = state::append_to_state(pdu)?;
+    // We set the room state after inserting the pdu, so that we never have a moment in time
+    // where events in the current room state do not exist
+    state::set_room_state(&pdu.room_id, frame_id)?;
 
     if let Err(e) = push_action::increment_notification_counts(&pdu.event_id, notifies, highlights)
     {
@@ -521,7 +560,7 @@ where
     Ok(())
 }
 
-pub async fn create_hash_and_sign_event(
+pub async fn hash_and_sign_event(
     pdu_builder: PduBuilder,
     sender_id: &UserId,
     room_id: &RoomId,
@@ -557,6 +596,7 @@ pub async fn create_hash_and_sign_event(
     //     )));
     // };
     let version_rules = crate::room::get_version_rules(room_version)?;
+    let auth_rules = &version_rules.authorization;
 
     let auth_events = state::get_auth_events(
         room_id,
@@ -564,14 +604,13 @@ pub async fn create_hash_and_sign_event(
         sender_id,
         state_key.as_deref(),
         &content,
-        &version_rules.authorization,
-        true,
+        auth_rules,
     )?;
 
     // Our depth is the maximum depth of prev_events + 1
     let depth = prev_events
         .iter()
-        .filter_map(|event_id| Some(timeline::get_pdu(event_id).ok()?.depth))
+        .filter_map(|event_id| Some(get_pdu(event_id).ok()?.depth))
         .max()
         .unwrap_or(0)
         + 1;
@@ -620,23 +659,33 @@ pub async fn create_hash_and_sign_event(
     };
 
     let fetch_event = async |event_id: OwnedEventId| {
-        timeline::get_pdu(&event_id)
+        get_pdu(&event_id)
             .map(|s| s.pdu)
             .map_err(|_| StateError::other("missing PDU 6"))
     };
     let fetch_state = async |k: StateEventType, s: String| {
-        auth_events
-            .get(&(k, s.to_owned()))
+        if let Some(pdu) = auth_events
+            .get(&(k.clone(), s.to_owned()))
             .map(|s| s.pdu.clone())
-            .ok_or_else(|| StateError::other("missing auth events"))
+        {
+            return Ok(pdu);
+        }
+        if auth_rules.room_create_event_id_as_room_id && k == StateEventType::RoomCreate {
+            let pdu = super::get_create(room_id)
+                .map_err(|_| StateError::other("missing create event"))?
+                .into_inner();
+            if pdu.room_id != *room_id {
+                Err(StateError::other("mismatched room id in create event"))
+            } else {
+                Ok(pdu.into_inner())
+            }
+        } else {
+            Err(StateError::other(format!(
+                "failed hash and sigin event, missing state event, event_type: {k}, state_key:{s}"
+            )))
+        }
     };
-    crate::core::state::event_auth::auth_check(
-        &version_rules.authorization,
-        &pdu,
-        &fetch_event,
-        &fetch_state,
-    )
-    .await?;
+    event_auth::auth_check(auth_rules, &pdu, &fetch_event, &fetch_state).await?;
 
     // Hash and sign
     let mut pdu_json =
@@ -644,7 +693,9 @@ pub async fn create_hash_and_sign_event(
 
     pdu_json.remove("event_id");
 
-    if version_rules.room_id_format == RoomIdFormatVersion::V2 {
+    if version_rules.room_id_format == RoomIdFormatVersion::V2
+        && pdu.event_ty == TimelineEventType::RoomCreate
+    {
         pdu_json.remove("room_id");
     }
 
@@ -659,9 +710,9 @@ pub async fn create_hash_and_sign_event(
         Err(e) => {
             return match e {
                 AppError::Signatures(crate::core::signatures::Error::PduSize) => {
-                    Err(MatrixError::too_large("Message is too long").into())
+                    Err(MatrixError::too_large("message is too long").into())
                 }
-                _ => Err(MatrixError::unknown("Signing event failed").into()),
+                _ => Err(MatrixError::unknown("signing event failed").into()),
             };
         }
     }
@@ -684,11 +735,10 @@ pub async fn create_hash_and_sign_event(
         "event_id".to_owned(),
         CanonicalJsonValue::String(pdu.event_id.as_str().to_owned()),
     );
-    if version_rules.room_id_format == RoomIdFormatVersion::V2 {
-        pdu_json.insert(
-            "room_id".to_owned(),
-            CanonicalJsonValue::String(room_id.as_str().to_owned()),
-        );
+
+    if let Err(e) = validate_canonical_json(&pdu_json) {
+        error!("invalid event json: {}", e);
+        return Err(MatrixError::bad_json(e.to_string()).into());
     }
 
     let (event_sn, event_guard) = crate::event::ensure_event_sn(room_id, &pdu.event_id)?;
@@ -700,7 +750,7 @@ pub async fn create_hash_and_sign_event(
         unrecognized_keys: None,
         depth: depth as i64,
         topological_ordering: depth as i64,
-        stream_ordering: 0,
+        stream_ordering: event_sn,
         origin_server_ts: timestamp.unwrap_or_else(UnixMillis::now),
         received_at: None,
         sender_id: Some(sender_id.to_owned()),
@@ -709,6 +759,7 @@ pub async fn create_hash_and_sign_event(
         state_key: pdu.state_key.clone(),
         is_outlier: true,
         soft_failed: false,
+        is_rejected: false,
         rejection_reason: None,
     }
     .save()?;
@@ -722,7 +773,17 @@ pub async fn create_hash_and_sign_event(
     }
     .save()?;
 
-    Ok((SnPduEvent::new(pdu, event_sn), pdu_json, event_guard))
+    Ok((
+        SnPduEvent {
+            pdu,
+            event_sn,
+            is_outlier: true,
+            soft_failed: false,
+            backfilled: false,
+        },
+        pdu_json,
+        event_guard,
+    ))
 }
 
 fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
@@ -830,11 +891,11 @@ pub async fn build_and_append_pdu(
     }
 
     let (pdu, pdu_json, _event_guard) =
-        create_hash_and_sign_event(pdu_builder, sender, room_id, room_version, state_lock).await?;
+        hash_and_sign_event(pdu_builder, sender, room_id, room_version, state_lock).await?;
     let room_id = &pdu.room_id;
     crate::room::ensure_room(room_id, room_version)?;
 
-    let conf = crate::config::get();
+    // let conf = crate::config::get();
     // let admin_room = super::resolve_local_alias(
     //     <&RoomAliasId>::try_from(format!("#admins:{}", &conf.server_name).as_str())
     //         .expect("#admins:server_name is a valid room alias"),
@@ -852,207 +913,18 @@ pub async fn build_and_append_pdu(
         state_lock,
     )
     .await?;
-    let frame_id = state::append_to_state(&pdu)?;
-
-    // We set the room state after inserting the pdu, so that we never have a moment in time
-    // where events in the current room state do not exist
-
-    state::set_room_state(room_id, frame_id)?;
-
-    let mut servers: HashSet<OwnedServerName> =
-        super::participating_servers(room_id)?.into_iter().collect();
 
     // In case we are kicking or banning a user, we need to inform their server of the change
-    if pdu.event_ty == TimelineEventType::RoomMember
-        && let Some(state_key_uid) = &pdu
-            .state_key
-            .as_ref()
-            .and_then(|state_key| UserId::parse(state_key.as_str()).ok())
-    {
-        servers.insert(state_key_uid.server_name().to_owned());
-    }
+    // move to append pdu
+    // if pdu.event_ty == TimelineEventType::RoomMember {
+    //     crate::room::update_joined_servers(&room_id)?;
+    //     crate::room::update_currents(&room_id)?;
+    // }
 
-    // Remove our server from the server list since it will be added to it by room_servers() and/or the if statement above
-    servers.remove(&conf.server_name);
+    let servers = super::participating_servers(room_id, false)?;
     crate::sending::send_pdu_servers(servers.into_iter(), &pdu.event_id)?;
 
     Ok(pdu)
-}
-
-/// Returns an iterator over all PDUs in a room.
-pub fn all_pdus(
-    user_id: &UserId,
-    room_id: &RoomId,
-    until_sn: Option<i64>,
-) -> AppResult<Vec<(i64, SnPduEvent)>> {
-    get_pdus_forward(user_id, room_id, 0, until_sn, None, usize::MAX)
-}
-pub fn get_pdus_forward(
-    user_id: &UserId,
-    room_id: &RoomId,
-    since_sn: Seqnum,
-    until_sn: Option<i64>,
-    filter: Option<&RoomEventFilter>,
-    limit: usize,
-) -> AppResult<Vec<(i64, SnPduEvent)>> {
-    get_pdus(
-        user_id,
-        room_id,
-        since_sn,
-        until_sn,
-        limit,
-        filter,
-        Direction::Forward,
-    )
-}
-pub fn get_pdus_backward(
-    user_id: &UserId,
-    room_id: &RoomId,
-    since_sn: Seqnum,
-    until_sn: Option<i64>,
-    filter: Option<&RoomEventFilter>,
-    limit: usize,
-) -> AppResult<Vec<(i64, SnPduEvent)>> {
-    get_pdus(
-        user_id,
-        room_id,
-        since_sn,
-        until_sn,
-        limit,
-        filter,
-        Direction::Backward,
-    )
-}
-
-/// Returns an iterator over all events and their tokens in a room that happened before the
-/// event with id `until` in reverse-chronological order.
-#[tracing::instrument]
-pub fn get_pdus(
-    user_id: &UserId,
-    room_id: &RoomId,
-    since_sn: Seqnum,
-    until_sn: Option<Seqnum>,
-    limit: usize,
-    filter: Option<&RoomEventFilter>,
-    dir: Direction,
-) -> AppResult<Vec<(Seqnum, SnPduEvent)>> {
-    let mut list: Vec<(Seqnum, SnPduEvent)> = Vec::with_capacity(limit.clamp(10, 100));
-    let mut start_sn = if dir == Direction::Forward {
-        0
-    } else {
-        data::curr_sn()? + 1
-    };
-
-    while list.len() < limit {
-        let mut query = events::table
-            .filter(events::room_id.eq(room_id))
-            .into_boxed();
-        if let Some(until_sn) = until_sn {
-            if dir == Direction::Forward {
-                query = query
-                    .filter(events::sn.le(until_sn))
-                    .filter(events::sn.ge(since_sn));
-            } else {
-                query = query
-                    .filter(events::sn.le(since_sn))
-                    .filter(events::sn.ge(until_sn));
-            }
-        } else if dir == Direction::Forward {
-            query = query.filter(events::sn.ge(since_sn));
-        } else {
-            query = query.filter(events::sn.le(since_sn));
-        }
-
-        if let Some(filter) = filter {
-            if let Some(url_filter) = &filter.url_filter {
-                match url_filter {
-                    UrlFilter::EventsWithUrl => query = query.filter(events::contains_url.eq(true)),
-                    UrlFilter::EventsWithoutUrl => {
-                        query = query.filter(events::contains_url.eq(false))
-                    }
-                }
-            }
-            if !filter.not_types.is_empty() {
-                query = query.filter(events::ty.ne_all(&filter.not_types));
-            }
-            if !filter.not_rooms.is_empty() {
-                query = query.filter(events::room_id.ne_all(&filter.not_rooms));
-            }
-            if let Some(rooms) = &filter.rooms
-                && !rooms.is_empty()
-            {
-                query = query.filter(events::room_id.eq_any(rooms));
-            }
-            if let Some(senders) = &filter.senders
-                && !senders.is_empty()
-            {
-                query = query.filter(events::sender_id.eq_any(senders));
-            }
-            if let Some(types) = &filter.types
-                && !types.is_empty()
-            {
-                query = query.filter(events::ty.eq_any(types));
-            }
-        }
-        let events: Vec<(OwnedEventId, Seqnum)> = if dir == Direction::Forward {
-            query
-                .filter(events::sn.gt(start_sn))
-                .order((
-                    events::topological_ordering.asc(),
-                    events::stream_ordering.asc(),
-                ))
-                // .limit(utils::usize_to_i64(limit))
-                .select((events::id, events::sn))
-                .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
-                .into_iter()
-                .collect()
-        } else {
-            query
-                .filter(events::sn.lt(start_sn))
-                .order((
-                    events::topological_ordering.desc(),
-                    events::stream_ordering.desc(),
-                ))
-                // .limit(utils::usize_to_i64(limit))
-                .select((events::id, events::sn))
-                .load::<(OwnedEventId, Seqnum)>(&mut connect()?)?
-                .into_iter()
-                .collect()
-        };
-        if events.is_empty() {
-            break;
-        }
-        start_sn = if dir == Direction::Forward {
-            if let Some(sn) = events.iter().map(|(_, sn)| sn).max() {
-                *sn
-            } else {
-                break;
-            }
-        } else if let Some(sn) = events.iter().map(|(_, sn)| sn).min() {
-            *sn
-        } else {
-            break;
-        };
-        for (event_id, event_sn) in events {
-            if let Ok(mut pdu) = timeline::get_pdu(&event_id)
-                && pdu.user_can_see(user_id)?
-            {
-                if pdu.sender != user_id {
-                    pdu.remove_transaction_id()?;
-                }
-                pdu.add_age()?;
-                pdu.add_unsigned_membership(user_id)?;
-                list.push((event_sn, pdu));
-                if list.len() >= limit {
-                    break;
-                }
-            }
-        }
-    }
-    if dir == Direction::Backward {
-        list.reverse();
-    }
-    Ok(list)
 }
 
 /// Replace a PDU with the redacted form.
@@ -1072,96 +944,20 @@ pub fn redact_pdu(event_id: &EventId, reason: &PduEvent) -> AppResult<()> {
     Ok(())
 }
 
-#[tracing::instrument(skip(room_id))]
-pub async fn backfill_if_required(room_id: &RoomId, from: Seqnum) -> AppResult<()> {
-    let pdus = all_pdus(user_id!("@doesntmatter:palpo.im"), room_id, None)?;
-    let first_pdu = pdus.first();
-
-    let Some(first_pdu) = first_pdu else {
-        return Ok(());
-    };
-    if first_pdu.0 < from {
-        // No backfill required, there are still events between them
-        return Ok(());
-    }
-
-    let conf = config::get();
-    let power_levels = super::get_state_content::<RoomPowerLevelsEventContent>(
-        room_id,
-        &StateEventType::RoomPowerLevels,
-        "",
-        None,
-    )?;
-    let mut admin_servers = power_levels
-        .users
-        .iter()
-        .filter(|(_, level)| **level > power_levels.users_default)
-        .map(|(user_id, _)| user_id.server_name())
-        .collect::<HashSet<_>>();
-    admin_servers.remove(&*conf.server_name);
-
-    // Request backfill
-    for backfill_server in admin_servers {
-        info!("Asking {backfill_server} for backfill");
-        let request = backfill_request(
-            &backfill_server.origin().await,
-            BackfillReqArgs {
-                room_id: room_id.to_owned(),
-                v: vec![(*first_pdu.1.event_id).to_owned()],
-                limit: 100,
-            },
-        )?
-        .into_inner();
-        match crate::sending::send_federation_request(backfill_server, request, None)
-            .await?
-            .json::<BackfillResBody>()
-            .await
-        {
-            Ok(response) => {
-                // let mut pub_key_map = RwLock::new(BTreeMap::new());
-                for pdu in response.pdus {
-                    if let Err(e) = backfill_pdu(backfill_server, pdu).await {
-                        warn!("Failedcar to add backfilled pdu: {e}");
-                    }
-                }
-                return Ok(());
-            }
-            Err(e) => {
-                warn!("{backfill_server} could not provide backfill: {e}");
-            }
-        }
-    }
-
-    info!("No servers could backfill");
-    Ok(())
+pub fn is_event_next_to_backward_gap(event: &PduEvent) -> AppResult<bool> {
+    let mut event_ids = event.prev_events.clone();
+    event_ids.push(event.event_id().to_owned());
+    let query = event_backward_extremities::table
+        .filter(event_backward_extremities::room_id.eq(event.room_id()))
+        .filter(event_backward_extremities::event_id.eq_any(event_ids));
+    Ok(diesel_exists!(query, &mut connect()?)?)
 }
 
-#[tracing::instrument(skip(pdu))]
-pub async fn backfill_pdu(origin: &ServerName, pdu: Box<RawJsonValue>) -> AppResult<()> {
-    let (event_id, value, room_id, room_version_id) = crate::parse_incoming_pdu(&pdu)?;
-
-    // Skip the PDU if we already have it as a timeline event
-    if timeline::get_pdu(&event_id).is_ok() {
-        info!("we already know {event_id}, skipping backfill");
-        return Ok(());
-    }
-
-    handler::process_incoming_pdu(origin, &event_id, &room_id, &room_version_id, value, false)
-        .await?;
-
-    let _value = get_pdu_json(&event_id)?.expect("we just created it");
-    let pdu = get_pdu(&event_id)?;
-
-    if pdu.event_ty == TimelineEventType::RoomMessage {
-        #[derive(Deserialize)]
-        struct ExtractBody {
-            body: Option<String>,
-        }
-
-        let _content = pdu
-            .get_content::<ExtractBody>()
-            .map_err(|_| AppError::internal("Invalid content in pdu."))?;
-    }
-
-    Ok(())
+pub fn is_event_next_to_forward_gap(event: &PduEvent) -> AppResult<bool> {
+    let mut event_ids = event.prev_events.clone();
+    event_ids.push(event.event_id().to_owned());
+    let query = event_forward_extremities::table
+        .filter(event_forward_extremities::room_id.eq(event.room_id()))
+        .filter(event_forward_extremities::event_id.eq_any(event_ids));
+    Ok(diesel_exists!(query, &mut connect()?)?)
 }

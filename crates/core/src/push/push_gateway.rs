@@ -146,7 +146,7 @@ impl Notification {
 /// convert it from a string with `::from()` / `.into()`. To check for values
 /// that are not available as a documented variant here, use its string
 /// representation, obtained through `.as_str()`.
-#[derive(ToSchema, Clone, Default, PartialEq, Eq, StringEnum)]
+#[derive(ToSchema, Clone, Default, StringEnum)]
 #[palpo_enum(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum NotificationPriority {

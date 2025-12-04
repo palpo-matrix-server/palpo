@@ -5,7 +5,7 @@ use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonValue, RawJsonValue, to_raw_json_value};
 use crate::event::{gen_event_id_canonical_json, handler};
 use crate::room::{state, timeline};
-use crate::{AppResult, IsRemoteOrLocal, MatrixError, room};
+use crate::{AppResult, IsRemoteOrLocal, MatrixError, room, sending};
 
 pub async fn send_join_v1(
     origin: &ServerName,
@@ -13,43 +13,43 @@ pub async fn send_join_v1(
     pdu: &RawJsonValue,
 ) -> AppResult<RoomStateV1> {
     if !room::room_exists(room_id)? {
-        return Err(MatrixError::not_found("Room is unknown to this server.").into());
+        return Err(MatrixError::not_found("room is unknown to this server.").into());
     }
 
     handler::acl_check(origin, room_id)?;
 
     // We need to return the state prior to joining, let's keep a reference to that here
-    let frame_id = room::get_frame_id(room_id, None)?;
+    let frame_id = room::get_frame_id(room_id, None).unwrap_or_default();
 
     // We do not add the event_id field to the pdu here because of signature and hashes checks
     let room_version_id = room::get_version(room_id)?;
 
     let (event_id, mut value) = gen_event_id_canonical_json(pdu, &room_version_id)
-        .map_err(|_| MatrixError::invalid_param("Could not convert event to canonical json."))?;
+        .map_err(|_| MatrixError::invalid_param("could not convert event to canonical json"))?;
 
     let event_room_id: OwnedRoomId = serde_json::from_value(
         value
             .get("room_id")
-            .ok_or_else(|| MatrixError::bad_json("Event missing room_id property."))?
+            .ok_or_else(|| MatrixError::bad_json("event missing room_id property"))?
             .clone()
             .into(),
     )
-    .map_err(|e| MatrixError::bad_json(format!("room_id field is not a valid room ID: {e}")))?;
+    .map_err(|e| MatrixError::bad_json(format!("room_id field is not a valid room id: {e}")))?;
 
     if event_room_id != room_id {
         return Err(
-            MatrixError::bad_json("Event room_id does not match request path room ID.").into(),
+            MatrixError::bad_json("event room_id does not match request path room id").into(),
         );
     }
 
     let event_type: StateEventType = serde_json::from_value(
         value
             .get("type")
-            .ok_or_else(|| MatrixError::bad_json("Event missing type property."))?
+            .ok_or_else(|| MatrixError::bad_json("event missing type property"))?
             .clone()
             .into(),
     )
-    .map_err(|e| MatrixError::bad_json(format!("Event has invalid state event type: {e}")))?;
+    .map_err(|e| MatrixError::bad_json(format!("event has invalid state event type: {e}")))?;
 
     if event_type != StateEventType::RoomMember {
         return Err(MatrixError::bad_json(
@@ -61,15 +61,15 @@ pub async fn send_join_v1(
     let content: RoomMemberEventContent = serde_json::from_value(
         value
             .get("content")
-            .ok_or_else(|| MatrixError::bad_json("Event missing content property"))?
+            .ok_or_else(|| MatrixError::bad_json("event missing content property"))?
             .clone()
             .into(),
     )
-    .map_err(|e| MatrixError::bad_json(format!("Event content is empty or invalid: {e}")))?;
+    .map_err(|e| MatrixError::bad_json(format!("event content is empty or invalid: {e}")))?;
 
     if content.membership != MembershipState::Join {
         return Err(MatrixError::bad_json(
-            "Not allowed to send a non-join membership event to join endpoint.",
+            "not allowed to send a non-join membership event to join endpoint",
         )
         .into());
     }
@@ -78,14 +78,14 @@ pub async fn send_join_v1(
     let sender: OwnedUserId = serde_json::from_value(
         value
             .get("sender")
-            .ok_or_else(|| MatrixError::bad_json("Event missing sender property."))?
+            .ok_or_else(|| MatrixError::bad_json("event missing sender property"))?
             .clone()
             .into(),
     )
-    .map_err(|e| MatrixError::bad_json(format!("sender property is not a valid user ID: {e}")))?;
+    .map_err(|e| MatrixError::bad_json(format!("sender property is not a valid user id: {e}")))?;
 
     if room::user::is_banned(&sender, room_id)? {
-        return Err(MatrixError::forbidden("User is banned from the room.", None).into());
+        return Err(MatrixError::forbidden("user is banned from the room", None).into());
     }
 
     handler::acl_check(sender.server_name(), room_id)?;
@@ -93,7 +93,7 @@ pub async fn send_join_v1(
     // check if origin server is trying to send for another server
     if sender.server_name() != origin {
         return Err(MatrixError::forbidden(
-            "Not allowed to join on behalf of another server.",
+            "not allowed to join on behalf of another server",
             None,
         )
         .into());
@@ -102,13 +102,13 @@ pub async fn send_join_v1(
     let state_key: OwnedUserId = serde_json::from_value(
         value
             .get("state_key")
-            .ok_or_else(|| MatrixError::bad_json("Event missing state_key property."))?
+            .ok_or_else(|| MatrixError::bad_json("event missing state_key property"))?
             .clone()
             .into(),
     )
-    .map_err(|e| MatrixError::bad_json(format!("State key is not a valid user ID: {e}")))?;
+    .map_err(|e| MatrixError::bad_json(format!("state key is not a valid user id: {e}")))?;
     if state_key != sender {
-        return Err(MatrixError::bad_json("State key does not match sender user.").into());
+        return Err(MatrixError::bad_json("state key does not match sender user").into());
     };
 
     if let Some(authorising_user) = content.join_authorized_via_users_server {
@@ -116,15 +116,15 @@ pub async fn send_join_v1(
 
         if matches!(room_version_id, V1 | V2 | V3 | V4 | V5 | V6 | V7) {
             return Err(MatrixError::invalid_param(
-                "Room version {room_version_id} does not support restricted rooms but \
-				 join_authorised_via_users_server ({authorising_user}) was found in the event.",
+                "room version {room_version_id} does not support restricted rooms but \
+				 join_authorised_via_users_server ({authorising_user}) was found in the event",
             )
             .into());
         }
 
         if !authorising_user.is_local() {
             return Err(MatrixError::invalid_param(
-                "Cannot authorise membership event through {authorising_user} as they do not \
+                "cannot authorise membership event through {authorising_user} as they do not \
 				 belong to this homeserver",
             )
             .into());
@@ -132,8 +132,8 @@ pub async fn send_join_v1(
 
         if !room::user::is_joined(&authorising_user, room_id)? {
             return Err(MatrixError::invalid_param(
-                "Authorising user {authorising_user} is not in the room you are trying to join, \
-				 they cannot authorise your join.",
+                "authorising user {authorising_user} is not in the room you are trying to join, \
+				 they cannot authorise your join",
             )
             .into());
         }
@@ -147,24 +147,24 @@ pub async fn send_join_v1(
         .await?
         {
             return Err(MatrixError::unable_to_authorize_join(
-                "Joining user did not pass restricted room's rules.",
+                "joining user did not pass restricted room's rules",
             )
             .into());
         }
     }
 
     crate::server_key::hash_and_sign_event(&mut value, &room_version_id)
-        .map_err(|e| MatrixError::invalid_param(format!("Failed to sign send_join event: {e}")))?;
+        .map_err(|e| MatrixError::invalid_param(format!("failed to sign send_join event: {e}")))?;
 
     let origin: OwnedServerName = serde_json::from_value(
         serde_json::to_value(
             value
                 .get("origin")
-                .ok_or(MatrixError::invalid_param("Event needs an origin field."))?,
+                .ok_or(MatrixError::invalid_param("event needs an origin field"))?,
         )
         .expect("CanonicalJson is valid json value"),
     )
-    .map_err(|_| MatrixError::invalid_param("Origin field is invalid."))?;
+    .map_err(|_| MatrixError::invalid_param("origin field is invalid"))?;
 
     handler::process_incoming_pdu(
         &origin,
@@ -173,6 +173,7 @@ pub async fn send_join_v1(
         &room_version_id,
         value.clone(),
         true,
+        false,
     )
     .await?;
 
@@ -182,7 +183,6 @@ pub async fn send_join_v1(
         .filter_map(|(_, id)| timeline::get_pdu_json(id).ok().flatten())
         .map(crate::sending::convert_to_outgoing_federation_event)
         .collect();
-
     let auth_chain_ids =
         room::auth_chain::get_auth_chain_ids(room_id, state_ids.values().map(|id| &**id))?;
     let auth_chain = auth_chain_ids
@@ -190,7 +190,10 @@ pub async fn send_join_v1(
         .filter_map(|id| timeline::get_pdu_json(&id).ok().flatten())
         .map(crate::sending::convert_to_outgoing_federation_event)
         .collect();
-    crate::sending::send_pdu_room(room_id, &event_id)?;
+
+    if let Err(e) = sending::send_pdu_room(room_id, &event_id, &[], &[origin.to_owned()]) {
+        error!("failed to notify user joined to servers: {e}");
+    }
 
     Ok(RoomStateV1 {
         auth_chain,

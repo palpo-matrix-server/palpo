@@ -15,8 +15,7 @@ RESULTS_FILE="$3"
 BASE_IMAGE="complement-palpo-base"
 if [ -z "$(docker images -q $BASE_IMAGE)" ]; then
     echo "Image $BASE_IMAGE is not exist, build it..."
-    env \
-    -C "$(git rev-parse --show-toplevel)" \
+    env -C "$(git rev-parse --show-toplevel)" \
     docker build -t complement-palpo-base -f tests/complement/Dockerfile.base .
 else
     echo "Image $BASE_IMAGE is exists, skip building..."
@@ -40,13 +39,19 @@ set +o pipefail
 test_packages=(
     ./tests/csapi
     ./tests
-    # ./tests/msc2836
-    # ./tests/msc3874
-    # ./tests/msc3890
-    # ./tests/msc3930
-    # ./tests/msc3967
-    # ./tests/msc4140
+    ## ./tests/msc3874
+    ## ./tests/msc3890
+    ### ./tests/msc3757
+    ./tests/msc3930
+    ./tests/msc3967
+    ## ./tests/msc4140
+    ## ./tests/msc4155
+    #./tests/msc4306
 )
+
+export COMPLEMENT_ENABLE_DIRTY_RUNS=1
+export COMPLEMENT_ALWAYS_PRINT_SERVER_LOGS=0
+export COMPLEMENT_BASE_IMAGE="$TEST_IMAGE"
 
 # env \
 #     -C "$COMPLEMENT_SRC" \
@@ -55,10 +60,8 @@ test_packages=(
 #     go test -tags="palpo_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 2h -json "${test_packages[@]}"| tee "$LOG_FILE.jsonl"
 # set -o pipefail
 
-env \
-    -C "$COMPLEMENT_SRC" \
-    COMPLEMENT_BASE_IMAGE="$TEST_IMAGE" \
-    go test -tags="palpo_blacklist" "$SKIPPED_COMPLEMENT_TESTS" -timeout 2h -json "${test_packages[@]}"| tee "$LOG_FILE.jsonl"
+env -C "$COMPLEMENT_SRC" \
+    go test -tags="palpo_blacklist" -count=1 "$SKIPPED_COMPLEMENT_TESTS" -timeout 2h -json "${test_packages[@]}"| tee "$LOG_FILE.jsonl"
 set -o pipefail
 
 # Post-process the results into an easy-to-compare format

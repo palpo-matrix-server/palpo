@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::room_version_rules::RedactionRules;
 use crate::{
-    OwnedEventId, OwnedRoomId, OwnedUserId, RoomVersionId,
+    OwnedRoomId, OwnedUserId, RoomVersionId,
     events::{EmptyStateKey, RedactContent, RedactedStateEventContent, StateEventType},
     room::RoomType,
 };
@@ -84,6 +84,20 @@ impl RoomCreateEventContent {
             room_type: None,
         }
     }
+
+    /// Creates a new `RoomCreateEventContent` with the default values and no
+    /// creator, as introduced in room version 11.
+    ///
+    /// The room version is set to [`RoomVersionId::V12`].
+    pub fn new_v12() -> Self {
+        Self {
+            creator: None,
+            federate: true,
+            room_version: RoomVersionId::V12,
+            predecessor: None,
+            room_type: None,
+        }
+    }
 }
 
 impl RedactContent for RoomCreateEventContent {
@@ -108,15 +122,18 @@ impl RedactContent for RoomCreateEventContent {
 pub struct PreviousRoom {
     /// The ID of the old room.
     pub room_id: OwnedRoomId,
-
-    /// The event ID of the last known event in the old room.
-    pub event_id: OwnedEventId,
+    // /// The event ID of the last known event in the old room.
+    // #[deprecated = "\
+    //     This field should be sent by servers when possible for backwards compatibility \
+    //     but clients should not rely on it."]
+    // #[serde(skip_serializing_if = "Option::is_none")]
+    // pub event_id: Option<OwnedEventId>,
 }
 
 impl PreviousRoom {
     /// Creates a new `PreviousRoom` from the given room and event IDs.
-    pub fn new(room_id: OwnedRoomId, event_id: OwnedEventId) -> Self {
-        Self { room_id, event_id }
+    pub fn new(room_id: OwnedRoomId) -> Self {
+        Self { room_id }
     }
 }
 

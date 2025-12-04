@@ -43,10 +43,9 @@ appservice_registration_dir = "/complement/appservice"
 
 ip_range_denylist = []
 
-
 [db]
 url = "postgres://postgres:postgres@127.0.0.1:5432/palpo"
-pool_size = 1
+pool_size = 10
 
 [presence]
 allow_local = true
@@ -57,8 +56,12 @@ domain_contains_allowlist = ["*"]
 [federation]
 enable = true
 
+[client]
+federation_retries = 4
+federation_timeout = 2_500
+
 [logger]
-level = "warn,palpo=info,salvo=error"
+level = "warn,palpo=info,salvo=warn"
 format = "pretty" # pretty, json
 ansi_colors = false
 

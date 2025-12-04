@@ -18,7 +18,7 @@ use crate::core::presence::PresenceContent;
 use crate::core::serde::RawJsonValue;
 use crate::core::to_device::DeviceIdOrAllDevices;
 use crate::data::user::NewDbPresence;
-use crate::event::handler;
+use crate::event::{handler, parse_incoming_pdu};
 use crate::sending::{EDU_LIMIT, PDU_LIMIT};
 use crate::{AppError, AppResult, DepotExt, JsonResult, MatrixError, data, json_ok, room};
 
@@ -60,7 +60,6 @@ async fn send_message(
         .into());
     }
 
-    println!("received transaction from {:?}", body);
     let txn_start_time = Instant::now();
     let resolved_map = process_pdus(&body.pdus, &body.origin, &txn_start_time).await?;
     process_edus(body.edus, &body.origin).await;
@@ -80,15 +79,13 @@ async fn process_pdus(
 ) -> AppResult<BTreeMap<OwnedEventId, AppResult<()>>> {
     let mut parsed_pdus = Vec::with_capacity(pdus.len());
     for pdu in pdus {
-        parsed_pdus.push(match crate::parse_incoming_pdu(pdu) {
+        parsed_pdus.push(match parse_incoming_pdu(pdu) {
             Ok(t) => t,
             Err(e) => {
-                warn!("could not parse PDU: {e}");
+                warn!("could not parse pdu: {e}");
                 continue;
             }
         });
-
-        // We do not add the event_id field to the pdu here because of signature and hashes checks
     }
     let mut resolved_map = BTreeMap::new();
     for (event_id, value, room_id, room_version_id) in parsed_pdus {
@@ -101,17 +98,15 @@ async fn process_pdus(
             &room_version_id,
             value,
             true,
+            false,
         )
         .await;
         debug!(
             pdu_elapsed = ?pdu_start_time.elapsed(),
             txn_elapsed = ?txn_start_time.elapsed(),
-            "finished PDU {event_id}",
+            "finished pdu {event_id}",
         );
 
-        // if result.is_ok() {
-        //     resolved_map.insert(event_id, Ok(()));
-        // }
         resolved_map.insert(event_id, result);
     }
 
@@ -119,7 +114,7 @@ async fn process_pdus(
         if let Err(e) = result
             && matches!(e, AppError::Matrix(_))
         {
-            warn!("incoming PDU failed {id}: {e:?}");
+            warn!("incoming pdu failed {id}: {e:?}");
         }
     }
 
@@ -136,7 +131,7 @@ async fn process_edus(edus: Vec<Edu>, origin: &ServerName) {
             Edu::DirectToDevice(content) => process_edu_direct_to_device(origin, content).await,
             Edu::SigningKeyUpdate(content) => process_edu_signing_key_update(origin, content).await,
             Edu::_Custom(ref _custom) => {
-                warn!("received custom/unknown EDU");
+                warn!("received custom/unknown edu");
             }
         }
     }
@@ -151,7 +146,7 @@ async fn process_edu_presence(origin: &ServerName, presence: PresenceContent) {
         if update.user_id.server_name() != origin {
             warn!(
                 %update.user_id, %origin,
-                "received presence EDU for user not belonging to origin"
+                "received presence edu for user not belonging to origin"
             );
             continue;
         }
@@ -183,19 +178,19 @@ async fn process_edu_receipt(origin: &ServerName, receipt: ReceiptContent) {
         if handler::acl_check(origin, &room_id).is_err() {
             warn!(
                 %origin, %room_id,
-                "received read receipt EDU from ACL'd server"
+                "received read receipt edu from ACL'd server"
             );
             continue;
         }
 
         for (user_id, user_updates) in room_updates.read {
-            if user_id.server_name() != origin {
-                warn!(
-                    %user_id, %origin,
-                    "received read receipt EDU for user not belonging to origin"
-                );
-                continue;
-            }
+            // if user_id.server_name() != origin {
+            //     warn!(
+            //         %user_id, %origin,
+            //         "received read receipt edu for user not belonging to origin"
+            //     );
+            //     continue;
+            // }
 
             if room::joined_users(&room_id, None)
                 .unwrap_or_default()
@@ -212,12 +207,12 @@ async fn process_edu_receipt(origin: &ServerName, receipt: ReceiptContent) {
                         room_id: room_id.clone(),
                     };
 
-                    let _ = room::receipt::update_read(&user_id, &room_id, &event);
+                    let _ = room::receipt::update_read(&user_id, &room_id, &event, false);
                 }
             } else {
                 warn!(
                     %user_id, %room_id, %origin,
-                    "received read receipt EDU from server who does not have a member in the room",
+                    "received read receipt edu from server who does not have a member in the room",
                 );
                 continue;
             }
@@ -233,7 +228,7 @@ async fn process_edu_typing(origin: &ServerName, typing: TypingContent) {
     if typing.user_id.server_name() != origin {
         warn!(
             %typing.user_id, %origin,
-            "received typing EDU for user not belonging to origin"
+            "received typing edu for user not belonging to origin"
         );
         return;
     }
@@ -241,7 +236,7 @@ async fn process_edu_typing(origin: &ServerName, typing: TypingContent) {
     if handler::acl_check(typing.user_id.server_name(), &typing.room_id).is_err() {
         warn!(
             %typing.user_id, %typing.room_id, %origin,
-            "received typing EDU for ACL'd user's server"
+            "received typing edu for ACL'd user's server"
         );
         return;
     }
@@ -254,14 +249,15 @@ async fn process_edu_typing(origin: &ServerName, typing: TypingContent) {
                     .federation_timeout
                     .saturating_mul(1000),
             );
-            let _ = room::typing::add_typing(&typing.user_id, &typing.room_id, timeout).await;
+            let _ =
+                room::typing::add_typing(&typing.user_id, &typing.room_id, timeout, false).await;
         } else {
-            let _ = room::typing::remove_typing(&typing.user_id, &typing.room_id).await;
+            let _ = room::typing::remove_typing(&typing.user_id, &typing.room_id, false).await;
         }
     } else {
         warn!(
             %typing.user_id, %typing.room_id, %origin,
-            "received typing EDU for user not in room"
+            "received typing edu for user not in room"
         );
     }
 }
@@ -274,7 +270,7 @@ async fn process_edu_device_list_update(origin: &ServerName, content: DeviceList
     if user_id.server_name() != origin {
         warn!(
             %user_id, %origin,
-            "received device list update EDU for user not belonging to origin"
+            "received device list update edu for user not belonging to origin"
         );
         return;
     }
@@ -293,7 +289,7 @@ async fn process_edu_direct_to_device(origin: &ServerName, content: DirectDevice
     if sender.server_name() != origin {
         warn!(
             %sender, %origin,
-            "received direct to device EDU for user not belonging to origin"
+            "received direct to device edu for user not belonging to origin"
         );
         return;
     }
@@ -307,7 +303,7 @@ async fn process_edu_direct_to_device(origin: &ServerName, content: DirectDevice
         for (target_device_id_maybe, event) in map {
             let Ok(event) = event
                 .deserialize_as()
-                .map_err(|e| error!("To-Device event is invalid: {e}"))
+                .map_err(|e| error!("to-device event is invalid: {e}"))
             else {
                 continue;
             };

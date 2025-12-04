@@ -122,7 +122,9 @@ impl RoomPowerLevelsEventContent {
             ban: default_power_level(),
             events: BTreeMap::new(),
             events_default: 0,
-            invite: 0,
+            // matrix spec is 0, but complement test and synapse set to 50.
+            // https://github.com/matrix-org/synapse/pull/6834
+            invite: 50,
             kick: default_power_level(),
             redact: default_power_level(),
             state_default: default_power_level(),

@@ -15,4 +15,4 @@ RUN sed -i 's|deb.debian.org/debian|mirrors.aliyun.com/debian|g' /etc/apt/source
     && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/testing/debian.deb.txt' \
     | tee /etc/apt/sources.list.d/caddy-testing.list \
     && apt-get update \
-    && apt-get install -y caddy systemctl inetutils-ping
+    && apt-get install -y caddy systemctl inetutils-ping libnss3-tools

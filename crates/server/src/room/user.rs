@@ -1,16 +1,21 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use diesel::prelude::*;
+use indexmap::IndexMap;
+use serde::de::DeserializeOwned;
 
 use crate::core::Seqnum;
+use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::room::member::MembershipState;
-use crate::core::events::{AnyStrippedStateEvent, AnySyncStateEvent};
+use crate::core::events::{AnyStrippedStateEvent, AnySyncStateEvent, GlobalAccountDataEventType};
 use crate::core::identifiers::*;
+use crate::core::push::{AnyPushRuleRef, NewPushRule, NewSimplePushRule};
 use crate::core::serde::{JsonValue, RawJson};
-use crate::data::room::DbEventPushSummary;
+use crate::data::room::{DbEventPushSummary, DbRoomTag, NewDbRoomTag};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
-use crate::{AppResult, MatrixError};
+use crate::event::BatchToken;
+use crate::{AppResult, MatrixError, OptionalExtension, exts::*};
 
 #[derive(Debug, Clone)]
 pub struct UserNotifySummary {
@@ -92,26 +97,24 @@ pub fn notify_summary(user_id: &UserId, room_id: &RoomId) -> AppResult<UserNotif
 }
 
 pub fn highlight_count(user_id: &UserId, room_id: &RoomId) -> AppResult<u64> {
-    event_push_summaries::table
+    let count = event_push_summaries::table
         .filter(event_push_summaries::user_id.eq(user_id))
         .filter(event_push_summaries::room_id.eq(room_id))
         .select(event_push_summaries::highlight_count)
         .first::<i64>(&mut connect()?)
-        .optional()
-        .map(|v| v.unwrap_or_default() as u64)
-        .map_err(Into::into)
+        .unwrap_or_default();
+    Ok(count as u64)
 }
 
 pub fn last_read_notification(user_id: &UserId, room_id: &RoomId) -> AppResult<Seqnum> {
-    event_receipts::table
+    let sn = event_receipts::table
         .filter(event_receipts::user_id.eq(user_id))
         .filter(event_receipts::room_id.eq(room_id))
         .order_by(event_receipts::event_sn.desc())
         .select(event_receipts::event_sn)
         .first::<Seqnum>(&mut connect()?)
-        .optional()
-        .map(|v| v.unwrap_or_default())
-        .map_err(Into::into)
+        .unwrap_or_default();
+    Ok(sn)
 }
 
 pub fn shared_rooms(user_ids: Vec<OwnedUserId>) -> AppResult<Vec<OwnedRoomId>> {
@@ -139,13 +142,22 @@ pub fn shared_rooms(user_ids: Vec<OwnedUserId>) -> AppResult<Vec<OwnedRoomId>> {
     Ok(shared_rooms)
 }
 
-pub fn join_sn(user_id: &UserId, room_id: &RoomId) -> AppResult<i64> {
+pub fn join_sn(user_id: &UserId, room_id: &RoomId) -> AppResult<Seqnum> {
     room_users::table
         .filter(room_users::room_id.eq(room_id))
         .filter(room_users::user_id.eq(user_id))
         .filter(room_users::membership.eq("join"))
         .select(room_users::event_sn)
         .first::<i64>(&mut connect()?)
+        .map_err(Into::into)
+}
+pub fn join_depth(user_id: &UserId, room_id: &RoomId) -> AppResult<u64> {
+    let join_sn = join_sn(user_id, room_id)?;
+    events::table
+        .filter(events::sn.eq(join_sn))
+        .select(events::depth)
+        .first::<i64>(&mut connect()?)
+        .map(|depth| depth as u64)
         .map_err(Into::into)
 }
 pub fn join_count(room_id: &RoomId) -> AppResult<i64> {
@@ -213,7 +225,6 @@ pub fn is_left(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
         .select(room_users::membership)
         .first::<String>(&mut connect()?)
         .map(|m| m == MembershipState::Leave.to_string())
-        .optional()?
         .unwrap_or(true);
     Ok(left)
 }
@@ -235,7 +246,6 @@ pub fn is_joined(user_id: &UserId, room_id: &RoomId) -> AppResult<bool> {
         .select(room_users::membership)
         .first::<String>(&mut connect()?)
         .map(|m| m == MembershipState::Join.to_string())
-        .optional()?
         .unwrap_or(false);
     Ok(joined)
 }
@@ -266,8 +276,7 @@ pub fn invite_state(
         .filter(room_users::membership.eq(MembershipState::Invite.to_string()))
         .select(room_users::state_data)
         .first::<Option<JsonValue>>(&mut connect()?)
-        .optional()?
-        .flatten()
+        .unwrap_or_default()
     {
         Ok(serde_json::from_value(state)?)
     } else {
@@ -282,9 +291,8 @@ pub fn membership(user_id: &UserId, room_id: &RoomId) -> AppResult<MembershipSta
         .filter(room_users::room_id.eq(room_id))
         .order_by(room_users::id.desc())
         .select(room_users::membership)
-        .first::<String>(&mut connect()?)
-        .optional()?;
-    if let Some(membership) = membership {
+        .first::<String>(&mut connect()?);
+    if let Ok(membership) = membership {
         Ok(membership.into())
     } else {
         Err(
@@ -297,7 +305,7 @@ pub fn membership(user_id: &UserId, room_id: &RoomId) -> AppResult<MembershipSta
 #[tracing::instrument]
 pub fn left_rooms(
     user_id: &UserId,
-    since_sn: Option<Seqnum>,
+    since_tk: Option<BatchToken>,
 ) -> AppResult<HashMap<OwnedRoomId, Vec<RawJson<AnySyncStateEvent>>>> {
     let query = room_users::table
         .filter(room_users::user_id.eq(user_id))
@@ -306,8 +314,8 @@ pub fn left_rooms(
             MembershipState::Ban.to_string(),
         ]))
         .into_boxed();
-    let query = if let Some(since_sn) = since_sn {
-        query.filter(room_users::event_sn.ge(since_sn))
+    let query = if let Some(since_tk) = since_tk {
+        query.filter(room_users::event_sn.ge(since_tk.event_sn()))
     } else {
         query.filter(room_users::forgotten.eq(false))
     };
@@ -333,4 +341,135 @@ pub fn left_rooms(
         room_events.insert(room_id, events);
     }
     Ok(room_events)
+}
+
+pub fn get_tags(user_id: &UserId, room_id: &RoomId) -> AppResult<Vec<DbRoomTag>> {
+    let tags = room_tags::table
+        .filter(room_tags::user_id.eq(user_id))
+        .filter(room_tags::room_id.eq(room_id))
+        .load::<DbRoomTag>(&mut connect()?)?;
+    Ok(tags)
+}
+pub fn local_users(room_id: &RoomId) -> AppResult<Vec<OwnedUserId>> {
+    let users = room_users::table
+        .filter(room_users::room_id.eq(room_id))
+        .filter(room_users::membership.eq("join"))
+        .select(room_users::user_id)
+        .distinct()
+        .load::<OwnedUserId>(&mut connect()?)?;
+    let users = users
+        .into_iter()
+        .filter(|user_id| user_id.server_name().is_local())
+        .collect::<Vec<_>>();
+    Ok(users)
+}
+
+/// Copies the tags and direct room state from one room to another.
+pub fn copy_room_tags_and_direct_to_room(
+    user_id: &UserId,
+    old_room_id: &RoomId,
+    new_room_id: &RoomId,
+) -> AppResult<()> {
+    let Ok(mut direct_rooms) = crate::user::get_data::<IndexMap<String, Vec<OwnedRoomId>>>(
+        user_id,
+        None,
+        &GlobalAccountDataEventType::Direct.to_string(),
+    ) else {
+        return Ok(());
+    };
+
+    let old_room_id = old_room_id.to_owned();
+    for (key, room_ids) in direct_rooms.iter_mut() {
+        if room_ids.contains(&old_room_id) {
+            room_ids.retain(|r| r != &old_room_id);
+            let new_room_id = new_room_id.to_owned();
+            if !room_ids.contains(&new_room_id) {
+                room_ids.push(new_room_id);
+            }
+        }
+    }
+
+    crate::user::set_data(
+        user_id,
+        None,
+        &GlobalAccountDataEventType::Direct.to_string(),
+        serde_json::to_value(direct_rooms)?,
+    )?;
+
+    let room_tags = get_tags(user_id, &old_room_id)?;
+    for tag in room_tags {
+        let DbRoomTag {
+            user_id,
+            tag,
+            content,
+            ..
+        } = tag;
+        let new_tag = NewDbRoomTag {
+            user_id,
+            room_id: new_room_id.to_owned(),
+            tag,
+            content,
+        };
+        diesel::insert_into(room_tags::table)
+            .values(&new_tag)
+            .execute(&mut connect()?)?;
+    }
+    Ok(())
+}
+
+/// Copy all of the push rules from one room to another for a specific user
+pub fn copy_push_rules_from_room_to_room(
+    user_id: &UserId,
+    old_room_id: &RoomId,
+    new_room_id: &RoomId,
+) -> AppResult<()> {
+    let Ok(mut user_data_content) = crate::data::user::get_data::<PushRulesEventContent>(
+        user_id,
+        None,
+        &GlobalAccountDataEventType::PushRules.to_string(),
+    ) else {
+        return Ok(());
+    };
+
+    let mut new_rules = vec![];
+    for push_rule in user_data_content.global.iter() {
+        if !push_rule.enabled() {
+            continue;
+        }
+
+        match push_rule {
+            // AnyPushRuleRef::Override(rule) => {
+            // },
+            // AnyPushRuleRef::Content(rule) => {
+            // },
+            // AnyPushRuleRef::PostContent(rule) => {
+            // },
+            // AnyPushRuleRef::Sender(rule) => {
+            // },
+            // AnyPushRuleRef::Underride(rule) => {
+            // },
+            AnyPushRuleRef::Room(rule) => {
+                println!("Found room rule: {:?}", rule);
+                let new_rule = NewPushRule::Room(NewSimplePushRule::new(
+                    new_room_id.to_owned(),
+                    rule.actions.clone(),
+                ));
+                new_rules.push(new_rule);
+            }
+            _ => {}
+        }
+    }
+    for new_rule in new_rules {
+        if let Err(e) = user_data_content.global.insert(new_rule, None, None) {
+            error!("failed to insert copied push rule: {}", e);
+        }
+    }
+
+    crate::data::user::set_data(
+        user_id,
+        None,
+        &GlobalAccountDataEventType::PushRules.to_string(),
+        serde_json::to_value(user_data_content)?,
+    )?;
+    Ok(())
 }

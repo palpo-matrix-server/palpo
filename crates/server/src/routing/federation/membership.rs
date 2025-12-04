@@ -1,15 +1,22 @@
+use std::borrow::Borrow;
+use std::iter::once;
+
+use diesel::prelude::*;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
+use serde_json::json;
 use serde_json::value::to_raw_value;
-use ulid::Ulid;
 
+use crate::core::UnixMillis;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::membership::*;
 use crate::core::identifiers::*;
-use crate::core::room::JoinRule;
-use crate::core::room::RoomEventReqArgs;
-use crate::core::serde::{CanonicalJsonValue, JsonObject};
+use crate::core::room::{JoinRule, RoomEventReqArgs};
+use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue};
+use crate::data::connect;
+use crate::data::room::NewDbEvent;
+use crate::data::schema::*;
 use crate::event::handler;
 use crate::federation::maybe_strip_event_id;
 use crate::room::{ensure_room, timeline};
@@ -96,7 +103,7 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
                 .ok()
             } else {
                 return Err(MatrixError::unable_to_grant_join(
-                    "No user on this server is able to assist in joining.",
+                    "no user on this server is able to assist in joining.",
                 )
                 .into());
             }
@@ -115,7 +122,7 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         extra_data: Default::default(),
     })
     .expect("member event is valid value");
-    let (_pdu, mut pdu_json, _) = timeline::create_hash_and_sign_event(
+    let (_pdu, mut pdu_json, _) = timeline::hash_and_sign_event(
         PduBuilder {
             event_type: TimelineEventType::RoomMember,
             content,
@@ -157,7 +164,6 @@ async fn invite_user(
         )
         .into());
     }
-
     let mut signed_event = utils::to_canonical_object(&body.event)
         .map_err(|_| MatrixError::invalid_param("invite event is invalid"))?;
 
@@ -188,19 +194,8 @@ async fn invite_user(
         CanonicalJsonValue::String(event_id.to_string()),
     );
 
-    let sender_id: OwnedUserId = serde_json::from_value(
-        signed_event
-            .get("sender")
-            .ok_or(MatrixError::invalid_param("event had no sender field"))?
-            .clone()
-            .into(),
-    )
-    .map_err(|_| MatrixError::invalid_param("sender is not a user id"))?;
-
     let state_lock = room::lock_state(&args.room_id).await;
     ensure_room(&args.room_id, &body.room_version)?;
-    drop(state_lock);
-
     if data::room::is_banned(&args.room_id)? {
         return Err(MatrixError::forbidden("this room is banned on this homeserver", None).into());
     }
@@ -211,37 +206,80 @@ async fn invite_user(
 
     let mut invite_state = body.invite_room_state.clone();
 
-    let mut event: JsonObject = serde_json::from_str(body.event.get())
+    // If we are active in the room, the remote server will notify us about the join via /send.
+    // If we are not in the room, we need to manually
+    // record the invited state for client /sync through update_membership(), and
+    // send the invite PDU to the relevant appservices.
+    // if !room::is_server_joined(&config::get().server_name, &args.room_id)? {
+    let mut event: CanonicalJsonObject = serde_json::from_str(body.event.get())
         .map_err(|_| MatrixError::invalid_param("invalid invite event bytes"))?;
 
     // let event_id: OwnedEventId = format!("$dummy_{}", Ulid::new().to_string()).try_into()?;
     event.insert("event_id".to_owned(), event_id.to_string().into());
 
     let (event_sn, event_guard) = crate::event::ensure_event_sn(&args.room_id, &event_id)?;
-    let pdu = SnPduEvent::from_json_value(&args.room_id, &event_id, event_sn, event.into())
-        .map_err(|e| {
-            warn!("invalid invite event: {}", e);
-            MatrixError::invalid_param("invalid invite event")
-        })?;
-
+    let pdu = SnPduEvent::from_canonical_object(
+        &args.room_id,
+        &event_id,
+        event_sn,
+        event.clone(),
+        false,
+        false,
+        false,
+    )
+    .map_err(|e| {
+        warn!("invalid invite event: {}", e);
+        MatrixError::invalid_param("invalid invite event")
+    })?;
     invite_state.push(pdu.to_stripped_state_event());
 
-    // If we are active in the room, the remote server will notify us about the join via /send.
-    // If we are not in the room, we need to manually
-    // record the invited state for client /sync through update_membership(), and
-    // send the invite PDU to the relevant appservices.
-    if !room::is_server_joined(&config::get().server_name, &args.room_id)? {
-        crate::membership::update_membership(
-            &pdu.event_id,
-            pdu.event_sn,
-            &args.room_id,
-            &invitee_id,
-            MembershipState::Invite,
-            &sender_id,
-            Some(invite_state),
-        )?;
+    NewDbEvent {
+        id: pdu.event_id.to_owned(),
+        sn: pdu.event_sn,
+        ty: pdu.event_ty.to_string(),
+        room_id: pdu.room_id.to_owned(),
+        unrecognized_keys: None,
+        depth: pdu.depth as i64,
+        topological_ordering: pdu.depth as i64,
+        stream_ordering: pdu.event_sn,
+        origin_server_ts: UnixMillis::now(),
+        received_at: None,
+        sender_id: Some(pdu.sender.clone()),
+        contains_url: false,
+        worker_id: None,
+        state_key: pdu.state_key.clone(),
+        is_outlier: false,
+        soft_failed: false,
+        is_rejected: false,
+        rejection_reason: None,
     }
+    .save()?;
+    timeline::append_pdu(&pdu, event, once(event_id.borrow()), &state_lock).await?;
+
+    // let sender_id: OwnedUserId = serde_json::from_value(
+    //     signed_event
+    //         .get("sender")
+    //         .ok_or(MatrixError::invalid_param("event had no sender field"))?
+    //         .clone()
+    //         .into(),
+    // )
+    // .map_err(|_| MatrixError::invalid_param("sender is not a user id"))?;
+
+    diesel::update(
+        room_users::table.filter(
+            room_users::room_id
+                .eq(&args.room_id)
+                .and(room_users::user_id.eq(&invitee_id))
+                .and(room_users::membership.eq(MembershipState::Invite.to_string())),
+        ),
+    )
+    .set(room_users::state_data.eq(json!(invite_state)))
+    .execute(&mut connect()?)
+    .ok();
+
     drop(event_guard);
+    // }
+    drop(state_lock);
 
     json_ok(InviteUserResBodyV2 {
         event: crate::sending::convert_to_outgoing_federation_event(signed_event),
@@ -254,11 +292,11 @@ async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<Mak
     let origin = depot.origin()?;
     if args.user_id.server_name() != origin {
         return Err(
-            MatrixError::bad_json("Not allowed to leave on behalf of another server.").into(),
+            MatrixError::bad_json("not allowed to leave on behalf of another server").into(),
         );
     }
     if !room::is_room_exists(&args.room_id)? {
-        return Err(MatrixError::forbidden("Room is unknown to this server.", None).into());
+        return Err(MatrixError::forbidden("room is unknown to this server", None).into());
     }
 
     // ACL check origin
@@ -267,7 +305,7 @@ async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<Mak
     let room_version_id = room::get_version(&args.room_id)?;
     let state_lock = crate::room::lock_state(&args.room_id).await;
 
-    let (_pdu, mut pdu_json, _event_guard) = timeline::create_hash_and_sign_event(
+    let (_pdu, mut pdu_json, _event_guard) = timeline::hash_and_sign_event(
         PduBuilder::state(
             args.user_id.to_string(),
             &RoomMemberEventContent::new(MembershipState::Leave),
@@ -285,7 +323,7 @@ async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<Mak
 
     json_ok(MakeLeaveResBody {
         room_version: Some(room_version_id),
-        event: to_raw_value(&pdu_json).expect("CanonicalJson can be serialized to JSON"),
+        event: to_raw_value(&pdu_json).expect("canonicalJson can be serialized to JSON"),
     })
 }
 
@@ -404,31 +442,31 @@ async fn send_leave(
     let sender: OwnedUserId = serde_json::from_value(
         value
             .get("sender")
-            .ok_or_else(|| MatrixError::bad_json("Event missing sender property."))?
+            .ok_or_else(|| MatrixError::bad_json("event missing sender property"))?
             .clone()
             .into(),
     )
-    .map_err(|_| MatrixError::bad_json("User ID in sender is invalid."))?;
+    .map_err(|_| MatrixError::bad_json("user in sender is invalid"))?;
 
     handler::acl_check(sender.server_name(), &args.room_id)?;
 
     if sender.server_name() != origin {
         return Err(
-            MatrixError::bad_json("Not allowed to leave on behalf of another server.").into(),
+            MatrixError::bad_json("not allowed to leave on behalf of another server.").into(),
         );
     }
 
     let state_key: OwnedUserId = serde_json::from_value(
         value
             .get("state_key")
-            .ok_or_else(|| MatrixError::invalid_param("Event missing state_key property."))?
+            .ok_or_else(|| MatrixError::invalid_param("event missing state_key property"))?
             .clone()
             .into(),
     )
-    .map_err(|_| MatrixError::bad_json("state_key is invalid or not a user ID"))?;
+    .map_err(|_| MatrixError::bad_json("state_key is invalid or not a user id"))?;
 
     if state_key != sender {
-        return Err(MatrixError::bad_json("state_key does not match sender user.").into());
+        return Err(MatrixError::bad_json("state_key does not match sender user").into());
     }
 
     handler::process_incoming_pdu(
@@ -438,9 +476,11 @@ async fn send_leave(
         &room_version_id,
         value,
         true,
+        false,
     )
     .await?;
-
-    crate::sending::send_pdu_room(&args.room_id, &event_id).unwrap();
+    if let Err(e) = crate::sending::send_pdu_room(&args.room_id, &event_id, &[], &[]) {
+        error!("failed to notify leave event: {e}");
+    }
     empty_ok()
 }

@@ -16,14 +16,14 @@ use tokio::sync::{Semaphore, broadcast};
 use crate::core::appservice::Registration;
 use crate::core::federation::discovery::{OldVerifyKey, ServerSigningKeys};
 use crate::core::identifiers::*;
-use crate::core::serde::{Base64, CanonicalJsonObject, JsonValue, RawJsonValue};
+use crate::core::serde::{Base64, JsonValue};
 use crate::core::{Seqnum, UnixMillis};
 use crate::data::misc::DbServerSigningKeys;
 use crate::data::schema::*;
 use crate::data::user::{NewDbUser, NewDbUserDevice};
 use crate::data::{connect, diesel_exists};
 use crate::utils::{MutexMap, MutexMapGuard, SeqnumQueue, SeqnumQueueFuture, SeqnumQueueGuard};
-use crate::{AppResult, MatrixError, SigningKeys};
+use crate::{AppResult, SigningKeys};
 
 pub const MXC_LENGTH: usize = 32;
 pub const DEVICE_ID_LENGTH: usize = 10;
@@ -194,6 +194,9 @@ pub fn appservices() -> &'static Vec<Registration> {
                         ty: None,
                         is_admin: false,
                         is_guest: false,
+                        is_local: true,
+                        localpart: user_id.localpart().to_owned(),
+                        server_name: user_id.server_name().to_owned(),
                         appservice_id: Some(registration.id.clone()),
                         created_at: UnixMillis::now(),
                     })
@@ -367,11 +370,11 @@ pub fn add_signing_key_from_origin(
 pub fn filter_keys_server_map(
     keys: BTreeMap<String, SigningKeys>,
     timestamp: UnixMillis,
-    room_version_id: &RoomVersionId,
+    room_version: &RoomVersionId,
 ) -> BTreeMap<String, BTreeMap<String, Base64>> {
     keys.into_iter()
         .filter_map(|(server, keys)| {
-            filter_keys_single_server(keys, timestamp, room_version_id).map(|keys| (server, keys))
+            filter_keys_single_server(keys, timestamp, room_version).map(|keys| (server, keys))
         })
         .collect()
 }
@@ -381,12 +384,12 @@ pub fn filter_keys_server_map(
 pub fn filter_keys_single_server(
     keys: SigningKeys,
     timestamp: UnixMillis,
-    room_version_id: &RoomVersionId,
+    room_version: &RoomVersionId,
 ) -> Option<BTreeMap<String, Base64>> {
     if keys.valid_until_ts > timestamp
         // valid_until_ts MUST be ignored in room versions 1, 2, 3, and 4.
         // https://spec.matrix.org/v1.10/server-server-api/#get_matrixkeyv2server
-        || matches!(room_version_id, RoomVersionId::V1
+        || matches!(room_version, RoomVersionId::V1
                     | RoomVersionId::V2
                     | RoomVersionId::V4
                     | RoomVersionId::V3)
@@ -419,41 +422,6 @@ pub fn shutdown() {
     // On shutdown
     info!(target: "shutdown-sync", "received shutdown notification, notifying sync helpers...");
     ROTATE.fire();
-}
-
-pub fn parse_incoming_pdu(
-    raw_value: &RawJsonValue,
-) -> AppResult<(
-    OwnedEventId,
-    CanonicalJsonObject,
-    OwnedRoomId,
-    RoomVersionId,
-)> {
-    let value: CanonicalJsonObject = serde_json::from_str(raw_value.get()).map_err(|e| {
-        warn!("error parsing incoming event {:?}: {:?}", raw_value, e);
-        MatrixError::bad_json("Invalid PDU in server response")
-    })?;
-    let room_id = value
-        .get("room_id")
-        .and_then(|id| RoomId::parse(id.as_str()?).ok())
-        .ok_or(MatrixError::invalid_param("invalid room id in pdu"))?;
-
-    let room_version_id = crate::room::get_version(&room_id).map_err(|_| {
-        MatrixError::invalid_param(format!(
-            "server is not in room `{room_id}` when parse incoming event"
-        ))
-    })?;
-
-    let event_id = match crate::event::gen_event_id(&value, &room_version_id) {
-        Ok(t) => t,
-        Err(_) => {
-            // Event could not be converted to canonical json
-            return Err(
-                MatrixError::invalid_param("could not convert event to canonical json").into(),
-            );
-        }
-    };
-    Ok((event_id, value, room_id, room_version_id))
 }
 
 pub fn get_servers_from_users(users: &[OwnedUserId]) -> Vec<OwnedServerName> {

@@ -28,7 +28,7 @@ use crate::{
 
 /// The kinds of push rules that are available.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, Clone, PartialEq, Eq, PartialOrd, Ord, StringEnum)]
+#[derive(ToSchema, Clone, StringEnum)]
 #[palpo_enum(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum RuleKind {
@@ -47,6 +47,11 @@ pub enum RuleKind {
     /// Content-specific rules.
     Content,
 
+    /// Post-content specific rules.
+    #[cfg(feature = "unstable-msc4306")]
+    #[palpo_enum(rename = "io.element.msc4306.postcontent")]
+    PostContent,
+
     #[doc(hidden)]
     #[salvo(schema(value_type = String))]
     _Custom(PrivOwnedStr),
@@ -60,6 +65,10 @@ pub enum NewPushRule {
 
     /// Content-specific rules.
     Content(NewPatternedPushRule),
+
+    /// Post-content specific rules.
+    #[cfg(feature = "unstable-msc4306")]
+    PostContent(NewConditionalPushRule),
 
     /// Room-specific rules.
     Room(NewSimplePushRule<OwnedRoomId>),
@@ -77,6 +86,8 @@ impl NewPushRule {
         match self {
             NewPushRule::Override(_) => RuleKind::Override,
             NewPushRule::Content(_) => RuleKind::Content,
+            #[cfg(feature = "unstable-msc4306")]
+            NewPushRule::PostContent(_) => RuleKind::PostContent,
             NewPushRule::Room(_) => RuleKind::Room,
             NewPushRule::Sender(_) => RuleKind::Sender,
             NewPushRule::Underride(_) => RuleKind::Underride,
@@ -88,6 +99,8 @@ impl NewPushRule {
         match self {
             NewPushRule::Override(r) => &r.rule_id,
             NewPushRule::Content(r) => &r.rule_id,
+            #[cfg(feature = "unstable-msc4306")]
+            NewPushRule::PostContent(r) => &r.rule_id,
             NewPushRule::Room(r) => r.rule_id.as_ref(),
             NewPushRule::Sender(r) => r.rule_id.as_ref(),
             NewPushRule::Underride(r) => &r.rule_id,
@@ -97,7 +110,7 @@ impl NewPushRule {
 
 /// The scope of a push rule.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, Clone, PartialEq, Eq, StringEnum)]
+#[derive(ToSchema, Clone, StringEnum)]
 #[palpo_enum(rename_all = "lowercase")]
 #[non_exhaustive]
 pub enum RuleScope {

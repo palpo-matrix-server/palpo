@@ -34,7 +34,7 @@ pub(super) fn get_state(
             Some(leave_sn)
         } else {
             return Err(MatrixError::forbidden(
-                "You don't have permission to view this room.",
+                "you don't have permission to view this room",
                 None,
             )
             .into());
@@ -43,14 +43,16 @@ pub(super) fn get_state(
         None
     };
 
-    let frame_id = room::get_frame_id(&room_id, None)?;
+    let frame_id = room::get_frame_id(&room_id, None).unwrap_or_default();
 
-    let room_state = state::get_full_state(frame_id)?
+    let room_state = state::get_full_state(frame_id)
+        .unwrap_or_default()
         .values()
         .map(|pdu| pdu.to_state_event())
         .collect();
     json_ok(StateEventsResBody::new(room_state))
 }
+
 /// #POST /_matrix/client/r0/rooms/{room_id}/report/{event_id}
 /// Reports an inappropriate event to homeserver admins
 #[endpoint]
@@ -129,7 +131,7 @@ pub(super) fn state_for_key(
             Some(leave_sn)
         } else {
             return Err(MatrixError::forbidden(
-                "You don't have permission to view this room.",
+                "you don't have permission to view this room",
                 None,
             )
             .into());
@@ -170,7 +172,7 @@ pub(super) async fn state_for_empty_key(
             Some(leave_sn)
         } else {
             return Err(MatrixError::forbidden(
-                "You don't have permission to view this room.",
+                "you don't have permission to view this room",
                 None,
             )
             .into());
@@ -275,10 +277,11 @@ pub async fn send_typing(
             authed.user_id(),
             &args.room_id,
             duration.as_millis() as u64 + UnixMillis::now().get(),
+            true,
         )
         .await?;
     } else {
-        room::typing::remove_typing(authed.user_id(), &args.room_id).await?;
+        room::typing::remove_typing(authed.user_id(), &args.room_id, true).await?;
     }
     empty_ok()
 }

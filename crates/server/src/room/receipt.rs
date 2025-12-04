@@ -9,16 +9,24 @@ use crate::core::events::receipt::{
 };
 use crate::core::federation::transaction::Edu;
 use crate::core::identifiers::*;
-use crate::data::connect;
-use crate::data::room::NewDbReceipt;
+use crate::data::room::DbReceipt;
 use crate::data::schema::*;
+use crate::data::{connect, next_sn};
 use crate::{AppResult, sending};
 
 /// Replaces the previous read receipt.
 #[tracing::instrument]
-pub fn update_read(user_id: &UserId, room_id: &RoomId, event: &ReceiptEvent) -> AppResult<()> {
+pub fn update_read(
+    user_id: &UserId,
+    room_id: &RoomId,
+    event: &ReceiptEvent,
+    broadcast: bool,
+) -> AppResult<()> {
     for (event_id, receipts) in event.content.clone() {
-        let event_sn = crate::event::get_event_sn(&event_id)?;
+        let Ok(event_sn) = crate::event::get_event_sn(&event_id) else {
+            continue;
+        };
+        let mut conn = connect()?;
         for (receipt_ty, user_receipts) in receipts {
             if let Some(receipt) = user_receipts.get(user_id) {
                 let thread_id = match &receipt.thread {
@@ -26,7 +34,8 @@ pub fn update_read(user_id: &UserId, room_id: &RoomId, event: &ReceiptEvent) -> 
                     _ => None,
                 };
                 let receipt_at = receipt.ts.unwrap_or_else(UnixMillis::now);
-                let receipt = NewDbReceipt {
+                let receipt = DbReceipt {
+                    sn: next_sn()?,
                     ty: receipt_ty.to_string(),
                     room_id: room_id.to_owned(),
                     user_id: user_id.to_owned(),
@@ -36,9 +45,12 @@ pub fn update_read(user_id: &UserId, room_id: &RoomId, event: &ReceiptEvent) -> 
                     json_data: serde_json::to_value(receipt)?,
                     receipt_at,
                 };
-                diesel::insert_into(event_receipts::table)
+                if let Err(e) = diesel::insert_into(event_receipts::table)
                     .values(&receipt)
-                    .execute(&mut connect()?)?;
+                    .execute(&mut conn)
+                {
+                    error!("failed to insert receipt: {}", e);
+                }
             }
         }
     }
@@ -54,7 +66,9 @@ pub fn update_read(user_id: &UserId, room_id: &RoomId, event: &ReceiptEvent) -> 
         )])),
     )]);
     let edu = Edu::Receipt(ReceiptContent::new(receipts));
-    sending::send_edu_room(room_id, &edu)?;
+    if broadcast {
+        sending::send_edu_room(room_id, &edu)?;
+    }
     Ok(())
 }
 
@@ -64,7 +78,7 @@ pub fn last_private_read(user_id: &UserId, room_id: &RoomId) -> AppResult<Receip
         .filter(event_receipts::room_id.eq(room_id))
         .filter(event_receipts::user_id.eq(user_id))
         .filter(event_receipts::ty.eq(ReceiptType::ReadPrivate.to_string()))
-        .order_by(event_receipts::id.desc())
+        .order_by(event_receipts::sn.desc())
         .select(event_receipts::event_id)
         .first::<OwnedEventId>(&mut connect()?)?;
 

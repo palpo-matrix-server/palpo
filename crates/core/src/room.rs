@@ -11,15 +11,15 @@ use serde::{Deserialize, Serialize, de};
 use serde_json::{Value as JsonValue, value::RawValue as RawJsonValue};
 
 use crate::{
-    EventEncryptionAlgorithm, OwnedEventId, OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId,
-    OwnedUserId, PrivOwnedStr, RoomId, RoomVersionId,
+    Direction, EventEncryptionAlgorithm, OwnedEventId, OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId,
+    OwnedUserId, PrivOwnedStr, RoomId, RoomVersionId, UnixMillis,
     events::StateEventType,
     serde::{StringEnum, from_raw_json_value},
 };
 
 /// An enum of possible room types.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, Clone, PartialEq, Eq, StringEnum)]
+#[derive(ToSchema, Clone, StringEnum)]
 #[non_exhaustive]
 pub enum RoomType {
     /// Defines the room as a space.
@@ -33,7 +33,7 @@ pub enum RoomType {
 }
 
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, Clone, Default, PartialEq, Eq, StringEnum)]
+#[derive(ToSchema, Clone, Default, StringEnum)]
 #[palpo_enum(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum Visibility {
@@ -303,7 +303,7 @@ impl<'de> Deserialize<'de> for AllowRule {
 
 /// The kind of rule used for users wishing to join this room.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(Clone, Default, PartialEq, Eq, StringEnum)]
+#[derive(Clone, Default, StringEnum)]
 #[palpo_enum(rename_all = "snake_case")]
 pub enum JoinRuleKind {
     /// A user who wishes to join the room must first receive an invite to the room from someone
@@ -630,6 +630,42 @@ impl From<Restricted> for RestrictedSummary {
             .collect();
 
         Self::new(allowed_room_ids)
+    }
+}
+
+/// Request type for the `get_event_by_timestamp` endpoint.
+#[derive(ToParameters, Deserialize, Debug)]
+pub struct TimestampToEventReqArgs {
+    /// The ID of the room the event is in.
+    #[salvo(parameter(parameter_in = Path))]
+    pub room_id: OwnedRoomId,
+
+    /// The timestamp to search from, inclusively.
+    #[salvo(parameter(parameter_in = Query))]
+    pub ts: UnixMillis,
+
+    /// The direction in which to search.
+    #[salvo(parameter(parameter_in = Query))]
+    pub dir: Direction,
+}
+
+/// Response type for the `get_event_by_timestamp` endpoint.
+#[derive(ToSchema, Deserialize, Serialize, Debug)]
+pub struct TimestampToEventResBody {
+    /// The ID of the event found.
+    pub event_id: OwnedEventId,
+
+    /// The event's timestamp.
+    pub origin_server_ts: UnixMillis,
+}
+
+impl TimestampToEventResBody {
+    /// Creates a new `Response` with the given event ID and timestamp.
+    pub fn new(event_id: OwnedEventId, origin_server_ts: UnixMillis) -> Self {
+        Self {
+            event_id,
+            origin_server_ts,
+        }
     }
 }
 

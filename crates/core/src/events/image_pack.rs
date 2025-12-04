@@ -127,7 +127,7 @@ impl PackInfo {
 
 /// Usages for either an image pack or an individual image.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, Clone, PartialEq, Eq, PartialOrd, Ord, StringEnum)]
+#[derive(ToSchema, Clone, StringEnum)]
 #[palpo_enum(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum PackUsage {

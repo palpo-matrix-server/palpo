@@ -4,6 +4,7 @@
 
 use std::{collections::BTreeMap, time::Duration};
 
+use as_variant::as_variant;
 use salvo::oapi::{ToParameters, ToSchema};
 use serde::{Deserialize, Serialize};
 
@@ -69,6 +70,10 @@ pub struct SyncEventsReqArgs {
         skip_serializing_if = "Option::is_none"
     )]
     pub timeout: Option<Duration>,
+
+    #[serde(default, skip_serializing_if = "crate::serde::is_default")]
+    #[salvo(parameter(parameter_in = Query))]
+    pub use_state_after: bool,
 }
 
 /// Response type for the `sync` endpoint.
@@ -209,7 +214,7 @@ pub struct LeftRoom {
     pub timeline: Timeline,
 
     /// The state updates for the room up to the start of the timeline.
-    #[serde(default, skip_serializing_if = "State::is_empty")]
+    #[serde(flatten, skip_serializing_if = "State::is_empty")]
     pub state: State,
 
     /// The private data that this user has attached to this room.
@@ -268,7 +273,7 @@ pub struct JoinedRoom {
     /// parameter, and the start of the `timeline` (or all state up to the
     /// start of the `timeline`, if `since` is not given, or `full_state` is
     /// true).
-    #[serde(default, skip_serializing_if = "State::is_empty")]
+    #[serde(flatten, skip_serializing_if = "State::is_before_and_empty")]
     pub state: State,
 
     /// The private data that this user has attached to this room.
@@ -363,33 +368,71 @@ impl Timeline {
 }
 
 /// State events in the room.
+#[derive(ToSchema, Clone, Debug, Deserialize, Serialize)]
+pub enum State {
+    /// The state changes between the previous sync and the **start** of the timeline.
+    ///
+    /// To get the full list of state changes since the previous sync, the state events in
+    /// [`Timeline`] must be added to these events to update the local state.
+    ///
+    /// To get this variant, `use_state_after` must be set to `false` in the [`Request`], which is
+    /// the default.
+    #[serde(rename = "state")]
+    Before(StateEvents),
+
+    /// The state changes between the previous sync and the **end** of the timeline.
+    ///
+    /// This contains the full list of state changes since the previous sync. State events in
+    /// [`Timeline`] must be ignored to update the local state.
+    ///
+    /// To get this variant, `use_state_after` must be set to `true` in the [`Request`].
+    #[serde(rename = "state_after")]
+    After(StateEvents),
+}
+
+impl State {
+    /// Returns true if this is the `Before` variant and there are no state updates.
+    fn is_before_and_empty(&self) -> bool {
+        as_variant!(self, Self::Before).is_some_and(|state| state.is_empty())
+    }
+
+    /// Returns true if there are no state updates.
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Self::Before(state) => state.is_empty(),
+            Self::After(state) => state.is_empty(),
+        }
+    }
+}
+impl Default for State {
+    fn default() -> Self {
+        Self::Before(Default::default())
+    }
+}
+
+/// State events in the room.
 #[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize)]
-pub struct State {
+pub struct StateEvents {
     /// A list of state events.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub events: Vec<RawJson<AnySyncStateEvent>>,
 }
 
-impl State {
+impl StateEvents {
     /// Creates an empty `State`.
-    pub fn new() -> Self {
-        Default::default()
+    pub fn new(events: Vec<RawJson<AnySyncStateEvent>>) -> Self {
+        Self { events }
     }
 
     /// Returns true if there are no state updates.
     pub fn is_empty(&self) -> bool {
         self.events.is_empty()
     }
-
-    /// Creates a `State` with events
-    pub fn with_events(events: Vec<RawJson<AnySyncStateEvent>>) -> Self {
-        Self { events }
-    }
 }
 
-impl From<Vec<RawJson<AnySyncStateEvent>>> for State {
+impl From<Vec<RawJson<AnySyncStateEvent>>> for StateEvents {
     fn from(events: Vec<RawJson<AnySyncStateEvent>>) -> Self {
-        Self::with_events(events)
+        Self::new(events)
     }
 }
 
@@ -508,8 +551,8 @@ pub struct InvitedRoom {
 
 impl InvitedRoom {
     /// Creates an empty `InvitedRoom`.
-    pub fn new() -> Self {
-        Default::default()
+    pub fn new(invite_state: InviteState) -> Self {
+        Self { invite_state }
     }
 
     /// Returns true if there are no updates to this room.
@@ -534,8 +577,8 @@ pub struct InviteState {
 
 impl InviteState {
     /// Creates an empty `InviteState`.
-    pub fn new() -> Self {
-        Default::default()
+    pub fn new(events: Vec<RawJson<AnyStrippedStateEvent>>) -> Self {
+        Self { events }
     }
 
     /// Returns true if there are no state updates.

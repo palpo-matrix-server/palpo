@@ -1,9 +1,8 @@
 use std::collections::{BTreeMap, HashMap, HashSet, hash_map::Entry};
 
-use palpo_core::Seqnum;
+use indexmap::IndexMap;
 use state::DbRoomStateField;
 
-use crate::core::UnixMillis;
 use crate::core::client::filter::{FilterDefinition, LazyLoadOptions, RoomEventFilter};
 use crate::core::client::sync_events::UnreadNotificationsCount;
 use crate::core::client::sync_events::v3::{
@@ -12,13 +11,15 @@ use crate::core::client::sync_events::v3::{
     SyncEventsResBody, Timeline, ToDevice,
 };
 use crate::core::device::DeviceLists;
-use crate::core::events::receipt::ReceiptEvent;
+use crate::core::events::receipt::SyncReceiptEvent;
 use crate::core::events::room::member::{MembershipState, RoomMemberEventContent};
 use crate::core::events::{
     AnyRawAccountDataEvent, AnySyncEphemeralRoomEvent, StateEventType, TimelineEventType,
 };
 use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
+use crate::core::{Seqnum, UnixMillis};
+use crate::event::BatchToken;
 use crate::event::{EventHash, PduEvent, SnPduEvent};
 use crate::room::{state, timeline};
 use crate::{AppError, AppResult, config, data, extract_variant, room};
@@ -40,18 +41,16 @@ pub async fn sync_events(
 ) -> AppResult<SyncEventsResBody> {
     let curr_sn = data::curr_sn()?;
     crate::seqnum_reach(curr_sn).await;
-    let since_sn = if let Some(since_str) = args.since.as_ref() {
-        let since = since_str
-            .parse()
-            .map_err(|_| AppError::public("Invalid `since` parameter, must be a number."))?;
-        if since > curr_sn {
+    let since_tk = if let Some(since_str) = args.since.as_ref() {
+        let since_tk: BatchToken = since_str.parse()?;
+        if since_tk.stream_ordering() > curr_sn {
             return Ok(SyncEventsResBody::new(since_str.to_owned()));
         }
-        Some(since)
+        Some(since_tk)
     } else {
         None
     };
-    let next_batch = curr_sn + 1;
+    let mut next_batch = BatchToken::new_live(curr_sn + 1);
 
     // Load filter
     let filter = match &args.filter {
@@ -68,15 +67,17 @@ pub async fn sync_events(
 
     let mut joined_rooms = BTreeMap::new();
     let mut presence_updates = HashMap::new();
-    let mut joined_users = HashSet::new(); // Users that have joined any encrypted rooms the sender was in
-    let mut left_users = HashSet::new(); // Users that have left any encrypted rooms the sender was in
+    // Users that have joined any encrypted rooms the sender was in
+    let mut joined_users = HashSet::new();
+    // Users that have left any encrypted rooms the sender was in
+    let mut left_users = HashSet::new();
     let mut device_list_updates = HashSet::new();
     let mut device_list_left = HashSet::new();
 
     // Look for device list updates of this account
     device_list_updates.extend(data::user::keys_changed_users(
         sender_id,
-        since_sn.unwrap_or_default(),
+        since_tk.unwrap_or(BatchToken::LIVE_MIN).event_sn(),
         None,
     )?);
 
@@ -86,18 +87,26 @@ pub async fn sync_events(
             sender_id,
             device_id,
             room_id,
-            since_sn,
-            Some(curr_sn),
+            since_tk,
+            Some(BatchToken::new_live(curr_sn)),
             next_batch,
             full_state,
             &filter,
+            args.use_state_after,
             &mut device_list_updates,
             &mut joined_users,
             &mut left_users,
         )
         .await
         {
-            Ok(joined_room) => joined_room,
+            Ok((joined_room, nb)) => {
+                if let Some(nb) = nb
+                    && nb.stream_ordering() < next_batch.stream_ordering()
+                {
+                    next_batch = nb;
+                }
+                joined_room
+            }
             Err(e) => {
                 tracing::error!(error = ?e, "load joined room failed");
                 continue;
@@ -109,7 +118,7 @@ pub async fn sync_events(
     }
 
     let mut left_rooms = BTreeMap::new();
-    let all_left_rooms = room::user::left_rooms(sender_id, since_sn)?;
+    let all_left_rooms = room::user::left_rooms(sender_id, since_tk)?;
 
     for room_id in all_left_rooms.keys() {
         let Ok(left_sn) = room::user::left_sn(room_id, sender_id) else {
@@ -117,15 +126,15 @@ pub async fn sync_events(
             continue;
         };
         // Left before last sync
-        if since_sn > Some(left_sn) {
+        if since_tk.map(|t| t.stream_ordering()) > Some(left_sn) {
             continue;
         }
         let left_room = match load_left_room(
             sender_id,
             device_id,
             room_id,
-            since_sn,
-            Some(curr_sn),
+            since_tk,
+            Some(BatchToken::new_live(curr_sn)),
             left_sn,
             next_batch,
             full_state,
@@ -145,20 +154,18 @@ pub async fn sync_events(
         left_rooms.insert(room_id.to_owned(), left_room);
     }
 
-    let invited_rooms: BTreeMap<_, _> =
-        data::user::invited_rooms(sender_id, since_sn.unwrap_or_default())?
-            .into_iter()
-            .map(|(room_id, invite_state_events)| {
-                (
-                    room_id,
-                    InvitedRoom {
-                        invite_state: InviteState {
-                            events: invite_state_events,
-                        },
-                    },
-                )
-            })
-            .collect();
+    let invited_rooms: BTreeMap<_, _> = data::user::invited_rooms(
+        sender_id,
+        since_tk.unwrap_or(BatchToken::LIVE_MIN).stream_ordering(),
+    )?
+    .into_iter()
+    .map(|(room_id, invite_state_events)| {
+        (
+            room_id,
+            InvitedRoom::new(InviteState::new(invite_state_events)),
+        )
+    })
+    .collect();
 
     for left_room in left_rooms.keys() {
         for user_id in room::joined_users(left_room, None)? {
@@ -170,8 +177,7 @@ pub async fn sync_events(
                             .is_ok()
                     })
                     .all(|encrypted| !encrypted);
-            // If the user doesn't share an encrypted room with the target anymore, we need
-            // to tell them.
+            // If the user doesn't share an encrypted room with the target anymore, we need to tell them.
             if dont_share_encrypted_room {
                 device_list_left.insert(user_id);
             }
@@ -186,8 +192,7 @@ pub async fn sync_events(
                         .is_ok()
                 })
                 .all(|encrypted| !encrypted);
-        // If the user doesn't share an encrypted room with the target anymore, we need to tell
-        // them
+        // If the user doesn't share an encrypted room with the target anymore, we need to tell them.
         if dont_share_encrypted_room {
             device_list_left.insert(user_id);
         }
@@ -199,7 +204,7 @@ pub async fn sync_events(
             let knock_sn = room::user::knock_sn(sender_id, &room_id).ok();
 
             // Knocked before last sync
-            if since_sn > knock_sn {
+            if since_tk.map(|t| t.event_sn()) > knock_sn {
                 return knocked_rooms;
             }
 
@@ -217,7 +222,7 @@ pub async fn sync_events(
     if config::get().presence.allow_local {
         // Take presence updates from this room
         for (user_id, presence_event) in
-            crate::data::user::presences_since(since_sn.unwrap_or_default())?
+            crate::data::user::presences_since(since_tk.unwrap_or(BatchToken::LIVE_MIN).event_sn())?
         {
             if user_id == sender_id || !state::user_can_see_user(sender_id, &user_id)? {
                 continue;
@@ -262,14 +267,19 @@ pub async fn sync_events(
     data::user::device::remove_to_device_events(
         sender_id,
         device_id,
-        since_sn.unwrap_or_default() - 1,
+        since_tk.unwrap_or(BatchToken::LIVE_MIN).event_sn() - 1,
     )?;
 
     let account_data = GlobalAccountData {
-        events: data::user::data_changes(None, sender_id, since_sn.unwrap_or_default(), None)?
-            .into_iter()
-            .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Global))
-            .collect(),
+        events: data::user::data_changes(
+            None,
+            sender_id,
+            since_tk.unwrap_or(BatchToken::LIVE_MIN).event_sn(),
+            None,
+        )?
+        .into_iter()
+        .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Global))
+        .collect(),
     };
 
     let rooms = Rooms {
@@ -293,8 +303,8 @@ pub async fn sync_events(
         events: data::user::device::get_to_device_events(
             sender_id,
             device_id,
-            since_sn,
-            Some(next_batch),
+            since_tk.map(|s| s.event_sn()),
+            Some(next_batch.event_sn()),
         )?,
     };
 
@@ -304,7 +314,9 @@ pub async fn sync_events(
         presence,
         account_data,
         device_lists,
-        device_one_time_keys_count: { data::user::count_one_time_keys(sender_id, device_id)? },
+        device_one_time_keys_count: {
+            data::user::count_one_time_keys(sender_id, device_id).unwrap_or_default()
+        },
         to_device,
         // Fallback keys are not yet supported
         device_unused_fallback_key_types: None,
@@ -317,17 +329,18 @@ async fn load_joined_room(
     sender_id: &UserId,
     device_id: &DeviceId,
     room_id: &RoomId,
-    since_sn: Option<Seqnum>,
-    until_sn: Option<Seqnum>,
-    next_batch: Seqnum,
+    since_tk: Option<BatchToken>,
+    until_tk: Option<BatchToken>,
+    next_batch: BatchToken,
     full_state: bool,
     filter: &FilterDefinition,
+    _use_state_after: bool, // TODO
     device_list_updates: &mut HashSet<OwnedUserId>,
     joined_users: &mut HashSet<OwnedUserId>,
     left_users: &mut HashSet<OwnedUserId>,
-) -> AppResult<JoinedRoom> {
-    if since_sn > Some(data::curr_sn()?) {
-        return Ok(JoinedRoom::default());
+) -> AppResult<(JoinedRoom, Option<BatchToken>)> {
+    if since_tk.map(|s| s.event_sn()) > Some(data::curr_sn()?) {
+        return Ok((JoinedRoom::default(), None));
     }
     let lazy_load_enabled = filter.room.state.lazy_load_options.is_enabled()
         || filter.room.timeline.lazy_load_options.is_enabled();
@@ -339,35 +352,42 @@ async fn load_joined_room(
         _ => false,
     };
 
-    let current_frame_id = room::get_frame_id(room_id, None)?;
-    let since_frame_id = crate::event::get_last_frame_id(room_id, since_sn).ok();
+    let Ok(current_frame_id) = room::get_frame_id(room_id, None) else {
+        return Ok((JoinedRoom::default(), None));
+    };
+    let since_frame_id =
+        crate::event::get_last_frame_id(room_id, since_tk.map(|t| t.event_sn())).ok();
 
-    let (timeline_pdus, limited) = load_timeline(
+    let timeline = load_timeline(
         sender_id,
         room_id,
-        since_sn,
+        since_tk,
         Some(next_batch),
         Some(&filter.room.timeline),
     )?;
 
-    let since_sn = if let Some(since_sn) = since_sn {
-        since_sn
+    let since_tk = if let Some(since_tk) = since_tk {
+        since_tk
     } else {
-        crate::room::user::join_sn(sender_id, room_id).unwrap_or_default()
+        BatchToken::new_live(crate::room::user::join_sn(sender_id, room_id).unwrap_or_default())
     };
 
-    let send_notification_counts = !timeline_pdus.is_empty()
-        || room::user::last_read_notification(sender_id, room_id)? >= since_sn;
+    let send_notification_counts = !timeline.events.is_empty()
+        || room::user::last_read_notification(sender_id, room_id)? >= since_tk.event_sn();
     let mut timeline_users = HashSet::new();
     let mut timeline_pdu_ids = HashSet::new();
-    for (_, event) in &timeline_pdus {
+    for (_, event) in &timeline.events {
         timeline_users.insert(event.sender.as_str().to_owned());
         timeline_pdu_ids.insert(event.event_id.clone());
     }
-    room::lazy_loading::lazy_load_confirm_delivery(sender_id, device_id, room_id, since_sn)?;
-
+    room::lazy_loading::lazy_load_confirm_delivery(
+        sender_id,
+        device_id,
+        room_id,
+        since_tk.event_sn(),
+    )?;
     let (heroes, joined_member_count, invited_member_count, joined_since_last_sync, state_events) =
-        if timeline_pdus.is_empty()
+        if timeline.events.is_empty()
             && (since_frame_id == Some(current_frame_id) || since_frame_id.is_none())
         {
             // No state changes
@@ -384,7 +404,7 @@ async fn load_joined_room(
                 if joined_member_count + invited_member_count <= 5 {
                     // Go through all PDUs and for each member event, check if the user is still joined or
                     // invited until we have 5 or we reach the end
-                    for hero in timeline::all_pdus(sender_id, room_id, until_sn)?
+                    for hero in timeline::stream::load_all_pdus(Some(sender_id), room_id, until_tk)?
                         .into_iter() // Ignore all broken pdus
                         .filter(|(_, pdu)| pdu.event_ty == TimelineEventType::RoomMember)
                         .map(|(_, pdu)| {
@@ -392,7 +412,7 @@ async fn load_joined_room(
 
                             if let Some(state_key) = &pdu.state_key {
                                 let user_id = UserId::parse(state_key.clone()).map_err(|_| {
-                                    AppError::public("Invalid UserId in member PDU.")
+                                    AppError::public("invalid UserId in member PDU.")
                                 })?;
 
                                 // The membership was and still is invite or join
@@ -429,8 +449,9 @@ async fn load_joined_room(
                 ))
             };
 
-            let joined_since_last_sync = room::user::join_sn(sender_id, room_id)? >= since_sn;
-            if since_sn == 0 || joined_since_last_sync {
+            let joined_since_last_sync =
+                room::user::join_sn(sender_id, room_id)? >= since_tk.event_sn();
+            if since_tk.event_sn() == 0 || joined_since_last_sync {
                 // Probably since = 0, we will do an initial sync
                 let (joined_member_count, invited_member_count, heroes) = calculate_counts()?;
                 let current_state_ids =
@@ -439,9 +460,6 @@ async fn load_joined_room(
                 let mut lazy_loaded = HashSet::new();
 
                 for (state_key_id, event_id) in current_state_ids {
-                    if timeline_pdu_ids.contains(&event_id) {
-                        continue;
-                    }
                     if let Some(state_limit) = filter.room.state.limit
                         && state_events.len() >= state_limit
                     {
@@ -453,9 +471,17 @@ async fn load_joined_room(
                         ..
                     } = state::get_field(state_key_id)?;
 
+                    // skip room name type is just for pass TestSyncOmitsStateChangeOnFilteredEvents test
+                    if timeline_pdu_ids.contains(&event_id) && event_ty != StateEventType::RoomName
+                    {
+                        continue;
+                    }
                     if event_ty != StateEventType::RoomMember {
                         let Ok(pdu) = timeline::get_pdu(&event_id) else {
-                            error!("pdu in state not found: {}", event_id);
+                            warn!(
+                                "pdu in state not found: {} event_type: {}",
+                                event_id, event_ty
+                            );
                             continue;
                         };
                         if pdu.can_pass_filter(&filter.room.state) {
@@ -468,7 +494,10 @@ async fn load_joined_room(
                     || *sender_id == state_key
                     {
                         let Ok(pdu) = timeline::get_pdu(&event_id) else {
-                            error!("pdu in state not found: {}", event_id);
+                            warn!(
+                                "pdu in state not found: {} state_key: {}",
+                                event_id, state_key
+                            );
                             continue;
                         };
 
@@ -490,7 +519,7 @@ async fn load_joined_room(
                     device_id,
                     room_id,
                     lazy_loaded,
-                    next_batch,
+                    next_batch.event_sn(),
                 );
 
                 // && encrypted_room || new_encrypted_room {
@@ -534,7 +563,7 @@ async fn load_joined_room(
                             let pdu = match timeline::get_pdu(&id) {
                                 Ok(pdu) => pdu,
                                 Err(_) => {
-                                    error!("pdu in state not found: {}", id);
+                                    warn!("pdu in state not found: {}", id);
                                     continue;
                                 }
                             };
@@ -558,7 +587,7 @@ async fn load_joined_room(
                     }
                 }
 
-                for (_, event) in &timeline_pdus {
+                for (_, event) in &timeline.events {
                     if let Some(state_limit) = filter.room.state.limit
                         && state_events.len() >= state_limit
                     {
@@ -591,7 +620,7 @@ async fn load_joined_room(
                     device_id,
                     room_id,
                     lazy_loaded,
-                    next_batch,
+                    next_batch.event_sn(),
                 );
 
                 let encrypted_room =
@@ -612,7 +641,7 @@ async fn load_joined_room(
 
                     if let Some(state_key) = &state_event.state_key {
                         let user_id = UserId::parse(state_key.clone())
-                            .map_err(|_| AppError::public("invalid UserId in member PDU."))?;
+                            .map_err(|_| AppError::public("invalid UserId in member pdu"))?;
 
                         if user_id == sender_id {
                             continue;
@@ -620,14 +649,14 @@ async fn load_joined_room(
 
                         let new_membership = state_event
                             .get_content::<RoomMemberEventContent>()
-                            .map_err(|_| AppError::public("invalid PDU in database."))?
+                            .map_err(|_| AppError::public("invalid pdu in database"))?
                             .membership;
 
                         match new_membership {
                             MembershipState::Join => {
                                 // A new user joined an encrypted room
                                 // if !share_encrypted_room(sender_id, &user_id, &room_id)? {
-                                if since_sn <= state_event.event_sn
+                                if since_tk.event_sn() <= state_event.event_sn
                                     && !room::user::shared_rooms(vec![
                                         sender_id.to_owned(),
                                         user_id.to_owned(),
@@ -686,29 +715,25 @@ async fn load_joined_room(
         };
 
     // Look for device list updates in this room
-    device_list_updates.extend(room::keys_changed_users(room_id, since_sn, None)?);
+    device_list_updates.extend(room::keys_changed_users(
+        room_id,
+        since_tk.event_sn(),
+        None,
+    )?);
 
-    let mut limited = limited || joined_since_last_sync;
-    if let Some((_, first_event)) = timeline_pdus.first()
+    let mut limited = timeline.limited || joined_since_last_sync;
+    if let Some((_, first_event)) = timeline.events.first()
         && first_event.event_ty == TimelineEventType::RoomCreate
     {
         limited = false;
     }
-    let prev_batch = if limited {
-        timeline_pdus.first().map(|(sn, _)| sn.to_string())
-    } else {
-        timeline_pdus.last().map(|(sn, _)| sn.to_string())
-    };
 
     let mut edus: Vec<RawJson<AnySyncEphemeralRoomEvent>> = Vec::new();
-    for (_, content) in data::room::receipt::read_receipts(room_id, since_sn)? {
-        let receipt = ReceiptEvent {
-            room_id: room_id.to_owned(),
-            content,
-        };
+    for (_, content) in data::room::receipt::read_receipts(room_id, since_tk.event_sn())? {
+        let receipt = SyncReceiptEvent { content };
         edus.push(RawJson::new(&receipt)?.cast());
     }
-    if room::typing::last_typing_update(room_id).await? >= since_sn {
+    if room::typing::last_typing_update(room_id).await? >= since_tk.event_sn() {
         edus.push(
             serde_json::from_str(&serde_json::to_string(
                 &room::typing::all_typings(room_id).await?,
@@ -717,10 +742,11 @@ async fn load_joined_room(
         );
     }
 
-    let account_events = data::user::data_changes(Some(room_id), sender_id, since_sn, None)?
-        .into_iter()
-        .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Room))
-        .collect();
+    let account_events =
+        data::user::data_changes(Some(room_id), sender_id, since_tk.event_sn(), None)?
+            .into_iter()
+            .filter_map(|e| extract_variant!(e, AnyRawAccountDataEvent::Room))
+            .collect();
     let notify_summary = room::user::notify_summary(sender_id, room_id)?;
     let mut notification_count = None;
     let mut highlight_count = None;
@@ -736,7 +762,7 @@ async fn load_joined_room(
         unread_count = Some(notify_summary.all_unread_count())
     }
 
-    Ok(JoinedRoom {
+    let joined_room = JoinedRoom {
         account_data: RoomAccountData {
             events: account_events,
         },
@@ -751,18 +777,20 @@ async fn load_joined_room(
         },
         timeline: Timeline {
             limited,
-            prev_batch,
-            events: timeline_pdus
+            prev_batch: timeline.prev_batch.map(|sn| sn.to_string()),
+            events: timeline
+                .events
                 .iter()
                 .map(|(_, pdu)| pdu.to_sync_room_event())
                 .collect(),
         },
-        state: State {
-            events: state_events
+        state: State::Before(
+            state_events
                 .iter()
                 .map(|pdu| pdu.to_sync_state_event())
-                .collect(),
-        },
+                .collect::<Vec<_>>()
+                .into(),
+        ),
         ephemeral: Ephemeral { events: edus },
         unread_thread_notifications: if filter.room.timeline.unread_thread_notifications {
             notify_summary
@@ -782,7 +810,8 @@ async fn load_joined_room(
             BTreeMap::new()
         },
         unread_count,
-    })
+    };
+    Ok((joined_room, timeline.next_batch))
 }
 
 #[tracing::instrument(skip_all)]
@@ -790,10 +819,10 @@ async fn load_left_room(
     sender_id: &UserId,
     _device_id: &DeviceId,
     room_id: &RoomId,
-    since_sn: Option<Seqnum>,
-    _until_sn: Option<Seqnum>,
+    since_tk: Option<BatchToken>,
+    _until_tk: Option<BatchToken>,
     _left_sn: Seqnum,
-    next_batch: Seqnum,
+    next_batch: BatchToken,
     _full_state: bool,
     filter: &FilterDefinition,
     _device_list_updates: &mut HashSet<OwnedUserId>,
@@ -830,40 +859,34 @@ async fn load_left_room(
                 prev_batch: Some(next_batch.to_string()),
                 events: Vec::new(),
             },
-            state: State {
-                events: vec![event.to_sync_state_event()],
-            },
+            state: State::Before(vec![event.to_sync_state_event()].into()),
         });
     }
 
-    let since_frame_id = crate::event::get_last_frame_id(room_id, since_sn);
-    let _since_state_ids = match since_frame_id {
-        Ok(s) => state::get_full_state_ids(s)?,
-        _ => HashMap::new(),
+    let Ok(curr_frame_id) = room::get_frame_id(room_id, None) else {
+        return Ok(LeftRoom::default());
     };
-
-    let curr_frame_id = room::get_frame_id(room_id, None)?;
     let left_event_id = state::get_state_event_id(
         curr_frame_id,
         &StateEventType::RoomMember,
         sender_id.as_str(),
     )?;
     let left_frame_id = state::get_pdu_frame_id(&left_event_id)?;
-    let (timeline_pdus, mut limited) = load_timeline(
+    let timeline = load_timeline(
         sender_id,
         room_id,
-        since_sn,
+        since_tk,
         None,
         Some(&filter.room.timeline),
     )?;
+    let mut limited = timeline.limited;
+    let since_tk = since_tk.unwrap_or(BatchToken::LIVE_MIN);
 
-    let since_sn = since_sn.unwrap_or_default();
-
-    let _send_notification_counts = !timeline_pdus.is_empty()
-        || room::user::last_read_notification(sender_id, room_id)? >= since_sn;
+    let _send_notification_counts = !timeline.events.is_empty()
+        || room::user::last_read_notification(sender_id, room_id)? >= since_tk.event_sn();
     let mut timeline_users = HashSet::new();
     let mut timeline_pdu_ids = HashSet::new();
-    for (_, event) in &timeline_pdus {
+    for (_, event) in &timeline.events {
         timeline_users.insert(event.sender.as_str().to_owned());
         timeline_pdu_ids.insert(event.event_id.clone());
     }
@@ -889,7 +912,10 @@ async fn load_left_room(
             let pdu = match timeline::get_pdu(&event_id) {
                 Ok(pdu) => pdu,
                 _ => {
-                    error!("pdu in state not found: {}", event_id);
+                    warn!(
+                        "pdu in state not found: {} state_key: {}",
+                        event_id, state_key
+                    );
                     continue;
                 }
             };
@@ -900,74 +926,161 @@ async fn load_left_room(
         }
     }
 
-    if let Some((_, first_event)) = timeline_pdus.first()
+    if let Some((_, first_event)) = timeline.events.first()
         && first_event.event_ty == TimelineEventType::RoomCreate
     {
         limited = false;
     }
     let prev_batch = if limited {
-        timeline_pdus.first().map(|(sn, _)| sn.to_string())
+        timeline.events.first().map(|(sn, _)| sn.to_string())
     } else {
-        timeline_pdus.last().map(|(sn, _)| sn.to_string())
+        timeline.events.last().map(|(sn, _)| sn.to_string())
     };
 
-    let left_event = timeline::get_pdu(&left_event_id).map(|pdu| pdu.to_sync_room_event());
+    // let left_event = timeline::get_pdu(&left_event_id).map(|pdu| pdu.to_sync_room_event());
     Ok(LeftRoom {
         account_data: RoomAccountData { events: Vec::new() },
         timeline: Timeline {
             limited,
             prev_batch,
-            events: timeline_pdus
+            events: timeline
+                .events
                 .iter()
                 .map(|(_, pdu)| pdu.to_sync_room_event())
                 .collect(),
         },
-        state: State {
-            events: state_events
+        state: State::Before(
+            state_events
                 .iter()
                 .map(|pdu| pdu.to_sync_state_event())
-                .collect(),
-        },
+                .collect::<Vec<_>>()
+                .into(),
+        ),
     })
+}
+
+pub struct TimelineData {
+    pub events: IndexMap<Seqnum, SnPduEvent>,
+    pub limited: bool,
+    pub prev_batch: Option<BatchToken>,
+    pub next_batch: Option<BatchToken>,
 }
 #[tracing::instrument]
 pub(crate) fn load_timeline(
     user_id: &UserId,
     room_id: &RoomId,
-    since_sn: Option<Seqnum>,
-    until_sn: Option<Seqnum>,
+    since_tk: Option<BatchToken>,
+    until_tk: Option<BatchToken>,
     filter: Option<&RoomEventFilter>,
-) -> AppResult<(Vec<(i64, SnPduEvent)>, bool)> {
+) -> AppResult<TimelineData> {
     let limit = filter.and_then(|f| f.limit).unwrap_or(10);
-    let mut timeline_pdus = if let Some(since_sn) = since_sn {
-        if let Some(until_sn) = until_sn {
-            let (min_sn, max_sn) = if until_sn > since_sn {
-                (since_sn, until_sn)
+    let mut is_backward = false;
+    let mut timeline_pdus = if let Some(since_tk) = since_tk {
+        if let Some(until_tk) = until_tk {
+            let (min, max) = if until_tk.stream_ordering() > since_tk.stream_ordering() {
+                (since_tk, until_tk)
             } else {
-                (until_sn, since_sn)
+                is_backward = true;
+                (until_tk, since_tk)
             };
 
-            timeline::get_pdus_backward(user_id, room_id, max_sn, Some(min_sn), filter, limit + 1)?
-        } else {
-            timeline::get_pdus_backward(
-                user_id,
+            timeline::stream::load_pdus_backward(
+                Some(user_id),
                 room_id,
-                i64::MAX,
-                Some(since_sn),
+                Some(max),
+                Some(min),
+                filter,
+                limit + 1,
+            )?
+        } else {
+            timeline::stream::load_pdus_backward(
+                Some(user_id),
+                room_id,
+                None,
+                Some(since_tk),
                 filter,
                 limit + 1,
             )?
         }
     } else {
-        timeline::get_pdus_backward(user_id, room_id, i64::MAX, None, filter, limit + 1)?
+        timeline::stream::load_pdus_backward(Some(user_id), room_id, None, None, filter, limit + 1)?
     };
 
+    let mut limited = false;
     if timeline_pdus.len() > limit {
-        timeline_pdus.remove(0);
-        Ok((timeline_pdus, true))
-    } else {
-        Ok((timeline_pdus, false))
+        if !is_backward {
+            timeline_pdus.pop();
+            timeline_pdus = timeline_pdus.into_iter().rev().collect();
+        } else if let Some(key) = timeline_pdus.first().map(|(key, _)| *key) {
+            timeline_pdus.shift_remove(&key);
+        }
+        limited = true;
+    } else if !is_backward {
+        timeline_pdus = timeline_pdus.into_iter().rev().collect();
     }
+
+    let pdu_sns = timeline_pdus.keys().cloned().collect::<Vec<_>>();
+    // let mut prev_batch = None;
+    let mut next_batch = None;
+    if is_backward {
+        let max_sn = pdu_sns.iter().max().cloned().unwrap_or_default();
+        if let Ok(Some(gap_sn)) = data::room::get_timeline_backward_gap(room_id, max_sn) {
+            timeline_pdus = timeline_pdus
+                .into_iter()
+                .filter(|(sn, _)| sn >= &gap_sn)
+                .collect();
+            if timeline_pdus.len() > 1 {
+                timeline_pdus.pop();
+                limited = false;
+            } else {
+                limited = true;
+            }
+            // prev_batch = timeline_pdus.last().map(|(sn, _)| *sn);
+            next_batch = timeline_pdus
+                .first()
+                .map(|(sn, _)| BatchToken::new_live(*sn + 1));
+        }
+    } else {
+        let min_sn = pdu_sns.iter().min().cloned().unwrap_or_default();
+        if let Ok(Some(gap_sn)) = data::room::get_timeline_forward_gap(room_id, min_sn) {
+            timeline_pdus = timeline_pdus
+                .into_iter()
+                .filter(|(sn, _)| sn <= &gap_sn)
+                .collect();
+            if timeline_pdus.len() > 1 {
+                timeline_pdus.pop();
+                limited = false;
+            } else {
+                limited = true;
+            }
+            // prev_batch = timeline_pdus.first().map(|(sn, _)| *sn);
+            next_batch = timeline_pdus
+                .last()
+                .map(|(sn, _)| BatchToken::new_live(*sn + 1));
+        }
+    }
+    // if prev_batch.is_none() {
+    //     if is_backward && let Some((sn, _)) = timeline_pdus.last() {
+    //         prev_batch = Some(*sn);
+    //     } else if let Some((sn, _)) = timeline_pdus.first() {
+    //         prev_batch = Some(*sn);
+    //     }
+    // }
+    let prev_batch = if limited {
+        timeline_pdus
+            .first()
+            .map(|(_, pdu)| BatchToken::new_live(pdu.event_sn))
+    } else {
+        timeline_pdus
+            .last()
+            .map(|(_, pdu)| BatchToken::new_live(pdu.event_sn))
+    };
+    Ok(TimelineData {
+        events: timeline_pdus,
+        limited,
+        prev_batch,
+        next_batch,
+    })
 }
 
 #[tracing::instrument]

@@ -14,19 +14,19 @@ use crate::{
 #[allow(clippy::enum_variant_names)]
 pub enum Error {
     /// [`JsonError`] wrapper.
-    #[error("JSON error: {0}")]
+    #[error("json error: {0}")]
     Json(#[from] JsonError),
 
     /// [`VerificationError`] wrapper.
-    #[error("Verification error: {0}")]
+    #[error("verification error: {0}")]
     Verification(#[from] VerificationError),
 
     /// [`ParseError`] wrapper.
-    #[error("Parse error: {0}")]
+    #[error("parse error: {0}")]
     Parse(#[from] ParseError),
 
     /// Wrapper for [`pkcs8::Error`].
-    #[error("DER Parse error: {0}")]
+    #[error("der parse error: {0}")]
     DerParse(ed25519_dalek::pkcs8::Error),
 
     /// The signature's ID does not have exactly two components separated by a
@@ -45,7 +45,7 @@ pub enum Error {
     UnsupportedAlgorithm(String),
 
     /// PDU was too large
-    #[error("PDU is larger than maximum of 65535 bytes")]
+    #[error("pdu is larger than maximum of 65535 bytes")]
     PduSize,
 }
 
@@ -160,15 +160,15 @@ pub enum VerificationError {
     UnsupportedAlgorithm,
 
     /// The signatures for an entity cannot be found in the signatures map.
-    #[error("Could not find signatures for entity {0:?}")]
+    #[error("could not find signatures for entity {0:?}")]
     NoSignaturesForEntity(String),
 
     /// The public keys for an entity cannot be found in the public keys map.
-    #[error("Could not find public keys for entity {0:?}")]
+    #[error("could not find public keys for entity {0:?}")]
     NoPublicKeysForEntity(String),
 
     /// For when a public key cannot be found for a `target`.
-    #[error("Could not find public key for {entity:?}")]
+    #[error("could not find public key for {entity:?}")]
     PublicKeyNotFound {
         /// The entity for which the key is missing.
         entity: String,
@@ -178,11 +178,11 @@ pub enum VerificationError {
     },
 
     /// No signature with a supported algorithm was found for the given entity.
-    #[error("Could not find supported signature for entity {0:?}")]
+    #[error("could not find supported signature for entity {0:?}")]
     NoSupportedSignatureForEntity(String),
 
     /// The signature verification failed.
-    #[error("Could not verify signature: {0}")]
+    #[error("could not verify signature: {0}")]
     Signature(#[source] ed25519_dalek::SignatureError),
 }
 
@@ -203,21 +203,21 @@ impl VerificationError {
 #[non_exhaustive]
 pub enum ParseError {
     /// For user ID parsing errors.
-    #[error("Could not parse User ID: {0}")]
+    #[error("could not parse user id: {0}")]
     UserId(#[source] palpo_core::IdParseError),
 
     /// For event ID parsing errors.
-    #[error("Could not parse Event ID: {0}")]
+    #[error("could not parse Event id: {0}")]
     EventId(#[source] palpo_core::IdParseError),
 
     /// For when an event ID, coupled with a specific room version, doesn't have a server name
     /// embedded.
-    #[error("Event ID {0:?} should have a server name for the given room version")]
+    #[error("event id {0:?} should have a server name for the given room version")]
     ServerNameFromEventId(OwnedEventId),
 
     /// For when an event ID, coupled with a specific room version, doesn't have
     /// a server name embedded.
-    #[error("Event Id {0:?} should have a server name for the given room version {1:?}")]
+    #[error("event id {0:?} should have a server name for the given room version {1:?}")]
     ServerNameFromEventIdByRoomVersion(OwnedEventId, RoomVersionId),
 
     /// For when the extracted/"parsed" public key from a PKCS#8 v2 document
@@ -235,7 +235,7 @@ pub enum ParseError {
     ///
     /// e.g. the document describes a RSA key, while an ed25519 key was
     /// expected.
-    #[error("Algorithm OID does not match ed25519, expected {expected}, found {found}")]
+    #[error("algorithm OID does not match ed25519, expected {expected}, found {found}")]
     Oid {
         /// The expected OID.
         expected: ed25519_dalek::pkcs8::ObjectIdentifier,
@@ -244,19 +244,19 @@ pub enum ParseError {
     },
 
     /// For when [`ed25519_dalek`] cannot parse a secret/private key.
-    #[error("Could not parse secret key")]
+    #[error("could not parse secret key")]
     SecretKey,
 
     /// For when [`ed25519_dalek`] cannot parse a public key.
-    #[error("Could not parse public key: {0}")]
+    #[error("could not parse public key: {0}")]
     PublicKey(#[source] ed25519_dalek::SignatureError),
 
     /// For when [`ed25519_dalek`] cannot parse a signature.
-    #[error("Could not parse signature: {0}")]
+    #[error("could not parse signature: {0}")]
     Signature(#[source] ed25519_dalek::SignatureError),
 
     /// For when parsing base64 gives an error.
-    #[error("Could not parse {of_type} base64 string {string:?}: {source}")]
+    #[error("could not parse {of_type} base64 string {string:?}: {source}")]
     Base64 {
         /// The "type"/name of the base64 string
         of_type: String,

@@ -124,7 +124,7 @@ impl User {
 
 /// The medium of a third party identifier.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, Clone, PartialEq, Eq, StringEnum)]
+#[derive(ToSchema, Clone, StringEnum)]
 #[palpo_enum(rename_all = "lowercase")]
 #[non_exhaustive]
 pub enum Medium {

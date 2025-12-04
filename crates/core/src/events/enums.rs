@@ -27,6 +27,9 @@ event_enum! {
     /// Any global account data event.
     enum GlobalAccountData {
         "m.direct" => super::direct,
+        #[cfg(feature = "unstable-msc4359")]
+        #[palpo_enum(ident = DoNotDisturb, alias = "m.do_not_disturb")]
+        "dm.filament.do_not_disturb" => super::do_not_disturb,
         "m.identity_server" => super::identity_server,
         "m.ignored_user_list" => super::ignored_user_list,
         "m.push_rules" => super::push_rules,
@@ -58,6 +61,9 @@ event_enum! {
         #[cfg(feature = "unstable-msc4278")]
         #[palpo_enum(ident = UnstableMediaPreviewConfig)]
         "io.element.msc4278.media_preview_config" => super::media_preview_config,
+        #[cfg(feature = "unstable-msc3230")]
+        #[palpo_enum(alias = "m.space_order")]
+        "org.matrix.msc3230.space_order" => super::space_order,
     }
 
     /// Any ephemeral room event.
@@ -136,6 +142,12 @@ event_enum! {
         #[cfg(feature = "unstable-msc4075")]
         #[palpo_enum(alias = "m.call.notify")]
         "org.matrix.msc4075.call.notify" => super::call::notify,
+        #[cfg(feature = "unstable-msc4075")]
+        #[palpo_enum(alias = "m.rtc.notification")]
+        "org.matrix.msc4075.rtc.notification" => super::rtc::notification,
+        #[cfg(feature = "unstable-msc4310")]
+        #[palpo_enum(alias = "m.rtc.decline")]
+        "org.matrix.msc4310.rtc.decline" => super::rtc::decline,
     }
 
     /// Any state event.
@@ -245,6 +257,9 @@ impl AnyTimelineEvent {
 
         /// Returns this event's `transaction_id` from inside `unsigned`, if there is one.
         pub fn transaction_id(&self) -> Option<&TransactionId>;
+
+        /// Returns whether this event is in its redacted form or not.
+        pub fn is_redacted(&self) -> bool;
     }
 
     /// Returns this event's `type`.
@@ -283,6 +298,9 @@ impl AnySyncTimelineEvent {
 
         /// Returns this event's `transaction_id` from inside `unsigned`, if there is one.
         pub fn transaction_id(&self) -> Option<&TransactionId>;
+
+        /// Returns whether this event is in its redacted form or not.
+        pub fn is_redacted(&self) -> bool;
     }
 
     /// Returns this event's `type`.
@@ -420,6 +438,10 @@ impl AnyMessageLikeEventContent {
             Self::PollStart(_) | Self::UnstablePollStart(_) => None,
             #[cfg(feature = "unstable-msc4075")]
             Self::CallNotify(_) => None,
+            #[cfg(feature = "unstable-msc4075")]
+            Self::RtcNotification(ev) => ev.relates_to.clone().map(encrypted::Relation::Reference),
+            #[cfg(feature = "unstable-msc4310")]
+            Self::RtcDecline(ev) => Some(encrypted::Relation::Reference(ev.relates_to.clone())),
             Self::CallSdpStreamMetadataChanged(_)
             | Self::CallNegotiate(_)
             | Self::CallReject(_)

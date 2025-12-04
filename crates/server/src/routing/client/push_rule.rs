@@ -13,7 +13,9 @@ use crate::core::push::{
 use crate::core::push::{
     NewConditionalPushRule, NewPatternedPushRule, NewPushRule, NewSimplePushRule, RuleKind,
 };
-use crate::{DepotExt, EmptyResult, JsonResult, MatrixError, empty_ok, hoops, json_ok};
+use crate::{
+    DepotExt, EmptyResult, JsonResult, MatrixError, OptionalExtension, empty_ok, hoops, json_ok,
+};
 
 pub fn authed_router() -> Router {
     Router::with_path("pushrules")
@@ -56,7 +58,7 @@ fn get_rule(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> JsonResult<RuleRes
         authed.user_id(),
         &GlobalAccountDataEventType::PushRules.to_string(),
     )?
-    .ok_or(MatrixError::not_found("PushRules event not found."))?;
+    .ok_or(MatrixError::not_found("push rule event not found."))?;
 
     let rule = user_data_content
         .global
@@ -66,7 +68,7 @@ fn get_rule(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> JsonResult<RuleRes
     if let Some(rule) = rule {
         json_ok(RuleResBody { rule })
     } else {
-        Err(MatrixError::not_found("Push rule not found.").into())
+        Err(MatrixError::not_found("push rule not found").into())
     }
 }
 
@@ -118,13 +120,13 @@ async fn set_rule(args: SetRuleReqArgs, req: &mut Request, depot: &mut Depot) ->
             ))
         }
         _ => {
-            return Err(MatrixError::invalid_param("Invalid rule kind.").into());
+            return Err(MatrixError::invalid_param("invalid rule kind").into());
         }
     };
 
     if args.scope != RuleScope::Global {
         return Err(
-            MatrixError::invalid_param("Scopes other than 'global' are not supported.").into(),
+            MatrixError::invalid_param("scopes other than 'global' are not supported").into(),
         );
     }
 
@@ -132,8 +134,8 @@ async fn set_rule(args: SetRuleReqArgs, req: &mut Request, depot: &mut Depot) ->
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
-    )?
-    .ok_or(MatrixError::not_found("PushRules event not found."))?;
+    )
+    .unwrap_or_default();
 
     if let Err(error) =
         user_data_content
@@ -142,21 +144,21 @@ async fn set_rule(args: SetRuleReqArgs, req: &mut Request, depot: &mut Depot) ->
     {
         let err = match error {
             InsertPushRuleError::ServerDefaultRuleId => MatrixError::invalid_param(
-                "Rule IDs starting with a dot are reserved for server-default rules.",
+                "rule ids starting with a dot are reserved for server-default rules",
             ),
             InsertPushRuleError::InvalidRuleId => {
-                MatrixError::invalid_param("Rule ID containing invalid characters.")
+                MatrixError::invalid_param("rule ids containing invalid characters")
             }
             InsertPushRuleError::RelativeToServerDefaultRule => MatrixError::invalid_param(
-                "Can't place a push rule relatively to a server-default rule.",
+                "can't place a push rule relatively to a server-default rule",
             ),
             InsertPushRuleError::UnknownRuleId => {
                 MatrixError::not_found("The before or after rule could not be found.")
             }
             InsertPushRuleError::BeforeHigherThanAfter => MatrixError::invalid_param(
-                "The before rule has a higher priority than the after rule.",
+                "the before rule has a higher priority than the after rule",
             ),
-            _ => MatrixError::invalid_param("Invalid data."),
+            _ => MatrixError::invalid_param("invalid data"),
         };
 
         return Err(err.into());
@@ -196,10 +198,10 @@ async fn delete_rule(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> EmptyResu
     {
         let err = match error {
             RemovePushRuleError::ServerDefault => {
-                MatrixError::invalid_param("Cannot delete a server-default pushrule.")
+                MatrixError::invalid_param("cannot delete a server-default push rule")
             }
             RemovePushRuleError::NotFound => MatrixError::not_found("Push rule not found."),
-            _ => MatrixError::invalid_param("Invalid data."),
+            _ => MatrixError::invalid_param("invalid data"),
         };
 
         return Err(err.into());
@@ -224,8 +226,8 @@ async fn list_rules(depot: &mut Depot) -> JsonResult<RulesResBody> {
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
-    )?
-    .ok_or(MatrixError::not_found("PushRules event not found."))?;
+    )
+    .unwrap_or_default();
 
     json_ok(RulesResBody {
         global: user_data_content.global,
@@ -243,7 +245,7 @@ async fn get_actions(
 
     if args.scope != RuleScope::Global {
         return Err(
-            MatrixError::invalid_param("Scopes other than 'global' are not supported.").into(),
+            MatrixError::invalid_param("scopes other than 'global' are not supported").into(),
         );
     }
 
@@ -251,14 +253,14 @@ async fn get_actions(
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
-    )?
-    .ok_or(MatrixError::not_found("PushRules event not found."))?;
+    )
+    .unwrap_or_default();
 
     let actions = user_data_content
         .global
         .get(args.kind.clone(), &args.rule_id)
         .map(|rule| rule.actions().to_owned())
-        .ok_or(MatrixError::not_found("Push rule not found."))?;
+        .ok_or(MatrixError::not_found("push rule not found"))?;
 
     json_ok(RuleActionsResBody { actions })
 }
@@ -283,15 +285,15 @@ fn set_actions(
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
-    )?
-    .ok_or(MatrixError::not_found("PushRules event not found."))?;
+    )
+    .map_err(|_| MatrixError::not_found("push rules event not found"))?;
 
     if user_data_content
         .global
         .set_actions(args.kind.clone(), &args.rule_id, body.actions.clone())
         .is_err()
     {
-        return Err(MatrixError::not_found("Push rule not found.").into());
+        return Err(MatrixError::not_found("push rule not found").into());
     }
 
     crate::data::user::set_data(
@@ -312,7 +314,7 @@ fn get_enabled(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> JsonResult<Rule
 
     if args.scope != RuleScope::Global {
         return Err(
-            MatrixError::invalid_param("Scopes other than 'global' are not supported.").into(),
+            MatrixError::invalid_param("scopes other than 'global' are not supported").into(),
         );
     }
 
@@ -320,8 +322,7 @@ fn get_enabled(args: ScopeKindRuleReqArgs, depot: &mut Depot) -> JsonResult<Rule
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
-    )?
-    .ok_or(MatrixError::not_found("PushRules event not found."))?;
+    )?;
 
     let enabled = user_data_content
         .global
@@ -344,7 +345,7 @@ fn set_enabled(
 
     if args.scope != RuleScope::Global {
         return Err(
-            MatrixError::invalid_param("Scopes other than 'global' are not supported.").into(),
+            MatrixError::invalid_param("scopes other than 'global' are not supported").into(),
         );
     }
 
@@ -352,15 +353,14 @@ fn set_enabled(
         authed.user_id(),
         None,
         &GlobalAccountDataEventType::PushRules.to_string(),
-    )?
-    .ok_or(MatrixError::not_found("PushRules event not found."))?;
+    )?;
 
     if user_data_content
         .global
         .set_enabled(args.kind.clone(), &args.rule_id, body.enabled)
         .is_err()
     {
-        return Err(MatrixError::not_found("Push rule not found.").into());
+        return Err(MatrixError::not_found("push rule not found").into());
     }
 
     crate::data::user::set_data(

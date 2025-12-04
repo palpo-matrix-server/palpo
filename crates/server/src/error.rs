@@ -85,7 +85,7 @@ pub enum AppError {
     #[error("CargoTomlError: `{0}`")]
     CargoToml(#[from] cargo_toml::Error),
     #[error("YamlError: `{0}`")]
-    Yaml(#[from] serde_yaml::Error),
+    Yaml(#[from] serde_saphyr::ser_error::Error),
     #[error("Command error: `{0}`")]
     Clap(#[from] clap::Error),
     #[error("SystemTimeError: `{0}`")]
@@ -119,18 +119,21 @@ impl AppError {
 impl Writer for AppError {
     async fn write(mut self, req: &mut Request, depot: &mut Depot, res: &mut Response) {
         let matrix = match self {
-            Self::Salvo(_e) => MatrixError::unknown("Unknown error in salvo."),
-            Self::FrequentlyRequest => MatrixError::unknown("Frequently request resource."),
+            Self::Salvo(_e) => MatrixError::unknown("unknown error in salvo"),
+            Self::FrequentlyRequest => MatrixError::unknown("frequently request resource"),
             Self::Public(msg) => MatrixError::unknown(msg),
-            Self::Internal(_msg) => MatrixError::unknown("Unknown error."),
+            Self::Internal(msg) => {
+                error!(error = ?msg, "internal error");
+                MatrixError::unknown("unknown error")
+            }
             // Self::LocalUnableProcess(msg) => MatrixError::unrecognized(msg),
             Self::Matrix(e) => e,
             Self::State(e) => {
                 if let StateError::Forbidden(msg) = e {
-                    tracing::error!(error = ?msg, "forbidden error.");
+                    tracing::error!(error = ?msg, "forbidden error");
                     MatrixError::forbidden(msg, None)
                 } else if let StateError::AuthEvent(msg) = e {
-                    tracing::error!(error = ?msg, "forbidden error.");
+                    tracing::error!(error = ?msg, "forbidden error");
                     MatrixError::forbidden(msg, None)
                 } else {
                     MatrixError::unknown(e.to_string())
@@ -175,13 +178,22 @@ impl Writer for AppError {
                     MatrixError::unknown("unknown db error")
                 }
             }
-            Self::HttpStatus(e) => MatrixError::unknown(e.brief),
+            Self::HttpStatus(e) => match e.code {
+                StatusCode::NOT_FOUND => MatrixError::not_found(e.brief),
+                StatusCode::FORBIDDEN => MatrixError::forbidden(e.brief, None),
+                StatusCode::UNAUTHORIZED => MatrixError::unauthorized(e.brief),
+                code => {
+                    let mut e = MatrixError::unknown(e.brief);
+                    e.status_code = Some(code);
+                    e
+                }
+            },
             Self::Data(e) => {
                 e.write(req, depot, res).await;
                 return;
             }
             e => {
-                tracing::error!(error = ?e, "Unknown error.");
+                tracing::error!(error = ?e, "unknown error");
                 // println!("{}", std::backtrace::Backtrace::capture());
                 MatrixError::unknown("unknown error happened")
             }

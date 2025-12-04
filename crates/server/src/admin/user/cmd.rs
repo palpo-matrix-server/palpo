@@ -3,16 +3,16 @@ use crate::core::{
     OwnedEventId, OwnedRoomId, OwnedRoomOrAliasId, OwnedUserId,
     events::{
         RoomAccountDataEventType, StateEventType,
-        room::{
-            power_levels::{RoomPowerLevels, RoomPowerLevelsEventContent},
-            redaction::RoomRedactionEventContent,
-        },
+        room::{power_levels::RoomPowerLevelsEventContent, redaction::RoomRedactionEventContent},
         tag::{TagEventContent, TagInfo},
     },
 };
 use crate::room::timeline;
 use crate::user::full_user_deactivate;
-use crate::{AppError, AppResult, IsRemoteOrLocal, PduBuilder, config, data, membership, utils};
+use crate::{
+    AppError, AppResult, IsRemoteOrLocal, OptionalExtension, PduBuilder, config, data, membership,
+    utils,
+};
 
 const AUTO_GEN_PASSWORD_LENGTH: usize = 25;
 const BULK_JOIN_REASON: &str = "Bulk force joining this room as initiated by the server admin.";
@@ -585,13 +585,10 @@ pub(super) async fn force_demote(
     let state_lock = crate::room::lock_state(&room_id).await;
     let room_power_levels = crate::room::get_power_levels(&room_id).await.ok();
 
-    let user_can_demote_self = room_power_levels
-        .as_ref()
-        .is_some_and(|power_levels_content| {
-            RoomPowerLevels::from(power_levels_content.clone())
-                .user_can_change_user_power_level(&user_id, &user_id)
-        })
-        || crate::room::get_state(&room_id, &StateEventType::RoomCreate, "", None)
+    let user_can_demote_self =
+        room_power_levels.as_ref().is_some_and(|power_levels| {
+            power_levels.user_can_change_user_power_level(&user_id, &user_id)
+        }) || crate::room::get_state(&room_id, &StateEventType::RoomCreate, "", None)
             .is_ok_and(|event| event.sender == user_id);
 
     if !user_can_demote_self {
@@ -644,7 +641,7 @@ pub(super) async fn put_room_tag(
         &user_id,
         Some(&room_id),
         &RoomAccountDataEventType::Tag.to_string(),
-    )?
+    )
     .unwrap_or_default();
 
     tags_event_content
@@ -675,7 +672,7 @@ pub(super) async fn delete_room_tag(
         &user_id,
         Some(&room_id),
         &RoomAccountDataEventType::Tag.to_string(),
-    )?
+    )
     .unwrap_or_default();
 
     tags_event_content.tags.remove(&tag.clone().into());
@@ -704,7 +701,7 @@ pub(super) async fn get_room_tags(
         &user_id,
         Some(&room_id),
         &RoomAccountDataEventType::Tag.to_string(),
-    )?
+    )
     .unwrap_or_default();
 
     ctx.write_str(&format!("```\n{:#?}\n```", tags_event_content.tags))

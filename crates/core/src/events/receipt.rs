@@ -10,14 +10,13 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use crate::macros::EventContent;
 use salvo::prelude::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+use crate::macros::EventContent;
 use crate::{
     EventId, IdParseError, OwnedEventId, OwnedRoomId, OwnedUserId, PrivOwnedStr, UnixMillis,
-    UserId,
-    serde::{OrdAsRefStr, PartialEqAsRefStr, PartialOrdAsRefStr, StringEnum},
+    UserId, serde::StringEnum,
 };
 
 /// The content of an `m.receipt` event.
@@ -394,7 +393,7 @@ pub struct CreateReceiptReqBody {
 
 /// The type of receipt.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, Clone, PartialOrdAsRefStr, OrdAsRefStr, PartialEqAsRefStr, Eq, StringEnum)]
+#[derive(ToSchema, Clone, StringEnum)]
 #[non_exhaustive]
 pub enum ReceiptType {
     /// A [public read receipt].

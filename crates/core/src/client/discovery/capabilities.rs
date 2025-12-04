@@ -5,16 +5,14 @@
 //!
 //! [spec]: https://spec.matrix.org/latest/client-server-api/#capabilities-negotiation
 
-use std::{
-    borrow::Cow,
-    collections::{BTreeMap, btree_map},
-};
+use std::{borrow::Cow, collections::BTreeMap};
 
 use maplit::btreemap;
 use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value as JsonValue, from_value as from_json_value, to_value as to_json_value};
 
+use crate::client::profile::ProfileFieldName;
 use crate::{PrivOwnedStr, RoomVersionId, serde::StringEnum};
 
 // /// `/v3/` ([spec])
@@ -47,6 +45,7 @@ impl CapabilitiesResBody {
 
 /// Contains information about all the capabilities that the server supports.
 #[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
+#[allow(deprecated)]
 pub struct Capabilities {
     /// Capability to indicate if the user can change their password.
     #[serde(rename = "m.change_password", default)]
@@ -58,16 +57,26 @@ pub struct Capabilities {
 
     /// Capability to indicate if the user can change their display name.
     #[serde(rename = "m.set_display_name", default)]
+    #[deprecated = "Since Matrix 1.16, prefer profile_fields if it is set."]
     pub set_display_name: SetDisplayNameCapability,
 
     /// Capability to indicate if the user can change their avatar.
     #[serde(rename = "m.set_avatar_url", default)]
+    #[deprecated = "Since Matrix 1.16, prefer profile_fields if it is set."]
     pub set_avatar_url: SetAvatarUrlCapability,
 
     /// Capability to indicate if the user can change the third-party
     /// identifiers associated with their account.
     #[serde(rename = "m.3pid_changes", default)]
     pub thirdparty_id_changes: ThirdPartyIdChangesCapability,
+
+    /// Capability to indicate if the user can set extended profile fields.
+    #[serde(
+        rename = "m.profile_fields",
+        alias = "uk.tcpip.msc4133.profile_fields",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub profile_fields: Option<ProfileFieldsCapability>,
 
     /// Any other custom capabilities that the server supports outside of the
     /// specification, labeled using the Java package naming convention and
@@ -96,7 +105,9 @@ impl Capabilities {
         match capability {
             "m.change_password" => Some(Cow::Owned(serialize(&self.change_password))),
             "m.room_versions" => Some(Cow::Owned(serialize(&self.room_versions))),
-            "m.set_display_name" => Some(Cow::Owned(serialize(&self.set_display_name))),
+            #[allow(deprecated)]
+            "m.set_displayname" => Some(Cow::Owned(serialize(&self.set_display_name))),
+            #[allow(deprecated)]
             "m.set_avatar_url" => Some(Cow::Owned(serialize(&self.set_avatar_url))),
             "m.3pid_changes" => Some(Cow::Owned(serialize(&self.thirdparty_id_changes))),
             _ => self.custom_capabilities.get(capability).map(Cow::Borrowed),
@@ -112,7 +123,9 @@ impl Capabilities {
         match capability {
             "m.change_password" => self.change_password = from_json_value(value)?,
             "m.room_versions" => self.room_versions = from_json_value(value)?,
-            "m.set_display_name" => self.set_display_name = from_json_value(value)?,
+            #[allow(deprecated)]
+            "m.set_displayname" => self.set_display_name = from_json_value(value)?,
+            #[allow(deprecated)]
             "m.set_avatar_url" => self.set_avatar_url = from_json_value(value)?,
             "m.3pid_changes" => self.thirdparty_id_changes = from_json_value(value)?,
             _ => {
@@ -122,20 +135,6 @@ impl Capabilities {
         }
 
         Ok(())
-    }
-
-    /// Returns an iterator over the capabilities.
-    pub fn iter(&self) -> CapabilitiesIter<'_> {
-        CapabilitiesIter::new(self)
-    }
-}
-
-impl<'a> IntoIterator for &'a Capabilities {
-    type Item = CapabilityRef<'a>;
-    type IntoIter = CapabilitiesIter<'a>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter()
     }
 }
 
@@ -207,7 +206,7 @@ impl Default for RoomVersionsCapability {
 
 /// The stability of a room version.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, Clone, PartialEq, Eq, StringEnum)]
+#[derive(ToSchema, Clone, StringEnum)]
 #[palpo_enum(rename_all = "lowercase")]
 #[non_exhaustive]
 pub enum RoomVersionStability {
@@ -224,11 +223,13 @@ pub enum RoomVersionStability {
 
 /// Information about the `m.set_display_name` capability
 #[derive(ToSchema, Clone, Debug, Serialize, Deserialize)]
+#[deprecated = "Since Matrix 1.16, prefer ProfileFieldsCapability instead."]
 pub struct SetDisplayNameCapability {
     /// `true` if the user can change their display name, `false` otherwise.
     pub enabled: bool,
 }
 
+#[allow(deprecated)]
 impl SetDisplayNameCapability {
     /// Creates a new `SetDisplayNameCapability` with the given enabled flag.
     pub fn new(enabled: bool) -> Self {
@@ -241,6 +242,7 @@ impl SetDisplayNameCapability {
     }
 }
 
+#[allow(deprecated)]
 impl Default for SetDisplayNameCapability {
     fn default() -> Self {
         Self { enabled: true }
@@ -249,11 +251,13 @@ impl Default for SetDisplayNameCapability {
 
 /// Information about the `m.set_avatar_url` capability
 #[derive(ToSchema, Clone, Debug, Serialize, Deserialize)]
+#[deprecated = "Since Matrix 1.16, prefer ProfileFieldsCapability instead."]
 pub struct SetAvatarUrlCapability {
     /// `true` if the user can change their avatar, `false` otherwise.
     pub enabled: bool,
 }
 
+#[allow(deprecated)]
 impl SetAvatarUrlCapability {
     /// Creates a new `SetAvatarUrlCapability` with the given enabled flag.
     pub fn new(enabled: bool) -> Self {
@@ -266,6 +270,7 @@ impl SetAvatarUrlCapability {
     }
 }
 
+#[allow(deprecated)]
 impl Default for SetAvatarUrlCapability {
     fn default() -> Self {
         Self { enabled: true }
@@ -292,114 +297,71 @@ impl ThirdPartyIdChangesCapability {
         self.enabled
     }
 }
-
 impl Default for ThirdPartyIdChangesCapability {
     fn default() -> Self {
         Self { enabled: true }
     }
 }
-// /// Iterator implementation for `Capabilities`
 
-/// Reference to a capability.
-#[derive(Debug)]
-pub struct CapabilityRef<'a> {
-    name: &'a str,
-    value: Option<&'a JsonValue>,
-    caps: &'a Capabilities,
+/// Information about the `m.get_login_token` capability.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct GetLoginTokenCapability {
+    /// Whether the user can request a login token.
+    pub enabled: bool,
 }
 
-impl<'a> CapabilityRef<'a> {
-    /// Get name of the capability.
-    pub fn name(&self) -> &'a str {
-        self.name
+impl GetLoginTokenCapability {
+    /// Creates a new `GetLoginTokenCapability` with the given enabled flag.
+    pub fn new(enabled: bool) -> Self {
+        Self { enabled }
     }
 
-    /// Get value of the capability.
-    pub fn value(&self) -> Cow<'a, JsonValue> {
-        match self.value {
-            // unknown capability from btreemap iterator
-            Some(val) => Cow::Borrowed(val),
-            // O(1) lookup of known capability
-            None => self.caps.get(self.name).unwrap(),
-        }
+    /// Returns whether all fields have their default value.
+    pub fn is_default(&self) -> bool {
+        !self.enabled
     }
 }
 
-/// An iterator over capabilities.
-#[derive(Debug)]
-pub struct CapabilitiesIter<'a> {
-    /// Reference to Capabilities
-    caps: &'a Capabilities,
-    /// Current position of the iterator
-    pos: usize,
-    /// Iterator for custom capabilities
-    custom_caps_iterator: btree_map::Iter<'a, String, JsonValue>,
+/// Information about the `m.profile_fields` capability.
+#[derive(ToSchema, Clone, Debug, Default, Serialize, Deserialize)]
+pub struct ProfileFieldsCapability {
+    /// Whether the user can set extended profile fields.
+    pub enabled: bool,
+
+    /// The fields that can be set by the user.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub allowed: Option<Vec<ProfileFieldName>>,
+
+    /// The fields that cannot be set by the user.
+    ///
+    /// This list is ignored if `allowed` is provided.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disallowed: Option<Vec<ProfileFieldName>>,
 }
 
-impl<'a> CapabilitiesIter<'a> {
-    /// Creates a new CapabilitiesIter
-    pub(super) fn new(caps: &'a Capabilities) -> Self {
+impl ProfileFieldsCapability {
+    /// Creates a new `ProfileFieldsCapability` with the given enabled flag.
+    pub fn new(enabled: bool) -> Self {
         Self {
-            caps,
-            pos: 0,
-            custom_caps_iterator: caps.custom_capabilities.iter(),
+            enabled,
+            allowed: None,
+            disallowed: None,
         }
     }
-}
 
-impl<'a> Iterator for CapabilitiesIter<'a> {
-    type Item = CapabilityRef<'a>;
+    /// Whether the server advertises that the field with the given name can be set.
+    pub fn can_set_field(&self, field: &ProfileFieldName) -> bool {
+        if !self.enabled {
+            return false;
+        }
 
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.pos {
-            0 => {
-                self.pos += 1;
-                Some(CapabilityRef {
-                    name: "m.change_password",
-                    value: None,
-                    caps: self.caps,
-                })
-            }
-            1 => {
-                self.pos += 1;
-                Some(CapabilityRef {
-                    name: "m.room_versions",
-                    value: None,
-                    caps: self.caps,
-                })
-            }
-            2 => {
-                self.pos += 1;
-                Some(CapabilityRef {
-                    name: "m.set_display_name",
-                    value: None,
-                    caps: self.caps,
-                })
-            }
-            3 => {
-                self.pos += 1;
-                Some(CapabilityRef {
-                    name: "m.set_avatar_url",
-                    value: None,
-                    caps: self.caps,
-                })
-            }
-            4 => {
-                self.pos += 1;
-                Some(CapabilityRef {
-                    name: "m.3pid_changes",
-                    value: None,
-                    caps: self.caps,
-                })
-            }
-            _ => self
-                .custom_caps_iterator
-                .next()
-                .map(|(name, value)| CapabilityRef {
-                    name,
-                    value: Some(value),
-                    caps: self.caps,
-                }),
+        if let Some(allowed) = &self.allowed {
+            allowed.contains(field)
+        } else if let Some(disallowed) = &self.disallowed {
+            !disallowed.contains(field)
+        } else {
+            // The default is that any field is allowed.
+            true
         }
     }
 }

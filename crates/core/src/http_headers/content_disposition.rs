@@ -9,9 +9,7 @@ use super::{
     is_tchar, is_token, quote_ascii_string_if_required, rfc8187, sanitize_for_ascii_quoted_string,
     unescape_string,
 };
-use crate::macros::{
-    AsRefStr, AsStrAsRefStr, DebugAsRefStr, DisplayAsRefStr, OrdAsRefStr, PartialOrdAsRefStr,
-};
+use crate::macros::{AsRefStr, AsStrAsRefStr, DebugAsRefStr, DisplayAsRefStr, OrdAsRefStr};
 
 /// The value of a `Content-Disposition` HTTP header.
 ///
@@ -371,7 +369,6 @@ pub enum ContentDispositionParseError {
     DebugAsRefStr,
     AsStrAsRefStr,
     DisplayAsRefStr,
-    PartialOrdAsRefStr,
     OrdAsRefStr,
 )]
 #[palpo_enum(rename_all = "lowercase")]
@@ -459,15 +456,7 @@ impl<'a> PartialEq<&'a str> for ContentDispositionType {
 ///
 /// [RFC 7230 Section 3.2.6]: https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.6
 #[derive(
-    Clone,
-    Serialize,
-    PartialEq,
-    Eq,
-    DebugAsRefStr,
-    AsStrAsRefStr,
-    DisplayAsRefStr,
-    PartialOrdAsRefStr,
-    OrdAsRefStr,
+    Clone, Serialize, PartialEq, Eq, DebugAsRefStr, AsStrAsRefStr, DisplayAsRefStr, OrdAsRefStr,
 )]
 pub struct TokenString(Box<str>);
 

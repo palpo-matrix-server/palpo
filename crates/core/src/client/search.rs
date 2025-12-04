@@ -243,7 +243,7 @@ impl Grouping {
 
 /// The key within events to use for this grouping.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, Clone, PartialEq, Eq, PartialOrd, Ord, StringEnum)]
+#[derive(ToSchema, Clone, StringEnum)]
 #[palpo_enum(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum GroupingKey {
@@ -281,7 +281,7 @@ impl Groupings {
 
 /// The keys to search for.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, Clone, PartialEq, Eq, StringEnum)]
+#[derive(ToSchema, Clone, StringEnum)]
 #[non_exhaustive]
 pub enum SearchKeys {
     /// content.body
@@ -303,7 +303,7 @@ pub enum SearchKeys {
 
 /// The order in which to search for results.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(ToSchema, Clone, PartialEq, Eq, StringEnum)]
+#[derive(ToSchema, Clone, StringEnum)]
 #[palpo_enum(rename_all = "snake_case")]
 pub enum OrderBy {
     /// Prioritize recent events.

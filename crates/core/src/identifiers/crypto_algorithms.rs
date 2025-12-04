@@ -6,7 +6,7 @@ use salvo::prelude::*;
 use crate::PrivOwnedStr;
 
 /// The basic key algorithms in the specification.
-#[derive(ToSchema, Clone, PartialEq, Eq, PartialOrd, Ord, StringEnum)]
+#[derive(ToSchema, Clone, StringEnum)]
 #[non_exhaustive]
 #[palpo_enum(rename_all = "snake_case")]
 pub enum DeviceKeyAlgorithm {
@@ -25,7 +25,7 @@ pub enum DeviceKeyAlgorithm {
 }
 
 /// The signing key algorithms defined in the Matrix spec.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, StringEnum)]
+#[derive(Clone, Hash, StringEnum)]
 #[non_exhaustive]
 #[palpo_enum(rename_all = "snake_case")]
 pub enum SigningKeyAlgorithm {
@@ -37,7 +37,7 @@ pub enum SigningKeyAlgorithm {
 }
 
 /// An encryption algorithm to be used to encrypt messages sent to a room.
-#[derive(ToSchema, Clone, PartialEq, Eq, PartialOrd, Ord, StringEnum)]
+#[derive(ToSchema, Clone, StringEnum)]
 #[non_exhaustive]
 pub enum EventEncryptionAlgorithm {
     /// Olm version 1 using Curve25519, AES-256, and SHA-256.
@@ -54,7 +54,7 @@ pub enum EventEncryptionAlgorithm {
 }
 
 /// A key algorithm to be used to generate a key from a passphrase.
-#[derive(ToSchema, Clone, PartialEq, Eq, PartialOrd, Ord, StringEnum)]
+#[derive(ToSchema, Clone, StringEnum)]
 #[non_exhaustive]
 pub enum KeyDerivationAlgorithm {
     /// PBKDF2
@@ -69,7 +69,7 @@ pub enum KeyDerivationAlgorithm {
 ///
 /// [one-time and fallback keys]: https://spec.matrix.org/latest/client-server-api/#one-time-and-fallback-keys
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, StringEnum)]
+#[derive(Clone, StringEnum)]
 #[non_exhaustive]
 #[palpo_enum(rename_all = "snake_case")]
 pub enum OneTimeKeyAlgorithm {
