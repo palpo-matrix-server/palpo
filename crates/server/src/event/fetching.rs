@@ -31,6 +31,7 @@ pub async fn fetch_and_process_missing_events(
     room_id: &RoomId,
     room_version: &RoomVersionId,
     incoming_pdu: &PduEvent,
+    backfilled: bool,
 ) -> AppResult<()> {
     let min_depth = timeline::first_pdu_in_room(room_id)
         .ok()
@@ -57,6 +58,10 @@ pub async fn fetch_and_process_missing_events(
         return Ok(());
     }
 
+    println!(
+        "Fetching missing prev events for {}: {:?}",
+        incoming_pdu.event_id, missing_events
+    );
     let request = missing_events_request(
         &remote_server.origin().await,
         room_id,
@@ -110,7 +115,7 @@ pub async fn fetch_and_process_missing_events(
             room_id,
             room_version,
             event_val.clone(),
-            true,
+            backfilled,
         )
         .await
         {

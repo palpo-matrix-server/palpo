@@ -429,20 +429,6 @@ pub fn add_timeline_gap(room_id: &RoomId, event_sn: Seqnum) -> DataResult<()> {
         .execute(&mut connect()?)?;
     Ok(())
 }
-pub fn add_timeline_gaps(room_id: &RoomId, event_sns: &[Seqnum]) -> DataResult<()> {
-    let new_gaps: Vec<NewDbTimelineGap> = event_sns
-        .iter()
-        .map(|sn| NewDbTimelineGap {
-            room_id: room_id.to_owned(),
-            event_sn: *sn,
-        })
-        .collect();
-    diesel::insert_into(timeline_gaps::table)
-        .values(&new_gaps)
-        .on_conflict_do_nothing()
-        .execute(&mut connect()?)?;
-    Ok(())
-}
 pub fn remove_timeline_gap(event_sn: Seqnum) -> DataResult<()> {
     diesel::delete(timeline_gaps::table)
         .filter(timeline_gaps::event_sn.eq(event_sn))

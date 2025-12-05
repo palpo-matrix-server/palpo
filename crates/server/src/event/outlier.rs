@@ -176,6 +176,7 @@ impl OutlierPdu {
             &self.room_id,
             &self.room_version,
             &self,
+            backfilled,
         )
         .await
         {

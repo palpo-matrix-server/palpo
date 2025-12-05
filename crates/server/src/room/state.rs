@@ -5,6 +5,7 @@ use diesel::prelude::*;
 use indexmap::IndexMap;
 use lru_cache::LruCache;
 use palpo_data::diesel_exists;
+use palpo_data::room::add_timeline_gap;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 
@@ -324,7 +325,12 @@ pub fn get_backward_extremities(room_id: &RoomId) -> AppResult<Vec<OwnedEventId>
 }
 
 pub fn update_backward_extremities(pdu: &SnPduEvent) -> AppResult<()> {
+    println!(
+        "===================update_backward_extremities  0  {:?}",
+        pdu
+    );
     if !pdu.is_outlier || pdu.prev_events.is_empty() {
+        println!("===================update_backward_extremities   2");
         diesel::delete(
             event_backward_extremities::table
                 .filter(event_backward_extremities::room_id.eq(&pdu.room_id))
@@ -333,6 +339,7 @@ pub fn update_backward_extremities(pdu: &SnPduEvent) -> AppResult<()> {
         .execute(&mut connect()?)?;
     }
     if pdu.is_outlier {
+        println!("===================update_backward_extremities   3");
         diesel::insert_into(event_backward_extremities::table)
             .values((
                 event_backward_extremities::room_id.eq(&pdu.room_id),
@@ -355,6 +362,15 @@ pub fn update_backward_extremities(pdu: &SnPduEvent) -> AppResult<()> {
                     .execute(&mut connect()?)?;
             }
         }
+    }
+
+    let query = event_backward_extremities::table
+        .filter(event_backward_extremities::event_id.eq_any(&pdu.prev_events));
+
+    println!("===================update_backward_extremities   4");
+    if diesel_exists!(query, &mut connect()?)? {
+        println!("===================update_backward_extremities   5");
+        add_timeline_gap(&pdu.room_id, pdu.event_sn)?;
     }
     Ok(())
 }
