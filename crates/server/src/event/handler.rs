@@ -507,6 +507,7 @@ pub async fn process_to_timeline_pdu(
     let state_at_incoming_event = if let Some(state_at_incoming_event) = state_at_incoming_event {
         state_at_incoming_event
     } else {
+        println!("ffffffffffffetching missing state for incoming pdu {}", incoming_pdu.event_id);
         fetch_and_process_missing_state(
             remote_server,
             room_id,

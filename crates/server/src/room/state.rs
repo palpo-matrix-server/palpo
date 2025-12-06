@@ -150,6 +150,7 @@ pub fn set_event_state(
     state_ids_compressed: Arc<CompressedState>,
 ) -> AppResult<i64> {
     let prev_frame_id = get_room_frame_id(room_id, None).ok();
+    println!("===========set_event_state   prev_frame_id: {:?}", prev_frame_id);
     let hash_data = utils::hash_keys(state_ids_compressed.iter().map(|s| &s[..]));
     if let Ok(frame_id) = get_frame_id(room_id, &hash_data) {
         update_frame_id(event_id, frame_id)?;
