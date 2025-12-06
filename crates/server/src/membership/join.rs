@@ -32,7 +32,6 @@ use crate::event::{
     PduBuilder, PduEvent, ensure_event_sn, gen_event_id_canonical_json, parse_fetched_pdu,
 };
 use crate::federation::maybe_strip_event_id;
-use crate::room::state::{CompressedEvent, DeltaInfo};
 use crate::room::{state, timeline};
 use crate::sending::send_edu_server;
 use crate::{

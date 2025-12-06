@@ -11,9 +11,10 @@ use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::{connect, diesel_exists, schema::*};
 use crate::event::fetching::{
     fetch_and_process_auth_chain, fetch_and_process_missing_events,
-    fetch_and_process_missing_state_by_ids,
+    fetch_and_process_missing_state_by_ids,fetch_and_process_missing_state
 };
 use crate::event::handler::auth_check;
+use crate::event::resolver::resolve_state_at_incoming;
 use crate::event::{PduEvent, SnPduEvent, ensure_event_sn};
 use crate::room::state::update_backward_extremities;
 use crate::room::timeline;
@@ -291,7 +292,21 @@ impl OutlierPdu {
         println!("=============process_pulled 4 {backfilled}");
         if self.pdu.rejection_reason.is_none() {
             println!("=============process_pulled 4   0");
-            if let Err(e) = auth_check(&self.pdu, &self.room_id, &version_rules, None).await {
+            let state_at_incoming_event = if let Some(state_at_incoming_event) =
+                resolve_state_at_incoming(&self.pdu, &self.room_id, &version_rules).await?
+            {
+                state_at_incoming_event
+            } else {
+                fetch_and_process_missing_state(
+                    &self.remote_server,
+                    &self.room_id,
+                    &self.room_version,
+                    &self.pdu.event_id,
+                )
+                .await?
+                .state_events
+            };
+            if let Err(e) = auth_check(&self.pdu, &self.room_id, &version_rules, Some(&state_at_incoming_event)).await {
                 println!("=============process_pulled 4   1 {e:?}");
                 match e {
                     AppError::State(StateError::Forbidden(brief)) => {

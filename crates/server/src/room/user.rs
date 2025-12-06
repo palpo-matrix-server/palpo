@@ -2,7 +2,6 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 
 use diesel::prelude::*;
 use indexmap::IndexMap;
-use serde::de::DeserializeOwned;
 
 use crate::core::Seqnum;
 use crate::core::events::push_rules::PushRulesEventContent;

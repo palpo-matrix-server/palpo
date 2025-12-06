@@ -1,7 +1,5 @@
 use std::borrow::Borrow;
-use std::collections::HashMap;
 use std::iter::once;
-use std::sync::Arc;
 
 use salvo::http::StatusError;
 
@@ -16,9 +14,10 @@ use crate::core::room::JoinRule;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_canonical_value};
 use crate::data::room::NewDbEvent;
 use crate::event::{PduBuilder, PduEvent, ensure_event_sn, fetching, gen_event_id, handler};
-use crate::room::{self, state, timeline};
+use crate::room::timeline;
 use crate::{
-    AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, SnPduEvent, config, sending,
+    AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, SnPduEvent, config, room,
+    sending,
 };
 
 pub async fn knock_room(
