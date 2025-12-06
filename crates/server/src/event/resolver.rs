@@ -158,7 +158,6 @@ pub(super) async fn resolve_state_at_incoming(
     let mut extremity_state_hashes = HashMap::new();
 
     println!("============resolve_state_at_incoming 0");
-    let mut outlier_state = IndexMap::new();
     for prev_event_id in &incoming_pdu.prev_events {
         let Ok(prev_event) = timeline::get_pdu(prev_event_id) else {
             println!("============resolve_state_at_incoming 1");
@@ -174,12 +173,7 @@ pub(super) async fn resolve_state_at_incoming(
         if let Ok(frame_id) = state::get_pdu_frame_id(prev_event_id) {
             extremity_state_hashes.insert(frame_id, prev_event);
         } else {
-            let field_id = if let Some(state_key) = &prev_event.state_key {
-                state::ensure_field_id(&prev_event.event_ty.to_string().into(), state_key)?
-            } else {
-                continue;
-            };
-            outlier_state.insert(field_id, prev_event_id.to_owned());
+           return Ok(None);
         }
     }
     println!("============resolve_state_at_incoming 5");
@@ -267,7 +261,7 @@ pub(super) async fn resolve_state_at_incoming(
                         state::ensure_field_id(&event_type.to_string().into(), &state_key)?;
                     Ok((state_key_id, event_id))
                 })
-                 .chain(outlier_state.into_iter().map(|(k, v)| Ok((k, v))))
+                //  .chain(outlier_state.into_iter().map(|(k, v)| Ok((k, v))))
                 .collect::<AppResult<_>>()?,
         )),
         Err(e) => {
