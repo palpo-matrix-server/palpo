@@ -404,7 +404,7 @@ pub async fn process_to_outlier_pdu(
 pub async fn process_to_timeline_pdu(
     incoming_pdu: SnPduEvent,
     json_data: BTreeMap<String, CanonicalJsonValue>,
-    remote_server: &ServerName,
+    remote_server: Option<&ServerName>,
     room_id: &RoomId,
 ) -> AppResult<()> {
     // Skip the PDU if we already have it as a timeline event
@@ -506,8 +506,11 @@ pub async fn process_to_timeline_pdu(
         resolve_state_at_incoming(&incoming_pdu, room_id, &version_rules).await?;
     let state_at_incoming_event = if let Some(state_at_incoming_event) = state_at_incoming_event {
         state_at_incoming_event
-    } else {
-        println!("ffffffffffffetching missing state for incoming pdu {}", incoming_pdu.event_id);
+    } else if let Some(remote_server) = remote_server {
+        println!(
+            "ffffffffffffetching missing state for incoming pdu {}",
+            incoming_pdu.event_id
+        );
         fetch_and_process_missing_state(
             remote_server,
             room_id,
@@ -516,6 +519,10 @@ pub async fn process_to_timeline_pdu(
         )
         .await?
         .state_events
+    } else {
+        return Err(AppError::internal(
+            "cannot process to timeline without state at event",
+        ));
     };
 
     auth_check(

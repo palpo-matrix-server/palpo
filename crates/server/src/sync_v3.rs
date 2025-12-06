@@ -1037,7 +1037,12 @@ pub(crate) fn load_timeline(
                 ">>>>>>>>>>>>>>>>>>> timeline_pdus len after forward gap filter 11: {:#?}",
                 timeline_pdus
             );
-            limited = false;
+            if timeline_pdus.len() > 1 {
+                timeline_pdus.pop();
+                limited = false;
+            } else {
+                limited = true;
+            }
             // prev_batch = timeline_pdus.last().map(|(sn, _)| *sn);
             next_batch = timeline_pdus
                 .first()
@@ -1045,7 +1050,10 @@ pub(crate) fn load_timeline(
         }
     } else {
         let min_sn = pdu_sns.iter().min().cloned().unwrap_or_default();
-        println!("=================since_tk: {:?}  until_tk:{until_tk:?}   min_sn: {:#?}   pdu_sns:{pdu_sns:?}", since_tk, min_sn);
+        println!(
+            "=================since_tk: {:?}  until_tk:{until_tk:?}   min_sn: {:#?}   pdu_sns:{pdu_sns:?}",
+            since_tk, min_sn
+        );
         if let Ok(Some(gap_sn)) = data::room::get_timeline_forward_gap(room_id, min_sn) {
             println!("==================gap_sn: {:#?}", gap_sn);
             timeline_pdus = timeline_pdus
@@ -1056,7 +1064,13 @@ pub(crate) fn load_timeline(
                 ">>>>>>>>>>>>>>>>>>> timeline_pdus len after forward gap filter 22: {:#?}",
                 timeline_pdus
             );
-            limited = false;
+            if timeline_pdus.len() > 1 {
+                // The last one is in gap, so we can pop it
+                timeline_pdus.pop();
+                limited = false;
+            } else {
+                limited = true;
+            }
             // prev_batch = timeline_pdus.first().map(|(sn, _)| *sn);
             next_batch = timeline_pdus
                 .last()

@@ -11,7 +11,7 @@ use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::{connect, diesel_exists, schema::*};
 use crate::event::fetching::{
     fetch_and_process_auth_chain, fetch_and_process_missing_events,
-    fetch_and_process_missing_state_by_ids,fetch_and_process_missing_state
+    fetch_and_process_missing_state, fetch_and_process_missing_state_by_ids,
 };
 use crate::event::handler::auth_check;
 use crate::event::resolver::resolve_state_at_incoming;
@@ -306,7 +306,14 @@ impl OutlierPdu {
                 .await?
                 .state_events
             };
-            if let Err(e) = auth_check(&self.pdu, &self.room_id, &version_rules, Some(&state_at_incoming_event)).await {
+            if let Err(e) = auth_check(
+                &self.pdu,
+                &self.room_id,
+                &version_rules,
+                Some(&state_at_incoming_event),
+            )
+            .await
+            {
                 println!("=============process_pulled 4   1 {e:?}");
                 match e {
                     AppError::State(StateError::Forbidden(brief)) => {

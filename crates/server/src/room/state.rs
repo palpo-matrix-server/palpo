@@ -2,10 +2,9 @@ use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex};
 
 use diesel::prelude::*;
+use hmac::digest::crypto_common::rand_core::le;
 use indexmap::IndexMap;
 use lru_cache::LruCache;
-use palpo_data::diesel_exists;
-use palpo_data::room::add_timeline_gap;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 
@@ -26,10 +25,12 @@ use crate::core::identifiers::*;
 use crate::core::room::{AllowRule, JoinRule, RoomMembership};
 use crate::core::room_version_rules::AuthorizationRules;
 use crate::core::serde::{JsonValue, RawJson};
-use crate::core::state::StateMap;
+use crate::core::state::{Event, StateMap};
 use crate::core::{EventId, OwnedEventId, RoomId, UserId};
-use crate::data::connect;
+use crate::data::room::NewDbEventMissing;
 use crate::data::schema::*;
+use crate::data::{connect, diesel_exists};
+use crate::event::handler::process_to_timeline_pdu;
 use crate::event::{PduEvent, update_frame_id, update_frame_id_by_sn};
 use crate::room::timeline;
 use crate::{
@@ -150,7 +151,10 @@ pub fn set_event_state(
     state_ids_compressed: Arc<CompressedState>,
 ) -> AppResult<i64> {
     let prev_frame_id = get_room_frame_id(room_id, None).ok();
-    println!("===========set_event_state   prev_frame_id: {:?}", prev_frame_id);
+    println!(
+        "===========set_event_state   prev_frame_id: {:?}",
+        prev_frame_id
+    );
     let hash_data = utils::hash_keys(state_ids_compressed.iter().map(|s| &s[..]));
     if let Ok(frame_id) = get_frame_id(room_id, &hash_data) {
         update_frame_id(event_id, frame_id)?;
@@ -325,7 +329,7 @@ pub fn get_backward_extremities(room_id: &RoomId) -> AppResult<Vec<OwnedEventId>
     Ok(event_ids)
 }
 
-pub fn update_backward_extremities(pdu: &SnPduEvent) -> AppResult<()> {
+pub async fn update_backward_extremities(pdu: &SnPduEvent) -> AppResult<()> {
     if !pdu.is_outlier || pdu.prev_events.is_empty() {
         println!("===================update_backward_extremities   2");
         diesel::delete(
@@ -335,22 +339,38 @@ pub fn update_backward_extremities(pdu: &SnPduEvent) -> AppResult<()> {
         )
         .execute(&mut connect()?)?;
 
-        // TODO
-        // let event_ids = event_missings::table
-        //         .filter(event_missings::room_id.eq(&pdu.room_id))
-        //         .filter(event_missings::missing_id.eq(&pdu.event_id)).select(event_missings::event_id).load::<OwnedEventId>(&mut connect()?)?;
-        // for event_id in event_ids {
-        //     diesel::delete(
-        //         event_missings::table
-        //             .filter(event_missings::room_id.eq(&pdu.room_id))
-        //             .filter(event_missings::event_id.eq(&event_id)),
-        //     )
-        //     .execute(&mut connect()?)?;
-        // let query = event_missings::table
-        //         .filter(event_missings::event_id.eq(&event_id));
-        // if !diesel_exists!(query, &mut connect()?)?{
-
-        // }
+        let event_ids = event_missings::table
+            .filter(event_missings::room_id.eq(&pdu.room_id))
+            .filter(event_missings::missing_id.eq(&pdu.event_id))
+            .select(event_missings::event_id)
+            .load::<OwnedEventId>(&mut connect()?)?;
+        for event_id in event_ids {
+            diesel::delete(
+                event_missings::table
+                    .filter(event_missings::room_id.eq(&pdu.room_id))
+                    .filter(event_missings::event_id.eq(&event_id)),
+            )
+            .execute(&mut connect()?)?;
+            let query = event_missings::table.filter(event_missings::event_id.eq(&event_id));
+            if !diesel_exists!(query, &mut connect()?)? {
+                let query = event_phases::table
+                    .filter(event_phases::event_id.eq(&event_id))
+                    .filter(event_phases::goal.eq("timeline"));
+                if diesel_exists!(query, &mut connect()?)? {
+                    let pdu = timeline::get_pdu(&event_id)?;
+                    if pdu.is_outlier && !pdu.rejected() {
+                        if let Err(e) =
+                            process_to_timeline_pdu(pdu, pdu.get_content()?, None, &pdu.room_id)
+                                .await
+                        {
+                            error!("failed to process incoming pdu to timeline {}", e);
+                        } else {
+                            debug!("succeed to process incoming pdu to timeline {}", event_id);
+                        }
+                    }
+                }
+            }
+        }
     }
     if pdu.is_outlier {
         println!("===================update_backward_extremities   3");
@@ -378,13 +398,21 @@ pub fn update_backward_extremities(pdu: &SnPduEvent) -> AppResult<()> {
         }
     }
 
-    let query = event_backward_extremities::table
-        .filter(event_backward_extremities::event_id.eq_any(&pdu.prev_events));
+    let missing_ids = event_backward_extremities::table
+        .filter(event_backward_extremities::event_id.eq_any(&pdu.prev_events))
+        .select(event_backward_extremities::event_id)
+        .load::<OwnedEventId>(&mut connect()?)?;
 
-    println!("===================update_backward_extremities   4");
-    if diesel_exists!(query, &mut connect()?)? {
-        println!("===================update_backward_extremities   5");
-        add_timeline_gap(&pdu.room_id, pdu.event_sn)?;
+    for missing_id in missing_ids {
+        diesel::insert_into(event_missings::table)
+            .values(NewDbEventMissing {
+                room_id: pdu.room_id.clone(),
+                event_id: pdu.event_id.clone(),
+                event_sn: pdu.event_sn,
+                missing_id: missing_id.clone(),
+            })
+            .on_conflict_do_nothing()
+            .execute(&mut connect()?)?;
     }
     Ok(())
 }

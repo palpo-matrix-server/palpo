@@ -173,7 +173,7 @@ pub(super) async fn resolve_state_at_incoming(
         if let Ok(frame_id) = state::get_pdu_frame_id(prev_event_id) {
             extremity_state_hashes.insert(frame_id, prev_event);
         } else {
-           return Ok(None);
+            return Ok(None);
         }
     }
     println!("============resolve_state_at_incoming 5");
