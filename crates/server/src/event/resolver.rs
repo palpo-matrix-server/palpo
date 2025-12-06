@@ -157,21 +157,32 @@ pub(super) async fn resolve_state_at_incoming(
     debug!("calculating state at event using state resolve");
     let mut extremity_state_hashes = HashMap::new();
 
+    println!("============resolve_state_at_incoming 0");
+    let mut outlier_state = IndexMap::new();
     for prev_event_id in &incoming_pdu.prev_events {
         let Ok(prev_event) = timeline::get_pdu(prev_event_id) else {
+            println!("============resolve_state_at_incoming 1");
             return Ok(None);
         };
 
+        println!("============resolve_state_at_incoming 2");
         if prev_event.rejected() {
+            println!("============resolve_state_at_incoming 3");
             continue;
         }
 
         if let Ok(frame_id) = state::get_pdu_frame_id(prev_event_id) {
             extremity_state_hashes.insert(frame_id, prev_event);
         } else {
-            return Ok(None);
+            let field_id = if let Some(state_key) = &prev_event.state_key {
+                state::ensure_field_id(&prev_event.event_ty.to_string().into(), state_key)?
+            } else {
+                continue;
+            };
+            outlier_state.insert(field_id, prev_event_id.to_owned());
         }
     }
+    println!("============resolve_state_at_incoming 5");
 
     let mut fork_states = Vec::with_capacity(extremity_state_hashes.len());
     let mut auth_chain_sets = Vec::with_capacity(extremity_state_hashes.len());
@@ -256,6 +267,7 @@ pub(super) async fn resolve_state_at_incoming(
                         state::ensure_field_id(&event_type.to_string().into(), &state_key)?;
                     Ok((state_key_id, event_id))
                 })
+                 .chain(outlier_state.into_iter().map(|(k, v)| Ok((k, v))))
                 .collect::<AppResult<_>>()?,
         )),
         Err(e) => {

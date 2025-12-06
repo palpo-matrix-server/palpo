@@ -77,6 +77,8 @@ pub async fn fetch_and_process_missing_events(
     let response = send_federation_request(remote_server, request, None).await?;
     let res_body = response.json::<MissingEventsResBody>().await?;
 
+    println!(">>>>>>>>>>>....bacfilled: {}", backfilled);
+    println!("Received missing events: {:#?}", res_body.events);
     for event in res_body.events {
         let (event_id, event_val) = parse_fetched_pdu(room_id, room_version, &event)?;
 

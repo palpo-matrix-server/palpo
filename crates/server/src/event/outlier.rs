@@ -214,7 +214,6 @@ impl OutlierPdu {
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
         let version_rules = crate::room::get_version_rules(&self.room_version)?;
 
-        print!("=============process_pulled 0 {backfilled}");
         if !self.soft_failed || self.rejected() {
             print!("=============process_pulled 1 {backfilled}");
             return self.save_to_database(backfilled);
@@ -289,9 +288,11 @@ impl OutlierPdu {
             }
         }
 
-        print!("=============process_pulled 4 {backfilled}");
+        println!("=============process_pulled 4 {backfilled}");
         if self.pdu.rejection_reason.is_none() {
+            println!("=============process_pulled 4   0");
             if let Err(e) = auth_check(&self.pdu, &self.room_id, &version_rules, None).await {
+                println!("=============process_pulled 4   1 {e:?}");
                 match e {
                     AppError::State(StateError::Forbidden(brief)) => {
                         self.pdu.rejection_reason = Some(brief);

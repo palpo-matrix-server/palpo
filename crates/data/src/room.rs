@@ -292,6 +292,7 @@ impl NewDbEvent {
         mut value: JsonValue,
         backfilled: bool,
     ) -> DataResult<Self> {
+        println!("Creating NewDbEvent from json value  backfilled: {}", backfilled);
         let depth = value.get("depth").cloned().unwrap_or(0.into());
         let ty = value
             .get("type")
@@ -313,6 +314,7 @@ impl NewDbEvent {
     }
 
     pub fn save(&self) -> DataResult<()> {
+        println!("Saving event to database  {self:#?}");
         diesel::insert_into(events::table)
             .values(self)
             .on_conflict(events::id)
@@ -392,21 +394,31 @@ pub struct NewDbTimelineGap {
 }
 
 pub fn get_timeline_forward_gap(room_id: &RoomId, min_sn: Seqnum) -> DataResult<Option<Seqnum>> {
+    println!(
+        "Ccccccccccccccccchecking for forward timeline gap in room {} from event_sn {}",
+        room_id, min_sn
+    );
     let gap = timeline_gaps::table
         .filter(timeline_gaps::room_id.eq(room_id))
         .filter(timeline_gaps::event_sn.ge(min_sn))
         .select(timeline_gaps::event_sn)
         .first::<Seqnum>(&mut connect()?)
         .optional()?;
+    println!("====================forward gap found: {:?}", gap);
     Ok(gap)
 }
 pub fn get_timeline_backward_gap(room_id: &RoomId, max_sn: Seqnum) -> DataResult<Option<Seqnum>> {
+    println!(
+        "Ccccccccccccccccchecking for backward timeline gap in room {} from event_sn {}",
+        room_id, max_sn
+    );
     let gap = timeline_gaps::table
         .filter(timeline_gaps::room_id.eq(room_id))
         .filter(timeline_gaps::event_sn.le(max_sn))
         .select(timeline_gaps::event_sn)
         .first::<Seqnum>(&mut connect()?)
         .optional()?;
+    println!("====================backward gap found: {:?}", gap);
     Ok(gap)
 }
 // pub fn get_timeline_gaps(room_id: &RoomId, min_sn: Seqnum, max_sn: Seqnum) -> DataResult<Vec<Seqnum>> {
@@ -423,6 +435,7 @@ pub fn add_timeline_gap(room_id: &RoomId, event_sn: Seqnum) -> DataResult<()> {
         room_id: room_id.to_owned(),
         event_sn,
     };
+    println!("Adding timeline gap for room {} at event_sn {}", room_id, event_sn);
     diesel::insert_into(timeline_gaps::table)
         .values(&new_gap)
         .on_conflict_do_nothing()
@@ -430,12 +443,14 @@ pub fn add_timeline_gap(room_id: &RoomId, event_sn: Seqnum) -> DataResult<()> {
     Ok(())
 }
 pub fn remove_timeline_gap(event_sn: Seqnum) -> DataResult<()> {
+    println!("Removing timeline gaps for event_sn {:?}", event_sn);
     diesel::delete(timeline_gaps::table)
         .filter(timeline_gaps::event_sn.eq(event_sn))
         .execute(&mut connect()?)?;
     Ok(())
 }
 pub fn remove_timeline_gaps(event_sns: &[Seqnum]) -> DataResult<()> {
+    println!("Removing timeline gaps for event_sns {:?}", event_sns);
     diesel::delete(timeline_gaps::table)
         .filter(timeline_gaps::event_sn.eq_any(event_sns))
         .execute(&mut connect()?)?;

@@ -251,6 +251,30 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
+    event_missings (id) {
+        id -> Int4,
+        room_id -> Text,
+        event_id -> Text,
+        missing_id -> Text,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
+    event_phases (event_id) {
+        event_id -> Text,
+        curr -> Text,
+        next -> Text,
+        goal -> Text,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     event_points (event_id) {
         event_id -> Text,
         event_sn -> Int8,
@@ -1088,6 +1112,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     event_edges,
     event_forward_extremities,
     event_idempotents,
+    event_missings,
+    event_phases,
     event_points,
     event_push_actions,
     event_push_summaries,
