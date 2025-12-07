@@ -359,8 +359,9 @@ pub async fn update_backward_extremities(pdu: &SnPduEvent) -> AppResult<()> {
                 if diesel_exists!(query, &mut connect()?)? {
                     let pdu = timeline::get_pdu(&event_id)?;
                     if pdu.is_outlier && !pdu.rejected() {
+                        let content = pdu.get_content()?;
                         if let Err(e) =
-                            process_to_timeline_pdu(pdu, pdu.get_content()?, None, &pdu.room_id)
+                            process_to_timeline_pdu(pdu, content, None, &pdu.room_id)
                                 .await
                         {
                             error!("failed to process incoming pdu to timeline {}", e);

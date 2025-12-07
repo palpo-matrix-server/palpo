@@ -119,7 +119,7 @@ pub(crate) async fn process_incoming_pdu(
         .write()
         .unwrap()
         .insert(room_id.to_owned(), (event_id.to_owned(), start_time));
-    if let Err(e) = process_to_timeline_pdu(incoming_pdu, val, remote_server, room_id).await {
+    if let Err(e) = process_to_timeline_pdu(incoming_pdu, val, Some(remote_server), room_id).await {
         error!("failed to process incoming pdu to timeline {}", e);
     } else {
         debug!("succeed to process incoming pdu to timeline {}", event_id);
@@ -174,7 +174,7 @@ pub(crate) async fn process_pulled_pdu(
         return Ok(());
     }
 
-    if let Err(e) = process_to_timeline_pdu(pdu, json_data, remote_server, room_id).await {
+    if let Err(e) = process_to_timeline_pdu(pdu, json_data, Some(remote_server), room_id).await {
         error!("failed to process pulled pdu to timeline: {}", e);
     }
     Ok(())
