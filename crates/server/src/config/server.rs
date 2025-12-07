@@ -106,6 +106,7 @@ pub struct ServerConfig {
     pub home_page: Option<String>,
 
     // display: hidden
+    #[serde(default)]
     pub db: DbConfig,
 
     // display: hidden
