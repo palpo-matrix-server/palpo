@@ -151,7 +151,6 @@ pub async fn resolve_state(
 
 pub(super) async fn resolve_state_at_incoming(
     incoming_pdu: &PduEvent,
-    room_id: &RoomId,
     version_rules: &RoomVersionRules,
 ) -> AppResult<Option<IndexMap<i64, OwnedEventId>>> {
     debug!("calculating state at event using state resolve");
@@ -211,7 +210,7 @@ pub(super) async fn resolve_state_at_incoming(
 
         for starting_event in starting_events {
             auth_chain_sets.push(crate::room::auth_chain::get_auth_chain_ids(
-                room_id,
+                &incoming_pdu.room_id,
                 [&*starting_event].into_iter(),
             )?);
         }
@@ -219,7 +218,7 @@ pub(super) async fn resolve_state_at_incoming(
         fork_states.push(state);
     }
 
-    let state_lock = room::lock_state(room_id).await;
+    let state_lock = room::lock_state(&incoming_pdu.room_id).await;
     let result = resolve(
         &version_rules.authorization,
         version_rules
