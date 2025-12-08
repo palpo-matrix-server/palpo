@@ -284,6 +284,8 @@ pub async fn sync_events(
         .collect(),
     };
 
+    println!("================account_data: {account_data:?}"); // TODO: remove debug print
+
     let rooms = Rooms {
         leave: left_rooms,
         join: joined_rooms,
