@@ -216,12 +216,10 @@ impl OutlierPdu {
         let version_rules = crate::room::get_version_rules(&self.room_version)?;
 
         if !self.soft_failed || self.rejected() {
-            print!("=============process_pulled 1 {backfilled}");
             return self.save_to_database(backfilled).await;
         }
 
         if self.any_prev_event_rejected()? {
-            print!("=============process_pulled 2 {backfilled}");
             self.rejection_reason = Some("one or more prev events are rejected".to_string());
             return self.save_to_database(backfilled).await;
         }
@@ -234,7 +232,6 @@ impl OutlierPdu {
             )
             .await
         {
-            print!("=============process_pulled 3 {backfilled}");
             if let AppError::HttpStatus(_) = e {
                 self.soft_failed = true;
             } else {
@@ -289,9 +286,7 @@ impl OutlierPdu {
             }
         }
 
-        println!("=============process_pulled 4 {backfilled}");
         if self.pdu.rejection_reason.is_none() {
-            println!("=============process_pulled 4   0");
             let state_at_incoming_event = if let Some(state_at_incoming_event) =
                 resolve_state_at_incoming(&self.pdu, &version_rules).await?
             {
@@ -309,7 +304,6 @@ impl OutlierPdu {
             if let Err(e) =
                 auth_check(&self.pdu, &version_rules, Some(&state_at_incoming_event)).await
             {
-                println!("=============process_pulled 4   1 {e:?}");
                 match e {
                     AppError::State(StateError::Forbidden(brief)) => {
                         self.pdu.rejection_reason = Some(brief);
@@ -322,7 +316,6 @@ impl OutlierPdu {
                 self.soft_failed = false;
             }
         }
-        print!("=============process_pulled 5 {backfilled}");
         self.save_to_database(backfilled).await
     }
 }

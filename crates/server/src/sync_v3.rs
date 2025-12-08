@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap, HashSet, hash_map::Entry};
 
+use diesel::prelude::*;
 use indexmap::IndexMap;
 use state::DbRoomStateField;
 
@@ -19,6 +20,7 @@ use crate::core::events::{
 use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::core::{Seqnum, UnixMillis};
+use crate::data::{connect, schema::*};
 use crate::event::BatchToken;
 use crate::event::{EventHash, PduEvent, SnPduEvent};
 use crate::room::{state, timeline};
@@ -100,11 +102,9 @@ pub async fn sync_events(
         .await
         {
             Ok((joined_room, nb)) => {
-                println!(">>>>>>>>>>>>>>>>>>> nb {:?} next_batch{:?}", nb, next_batch);
                 if let Some(nb) = nb
                     && nb.stream_ordering() < next_batch.stream_ordering()
                 {
-                    println!("======rest netx_batch to nb============");
                     next_batch = nb;
                 }
                 joined_room
@@ -310,7 +310,6 @@ pub async fn sync_events(
         )?,
     };
 
-    println!(">>>>>>>>>>>>>>>>>>> final next_batch: {:#?}", next_batch);
     let res_body = SyncEventsResBody {
         next_batch: next_batch.to_string(),
         rooms,
@@ -324,7 +323,6 @@ pub async fn sync_events(
         // Fallback keys are not yet supported
         device_unused_fallback_key_types: None,
     };
-    println!(">>>>>>>>>>>>>>>>> final res_body: {:#?}", res_body);
     Ok(res_body)
 }
 
@@ -1027,21 +1025,43 @@ pub(crate) fn load_timeline(
     // let mut prev_batch = None;
     let mut next_batch = None;
     if is_backward {
+        let mut pdu_sns = pdu_sns.clone();
+        if let Some(since_tk) = since_tk {
+            // This can happen if there are no new events since since_tk
+            pdu_sns.push(since_tk.event_sn());
+        }
+        let min_sn = pdu_sns.iter().min().cloned().unwrap_or_default();
         let max_sn = pdu_sns.iter().max().cloned().unwrap_or_default();
-        if let Ok(Some(gap_sn)) = data::room::get_timeline_backward_gap(room_id, max_sn) {
-            timeline_pdus = timeline_pdus
-                .into_iter()
-                .filter(|(sn, _)| sn >= &gap_sn)
-                .collect();
-            println!(
-                ">>>>>>>>>>>>>>>>>>> timeline_pdus len after forward gap filter 11: {:#?}",
-                timeline_pdus
-            );
-            if timeline_pdus.len() > 1 {
-                timeline_pdus.pop();
-                limited = false;
-            } else {
-                limited = true;
+        if let Ok(mut gap_sns) = data::room::get_timeline_gaps(room_id, min_sn, max_sn) {
+            let mut filtered_pdus = vec![];
+            if let Some(gap_sn) = gap_sns.pop() {
+                filtered_pdus = timeline_pdus
+                    .iter()
+                    .filter(|(sn, _)| *sn > &gap_sn)
+                    .collect();
+                if !filtered_pdus.is_empty() {
+                    limited = false;
+                } else {
+                    filtered_pdus = timeline_pdus
+                        .iter()
+                        .filter(|(sn, _)| *sn >= &gap_sn)
+                        .collect();
+                    if !filtered_pdus.is_empty() {
+                        limited = true;
+                    }
+                }
+            }
+            if filtered_pdus.is_empty() {
+                while let Some(gap_sn) = gap_sns.pop() {
+                    filtered_pdus = timeline_pdus
+                        .iter()
+                        .filter(|(sn, _)| *sn >= &gap_sn)
+                        .collect();
+                    if !filtered_pdus.is_empty() {
+                        limited = true;
+                        break;
+                    }
+                }
             }
             // prev_batch = timeline_pdus.last().map(|(sn, _)| *sn);
             next_batch = timeline_pdus
@@ -1049,36 +1069,55 @@ pub(crate) fn load_timeline(
                 .map(|(sn, _)| BatchToken::new_live(*sn + 1));
         }
     } else {
+        let mut pdu_sns = pdu_sns.clone();
+        if let Some(since_tk) = since_tk {
+            // This can happen if there are no new events since since_tk
+            pdu_sns.push(since_tk.event_sn());
+        }
         let min_sn = pdu_sns.iter().min().cloned().unwrap_or_default();
-        println!(
-            "=================since_tk: {:?}  until_tk:{until_tk:?}   min_sn: {:#?}   pdu_sns:{pdu_sns:?}",
-            since_tk, min_sn
-        );
-        if let Ok(Some(gap_sn)) = data::room::get_timeline_forward_gap(room_id, min_sn) {
-            println!("==================gap_sn: {:#?}", gap_sn);
-            timeline_pdus = timeline_pdus
-                .into_iter()
-                .filter(|(sn, _)| sn <= &gap_sn)
-                .collect();
-            println!(
-                ">>>>>>>>>>>>>>>>>>> timeline_pdus len after forward gap filter 22: {:#?}",
-                timeline_pdus
-            );
-            if timeline_pdus.len() > 1 {
-                // The last one is in gap, so we can pop it
-                timeline_pdus.pop();
-                limited = false;
-            } else {
-                limited = true;
+        let max_sn = pdu_sns.iter().max().cloned().unwrap_or_default();
+        if let Ok(mut gap_sns) = data::room::get_timeline_gaps(room_id, min_sn, max_sn) {
+            gap_sns.reverse();
+            let mut filtered_pdus = vec![];
+            if let Some(gap_sn) = gap_sns.pop() {
+                filtered_pdus = timeline_pdus
+                    .iter()
+                    .filter(|(sn, _)| *sn < &gap_sn)
+                    .collect();
+                if !filtered_pdus.is_empty() {
+                    limited = false;
+                } else {
+                    filtered_pdus = timeline_pdus
+                        .iter()
+                        .filter(|(sn, _)| *sn <= &gap_sn)
+                        .collect();
+                    if !filtered_pdus.is_empty() {
+                        limited = true;
+                    }
+                }
             }
-            // prev_batch = timeline_pdus.first().map(|(sn, _)| *sn);
+            if filtered_pdus.is_empty() {
+                while let Some(gap_sn) = gap_sns.pop() {
+                    filtered_pdus = timeline_pdus
+                        .iter()
+                        .filter(|(sn, _)| *sn <= &gap_sn)
+                        .collect();
+                    if !filtered_pdus.is_empty() {
+                        limited = true;
+                        break;
+                    }
+                }
+            }
+            if !filtered_pdus.is_empty() {
+                timeline_pdus = filtered_pdus
+                    .into_iter()
+                    .map(|(sn, pdu)| (*sn, pdu.clone()))
+                    .collect();
+            }
+
             next_batch = timeline_pdus
                 .last()
                 .map(|(sn, _)| BatchToken::new_live(*sn + 1));
-            println!(
-                ">>>>>>>>>>>>>>>>>>> next_batch after forward gap filter 33: {:#?}",
-                next_batch
-            );
         }
     }
     // if prev_batch.is_none() {

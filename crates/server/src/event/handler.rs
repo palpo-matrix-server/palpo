@@ -23,7 +23,7 @@ use crate::core::{Seqnum, UnixMillis};
 use crate::data::room::DbEvent;
 use crate::data::{connect, schema::*};
 use crate::event::{OutlierPdu, PduEvent, SnPduEvent, handler};
-use crate::room::state::{CompressedState, DeltaInfo};
+use crate::room::state::{CompressedState, DeltaInfo, update_backward_extremities};
 use crate::room::{state, timeline};
 use crate::sending::send_federation_request;
 use crate::{AppError, AppResult, MatrixError, exts::*, room};
@@ -123,6 +123,8 @@ pub(crate) async fn process_incoming_pdu(
         error!("failed to process incoming pdu to timeline {}", e);
     } else {
         debug!("succeed to process incoming pdu to timeline {}", event_id);
+        let pdu = timeline::get_pdu(event_id)?;
+        update_backward_extremities(&pdu).await?;
     }
     drop(event_guard);
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
@@ -176,6 +178,10 @@ pub(crate) async fn process_pulled_pdu(
 
     if let Err(e) = process_to_timeline_pdu(pdu, json_data, Some(remote_server)).await {
         error!("failed to process pulled pdu to timeline: {}", e);
+    } else {
+        debug!("succeed to process incoming pdu to timeline {}", event_id);
+        let pdu = timeline::get_pdu(event_id)?;
+        update_backward_extremities(&pdu).await?;
     }
     Ok(())
 }
@@ -416,7 +422,6 @@ pub async fn process_to_timeline_pdu(
         ));
     }
     debug!("process to timeline event {}", incoming_pdu.event_id);
-    println!("process to timeline event {:?}", incoming_pdu);
     let room_version_id = &room::get_version(&incoming_pdu.room_id)?;
     let version_rules = crate::room::get_version_rules(room_version_id)?;
 
@@ -505,10 +510,6 @@ pub async fn process_to_timeline_pdu(
     let state_at_incoming_event = if let Some(state_at_incoming_event) = state_at_incoming_event {
         state_at_incoming_event
     } else if let Some(remote_server) = remote_server {
-        println!(
-            "ffffffffffffetching missing state for incoming pdu {}",
-            incoming_pdu.event_id
-        );
         fetch_and_process_missing_state(
             remote_server,
             &incoming_pdu.room_id,
@@ -588,7 +589,8 @@ pub async fn process_to_timeline_pdu(
         let state_key_id =
             state::ensure_field_id(&incoming_pdu.event_ty.to_string().into(), state_key)?;
         state_after.insert(state_key_id, incoming_pdu.event_id.clone());
-        let (new_room_state, guards) = resolve_state(&incoming_pdu.room_id, room_version_id, state_after).await?;
+        let (new_room_state, guards) =
+            resolve_state(&incoming_pdu.room_id, room_version_id, state_after).await?;
 
         // Set the new room state to the resolved state
         debug!("forcing new room state");

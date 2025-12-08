@@ -23,4 +23,15 @@ CREATE INDEX IF NOT EXISTS idx_event_missings_event_sn ON event_missings (event_
 CREATE INDEX IF NOT EXISTS idx_event_missings_missing_id ON event_missings (missing_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_event_missings_event_id_missing_id ON event_missings (event_id, missing_id);
 
+
 DROP TABLE IF EXISTS timeline_gaps;
+CREATE TABLE IF NOT EXISTS timeline_gaps (
+    id bigserial NOT NULL PRIMARY KEY,
+    room_id TEXT NOT NULL,
+    event_sn BIGINT NOT NULL,
+    event_id TEXT NOT NULL
+);
+
+CREATE INDEX timeline_gaps_room_id ON timeline_gaps(room_id, event_sn);
+CREATE UNIQUE INDEX timeline_gaps_room_id_event_sn ON timeline_gaps(room_id, event_sn);
+

@@ -156,16 +156,12 @@ pub(super) async fn resolve_state_at_incoming(
     debug!("calculating state at event using state resolve");
     let mut extremity_state_hashes = HashMap::new();
 
-    println!("============resolve_state_at_incoming 0");
     for prev_event_id in &incoming_pdu.prev_events {
         let Ok(prev_event) = timeline::get_pdu(prev_event_id) else {
-            println!("============resolve_state_at_incoming 1");
             return Ok(None);
         };
 
-        println!("============resolve_state_at_incoming 2");
         if prev_event.rejected() {
-            println!("============resolve_state_at_incoming 3");
             continue;
         }
 
@@ -175,7 +171,6 @@ pub(super) async fn resolve_state_at_incoming(
             return Ok(None);
         }
     }
-    println!("============resolve_state_at_incoming 5");
 
     let mut fork_states = Vec::with_capacity(extremity_state_hashes.len());
     let mut auth_chain_sets = Vec::with_capacity(extremity_state_hashes.len());
