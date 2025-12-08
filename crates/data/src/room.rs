@@ -385,6 +385,14 @@ pub fn is_banned(room_id: &RoomId) -> DataResult<bool> {
 }
 
 #[derive(Insertable, Debug, Clone)]
+#[diesel(table_name = timeline_gaps)]
+pub struct NewDbTimelineGap {
+    pub room_id: OwnedRoomId,
+    pub event_id: OwnedEventId,
+    pub event_sn: i64,
+}
+
+#[derive(Insertable, Debug, Clone)]
 #[diesel(table_name = event_missings)]
 pub struct NewDbEventMissing {
     pub room_id: OwnedRoomId,
@@ -394,7 +402,11 @@ pub struct NewDbEventMissing {
 }
 
 // >= min_sn and <= max_sn
-pub fn get_timeline_gaps(room_id: &RoomId, min_sn: Seqnum, max_sn: Seqnum) -> DataResult<Vec<Seqnum>> {
+pub fn get_timeline_gaps(
+    room_id: &RoomId,
+    min_sn: Seqnum,
+    max_sn: Seqnum,
+) -> DataResult<Vec<Seqnum>> {
     let gaps = timeline_gaps::table
         .filter(timeline_gaps::room_id.eq(room_id))
         .filter(timeline_gaps::event_sn.ge(min_sn))

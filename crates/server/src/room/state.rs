@@ -1,8 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex};
 
 use diesel::prelude::*;
-use hmac::digest::crypto_common::rand_core::le;
 use indexmap::IndexMap;
 use lru_cache::LruCache;
 use serde::Deserialize;
@@ -27,7 +26,7 @@ use crate::core::room_version_rules::AuthorizationRules;
 use crate::core::serde::{JsonValue, RawJson};
 use crate::core::state::{Event, StateMap};
 use crate::core::{EventId, OwnedEventId, RoomId, UserId};
-use crate::data::room::NewDbEventMissing;
+use crate::data::room::{NewDbEventMissing, NewDbTimelineGap};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::event::handler::process_to_timeline_pdu;
@@ -373,11 +372,11 @@ pub async fn update_backward_extremities(pdu: &SnPduEvent) -> AppResult<()> {
 
         if !missing_ids.is_empty() {
             diesel::insert_into(timeline_gaps::table)
-                .values((
-                    timeline_gaps::room_id.eq(&pdu.room_id),
-                    timeline_gaps::event_sn.eq(pdu.event_sn),
-                    timeline_gaps::event_id.eq(&pdu.event_id),
-                ))
+                .values(NewDbTimelineGap {
+                    room_id: pdu.room_id.clone(),
+                    event_id: pdu.event_id.clone(),
+                    event_sn: pdu.event_sn,
+                })
                 .execute(&mut connect()?)?;
         }
     }
