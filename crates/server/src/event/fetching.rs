@@ -31,6 +31,7 @@ pub async fn fetch_and_process_missing_events(
     room_id: &RoomId,
     room_version: &RoomVersionId,
     incoming_pdu: &PduEvent,
+    backfilled: bool,
 ) -> AppResult<()> {
     let min_depth = timeline::first_pdu_in_room(room_id)
         .ok()
@@ -110,7 +111,7 @@ pub async fn fetch_and_process_missing_events(
             room_id,
             room_version,
             event_val.clone(),
-            true,
+            backfilled,
         )
         .await
         {
@@ -163,7 +164,7 @@ pub async fn fetch_and_process_auth_chain(
             else {
                 continue;
             };
-            let pdu = outlier_pdu.save_to_database(true)?.0;
+            let pdu = outlier_pdu.save_to_database(true).await?.0;
             auth_events.push(pdu);
         }
     }
@@ -357,6 +358,6 @@ pub async fn fetch_and_process_event(
     else {
         return Ok(());
     };
-    outlier_pdu.save_to_database(true)?;
+    outlier_pdu.save_to_database(true).await?;
     Ok(())
 }

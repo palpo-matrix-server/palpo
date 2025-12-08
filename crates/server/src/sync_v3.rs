@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap, HashSet, hash_map::Entry};
 
+use diesel::prelude::*;
 use indexmap::IndexMap;
 use state::DbRoomStateField;
 
@@ -19,6 +20,7 @@ use crate::core::events::{
 use crate::core::identifiers::*;
 use crate::core::serde::RawJson;
 use crate::core::{Seqnum, UnixMillis};
+use crate::data::{connect, schema::*};
 use crate::event::BatchToken;
 use crate::event::{EventHash, PduEvent, SnPduEvent};
 use crate::room::{state, timeline};
@@ -1023,49 +1025,104 @@ pub(crate) fn load_timeline(
     // let mut prev_batch = None;
     let mut next_batch = None;
     if is_backward {
+        let mut pdu_sns = pdu_sns.clone();
+        if let Some(since_tk) = since_tk {
+            // This can happen if there are no new events since since_tk
+            pdu_sns.push(since_tk.event_sn());
+        }
+        let min_sn = pdu_sns.iter().min().cloned().unwrap_or_default();
         let max_sn = pdu_sns.iter().max().cloned().unwrap_or_default();
-        if let Ok(Some(gap_sn)) = data::room::get_timeline_backward_gap(room_id, max_sn) {
-            timeline_pdus = timeline_pdus
-                .into_iter()
-                .filter(|(sn, _)| sn >= &gap_sn)
-                .collect();
-            if timeline_pdus.len() > 1 {
-                timeline_pdus.pop();
-                limited = false;
-            } else {
-                limited = true;
+        if let Ok(mut gap_sns) = data::room::get_timeline_gaps(room_id, min_sn, max_sn)
+            && !gap_sns.is_empty()
+        {
+            let mut filtered_pdus = vec![];
+            if let Some(gap_sn) = gap_sns.pop() {
+                filtered_pdus = timeline_pdus
+                    .iter()
+                    .filter(|(sn, _)| *sn > &gap_sn)
+                    .collect();
+                if !filtered_pdus.is_empty() {
+                    limited = false;
+                } else {
+                    filtered_pdus = timeline_pdus
+                        .iter()
+                        .filter(|(sn, _)| *sn >= &gap_sn)
+                        .collect();
+                    if !filtered_pdus.is_empty() {
+                        limited = true;
+                    }
+                }
             }
-            // prev_batch = timeline_pdus.last().map(|(sn, _)| *sn);
+            if filtered_pdus.is_empty() {
+                while let Some(gap_sn) = gap_sns.pop() {
+                    filtered_pdus = timeline_pdus
+                        .iter()
+                        .filter(|(sn, _)| *sn >= &gap_sn)
+                        .collect();
+                    if !filtered_pdus.is_empty() {
+                        limited = true;
+                        break;
+                    }
+                }
+            }
             next_batch = timeline_pdus
                 .first()
                 .map(|(sn, _)| BatchToken::new_live(*sn + 1));
         }
     } else {
+        let mut pdu_sns = pdu_sns.clone();
+        if let Some(since_tk) = since_tk {
+            // This can happen if there are no new events since since_tk
+            pdu_sns.push(since_tk.event_sn());
+        }
         let min_sn = pdu_sns.iter().min().cloned().unwrap_or_default();
-        if let Ok(Some(gap_sn)) = data::room::get_timeline_forward_gap(room_id, min_sn) {
-            timeline_pdus = timeline_pdus
-                .into_iter()
-                .filter(|(sn, _)| sn <= &gap_sn)
-                .collect();
-            if timeline_pdus.len() > 1 {
-                timeline_pdus.pop();
-                limited = false;
-            } else {
-                limited = true;
+        let max_sn = pdu_sns.iter().max().cloned().unwrap_or_default();
+        if let Ok(mut gap_sns) = data::room::get_timeline_gaps(room_id, min_sn, max_sn)
+            && !gap_sns.is_empty()
+        {
+            gap_sns.reverse();
+            let mut filtered_pdus = vec![];
+            if let Some(gap_sn) = gap_sns.pop() {
+                filtered_pdus = timeline_pdus
+                    .iter()
+                    .filter(|(sn, _)| *sn < &gap_sn)
+                    .collect();
+                if !filtered_pdus.is_empty() {
+                    limited = false;
+                } else {
+                    filtered_pdus = timeline_pdus
+                        .iter()
+                        .filter(|(sn, _)| *sn <= &gap_sn)
+                        .collect();
+                    if !filtered_pdus.is_empty() {
+                        limited = true;
+                    }
+                }
             }
-            // prev_batch = timeline_pdus.first().map(|(sn, _)| *sn);
+            if filtered_pdus.is_empty() {
+                while let Some(gap_sn) = gap_sns.pop() {
+                    filtered_pdus = timeline_pdus
+                        .iter()
+                        .filter(|(sn, _)| *sn <= &gap_sn)
+                        .collect();
+                    if !filtered_pdus.is_empty() {
+                        limited = true;
+                        break;
+                    }
+                }
+            }
+            if !filtered_pdus.is_empty() {
+                timeline_pdus = filtered_pdus
+                    .into_iter()
+                    .map(|(sn, pdu)| (*sn, pdu.clone()))
+                    .collect();
+            }
+
             next_batch = timeline_pdus
                 .last()
                 .map(|(sn, _)| BatchToken::new_live(*sn + 1));
         }
     }
-    // if prev_batch.is_none() {
-    //     if is_backward && let Some((sn, _)) = timeline_pdus.last() {
-    //         prev_batch = Some(*sn);
-    //     } else if let Some((sn, _)) = timeline_pdus.first() {
-    //         prev_batch = Some(*sn);
-    //     }
-    // }
     let prev_batch = if limited {
         timeline_pdus
             .first()

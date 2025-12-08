@@ -5,7 +5,7 @@ use std::sync::{LazyLock, Mutex};
 
 use diesel::prelude::*;
 use serde::Deserialize;
-use serde_json::{json, value::to_raw_value};
+use serde_json::value::to_raw_value;
 use ulid::Ulid;
 
 use crate::core::events::push_rules::PushRulesEventContent;

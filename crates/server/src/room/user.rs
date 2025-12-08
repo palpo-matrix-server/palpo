@@ -2,7 +2,6 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 
 use diesel::prelude::*;
 use indexmap::IndexMap;
-use serde::de::DeserializeOwned;
 
 use crate::core::Seqnum;
 use crate::core::events::push_rules::PushRulesEventContent;
@@ -449,7 +448,6 @@ pub fn copy_push_rules_from_room_to_room(
             // AnyPushRuleRef::Underride(rule) => {
             // },
             AnyPushRuleRef::Room(rule) => {
-                println!("Found room rule: {:?}", rule);
                 let new_rule = NewPushRule::Room(NewSimplePushRule::new(
                     new_room_id.to_owned(),
                     rule.actions.clone(),

@@ -12,8 +12,8 @@ COPY tests/complement/cargo-config.toml /usr/local/cargo/config.toml
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/work/target \
     --mount=type=cache,target=/root/.cargo \
-    cargo build --release \
-    && cp target/release/palpo palpo
+    cargo build \
+    && cp target/debug/palpo palpo
     # && rm -rf target
 
 COPY tests/complement/palpo.toml palpo.toml

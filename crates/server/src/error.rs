@@ -194,7 +194,6 @@ impl Writer for AppError {
             }
             e => {
                 tracing::error!(error = ?e, "unknown error");
-                // println!("{}", std::backtrace::Backtrace::capture());
                 MatrixError::unknown("unknown error happened")
             }
         };

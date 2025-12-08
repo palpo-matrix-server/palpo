@@ -11,9 +11,10 @@ use crate::data::room::{DbEventData, NewDbEvent};
 use crate::data::{connect, diesel_exists, schema::*};
 use crate::event::fetching::{
     fetch_and_process_auth_chain, fetch_and_process_missing_events,
-    fetch_and_process_missing_state_by_ids,
+    fetch_and_process_missing_state, fetch_and_process_missing_state_by_ids,
 };
 use crate::event::handler::auth_check;
+use crate::event::resolver::resolve_state_at_incoming;
 use crate::event::{PduEvent, SnPduEvent, ensure_event_sn};
 use crate::room::state::update_backward_extremities;
 use crate::room::timeline;
@@ -105,7 +106,7 @@ impl crate::core::state::Event for OutlierPdu {
 }
 
 impl OutlierPdu {
-    pub fn save_to_database(
+    pub async fn save_to_database(
         self,
         backfilled: bool,
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
@@ -154,7 +155,7 @@ impl OutlierPdu {
             soft_failed,
             backfilled,
         };
-        update_backward_extremities(&pdu)?;
+        update_backward_extremities(&pdu).await?;
         Ok((pdu, json_data, event_guard))
     }
 
@@ -167,7 +168,7 @@ impl OutlierPdu {
                 && self.rejected_prev_events.is_empty()
                 && self.rejected_auth_events.is_empty())
         {
-            return self.save_to_database(backfilled);
+            return self.save_to_database(backfilled).await;
         }
 
         // Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
@@ -176,13 +177,14 @@ impl OutlierPdu {
             &self.room_id,
             &self.room_version,
             &self,
+            backfilled,
         )
         .await
         {
             if let AppError::Matrix(MatrixError { ref kind, .. }) = e {
                 if *kind == core::error::ErrorKind::BadJson {
                     self.rejection_reason = Some(format!("bad prev events: {}", e));
-                    return self.save_to_database(backfilled);
+                    return self.save_to_database(backfilled).await;
                 } else {
                     self.soft_failed = true;
                 }
@@ -213,16 +215,13 @@ impl OutlierPdu {
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
         let version_rules = crate::room::get_version_rules(&self.room_version)?;
 
-        print!("=============process_pulled 0 {backfilled}");
         if !self.soft_failed || self.rejected() {
-            print!("=============process_pulled 1 {backfilled}");
-            return self.save_to_database(backfilled);
+            return self.save_to_database(backfilled).await;
         }
 
         if self.any_prev_event_rejected()? {
-            print!("=============process_pulled 2 {backfilled}");
             self.rejection_reason = Some("one or more prev events are rejected".to_string());
-            return self.save_to_database(backfilled);
+            return self.save_to_database(backfilled).await;
         }
         if self.any_auth_event_rejected()?
             && let Err(e) = fetch_and_process_auth_chain(
@@ -233,13 +232,12 @@ impl OutlierPdu {
             )
             .await
         {
-            print!("=============process_pulled 3 {backfilled}");
             if let AppError::HttpStatus(_) = e {
                 self.soft_failed = true;
             } else {
                 self.rejection_reason = Some("one or more auth events are rejected".to_string());
             }
-            return self.save_to_database(backfilled);
+            return self.save_to_database(backfilled).await;
         }
         let (_prev_events, missing_prev_event_ids) =
             timeline::get_may_missing_pdus(&self.room_id, &self.pdu.prev_events)?;
@@ -288,9 +286,24 @@ impl OutlierPdu {
             }
         }
 
-        print!("=============process_pulled 4 {backfilled}");
         if self.pdu.rejection_reason.is_none() {
-            if let Err(e) = auth_check(&self.pdu, &self.room_id, &version_rules, None).await {
+            let state_at_incoming_event = if let Some(state_at_incoming_event) =
+                resolve_state_at_incoming(&self.pdu, &version_rules).await?
+            {
+                state_at_incoming_event
+            } else {
+                fetch_and_process_missing_state(
+                    &self.remote_server,
+                    &self.room_id,
+                    &self.room_version,
+                    &self.pdu.event_id,
+                )
+                .await?
+                .state_events
+            };
+            if let Err(e) =
+                auth_check(&self.pdu, &version_rules, Some(&state_at_incoming_event)).await
+            {
                 match e {
                     AppError::State(StateError::Forbidden(brief)) => {
                         self.pdu.rejection_reason = Some(brief);
@@ -303,7 +316,6 @@ impl OutlierPdu {
                 self.soft_failed = false;
             }
         }
-        print!("=============process_pulled 5 {backfilled}");
-        self.save_to_database(backfilled)
+        self.save_to_database(backfilled).await
     }
 }
