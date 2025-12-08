@@ -290,19 +290,24 @@ impl OutlierPdu {
             let state_at_incoming_event = if let Some(state_at_incoming_event) =
                 resolve_state_at_incoming(&self.pdu, &version_rules).await?
             {
-                state_at_incoming_event
+                Some(state_at_incoming_event)
             } else {
-                fetch_and_process_missing_state(
-                    &self.remote_server,
-                    &self.room_id,
-                    &self.room_version,
-                    &self.pdu.event_id,
-                )
-                .await?
-                .state_events
+                if missing_prev_event_ids.is_empty() {
+                    fetch_and_process_missing_state(
+                        &self.remote_server,
+                        &self.room_id,
+                        &self.room_version,
+                        &self.pdu.event_id,
+                    )
+                    .await
+                    .ok()
+                    .map(|r| r.state_events)
+                } else {
+                    None
+                }
             };
             if let Err(e) =
-                auth_check(&self.pdu, &version_rules, Some(&state_at_incoming_event)).await
+                auth_check(&self.pdu, &version_rules, state_at_incoming_event.as_ref()).await
             {
                 match e {
                     AppError::State(StateError::Forbidden(brief)) => {
