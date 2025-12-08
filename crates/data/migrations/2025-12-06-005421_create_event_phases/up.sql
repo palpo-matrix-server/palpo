@@ -34,4 +34,3 @@ CREATE TABLE IF NOT EXISTS timeline_gaps (
 
 CREATE INDEX timeline_gaps_room_id ON timeline_gaps(room_id, event_sn);
 CREATE UNIQUE INDEX timeline_gaps_room_id_event_sn ON timeline_gaps(room_id, event_sn);
-

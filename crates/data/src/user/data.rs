@@ -72,6 +72,7 @@ pub fn set_data(
         occur_sn: Some(crate::next_sn()?),
         created_at: UnixMillis::now(),
     };
+    println!("=============new_data: {new_data:?}"); // TODO: remove debug print
     diesel::insert_into(user_datas::table)
         .values(&new_data)
         .on_conflict((
