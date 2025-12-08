@@ -72,7 +72,6 @@ pub fn set_data(
         occur_sn: Some(crate::next_sn()?),
         created_at: UnixMillis::now(),
     };
-    println!("=============new_data: {new_data:?}"); // TODO: remove debug print
     diesel::insert_into(user_datas::table)
         .values(&new_data)
         .on_conflict((
@@ -171,19 +170,6 @@ pub fn data_changes(
             .order_by(user_datas::occur_sn.asc())
             .load::<DbUserData>(&mut connect()?)?
     };
-
-    println!(
-        "=============dddddddddddata changes  {since_sn} : {:#?}",
-        user_datas::table
-            .filter(user_datas::user_id.eq(user_id))
-            .filter(
-                user_datas::room_id
-                    .eq(room_id)
-                    .or(user_datas::room_id.is_null()),
-            )
-            .order_by(user_datas::occur_sn.asc())
-            .load::<DbUserData>(&mut connect()?)?
-    ); // TODO: remove debug print
 
     for db_data in db_datas {
         let kind = RoomAccountDataEventType::from(&*db_data.data_type);

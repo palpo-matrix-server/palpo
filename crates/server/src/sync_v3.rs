@@ -284,8 +284,6 @@ pub async fn sync_events(
         .collect(),
     };
 
-    println!("================account_data: {account_data:?}"); // TODO: remove debug print
-
     let rooms = Rooms {
         leave: left_rooms,
         join: joined_rooms,
@@ -1034,7 +1032,9 @@ pub(crate) fn load_timeline(
         }
         let min_sn = pdu_sns.iter().min().cloned().unwrap_or_default();
         let max_sn = pdu_sns.iter().max().cloned().unwrap_or_default();
-        if let Ok(mut gap_sns) = data::room::get_timeline_gaps(room_id, min_sn, max_sn) {
+        if let Ok(mut gap_sns) = data::room::get_timeline_gaps(room_id, min_sn, max_sn)
+            && !gap_sns.is_empty()
+        {
             let mut filtered_pdus = vec![];
             if let Some(gap_sn) = gap_sns.pop() {
                 filtered_pdus = timeline_pdus
@@ -1065,7 +1065,6 @@ pub(crate) fn load_timeline(
                     }
                 }
             }
-            // prev_batch = timeline_pdus.last().map(|(sn, _)| *sn);
             next_batch = timeline_pdus
                 .first()
                 .map(|(sn, _)| BatchToken::new_live(*sn + 1));
@@ -1078,7 +1077,9 @@ pub(crate) fn load_timeline(
         }
         let min_sn = pdu_sns.iter().min().cloned().unwrap_or_default();
         let max_sn = pdu_sns.iter().max().cloned().unwrap_or_default();
-        if let Ok(mut gap_sns) = data::room::get_timeline_gaps(room_id, min_sn, max_sn) {
+        if let Ok(mut gap_sns) = data::room::get_timeline_gaps(room_id, min_sn, max_sn)
+            && !gap_sns.is_empty()
+        {
             gap_sns.reverse();
             let mut filtered_pdus = vec![];
             if let Some(gap_sn) = gap_sns.pop() {
@@ -1122,13 +1123,6 @@ pub(crate) fn load_timeline(
                 .map(|(sn, _)| BatchToken::new_live(*sn + 1));
         }
     }
-    // if prev_batch.is_none() {
-    //     if is_backward && let Some((sn, _)) = timeline_pdus.last() {
-    //         prev_batch = Some(*sn);
-    //     } else if let Some((sn, _)) = timeline_pdus.first() {
-    //         prev_batch = Some(*sn);
-    //     }
-    // }
     let prev_batch = if limited {
         timeline_pdus
             .first()
