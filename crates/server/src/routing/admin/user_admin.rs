@@ -539,35 +539,35 @@ pub async fn unshadow_ban_user(user_id: PathParam<OwnedUserId>) -> EmptyResult {
 pub fn router() -> Router {
     Router::new()
         // Phase 1: MAS Critical
-        // v2/users/{user_id}
-        .push(
-            Router::with_path("v2/users/<user_id>")
-                .get(get_user_v2)
-                .put(put_user_v2),
-        )
         // v2/users (list)
         .push(Router::with_path("v2/users").get(list_users_v2))
         // v3/users (list)
         .push(Router::with_path("v3/users").get(list_users_v3))
+        // v2/users/{user_id}
+        .push(
+            Router::with_path("v2/users/{user_id}")
+                .get(get_user_v2)
+                .put(put_user_v2),
+        )
         // v1/users/{user_id}/_allow_cross_signing_replacement_without_uia
         .push(
-            Router::with_path("v1/users/<user_id>/_allow_cross_signing_replacement_without_uia")
+            Router::with_path("v1/users/{user_id}/_allow_cross_signing_replacement_without_uia")
                 .post(allow_cross_signing_replacement),
         )
         // Phase 2: User Management
         // v1/deactivate/{user_id}
-        .push(Router::with_path("v1/deactivate/<user_id>").post(deactivate_user))
+        .push(Router::with_path("v1/deactivate/{user_id}").post(deactivate_user))
         // v1/reset_password/{user_id}
-        .push(Router::with_path("v1/reset_password/<user_id>").post(reset_password))
+        .push(Router::with_path("v1/reset_password/{user_id}").post(reset_password))
         // v1/users/{user_id}/admin
         .push(
-            Router::with_path("v1/users/<user_id>/admin")
+            Router::with_path("v1/users/{user_id}/admin")
                 .get(get_admin_status)
                 .put(set_admin_status),
         )
         // v1/users/{user_id}/shadow_ban
         .push(
-            Router::with_path("v1/users/<user_id>/shadow_ban")
+            Router::with_path("v1/users/{user_id}/shadow_ban")
                 .post(shadow_ban_user)
                 .delete(unshadow_ban_user),
         )
