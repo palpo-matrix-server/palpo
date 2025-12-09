@@ -29,3 +29,15 @@ pub fn get_password_hash(user_id: &UserId) -> DataResult<String> {
         .first::<String>(&mut connect()?)
         .map_err(Into::into)
 }
+
+/// Set/update password hash for a user
+pub fn set_password(user_id: &UserId, hash: &str) -> DataResult<()> {
+    diesel::insert_into(user_passwords::table)
+        .values(NewDbPassword {
+            user_id: user_id.to_owned(),
+            hash: hash.to_owned(),
+            created_at: UnixMillis::now(),
+        })
+        .execute(&mut connect()?)?;
+    Ok(())
+}

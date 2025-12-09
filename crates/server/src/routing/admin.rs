@@ -7,6 +7,8 @@ mod scheduled_task;
 mod server_notice;
 mod statistic;
 mod user;
+mod user_admin;
+mod user_lookup;
 
 use std::collections::BTreeMap;
 
@@ -39,7 +41,9 @@ pub fn router() -> Router {
                 .push(scheduled_task::router())
                 .push(server_notice::router())
                 .push(statistic::router())
-                .push(user::router()),
+                .push(user::router())
+                .push(user_admin::router())
+                .push(user_lookup::router()),
         )
     }
     admin

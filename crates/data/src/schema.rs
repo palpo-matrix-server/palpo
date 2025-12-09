@@ -738,6 +738,16 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
+    test_nulls (id) {
+        id -> Int8,
+        value -> Nullable<Int8>,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     threads (event_id) {
         event_id -> Text,
         event_sn -> Int8,
@@ -882,6 +892,19 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
+    user_external_ids (id) {
+        id -> Int8,
+        auth_provider -> Text,
+        external_id -> Text,
+        user_id -> Text,
+        created_at -> Int8,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     user_filters (id) {
         id -> Int8,
         user_id -> Text,
@@ -999,6 +1022,17 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
+    user_ratelimit_override (user_id) {
+        user_id -> Text,
+        messages_per_second -> Nullable<Int4>,
+        burst_count -> Nullable<Int4>,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     user_refresh_tokens (id) {
         id -> Int8,
         user_id -> Text,
@@ -1092,8 +1126,12 @@ diesel::table! {
         locked_at -> Nullable<Int8>,
         locked_by -> Nullable<Text>,
         created_at -> Int8,
+        suspended_at -> Nullable<Int8>,
     }
 }
+
+diesel::joinable!(user_external_ids -> users (user_id));
+diesel::joinable!(user_ratelimit_override -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     appservice_registrations,
@@ -1146,6 +1184,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     stats_monthly_active_users,
     stats_room_currents,
     stats_user_daily_visits,
+    test_nulls,
     threads,
     threepid_guests,
     threepid_id_servers,
@@ -1156,6 +1195,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     user_datas,
     user_dehydrated_devices,
     user_devices,
+    user_external_ids,
     user_filters,
     user_ignores,
     user_login_tokens,
@@ -1164,6 +1204,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     user_presences,
     user_profiles,
     user_pushers,
+    user_ratelimit_override,
     user_refresh_tokens,
     user_registration_tokens,
     user_sessions,
