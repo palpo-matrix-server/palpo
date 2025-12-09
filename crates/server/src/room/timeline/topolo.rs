@@ -1,6 +1,7 @@
 use diesel::prelude::*;
 use indexmap::IndexMap;
 use palpo_data::print_query;
+use palpo_data::room::DbEvent;
 
 use crate::core::client::filter::{RoomEventFilter, UrlFilter};
 use crate::core::identifiers::*;
@@ -193,6 +194,13 @@ pub fn load_pdus(
             println!("===========limitz: {}", limit);
             println!("==========================query");
             print_query!(&query);
+            println!(
+                "==========================events: {:#?}",
+                events::table
+                    .filter(events::room_id.eq(room_id))
+                    .order(events::topological_ordering.desc())
+                    .load::<DbEvent>(&mut connect()?)?
+            );
             query
                 .select((events::id, events::sn, events::stream_ordering))
                 .load::<(OwnedEventId, Seqnum, i64)>(&mut connect()?)?

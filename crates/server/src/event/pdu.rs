@@ -944,7 +944,6 @@ impl PduBuilder {
 
         let temp_event_id =
             OwnedEventId::try_from(format!("$backfill_{}", Ulid::new().to_string())).unwrap();
-        let content_value: JsonValue = serde_json::from_str(content.get())?;
 
         let mut pdu = PduEvent {
             event_id: temp_event_id.clone(),
