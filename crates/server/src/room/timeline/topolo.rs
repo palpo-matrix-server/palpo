@@ -198,7 +198,8 @@ pub fn load_pdus(
                 "==========================events: {:#?}",
                 events::table
                     .order(events::topological_ordering.desc())
-                    .load::<DbEvent>(&mut connect()?)?
+                    .select(events::id)
+                    .load::<String>(&mut connect()?)?
             );
             query
                 .select((events::id, events::sn, events::stream_ordering))
@@ -213,6 +214,7 @@ pub fn load_pdus(
         offset += count as i64;
 
         for (event_id, event_sn, _) in events {
+            println!("============event id: {}", event_id);
             if let Ok(mut pdu) = super::get_pdu(&event_id) {
                 if let Some(user_id) = user_id {
                     if !pdu.user_can_see(user_id)? {

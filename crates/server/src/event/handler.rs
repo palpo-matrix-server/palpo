@@ -98,7 +98,6 @@ pub(crate) async fn process_incoming_pdu(
 
     let (incoming_pdu, val, event_guard) = outlier_pdu.process_incoming(backfilled).await?;
 
-    println!("??????????????????//val {:?}\n", val);
     if incoming_pdu.rejected() {
         return Ok(());
     }

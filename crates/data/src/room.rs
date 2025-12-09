@@ -313,20 +313,12 @@ impl NewDbEvent {
     }
 
     pub fn save(&self) -> DataResult<()> {
-        println!("Saving event: {:?}", self);
         diesel::insert_into(events::table)
             .values(self)
             .on_conflict(events::id)
             .do_update()
             .set(self)
             .execute(&mut connect()?)?;
-
-        println!(
-            "==========================events: {:#?}",
-            events::table
-                .order(events::topological_ordering.desc())
-                .load::<DbEvent>(&mut connect()?)?
-        );
         Ok(())
     }
 }

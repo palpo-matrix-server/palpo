@@ -6,14 +6,14 @@ use crate::room::{state, timeline};
 use crate::{AuthArgs, DepotExt, JsonResult, MatrixError, config, json_ok};
 
 pub fn router() -> Router {
-    Router::with_path("backfill/{room_id}").get(get_history)
+    Router::with_path("backfill/{room_id}").get(get_backfill)
 }
 
 /// #GET /_matrix/federation/v1/backfill/{room_id}
 /// Retrieves events from before the sender joined the room, if the room's
 /// history visibility allows.
 #[endpoint]
-async fn get_history(
+async fn get_backfill(
     _aa: AuthArgs,
     args: BackfillReqArgs,
     depot: &mut Depot,
@@ -30,10 +30,10 @@ async fn get_history(
         .ok_or(MatrixError::invalid_param(
             "unknown event id in query string v",
         ))?;
+    println!("=====gggggggggget_history backfill until_tk: {:?}  args: {args:?}", until_tk);
 
     let limit = args.limit.min(100);
 
-    println!("=====get history limit: {}", limit);
     let all_events = timeline::topolo::load_pdus_backward(
         None,
         &args.room_id,
@@ -45,11 +45,9 @@ async fn get_history(
 
     let mut events = Vec::with_capacity(all_events.len());
     for (_, pdu) in all_events {
-        println!("====???=get history checking event: {}", pdu.event_id);
         if state::server_can_see_event(origin, &args.room_id, &pdu.event_id)?
             && let Some(pdu_json) = timeline::get_pdu_json(&pdu.event_id)?
         {
-            println!("====???=get history data: {:?}", pdu_json);
             events.push(crate::sending::convert_to_outgoing_federation_event(
                 pdu_json,
             ));

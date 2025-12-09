@@ -668,7 +668,6 @@ pub async fn build_and_append_pdu(
     let (pdu, pdu_json, _event_guard) = pdu_builder
         .hash_sign_save(sender, room_id, room_version, state_lock)
         .await?;
-    println!("Appended PDU: {}", pdu.event_id);
     let room_id = &pdu.room_id;
     crate::room::ensure_room(room_id, room_version)?;
 
