@@ -18,7 +18,8 @@ use crate::core::presence::PresenceState;
 use crate::core::push::{Action, Ruleset, Tweak};
 use crate::core::room_version_rules::RoomIdFormatVersion;
 use crate::core::serde::{
-    CanonicalJsonObject, CanonicalJsonValue, JsonValue, to_canonical_value, validate_canonical_json,
+    CanonicalJsonObject, CanonicalJsonValue, JsonValue, to_canonical_object, to_canonical_value,
+    validate_canonical_json,
 };
 use crate::core::state::{Event, StateError, event_auth};
 use crate::core::{Seqnum, UnixMillis};
@@ -225,7 +226,7 @@ where
                 unsigned.insert(
                     "prev_content".to_owned(),
                     CanonicalJsonValue::Object(
-                        utils::to_canonical_object(prev_state.content.clone())
+                        to_canonical_object(prev_state.content.clone())
                             .expect("event is valid, we just created it"),
                     ),
                 );
@@ -560,232 +561,6 @@ where
     Ok(())
 }
 
-pub async fn hash_and_sign_event(
-    pdu_builder: PduBuilder,
-    sender_id: &UserId,
-    room_id: &RoomId,
-    room_version: &RoomVersionId,
-    _state_lock: &RoomMutexGuard,
-) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
-    let PduBuilder {
-        event_type,
-        content,
-        mut unsigned,
-        state_key,
-        redacts,
-        timestamp,
-        ..
-    } = pdu_builder;
-
-    let prev_events: Vec<_> = state::get_forward_extremities(room_id)?
-        .into_iter()
-        .take(20)
-        .collect();
-
-    let conf = crate::config::get();
-    // If there was no create event yet, assume we are creating a room with the default
-    // version right now
-    // let room_version = if let Ok(room_version) = super::get_version(room_id) {
-    //     room_version
-    // } else if event_type == TimelineEventType::RoomCreate {
-    //     let content: RoomCreateEventContent = serde_json::from_str(content.get())?;
-    //     content.room_version
-    // } else {
-    //     return Err(AppError::public(format!(
-    //         "non-create event for room `{room_id}` of unknown version"
-    //     )));
-    // };
-    let version_rules = crate::room::get_version_rules(room_version)?;
-    let auth_rules = &version_rules.authorization;
-
-    let auth_events = state::get_auth_events(
-        room_id,
-        &event_type,
-        sender_id,
-        state_key.as_deref(),
-        &content,
-        auth_rules,
-    )?;
-
-    // Our depth is the maximum depth of prev_events + 1
-    let depth = prev_events
-        .iter()
-        .filter_map(|event_id| Some(get_pdu(event_id).ok()?.depth))
-        .max()
-        .unwrap_or(0)
-        + 1;
-
-    if let Some(state_key) = &state_key
-        && let Ok(prev_pdu) =
-            super::get_state(room_id, &event_type.to_string().into(), state_key, None)
-    {
-        unsigned.insert("prev_content".to_owned(), prev_pdu.content.clone());
-        unsigned.insert(
-            "prev_sender".to_owned(),
-            to_raw_value(&prev_pdu.sender).expect("UserId::to_value always works"),
-        );
-        unsigned.insert(
-            "replaces_state".to_owned(),
-            to_raw_value(&prev_pdu.event_id).expect("EventId is valid json"),
-        );
-    }
-
-    let temp_event_id =
-        OwnedEventId::try_from(format!("$backfill_{}", Ulid::new().to_string())).unwrap();
-    let content_value: JsonValue = serde_json::from_str(content.get())?;
-
-    let mut pdu = PduEvent {
-        event_id: temp_event_id.clone(),
-        event_ty: event_type,
-        room_id: room_id.to_owned(),
-        sender: sender_id.to_owned(),
-        origin_server_ts: timestamp.unwrap_or_else(UnixMillis::now),
-        content,
-        state_key,
-        prev_events,
-        depth,
-        auth_events: auth_events
-            .values()
-            .map(|pdu| pdu.event_id.clone())
-            .collect(),
-        redacts,
-        unsigned,
-        hashes: EventHash {
-            sha256: "aaa".to_owned(),
-        },
-        signatures: None,
-        extra_data: Default::default(),
-        rejection_reason: None,
-    };
-
-    let fetch_event = async |event_id: OwnedEventId| {
-        get_pdu(&event_id)
-            .map(|s| s.pdu)
-            .map_err(|_| StateError::other("missing PDU 6"))
-    };
-    let fetch_state = async |k: StateEventType, s: String| {
-        if let Some(pdu) = auth_events
-            .get(&(k.clone(), s.to_owned()))
-            .map(|s| s.pdu.clone())
-        {
-            return Ok(pdu);
-        }
-        if auth_rules.room_create_event_id_as_room_id && k == StateEventType::RoomCreate {
-            let pdu = super::get_create(room_id)
-                .map_err(|_| StateError::other("missing create event"))?
-                .into_inner();
-            if pdu.room_id != *room_id {
-                Err(StateError::other("mismatched room id in create event"))
-            } else {
-                Ok(pdu.into_inner())
-            }
-        } else {
-            Err(StateError::other(format!(
-                "failed hash and sigin event, missing state event, event_type: {k}, state_key:{s}"
-            )))
-        }
-    };
-    event_auth::auth_check(auth_rules, &pdu, &fetch_event, &fetch_state).await?;
-
-    // Hash and sign
-    let mut pdu_json =
-        utils::to_canonical_object(&pdu).expect("event is valid, we just created it");
-
-    pdu_json.remove("event_id");
-
-    if version_rules.room_id_format == RoomIdFormatVersion::V2
-        && pdu.event_ty == TimelineEventType::RoomCreate
-    {
-        pdu_json.remove("room_id");
-    }
-
-    // Add origin because synapse likes that (and it's required in the spec)
-    pdu_json.insert(
-        "origin".to_owned(),
-        to_canonical_value(&conf.server_name).expect("server name is a valid CanonicalJsonValue"),
-    );
-
-    match crate::server_key::hash_and_sign_event(&mut pdu_json, room_version) {
-        Ok(_) => {}
-        Err(e) => {
-            return match e {
-                AppError::Signatures(crate::core::signatures::Error::PduSize) => {
-                    Err(MatrixError::too_large("message is too long").into())
-                }
-                _ => Err(MatrixError::unknown("signing event failed").into()),
-            };
-        }
-    }
-
-    // Generate event id
-    pdu.event_id = crate::event::gen_event_id(&pdu_json, room_version)?;
-    if version_rules.room_id_format == RoomIdFormatVersion::V2
-        && pdu.event_ty == TimelineEventType::RoomCreate
-    {
-        pdu.room_id = RoomId::new_v2(pdu.event_id.localpart())?;
-        diesel::update(
-            event_forward_extremities::table.filter(event_forward_extremities::room_id.eq(room_id)),
-        )
-        .set(event_forward_extremities::room_id.eq(&pdu.room_id))
-        .execute(&mut connect()?)?;
-    }
-    let room_id = &pdu.room_id;
-
-    pdu_json.insert(
-        "event_id".to_owned(),
-        CanonicalJsonValue::String(pdu.event_id.as_str().to_owned()),
-    );
-
-    if let Err(e) = validate_canonical_json(&pdu_json) {
-        error!("invalid event json: {}", e);
-        return Err(MatrixError::bad_json(e.to_string()).into());
-    }
-
-    let (event_sn, event_guard) = crate::event::ensure_event_sn(room_id, &pdu.event_id)?;
-    NewDbEvent {
-        id: pdu.event_id.to_owned(),
-        sn: event_sn,
-        ty: pdu.event_ty.to_string(),
-        room_id: room_id.to_owned(),
-        unrecognized_keys: None,
-        depth: depth as i64,
-        topological_ordering: depth as i64,
-        stream_ordering: event_sn,
-        origin_server_ts: timestamp.unwrap_or_else(UnixMillis::now),
-        received_at: None,
-        sender_id: Some(sender_id.to_owned()),
-        contains_url: content_value.get("url").is_some(),
-        worker_id: None,
-        state_key: pdu.state_key.clone(),
-        is_outlier: true,
-        soft_failed: false,
-        is_rejected: false,
-        rejection_reason: None,
-    }
-    .save()?;
-    DbEventData {
-        event_id: pdu.event_id.clone(),
-        event_sn,
-        room_id: room_id.to_owned(),
-        internal_metadata: None,
-        json_data: serde_json::to_value(&pdu_json)?,
-        format_version: None,
-    }
-    .save()?;
-
-    Ok((
-        SnPduEvent {
-            pdu,
-            event_sn,
-            is_outlier: true,
-            soft_failed: false,
-            backfilled: false,
-        },
-        pdu_json,
-        event_guard,
-    ))
-}
-
 fn check_pdu_for_admin_room(pdu: &PduEvent, sender: &UserId) -> AppResult<()> {
     let conf = crate::config::get();
     match pdu.event_type() {
@@ -890,8 +665,9 @@ pub async fn build_and_append_pdu(
         return Ok(curr_state);
     }
 
-    let (pdu, pdu_json, _event_guard) =
-        hash_and_sign_event(pdu_builder, sender, room_id, room_version, state_lock).await?;
+    let (pdu, pdu_json, _event_guard) = pdu_builder
+        .hash_sign_save(sender, room_id, room_version, state_lock)
+        .await?;
     let room_id = &pdu.room_id;
     crate::room::ensure_room(room_id, room_version)?;
 
@@ -933,7 +709,7 @@ pub fn redact_pdu(event_id: &EventId, reason: &PduEvent) -> AppResult<()> {
     // TODO: Don't reserialize, keep original json
     if let Ok(mut pdu) = get_pdu(event_id) {
         pdu.redact(reason)?;
-        replace_pdu(event_id, &utils::to_canonical_object(&pdu)?)?;
+        replace_pdu(event_id, &to_canonical_object(&pdu)?)?;
         diesel::update(events::table.filter(events::id.eq(event_id)))
             .set(events::is_redacted.eq(true))
             .execute(&mut connect()?)?;

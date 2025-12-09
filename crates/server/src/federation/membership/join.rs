@@ -3,9 +3,13 @@ use crate::core::events::room::member::{MembershipState, RoomMemberEventContent}
 use crate::core::federation::membership::{RoomStateV1, RoomStateV2};
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonValue, RawJsonValue, to_raw_json_value};
+use crate::data::schema::*;
+use crate::data::{connect, diesel_exists};
 use crate::event::{gen_event_id_canonical_json, handler};
 use crate::room::{state, timeline};
-use crate::{AppResult, IsRemoteOrLocal, MatrixError, room, sending};
+use crate::{AppError, AppResult, IsRemoteOrLocal, MatrixError, room, sending};
+
+use diesel::prelude::*;
 
 pub async fn send_join_v1(
     origin: &ServerName,
@@ -153,9 +157,11 @@ pub async fn send_join_v1(
         }
     }
 
+    println!("===============before hash_and_sign_event {:?}", value);
     crate::server_key::hash_and_sign_event(&mut value, &room_version_id)
         .map_err(|e| MatrixError::invalid_param(format!("failed to sign send_join event: {e}")))?;
 
+    println!("===============after hash_and_sign_event {:?}", value);
     let origin: OwnedServerName = serde_json::from_value(
         serde_json::to_value(
             value

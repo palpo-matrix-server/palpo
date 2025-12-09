@@ -98,9 +98,11 @@ pub(crate) async fn process_incoming_pdu(
 
     let (incoming_pdu, val, event_guard) = outlier_pdu.process_incoming(backfilled).await?;
 
+    println!("??????????????????//val {:?}\n", val);
     if incoming_pdu.rejected() {
         return Ok(());
     }
+
     check_room_id(room_id, &incoming_pdu)?;
     // 8. if not timeline event: stop
     if !is_timeline_event {

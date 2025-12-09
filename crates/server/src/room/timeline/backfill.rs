@@ -23,15 +23,18 @@ pub async fn backfill_if_required(
         .collect::<Vec<_>>();
     depths.sort_unstable_by(|a, b| b.1.cmp(&a.1));
 
+    println!("======backfill_if_required  0");
     let (mut prev_event, prev_depth) = if let Some(depth) = depths.first() {
         *depth
     } else {
+        println!("======backfill_if_required  1");
         return Ok(false);
     };
 
     let mut prev_depth = prev_depth as i64;
     let last_depth = depths.last().map(|&(_, d)| d).unwrap_or_default() as i64;
     if prev_depth == last_depth {
+        println!("======backfill_if_required  2");
         return Ok(false);
     }
 
@@ -45,6 +48,7 @@ pub async fn backfill_if_required(
     let mut found_big_gap = false;
     let mut number_of_gaps = 0;
     let mut fill_from = None;
+    println!("======backfill_if_required  3");
     for &(ref event_id, depth) in depths.iter() {
         let delta = prev_depth - depth;
         if delta > 1 {
@@ -65,9 +69,11 @@ pub async fn backfill_if_required(
     }
 
     if number_of_gaps < 3 && !found_big_gap {
+        println!("======backfill_if_required  4");
         return Ok(false);
     };
     let Some(fill_from) = fill_from else {
+        println!("======backfill_if_required  5");
         return Ok(false);
     };
 
@@ -92,19 +98,23 @@ pub async fn backfill_if_required(
         {
             Ok(response) => {
                 for pdu in response.pdus {
+                    println!("======backfill_if_required  pdu?? 1: {:?}", pdu);
                     if let Err(e) = backfill_pdu(backfill_server, room_id, &room_version, pdu).await
                     {
                         warn!("failed to add backfilled pdu: {e}");
                     }
                 }
+                println!("======backfill_if_required  6");
                 return Ok(true);
             }
             Err(e) => {
+                println!("======backfill_if_required  7");
                 warn!("{backfill_server} could not provide backfill: {e}");
             }
         }
     }
 
+    println!("======backfill_if_required  8");
     info!("no servers could backfill");
     Ok(false)
 }

@@ -27,6 +27,10 @@ pub(super) async fn get_messages(
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
 
+    println!(
+        "=====================get_messages room_id={} from={:?} to={:?} dir={:?} limit={}",
+        args.room_id, args.from, args.to, args.dir, args.limit
+    );
     let is_joined = diesel_exists!(
         room_users::table
             .filter(room_users::room_id.eq(&args.room_id))
@@ -95,6 +99,7 @@ pub(super) async fn get_messages(
     )?;
 
     let limit = args.limit.min(100);
+    println!("zzzzzzzzzzzzzzz limit: {}", limit);
     let next_token;
     let mut resp = MessagesResBody::default();
     let mut lazy_loaded = HashSet::new();
@@ -137,6 +142,7 @@ pub(super) async fn get_messages(
             resp.chunk = events;
         }
         Direction::Backward => {
+            println!("=====get message background limit: {}", limit);
             let mut events = timeline::topolo::load_pdus_backward(
                 Some(sender_id),
                 &args.room_id,
@@ -145,7 +151,9 @@ pub(super) async fn get_messages(
                 Some(&args.filter),
                 limit,
             )?;
+            println!("=====get message loaded events: {}", events.len());
             if timeline::backfill_if_required(&args.room_id, &events).await? {
+                println!("=====get message backfill triggered");
                 events = timeline::topolo::load_pdus_backward(
                     Some(sender_id),
                     &args.room_id,

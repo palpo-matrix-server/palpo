@@ -118,6 +118,22 @@ pub fn try_from_json_map(
         .collect()
 }
 
+/// Fallible conversion from any value that implements `Serialize` to a `CanonicalJsonObject`.
+///
+/// `value` must serialize to an `serde_json::Value::Object`.
+pub fn to_canonical_object<T: serde::Serialize>(
+    value: T,
+) -> Result<CanonicalJsonObject, CanonicalJsonError> {
+    use serde::ser::Error;
+
+    match serde_json::to_value(value).map_err(CanonicalJsonError::SerDe)? {
+        serde_json::Value::Object(map) => try_from_json_map(map),
+        _ => Err(CanonicalJsonError::SerDe(serde_json::Error::custom(
+            "Value must be an object",
+        ))),
+    }
+}
+
 /// Fallible conversion from any value that impl's `Serialize` to a
 /// `CanonicalJsonValue`.
 pub fn to_canonical_value<T: Serialize>(
