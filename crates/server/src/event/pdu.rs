@@ -833,7 +833,7 @@ impl PduBuilder {
             id: pdu.event_id.to_owned(),
             sn: event_sn,
             ty: pdu.event_ty.to_string(),
-            room_id: room_id.to_owned(),
+            room_id: pdu.room_id.to_owned(),
             unrecognized_keys: None,
             depth: pdu.depth as i64,
             topological_ordering: pdu.depth as i64,
@@ -853,7 +853,7 @@ impl PduBuilder {
         DbEventData {
             event_id: pdu.event_id.clone(),
             event_sn,
-            room_id: room_id.to_owned(),
+            room_id: pdu.room_id.to_owned(),
             internal_metadata: None,
             json_data: serde_json::to_value(&pdu_json)?,
             format_version: None,
