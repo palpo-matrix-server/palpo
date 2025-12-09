@@ -197,7 +197,6 @@ pub fn load_pdus(
             println!(
                 "==========================events: {:#?}",
                 events::table
-                    .filter(events::room_id.eq(room_id))
                     .order(events::topological_ordering.desc())
                     .load::<DbEvent>(&mut connect()?)?
             );
