@@ -382,3 +382,178 @@ pub fn get_user_by_threepid(medium: &str, address: &str) -> DataResult<Option<Ow
         .optional()
         .map_err(Into::into)
 }
+
+/// Threepid info for admin API
+#[derive(Debug, Clone)]
+pub struct ThreepidInfo {
+    pub medium: String,
+    pub address: String,
+    pub added_at: UnixMillis,
+    pub validated_at: UnixMillis,
+}
+
+/// Get all threepids for a user
+pub fn get_threepids(user_id: &UserId) -> DataResult<Vec<ThreepidInfo>> {
+    user_threepids::table
+        .filter(user_threepids::user_id.eq(user_id))
+        .select((
+            user_threepids::medium,
+            user_threepids::address,
+            user_threepids::added_at,
+            user_threepids::validated_at,
+        ))
+        .load::<(String, String, UnixMillis, UnixMillis)>(&mut connect()?)
+        .map(|rows| {
+            rows.into_iter()
+                .map(|(medium, address, added_at, validated_at)| ThreepidInfo {
+                    medium,
+                    address,
+                    added_at,
+                    validated_at,
+                })
+                .collect()
+        })
+        .map_err(Into::into)
+}
+
+/// Set admin status for a user
+pub fn set_admin(user_id: &UserId, is_admin: bool) -> DataResult<()> {
+    diesel::update(users::table.find(user_id))
+        .set(users::is_admin.eq(is_admin))
+        .execute(&mut connect()?)?;
+    Ok(())
+}
+
+/// Set shadow ban status for a user
+pub fn set_shadow_banned(user_id: &UserId, shadow_banned: bool) -> DataResult<()> {
+    diesel::update(users::table.find(user_id))
+        .set(users::shadow_banned.eq(shadow_banned))
+        .execute(&mut connect()?)?;
+    Ok(())
+}
+
+/// Set locked status for a user
+pub fn set_locked(user_id: &UserId, locked: bool, locker_id: Option<&UserId>) -> DataResult<()> {
+    if locked {
+        diesel::update(users::table.find(user_id))
+            .set((
+                users::locked_at.eq(Some(UnixMillis::now())),
+                users::locked_by.eq(locker_id.map(|u| u.to_owned())),
+            ))
+            .execute(&mut connect()?)?;
+    } else {
+        diesel::update(users::table.find(user_id))
+            .set((
+                users::locked_at.eq::<Option<UnixMillis>>(None),
+                users::locked_by.eq::<Option<OwnedUserId>>(None),
+            ))
+            .execute(&mut connect()?)?;
+    }
+    Ok(())
+}
+
+/// List users with pagination and filtering
+#[derive(Debug, Clone, Default)]
+pub struct ListUsersFilter {
+    pub from: Option<i64>,
+    pub limit: Option<i64>,
+    pub name: Option<String>,
+    pub guests: Option<bool>,
+    pub deactivated: Option<bool>,
+    pub admins: Option<bool>,
+    pub user_types: Option<Vec<String>>,
+    pub order_by: Option<String>,
+    pub dir: Option<String>,
+}
+
+pub fn list_users(filter: &ListUsersFilter) -> DataResult<(Vec<DbUser>, i64)> {
+    let mut query = users::table.into_boxed();
+
+    // Filter by name (localpart contains)
+    if let Some(ref name) = filter.name {
+        query = query.filter(users::localpart.ilike(format!("%{}%", name)));
+    }
+
+    // Filter by guests
+    if let Some(guests) = filter.guests {
+        query = query.filter(users::is_guest.eq(guests));
+    }
+
+    // Filter by deactivated
+    if let Some(deactivated) = filter.deactivated {
+        if deactivated {
+            query = query.filter(users::deactivated_at.is_not_null());
+        } else {
+            query = query.filter(users::deactivated_at.is_null());
+        }
+    }
+
+    // Filter by admin
+    if let Some(admins) = filter.admins {
+        query = query.filter(users::is_admin.eq(admins));
+    }
+
+    // Get total count before pagination
+    let total: i64 = users::table
+        .count()
+        .get_result(&mut connect()?)?;
+
+    // Apply ordering
+    let dir_asc = filter.dir.as_ref().map(|d| d == "f").unwrap_or(true);
+    query = match filter.order_by.as_deref() {
+        Some("name") => {
+            if dir_asc {
+                query.order(users::localpart.asc())
+            } else {
+                query.order(users::localpart.desc())
+            }
+        }
+        Some("is_guest") => {
+            if dir_asc {
+                query.order(users::is_guest.asc())
+            } else {
+                query.order(users::is_guest.desc())
+            }
+        }
+        Some("admin") => {
+            if dir_asc {
+                query.order(users::is_admin.asc())
+            } else {
+                query.order(users::is_admin.desc())
+            }
+        }
+        Some("deactivated") => {
+            if dir_asc {
+                query.order(users::deactivated_at.asc())
+            } else {
+                query.order(users::deactivated_at.desc())
+            }
+        }
+        Some("shadow_banned") => {
+            if dir_asc {
+                query.order(users::shadow_banned.asc())
+            } else {
+                query.order(users::shadow_banned.desc())
+            }
+        }
+        Some("creation_ts") | _ => {
+            if dir_asc {
+                query.order(users::created_at.asc())
+            } else {
+                query.order(users::created_at.desc())
+            }
+        }
+    };
+
+    // Apply pagination
+    if let Some(from) = filter.from {
+        query = query.offset(from);
+    }
+
+    let limit = filter.limit.unwrap_or(100).min(1000);
+    query = query.limit(limit);
+
+    let users = query.load::<DbUser>(&mut connect()?)?;
+
+    Ok((users, total))
+}
