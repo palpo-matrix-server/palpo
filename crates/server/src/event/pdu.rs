@@ -1041,7 +1041,6 @@ impl PduBuilder {
             .set(event_forward_extremities::room_id.eq(&pdu.room_id))
             .execute(&mut connect()?)?;
         }
-        let room_id = &pdu.room_id;
 
         pdu_json.insert(
             "event_id".to_owned(),
