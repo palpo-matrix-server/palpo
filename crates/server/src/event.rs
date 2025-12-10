@@ -241,8 +241,9 @@ pub fn parse_fetched_pdu(
 
     let event_id = match crate::event::gen_event_id(&value, room_version) {
         Ok(t) => t,
-        Err(_) => {
+        Err(e) => {
             // Event could not be converted to canonical json
+            error!(value = ?value, "error generating event id for fetched pdu: {:?}", e);
             return Err(
                 MatrixError::invalid_param("could not convert event to canonical json").into(),
             );

@@ -45,10 +45,7 @@ pub fn get_threads(
 }
 
 pub fn add_to_thread(thread_id: &EventId, pdu: &SnPduEvent) -> AppResult<()> {
-    let root_pdu = timeline::get_pdu(thread_id)?;
-
-    let mut root_pdu_json = timeline::get_pdu_json(thread_id)?
-        .ok_or_else(|| MatrixError::invalid_param("Thread root pdu not found"))?;
+    let (root_pdu, mut root_pdu_json) = timeline::get_pdu_and_data(thread_id)?;
 
     if let CanonicalJsonValue::Object(unsigned) = root_pdu_json
         .entry("unsigned".to_owned())

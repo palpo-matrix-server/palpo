@@ -12,7 +12,7 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::event::BatchToken;
-use crate::room::timeline;
+use crate::room::timeline::{self, topolo};
 use crate::routing::prelude::*;
 use crate::{PduBuilder, room};
 
@@ -105,7 +105,7 @@ pub(super) async fn get_messages(
     let mut lazy_loaded = HashSet::new();
     match args.dir {
         Direction::Forward => {
-            let events = timeline::topolo::load_pdus_forward(
+            let events = topolo::load_pdus_forward(
                 Some(sender_id),
                 &args.room_id,
                 Some(from_tk),
@@ -143,7 +143,7 @@ pub(super) async fn get_messages(
         }
         Direction::Backward => {
             println!("=====get message background limit: {}", limit);
-            let mut events = timeline::topolo::load_pdus_backward(
+            let mut events = topolo::load_pdus_backward(
                 Some(sender_id),
                 &args.room_id,
                 Some(from_tk),
@@ -154,7 +154,7 @@ pub(super) async fn get_messages(
             println!("=====get message loaded events: {}", events.len());
             if timeline::backfill_if_required(&args.room_id, &events).await? {
                 println!("=====get message backfill triggered");
-                events = timeline::topolo::load_pdus_backward(
+                events = topolo::load_pdus_backward(
                     Some(sender_id),
                     &args.room_id,
                     Some(from_tk),

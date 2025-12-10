@@ -145,6 +145,35 @@ pub fn get_pdu(event_id: &EventId) -> AppResult<SnPduEvent> {
     })
 }
 
+pub fn get_pdu_and_data(event_id: &EventId) -> AppResult<(SnPduEvent, CanonicalJsonObject)> {
+    let event = events::table
+        .filter(events::id.eq(event_id))
+        .first::<DbEvent>(&mut connect()?)?;
+    let (event_sn, room_id, json) = event_datas::table
+        .filter(event_datas::event_id.eq(event_id))
+        .select((
+            event_datas::event_sn,
+            event_datas::room_id,
+            event_datas::json_data,
+        ))
+        .first::<(Seqnum, OwnedRoomId, JsonValue)>(&mut connect()?)?;
+    let data = serde_json::from_value(json.clone())
+        .map_err(|_e| AppError::internal("invalid pdu in db"))?;
+    let mut pdu = PduEvent::from_json_value(&room_id, event_id, json)
+        .map_err(|_e| AppError::internal("invalid pdu in db"))?;
+    pdu.rejection_reason = event.rejection_reason;
+    Ok((
+        SnPduEvent {
+            pdu,
+            event_sn,
+            is_outlier: event.is_outlier,
+            soft_failed: event.soft_failed,
+            backfilled: event.stream_ordering < 0,
+        },
+        data,
+    ))
+}
+
 pub fn get_may_missing_pdus(
     room_id: &RoomId,
     event_ids: &[OwnedEventId],
