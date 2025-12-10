@@ -478,6 +478,17 @@ where
         .set(events::is_outlier.eq(false))
         .execute(&mut connect()?)?;
 
+    for prev_id in &pdu.prev_events {
+        diesel::insert_into(event_edges::table)
+            .values((
+                event_edges::event_id.eq(&*pdu.event_id),
+                event_edges::event_sn.eq(pdu.event_sn),
+                event_edges::prev_id.eq(prev_id),
+                event_edges::room_id.eq(&*pdu.room_id),
+            ))
+            .execute(&mut connect()?)?;
+    }
+
     // Update Relationships
     #[derive(Deserialize, Clone, Debug)]
     struct ExtractRelatesTo {
