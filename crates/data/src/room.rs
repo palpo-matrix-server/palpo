@@ -401,6 +401,16 @@ pub struct NewDbEventMissing {
     pub missing_id: OwnedEventId,
 }
 
+#[derive(Insertable, Debug, Clone)]
+#[diesel(table_name = event_edges)]
+pub struct NewDbEventEdge {
+    pub room_id: OwnedRoomId,
+    pub event_id: OwnedEventId,
+    pub event_sn: i64,
+    pub event_depth: i64,
+    pub prev_id: OwnedEventId,
+}
+
 // >= min_sn and <= max_sn
 pub fn get_timeline_gaps(
     room_id: &RoomId,

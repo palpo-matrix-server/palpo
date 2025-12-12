@@ -6,7 +6,6 @@ use salvo::prelude::*;
 
 use crate::core::UnixMillis;
 use crate::core::federation::backfill::{BackfillReqArgs, BackfillResBody};
-use crate::core::serde::CanonicalJsonObject;
 use crate::data::{connect, schema::*};
 use crate::room::{state, timeline};
 use crate::routing::prelude::*;
@@ -41,7 +40,7 @@ async fn get_backfill(
 
     let mut events = IndexMap::with_capacity(limit);
     while !queue.is_empty() && events.len() < limit {
-        let Some((_depth, event_id)) = queue.pop_last() else {
+        let Some((depth, event_id)) = queue.pop_last() else {
             break;
         };
         let mut prev_ids = event_edges::table
@@ -67,7 +66,6 @@ async fn get_backfill(
             queue.insert(prev_depth, prev_id);
         }
     }
-    println!("Backfilled events {:#?}", events);
     json_ok(BackfillResBody {
         origin: config::get().server_name.to_owned(),
         origin_server_ts: UnixMillis::now(),

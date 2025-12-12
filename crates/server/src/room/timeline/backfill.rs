@@ -1,3 +1,4 @@
+use diesel::dsl::count;
 use diesel::prelude::*;
 use indexmap::IndexMap;
 use serde::Deserialize;
@@ -9,33 +10,44 @@ use crate::core::identifiers::*;
 use crate::core::serde::RawJsonValue;
 use crate::data::connect;
 use crate::data::schema::*;
+use crate::event::BatchToken;
 use crate::event::{handler, parse_fetched_pdu};
 use crate::{AppError, AppResult, GetUrlOrigin, SnPduEvent, room};
 
 #[tracing::instrument(skip_all)]
 pub async fn backfill_if_required(
     room_id: &RoomId,
+    from_tk: &BatchToken,
     pdus: &IndexMap<Seqnum, SnPduEvent>,
-) -> AppResult<bool> {
+    limit: usize,
+) -> AppResult<Vec<SnPduEvent>> {
     let mut depths = pdus
         .values()
-        .map(|p| (&p.event_id, p.depth))
+        .map(|p| (p.event_id.clone(), p.depth as i64))
         .collect::<Vec<_>>();
+    if let Some(topological_ordering) = from_tk.topological_ordering() {
+        if let Ok(event_id) = events::table
+            .filter(events::room_id.eq(room_id))
+            .filter(events::topological_ordering.eq(topological_ordering))
+            .select(events::id)
+            .first::<OwnedEventId>(&mut connect()?)
+        {
+            depths.push((event_id, topological_ordering.abs()));
+        }
+    }
     depths.sort_unstable_by(|a, b| b.1.cmp(&a.1));
 
-    println!("======backfill_if_required  0");
-    let (mut prev_event, prev_depth) = if let Some(depth) = depths.first() {
-        *depth
+    let (prev_event, prev_depth) = if let Some(depth) = depths.first() {
+        depth
     } else {
-        println!("======backfill_if_required  1");
-        return Ok(false);
+        return Ok(vec![]);
     };
 
-    let mut prev_depth = prev_depth as i64;
+    let mut prev_depth = *prev_depth;
+    let mut prev_event = prev_event;
     let last_depth = depths.last().map(|&(_, d)| d).unwrap_or_default() as i64;
     if prev_depth == last_depth {
-        println!("======backfill_if_required  2");
-        return Ok(false);
+        return Ok(vec![]);
     }
 
     let depths = events::table
@@ -48,7 +60,6 @@ pub async fn backfill_if_required(
     let mut found_big_gap = false;
     let mut number_of_gaps = 0;
     let mut fill_from = None;
-    println!("======backfill_if_required  3");
     for &(ref event_id, depth) in depths.iter() {
         let delta = prev_depth - depth;
         if delta > 1 {
@@ -69,12 +80,10 @@ pub async fn backfill_if_required(
     }
 
     if number_of_gaps < 3 && !found_big_gap {
-        println!("======backfill_if_required  4");
-        return Ok(false);
+        return Ok(vec![]);
     };
     let Some(fill_from) = fill_from else {
-        println!("======backfill_if_required  5");
-        return Ok(false);
+        return Ok(vec![]);
     };
 
     let admin_servers = room::admin_servers(room_id, false)?;
@@ -87,7 +96,7 @@ pub async fn backfill_if_required(
             BackfillReqArgs {
                 room_id: room_id.to_owned(),
                 v: vec![fill_from.to_owned()],
-                limit: 100,
+                limit,
             },
         )?
         .into_inner();
@@ -97,26 +106,27 @@ pub async fn backfill_if_required(
             .await
         {
             Ok(response) => {
+                let mut events = Vec::new();
                 for pdu in response.pdus {
-                    println!("======backfill_if_required  pdu?? 1: {:?}", pdu);
-                    if let Err(e) = backfill_pdu(backfill_server, room_id, &room_version, pdu).await
-                    {
-                        warn!("failed to add backfilled pdu: {e}");
+                    match backfill_pdu(backfill_server, room_id, &room_version, pdu).await {
+                        Ok(pdu) => {
+                            events.push(pdu);
+                        }
+                        Err(e) => {
+                            warn!("failed to add backfilled pdu: {e}");
+                        }
                     }
                 }
-                println!("======backfill_if_required  6");
-                return Ok(true);
+                return Ok(events);
             }
             Err(e) => {
-                println!("======backfill_if_required  7");
                 warn!("{backfill_server} could not provide backfill: {e}");
             }
         }
     }
 
-    println!("======backfill_if_required  8");
     info!("no servers could backfill");
-    Ok(false)
+    Ok(vec![])
 }
 
 #[tracing::instrument(skip(pdu))]
@@ -125,13 +135,13 @@ pub async fn backfill_pdu(
     room_id: &RoomId,
     room_version: &RoomVersionId,
     pdu: Box<RawJsonValue>,
-) -> AppResult<()> {
+) -> AppResult<SnPduEvent> {
     let (event_id, value) = parse_fetched_pdu(room_id, room_version, &pdu)?;
 
     // Skip the PDU if we already have it as a timeline event
-    if super::get_pdu(&event_id).is_ok() {
+    if let Ok(pdu) = super::get_pdu(&event_id) {
         info!("we already know {event_id}, skipping backfill");
-        return Ok(());
+        return Ok(pdu);
     }
     handler::process_incoming_pdu(origin, &event_id, room_id, room_version, value, true, true)
         .await?;
@@ -150,5 +160,5 @@ pub async fn backfill_pdu(
             .map_err(|_| AppError::internal("invalid content in pdu."))?;
     }
 
-    Ok(())
+    Ok(pdu)
 }

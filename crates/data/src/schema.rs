@@ -215,10 +215,11 @@ diesel::table! {
 
     event_edges (id) {
         id -> Int8,
+        room_id -> Text,
         event_id -> Text,
         event_sn -> Int8,
+        event_depth -> Int8,
         prev_id -> Text,
-        room_id -> Text,
     }
 }
 

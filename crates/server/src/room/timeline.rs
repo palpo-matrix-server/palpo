@@ -23,7 +23,7 @@ use crate::core::serde::{
 };
 use crate::core::state::{Event, StateError, event_auth};
 use crate::core::{Seqnum, UnixMillis};
-use crate::data::room::{DbEvent, DbEventData, NewDbEvent};
+use crate::data::room::{DbEvent, DbEventData, NewDbEvent, NewDbEventEdge};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::event::{EventHash, PduBuilder, PduEvent};
@@ -509,12 +509,13 @@ where
 
     for prev_id in &pdu.prev_events {
         diesel::insert_into(event_edges::table)
-            .values((
-                event_edges::event_id.eq(&*pdu.event_id),
-                event_edges::event_sn.eq(pdu.event_sn),
-                event_edges::prev_id.eq(prev_id),
-                event_edges::room_id.eq(&*pdu.room_id),
-            ))
+            .values(NewDbEventEdge {
+                room_id: pdu.room_id.clone(),
+                event_depth: pdu.depth as i64,
+                event_id: pdu.event_id.clone(),
+                event_sn: pdu.event_sn,
+                prev_id: prev_id.clone(),
+            })
             .execute(&mut connect()?)?;
     }
 

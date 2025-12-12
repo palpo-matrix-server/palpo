@@ -5,6 +5,7 @@ CREATE TABLE event_edges
     room_id text NOT NULL,
     event_id text NOT NULL,
     event_sn bigint NOT NULL,
+    event_depth bigint NOT NULL,
     prev_id text NOT NULL
 );
 CREATE INDEX event_edges_prev_id_idx

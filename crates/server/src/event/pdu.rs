@@ -664,7 +664,6 @@ impl PduEvent {
     where
         T: for<'de> Deserialize<'de>,
     {
-        println!("Getting content from PDU: {}", self.content.get());
         serde_json::from_str(self.content.get())
     }
 

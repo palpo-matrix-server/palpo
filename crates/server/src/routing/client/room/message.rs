@@ -27,10 +27,6 @@ pub(super) async fn get_messages(
     let authed = depot.authed_info()?;
     let sender_id = authed.user_id();
 
-    println!(
-        "=====================get_messages room_id={} from={:?} to={:?} dir={:?} limit={}",
-        args.room_id, args.from, args.to, args.dir, args.limit
-    );
     let is_joined = diesel_exists!(
         room_users::table
             .filter(room_users::room_id.eq(&args.room_id))
@@ -99,7 +95,6 @@ pub(super) async fn get_messages(
     )?;
 
     let limit = args.limit.min(100);
-    println!("zzzzzzzzzzzzzzz limit: {}", limit);
     let next_token;
     let mut resp = MessagesResBody::default();
     let mut lazy_loaded = HashSet::new();
@@ -142,19 +137,8 @@ pub(super) async fn get_messages(
             resp.chunk = events;
         }
         Direction::Backward => {
-            println!("=====get message background limit: {}", limit);
-            let mut events = topolo::load_pdus_backward(
-                Some(sender_id),
-                &args.room_id,
-                Some(from_tk),
-                until_tk,
-                Some(&args.filter),
-                limit,
-            )?;
-            println!("=====get message loaded events: {}", events.len());
-            if timeline::backfill_if_required(&args.room_id, &events).await? {
-                println!("=====get message backfill triggered");
-                events = topolo::load_pdus_backward(
+            let mut events: indexmap::IndexMap<i64, crate::SnPduEvent> =
+                topolo::load_pdus_backward(
                     Some(sender_id),
                     &args.room_id,
                     Some(from_tk),
@@ -162,6 +146,23 @@ pub(super) async fn get_messages(
                     Some(&args.filter),
                     limit,
                 )?;
+            println!("==========from_tk: {:#?}  limit: {limit}", from_tk);
+            println!("======================origin events: {:?}", events);
+            let filled_events =
+                timeline::backfill_if_required(&args.room_id, &from_tk, &events, limit).await?;
+            if !filled_events.is_empty() {
+                let mut again_events = topolo::load_pdus_backward(
+                    Some(sender_id),
+                    &args.room_id,
+                    Some(from_tk),
+                    until_tk,
+                    Some(&args.filter),
+                    limit,
+                )?;
+                again_events.retain(|sn, _| {
+                    events.contains_key(sn) || filled_events.iter().any(|e| e.event_sn == *sn)
+                });
+                events = again_events;
             }
 
             for (_, event) in &events {
@@ -179,8 +180,19 @@ pub(super) async fn get_messages(
                 */
                 lazy_loaded.insert(event.sender.clone());
             }
-
+            println!(
+                "=====get message loaded events: {:#?}",
+                events
+                    .iter()
+                    .map(|(_, pdu)| (pdu.event_sn, &pdu.event_id, pdu.depth))
+                    .collect::<Vec<_>>()
+            );
+            let evt = filled_events
+                .iter()
+                .find(|e| !events.contains_key(&e.event_sn));
+            println!("?????????????????????////?????????? evt: {:#?}", evt);
             next_token = events.last().map(|(_, pdu)| pdu.prev_historic_token());
+            println!("===========next_token: {:#?}", next_token);
             resp.start = from_tk.to_string();
             resp.end = next_token.map(|tk| tk.to_string());
             resp.chunk = events.values().map(|pdu| pdu.to_room_event()).collect();

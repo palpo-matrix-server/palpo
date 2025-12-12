@@ -18,7 +18,7 @@ pub fn load_pdus_forward(
     until_tk: Option<BatchToken>,
     filter: Option<&RoomEventFilter>,
     limit: usize,
-) -> AppResult<IndexMap<i64, SnPduEvent>> {
+) -> AppResult<IndexMap<Seqnum, SnPduEvent>> {
     load_pdus(
         user_id,
         room_id,
@@ -36,8 +36,7 @@ pub fn load_pdus_backward(
     until_tk: Option<BatchToken>,
     filter: Option<&RoomEventFilter>,
     limit: usize,
-) -> AppResult<IndexMap<i64, SnPduEvent>> {
-    println!("=====load_pdus_backward limit: {}", limit);
+) -> AppResult<IndexMap<Seqnum, SnPduEvent>> {
     load_pdus(
         user_id,
         room_id,
@@ -62,10 +61,7 @@ pub fn load_pdus(
     filter: Option<&RoomEventFilter>,
     dir: Direction,
 ) -> AppResult<IndexMap<Seqnum, SnPduEvent>> {
-    println!("zzzzzzzzzzz  000         {limit}");
     let mut list: IndexMap<Seqnum, SnPduEvent> = IndexMap::with_capacity(limit.clamp(10, 100));
-
-    println!("zzzzzzzzzzz  111         {limit}");
     let mut offset = 0;
     while list.len() < limit {
         let mut query = events::table
@@ -188,19 +184,12 @@ pub fn load_pdus(
                 .collect()
         } else {
             query = query
-                .order(events::topological_ordering.desc())
+                .order((
+                    events::topological_ordering.desc(),
+                    events::stream_ordering.desc(),
+                ))
                 .offset(offset)
                 .limit(utils::usize_to_i64(limit));
-            println!("===========limitz: {}", limit);
-            println!("==========================query");
-            print_query!(&query);
-            println!(
-                "==========================events: {:#?}",
-                events::table
-                    .order(events::topological_ordering.desc())
-                    .select(events::id)
-                    .load::<String>(&mut connect()?)?
-            );
             query
                 .select((events::id, events::sn, events::stream_ordering))
                 .load::<(OwnedEventId, Seqnum, i64)>(&mut connect()?)?
@@ -214,7 +203,6 @@ pub fn load_pdus(
         offset += count as i64;
 
         for (event_id, event_sn, _) in events {
-            println!("============event id: {}", event_id);
             if let Ok(mut pdu) = super::get_pdu(&event_id) {
                 if let Some(user_id) = user_id {
                     if !pdu.user_can_see(user_id)? {

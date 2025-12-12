@@ -324,7 +324,11 @@ pub fn get_backward_extremities(room_id: &RoomId) -> AppResult<Vec<OwnedEventId>
     Ok(event_ids)
 }
 
-pub async fn update_backward_extremities(pdu: &SnPduEvent) -> AppResult<()> {
+pub async fn update_backward_extremities(
+    pdu: &SnPduEvent,
+    remote_server: &ServerName,
+) -> AppResult<()> {
+    println!("?????update_backward_extremities1 {}", pdu.event_id);
     if !pdu.is_outlier || pdu.prev_events.is_empty() {
         diesel::delete(
             event_backward_extremities::table
@@ -391,6 +395,11 @@ pub async fn update_backward_extremities(pdu: &SnPduEvent) -> AppResult<()> {
         .filter(|id| !existing_ids.contains(id))
         .cloned()
         .collect();
+
+    println!(
+        "?????update_backward_extremities2 {}   missing_ids: {:?}",
+        pdu.event_id, missing_ids
+    );
     for missing_id in missing_ids {
         diesel::insert_into(event_missings::table)
             .values(NewDbEventMissing {
@@ -403,47 +412,63 @@ pub async fn update_backward_extremities(pdu: &SnPduEvent) -> AppResult<()> {
             .execute(&mut connect()?)?;
     }
 
-    let mut event_ids = event_missings::table
+    let mut next_ids = event_missings::table
         .filter(event_missings::room_id.eq(&pdu.room_id))
         .filter(event_missings::missing_id.eq(&pdu.event_id))
         .select(event_missings::event_id)
         .load::<OwnedEventId>(&mut connect()?)?;
-    while !event_ids.is_empty() {
+    println!(
+        "?????update_backward_extremities3 {}   next_ids: {:?}",
+        pdu.event_id, next_ids
+    );
+    while !next_ids.is_empty() {
         let mut new_timlined_event_ids = Vec::new();
-        for event_id in event_ids {
+        println!(
+            "?????update_backward_extremities delete missing  event: {}   next_ids {:?}",
+            pdu.event_id, next_ids
+        );
+        for next_id in next_ids {
             diesel::delete(
                 event_missings::table
                     .filter(event_missings::room_id.eq(&pdu.room_id))
-                    .filter(event_missings::event_id.eq(&event_id)),
+                    .filter(event_missings::event_id.eq(&next_id))
+                    .filter(event_missings::missing_id.eq(&pdu.event_id)),
             )
             .execute(&mut connect()?)?;
-            let query = event_missings::table.filter(event_missings::event_id.eq(&event_id));
+            let query = event_missings::table.filter(event_missings::event_id.eq(&next_id));
             if !diesel_exists!(query, &mut connect()?)? {
                 diesel::delete(
                     timeline_gaps::table
                         .filter(timeline_gaps::room_id.eq(&pdu.room_id))
-                        .filter(timeline_gaps::event_id.eq(&event_id)),
+                        .filter(timeline_gaps::event_id.eq(&next_id)),
                 )
                 .execute(&mut connect()?)?;
 
-                let query = event_phases::table
-                    .filter(event_phases::event_id.eq(&event_id))
-                    .filter(event_phases::goal.eq("timeline"));
-                if diesel_exists!(query, &mut connect()?)? {
-                    let pdu = timeline::get_pdu(&event_id)?;
-                    if pdu.is_outlier && !pdu.rejected() {
-                        let content = pdu.get_content()?;
-                        if let Err(e) = process_to_timeline_pdu(pdu, content, None).await {
-                            error!("failed to process incoming pdu to timeline {}", e);
-                        } else {
-                            debug!("succeed to process incoming pdu to timeline {}", event_id);
-                            new_timlined_event_ids.push(event_id);
-                        }
+                // let query = event_phases::table
+                //     .filter(event_phases::event_id.eq(&event_id))
+                //     .filter(event_phases::goal.eq("timeline"));
+                // if diesel_exists!(query, &mut connect()?)? {
+                println!("============exist event: {}", next_id);
+                let pdu = timeline::get_pdu(&next_id)?;
+                println!("============exist event2: {:?}", pdu);
+                if pdu.is_outlier && !pdu.rejected() {
+                    let content = pdu.get_content()?;
+                    if let Err(e) = process_to_timeline_pdu(pdu, content, Some(remote_server)).await
+                    {
+                        error!("failed to process incoming pdu to timeline {}", e);
+                    } else {
+                        debug!("succeed to process incoming pdu to timeline {}", next_id);
+                        new_timlined_event_ids.push(next_id);
                     }
                 }
+                // }
             }
         }
-        event_ids = new_timlined_event_ids;
+        println!(
+            "=======new_timlined_event_ids: {:?}",
+            new_timlined_event_ids
+        );
+        next_ids = new_timlined_event_ids;
     }
     Ok(())
 }

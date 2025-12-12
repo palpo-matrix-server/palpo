@@ -33,6 +33,10 @@ pub async fn fetch_and_process_missing_events(
     incoming_pdu: &PduEvent,
     backfilled: bool,
 ) -> AppResult<()> {
+    println!(
+        "====fetch_and_process_missing_events for incoming_pdu: {}",
+        incoming_pdu.event_id
+    );
     let min_depth = timeline::first_pdu_in_room(room_id)
         .ok()
         .and_then(|pdu| pdu.map(|p| p.depth))
@@ -164,7 +168,7 @@ pub async fn fetch_and_process_auth_chain(
             else {
                 continue;
             };
-            let pdu = outlier_pdu.save_to_database(true).await?.0;
+            let pdu = outlier_pdu.save_to_database(remote_server, true).await?.0;
             auth_events.push(pdu);
         }
     }
@@ -358,6 +362,6 @@ pub async fn fetch_and_process_event(
     else {
         return Ok(());
     };
-    outlier_pdu.save_to_database(true).await?;
+    outlier_pdu.save_to_database(remote_server, true).await?;
     Ok(())
 }
