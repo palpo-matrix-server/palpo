@@ -244,10 +244,7 @@ impl OutlierPdu {
         }
         let (_prev_events, missing_prev_event_ids) =
             timeline::get_may_missing_pdus(&self.room_id, &self.pdu.prev_events)?;
-        println!(
-            "?????????????????????MISSS  {}  missing_prev_event_ids: {:#?}",
-            self.event_id, missing_prev_event_ids
-        );
+
         if !missing_prev_event_ids.is_empty() {
             for event_id in &missing_prev_event_ids {
                 let missing_events = match fetch_and_process_missing_state_by_ids(

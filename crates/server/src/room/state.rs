@@ -328,7 +328,6 @@ pub async fn update_backward_extremities(
     pdu: &SnPduEvent,
     remote_server: &ServerName,
 ) -> AppResult<()> {
-    println!("?????update_backward_extremities1 {}", pdu.event_id);
     if !pdu.is_outlier || pdu.prev_events.is_empty() {
         diesel::delete(
             event_backward_extremities::table
@@ -396,10 +395,6 @@ pub async fn update_backward_extremities(
         .cloned()
         .collect();
 
-    println!(
-        "?????update_backward_extremities2 {}   missing_ids: {:?}",
-        pdu.event_id, missing_ids
-    );
     for missing_id in missing_ids {
         diesel::insert_into(event_missings::table)
             .values(NewDbEventMissing {
@@ -417,16 +412,8 @@ pub async fn update_backward_extremities(
         .filter(event_missings::missing_id.eq(&pdu.event_id))
         .select(event_missings::event_id)
         .load::<OwnedEventId>(&mut connect()?)?;
-    println!(
-        "?????update_backward_extremities3 {}   next_ids: {:?}",
-        pdu.event_id, next_ids
-    );
     while !next_ids.is_empty() {
         let mut new_timlined_event_ids = Vec::new();
-        println!(
-            "?????update_backward_extremities delete missing  event: {}   next_ids {:?}",
-            pdu.event_id, next_ids
-        );
         for next_id in next_ids {
             diesel::delete(
                 event_missings::table
@@ -448,10 +435,10 @@ pub async fn update_backward_extremities(
                 //     .filter(event_phases::event_id.eq(&event_id))
                 //     .filter(event_phases::goal.eq("timeline"));
                 // if diesel_exists!(query, &mut connect()?)? {
-                println!("============exist event: {}", next_id);
-                let pdu = timeline::get_pdu(&next_id)?;
-                println!("============exist event2: {:?}", pdu);
-                if pdu.is_outlier && !pdu.rejected() {
+                if let Ok(pdu) = timeline::get_pdu(&next_id)
+                    && pdu.is_outlier
+                    && !pdu.rejected()
+                {
                     let content = pdu.get_content()?;
                     if let Err(e) = process_to_timeline_pdu(pdu, content, Some(remote_server)).await
                     {
@@ -460,14 +447,12 @@ pub async fn update_backward_extremities(
                         debug!("succeed to process incoming pdu to timeline {}", next_id);
                         new_timlined_event_ids.push(next_id);
                     }
+                } else {
+                    warn!("cannot find outlier pdu: {}", next_id);
                 }
                 // }
             }
         }
-        println!(
-            "=======new_timlined_event_ids: {:?}",
-            new_timlined_event_ids
-        );
         next_ids = new_timlined_event_ids;
     }
     Ok(())

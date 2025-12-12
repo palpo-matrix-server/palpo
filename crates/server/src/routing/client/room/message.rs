@@ -146,8 +146,6 @@ pub(super) async fn get_messages(
                     Some(&args.filter),
                     limit,
                 )?;
-            println!("==========from_tk: {:#?}  limit: {limit}", from_tk);
-            println!("======================origin events: {:?}", events);
             let filled_events =
                 timeline::backfill_if_required(&args.room_id, &from_tk, &events, limit).await?;
             if !filled_events.is_empty() {
@@ -180,19 +178,7 @@ pub(super) async fn get_messages(
                 */
                 lazy_loaded.insert(event.sender.clone());
             }
-            println!(
-                "=====get message loaded events: {:#?}",
-                events
-                    .iter()
-                    .map(|(_, pdu)| (pdu.event_sn, &pdu.event_id, pdu.depth))
-                    .collect::<Vec<_>>()
-            );
-            let evt = filled_events
-                .iter()
-                .find(|e| !events.contains_key(&e.event_sn));
-            println!("?????????????????????////?????????? evt: {:#?}", evt);
             next_token = events.last().map(|(_, pdu)| pdu.prev_historic_token());
-            println!("===========next_token: {:#?}", next_token);
             resp.start = from_tk.to_string();
             resp.end = next_token.map(|tk| tk.to_string());
             resp.chunk = events.values().map(|pdu| pdu.to_room_event()).collect();

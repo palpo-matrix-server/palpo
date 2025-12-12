@@ -33,10 +33,6 @@ pub async fn fetch_and_process_missing_events(
     incoming_pdu: &PduEvent,
     backfilled: bool,
 ) -> AppResult<()> {
-    println!(
-        "====fetch_and_process_missing_events for incoming_pdu: {}",
-        incoming_pdu.event_id
-    );
     let min_depth = timeline::first_pdu_in_room(room_id)
         .ok()
         .and_then(|pdu| pdu.map(|p| p.depth))

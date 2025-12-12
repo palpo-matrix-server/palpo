@@ -414,13 +414,9 @@ pub async fn process_to_outlier_pdu(
 #[tracing::instrument(skip(incoming_pdu, json_data))]
 pub async fn process_to_timeline_pdu(
     incoming_pdu: SnPduEvent,
-    json_data: BTreeMap<String, CanonicalJsonValue>,
+    json_data: CanonicalJsonObject,
     remote_server: Option<&ServerName>,
 ) -> AppResult<()> {
-    println!(
-        "================process_to_timeline_pdu  {}",
-        incoming_pdu.event_id
-    );
     // Skip the PDU if we already have it as a timeline event
     if !incoming_pdu.is_outlier {
         return Ok(());
@@ -430,10 +426,6 @@ pub async fn process_to_timeline_pdu(
             "cannot process rejected event to timeline",
         ));
     }
-    println!(
-        "================process_to_timeline_pdu2  {}",
-        incoming_pdu.event_id
-    );
     debug!("process to timeline event {}", incoming_pdu.event_id);
     let room_version_id = &room::get_version(&incoming_pdu.room_id)?;
     let version_rules = crate::room::get_version_rules(room_version_id)?;
@@ -443,10 +435,7 @@ pub async fn process_to_timeline_pdu(
     debug!("resolving state at event");
     let server_joined =
         crate::room::is_server_joined(crate::config::server_name(), &incoming_pdu.room_id)?;
-    println!(
-        "================process_to_timeline_pdu3  {}",
-        incoming_pdu.event_id
-    );
+
     if !server_joined {
         if let Some(state_key) = incoming_pdu.state_key.as_deref()
             && incoming_pdu.event_ty == TimelineEventType::RoomMember
@@ -523,10 +512,6 @@ pub async fn process_to_timeline_pdu(
         return Ok(());
     }
 
-    println!(
-        "================process_to_timeline_pdu4  {}",
-        incoming_pdu.event_id
-    );
     let state_at_incoming_event = resolve_state_at_incoming(&incoming_pdu, &version_rules).await?;
     let state_at_incoming_event = if let Some(state_at_incoming_event) = state_at_incoming_event {
         state_at_incoming_event

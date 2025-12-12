@@ -206,7 +206,6 @@ pub fn load_pdus(
             if let Ok(mut pdu) = super::get_pdu(&event_id) {
                 if let Some(user_id) = user_id {
                     if !pdu.user_can_see(user_id)? {
-                        println!("========USER CANNOT SEE EVENT {}  {}", user_id, event_id);
                         continue;
                     }
                     if pdu.sender != user_id {

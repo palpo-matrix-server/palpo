@@ -36,11 +36,11 @@ async fn get_backfill(
         queue.insert(seed_depth, seed_id);
     }
 
-    let limit = args.limit.min(100);
+    let limit = args.limit;
 
     let mut events = IndexMap::with_capacity(limit);
     while !queue.is_empty() && events.len() < limit {
-        let Some((depth, event_id)) = queue.pop_last() else {
+        let Some((_depth, event_id)) = queue.pop_last() else {
             break;
         };
         let mut prev_ids = event_edges::table

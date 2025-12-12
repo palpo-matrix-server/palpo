@@ -1,16 +1,19 @@
-use diesel::dsl::count;
+use std::collections::BTreeMap;
+
 use diesel::prelude::*;
 use indexmap::IndexMap;
+use itertools::Itertools;
 use serde::Deserialize;
 
 use crate::core::Seqnum;
 use crate::core::events::TimelineEventType;
 use crate::core::federation::backfill::{BackfillReqArgs, BackfillResBody, backfill_request};
 use crate::core::identifiers::*;
-use crate::core::serde::RawJsonValue;
+use crate::core::serde::{CanonicalJsonObject, JsonValue, RawJsonValue};
 use crate::data::connect;
 use crate::data::schema::*;
 use crate::event::BatchToken;
+use crate::event::handler::process_to_timeline_pdu;
 use crate::event::{handler, parse_fetched_pdu};
 use crate::{AppError, AppResult, GetUrlOrigin, SnPduEvent, room};
 
@@ -96,7 +99,7 @@ pub async fn backfill_if_required(
             BackfillReqArgs {
                 room_id: room_id.to_owned(),
                 v: vec![fill_from.to_owned()],
-                limit,
+                limit: (limit * 2).max(50), //Avoid not enough filled and will get messages with gap.
             },
         )?
         .into_inner();
@@ -107,14 +110,39 @@ pub async fn backfill_if_required(
         {
             Ok(response) => {
                 let mut events = Vec::new();
-                for pdu in response.pdus {
+                let pdus = response
+                    .pdus
+                    .into_iter()
+                    .filter_map(|pdu| {
+                        let val =
+                            serde_json::from_str::<BTreeMap<String, JsonValue>>(pdu.get()).ok()?;
+                        let depth = val.get("depth")?.as_i64()?;
+                        Some((pdu, depth))
+                    })
+                    .sorted_by(|a, b| a.1.cmp(&b.1))
+                    .map(|(pdu, _)| pdu)
+                    .collect::<Vec<_>>();
+                let mut saved_pdu_contents = Vec::new();
+                for pdu in pdus {
                     match backfill_pdu(backfill_server, room_id, &room_version, pdu).await {
-                        Ok(pdu) => {
-                            events.push(pdu);
+                        Ok(p) => {
+                            saved_pdu_contents.push(p);
                         }
                         Err(e) => {
                             warn!("failed to add backfilled pdu: {e}");
                         }
+                    }
+                }
+                for (pdu, content) in saved_pdu_contents {
+                    let event_id = pdu.event_id.clone();
+                    if let Err(e) =
+                        process_to_timeline_pdu(pdu, content, Some(backfill_server)).await
+                    {
+                        error!("failed to process backfill pdu to timeline {}", e);
+                    } else {
+                        let pdu = super::get_pdu(&event_id)?;
+                        events.push(pdu);
+                        debug!("succeed to process backfill pdu to timeline {}", event_id);
                     }
                 }
                 return Ok(events);
@@ -131,23 +159,26 @@ pub async fn backfill_if_required(
 
 #[tracing::instrument(skip(pdu))]
 pub async fn backfill_pdu(
-    origin: &ServerName,
+    remote_server: &ServerName,
     room_id: &RoomId,
     room_version: &RoomVersionId,
     pdu: Box<RawJsonValue>,
-) -> AppResult<SnPduEvent> {
+) -> AppResult<(SnPduEvent, CanonicalJsonObject)> {
     let (event_id, value) = parse_fetched_pdu(room_id, room_version, &pdu)?;
-
     // Skip the PDU if we already have it as a timeline event
     if let Ok(pdu) = super::get_pdu(&event_id) {
         info!("we already know {event_id}, skipping backfill");
-        return Ok(pdu);
+        let value = super::get_pdu_json(&event_id)?
+            .ok_or_else(|| AppError::public("event json not found"))?;
+        return Ok((pdu, value));
     }
-    handler::process_incoming_pdu(origin, &event_id, room_id, room_version, value, true, true)
-        .await?;
-
-    let _value = super::get_pdu_json(&event_id)?.expect("we just created it");
-    let pdu = super::get_pdu(&event_id)?;
+    let Some(outlier_pdu) =
+        handler::process_to_outlier_pdu(remote_server, &event_id, room_id, room_version, value)
+            .await?
+    else {
+        return Err(AppError::internal("failed to process backfilled pdu"));
+    };
+    let (pdu, value, _) = outlier_pdu.save_to_database(remote_server, true).await?;
 
     if pdu.event_ty == TimelineEventType::RoomMessage {
         #[derive(Deserialize)]
@@ -160,5 +191,5 @@ pub async fn backfill_pdu(
             .map_err(|_| AppError::internal("invalid content in pdu."))?;
     }
 
-    Ok(pdu)
+    Ok((pdu, value))
 }
