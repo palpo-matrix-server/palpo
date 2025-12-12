@@ -174,7 +174,11 @@ pub fn load_pdus(
         }
         let events: Vec<(OwnedEventId, Seqnum, i64)> = if dir == Direction::Forward {
             query
-                .order(events::topological_ordering.asc())
+                .order((
+                    events::topological_ordering.asc(),
+                    events::origin_server_ts.asc(),
+                    events::stream_ordering.asc(),
+                ))
                 .offset(offset)
                 .limit(utils::usize_to_i64(limit))
                 .select((events::id, events::sn, events::stream_ordering))
@@ -186,6 +190,7 @@ pub fn load_pdus(
             query = query
                 .order((
                     events::topological_ordering.desc(),
+                    events::origin_server_ts.desc(),
                     events::stream_ordering.desc(),
                 ))
                 .offset(offset)

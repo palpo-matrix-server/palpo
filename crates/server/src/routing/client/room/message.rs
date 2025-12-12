@@ -146,10 +146,12 @@ pub(super) async fn get_messages(
                     Some(&args.filter),
                     limit,
                 )?;
+            println!("==============events: {events:#?}");
             let filled_events =
                 timeline::backfill_if_required(&args.room_id, &from_tk, &events, limit).await?;
+            println!("==============filled_events: {filled_events:#?}");
             if !filled_events.is_empty() {
-                let mut again_events = topolo::load_pdus_backward(
+                events = topolo::load_pdus_backward(
                     Some(sender_id),
                     &args.room_id,
                     Some(from_tk),
@@ -157,10 +159,7 @@ pub(super) async fn get_messages(
                     Some(&args.filter),
                     limit,
                 )?;
-                again_events.retain(|sn, _| {
-                    events.contains_key(sn) || filled_events.iter().any(|e| e.event_sn == *sn)
-                });
-                events = again_events;
+            println!("==============again_events: {events:?}");
             }
 
             for (_, event) in &events {
