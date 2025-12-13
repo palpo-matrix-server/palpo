@@ -36,7 +36,7 @@ pub(crate) async fn process_incoming_pdu(
     room_version_id: &RoomVersionId,
     value: BTreeMap<String, CanonicalJsonValue>,
     is_timeline_event: bool,
-    backfilled: bool,
+    is_backfill: bool,
 ) -> AppResult<()> {
     if !crate::room::room_exists(room_id)? {
         return Err(MatrixError::not_found("room is unknown to this server").into());
@@ -97,7 +97,7 @@ pub(crate) async fn process_incoming_pdu(
     };
 
     let (incoming_pdu, val, event_guard) = outlier_pdu
-        .process_incoming(remote_server, backfilled)
+        .process_incoming(remote_server, is_backfill)
         .await?;
 
     if incoming_pdu.rejected() {
@@ -144,7 +144,7 @@ pub(crate) async fn process_pulled_pdu(
     room_id: &RoomId,
     room_version_id: &RoomVersionId,
     value: BTreeMap<String, CanonicalJsonValue>,
-    backfilled: bool,
+    is_backfill: bool,
 ) -> AppResult<()> {
     // 1.3.1 Check room ACL on origin field/server
     handler::acl_check(remote_server, room_id)?;
@@ -174,7 +174,7 @@ pub(crate) async fn process_pulled_pdu(
         return Ok(());
     };
     let (pdu, json_data, _) = outlier_pdu
-        .process_pulled(remote_server, backfilled)
+        .process_pulled(remote_server, is_backfill)
         .await?;
 
     if pdu.soft_failed || pdu.rejected() {

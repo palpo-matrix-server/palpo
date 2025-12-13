@@ -464,7 +464,7 @@ pub async fn join_room(
         event_sn: join_event_sn,
         is_outlier: false,
         soft_failed: false,
-        backfilled: false,
+        is_backfill: false,
     };
     timeline::append_pdu(
         &join_pdu,

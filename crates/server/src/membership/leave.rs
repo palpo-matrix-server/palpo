@@ -249,7 +249,7 @@ async fn leave_room_remote(
         event_sn,
         is_outlier: false,
         soft_failed: false,
-        backfilled: false,
+        is_backfill: false,
     };
     timeline::append_pdu(
         &leave_pdu,

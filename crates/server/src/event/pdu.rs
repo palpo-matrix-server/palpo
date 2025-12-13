@@ -54,7 +54,7 @@ pub struct SnPduEvent {
     #[serde(skip, default = "default_false")]
     pub soft_failed: bool,
     #[serde(skip, default = "default_false")]
-    pub backfilled: bool,
+    pub is_backfill: bool,
 }
 impl SnPduEvent {
     pub fn new(
@@ -62,14 +62,14 @@ impl SnPduEvent {
         event_sn: Seqnum,
         is_outlier: bool,
         soft_failed: bool,
-        backfilled: bool,
+        is_backfill: bool,
     ) -> Self {
         Self {
             pdu,
             event_sn,
             is_outlier,
             soft_failed,
-            backfilled,
+            is_backfill,
         }
     }
 
@@ -184,7 +184,7 @@ impl SnPduEvent {
         json: CanonicalJsonObject,
         is_outlier: bool,
         soft_failed: bool,
-        backfilled: bool,
+        is_backfill: bool,
     ) -> Result<Self, serde_json::Error> {
         let pdu = PduEvent::from_canonical_object(room_id, event_id, json)?;
         Ok(Self::new(
@@ -192,7 +192,7 @@ impl SnPduEvent {
             event_sn,
             is_outlier,
             soft_failed,
-            backfilled,
+            is_backfill,
         ))
     }
 
@@ -203,7 +203,7 @@ impl SnPduEvent {
         json: JsonValue,
         is_outlier: bool,
         soft_failed: bool,
-        backfilled: bool,
+        is_backfill: bool,
     ) -> AppResult<Self> {
         let pdu = PduEvent::from_json_value(room_id, event_id, json)?;
         Ok(Self::new(
@@ -211,7 +211,7 @@ impl SnPduEvent {
             event_sn,
             is_outlier,
             soft_failed,
-            backfilled,
+            is_backfill,
         ))
     }
 
@@ -226,7 +226,7 @@ impl SnPduEvent {
     }
     pub fn historic_token(&self) -> BatchToken {
         BatchToken::Historic {
-            stream_ordering: if self.backfilled {
+            stream_ordering: if self.is_backfill {
                 -self.event_sn
             } else {
                 self.event_sn
@@ -236,7 +236,7 @@ impl SnPduEvent {
     }
     pub fn prev_historic_token(&self) -> BatchToken {
         BatchToken::Historic {
-            stream_ordering: if self.backfilled {
+            stream_ordering: if self.is_backfill {
                 -self.event_sn - 1
             } else {
                 self.event_sn - 1
@@ -866,7 +866,7 @@ impl PduBuilder {
                 event_sn,
                 is_outlier: true,
                 soft_failed: false,
-                backfilled: false,
+                is_backfill: false,
             },
             pdu_json,
             event_guard,

@@ -129,9 +129,14 @@ pub fn get_event_for_timestamp(
         Direction::Forward => {
             let (local_event_id, origin_server_ts) = events::table
                 .filter(events::room_id.eq(room_id))
-                .filter(events::origin_server_ts.is_not_null())
                 .filter(events::origin_server_ts.ge(timestamp))
-                .order_by((events::origin_server_ts.asc(), events::sn.asc()))
+                .filter(events::is_outlier.eq(false))
+                .filter(events::is_redacted.eq(false))
+                .order_by((
+                    events::origin_server_ts.asc(),
+                    events::depth.asc(),
+                    events::stream_ordering.asc(),
+                ))
                 .select((events::id, events::origin_server_ts))
                 .first::<(OwnedEventId, UnixMillis)>(&mut connect()?)?;
             Ok((local_event_id, origin_server_ts))
@@ -139,12 +144,24 @@ pub fn get_event_for_timestamp(
         Direction::Backward => {
             let (local_event_id, origin_server_ts) = events::table
                 .filter(events::room_id.eq(room_id))
-                .filter(events::origin_server_ts.is_not_null())
                 .filter(events::origin_server_ts.le(timestamp))
-                .order_by((events::origin_server_ts.desc(), events::sn.desc()))
+                .filter(events::is_outlier.eq(false))
+                .filter(events::is_redacted.eq(false))
+                .order_by((
+                    events::origin_server_ts.desc(),
+                    events::depth.desc(),
+                    events::stream_ordering.desc(),
+                ))
                 .select((events::id, events::origin_server_ts))
                 .first::<(OwnedEventId, UnixMillis)>(&mut connect()?)?;
 
+            println!(
+                "==============all events in room: {:#?}",
+                events::table
+                    .filter(events::room_id.eq(room_id))
+                    .order_by((events::sn.desc(),))
+                    .load::<DbEvent>(&mut connect()?)?
+            );
             Ok((local_event_id, origin_server_ts))
         }
     }

@@ -141,7 +141,7 @@ pub fn get_pdu(event_id: &EventId) -> AppResult<SnPduEvent> {
         event_sn,
         is_outlier: event.is_outlier,
         soft_failed: event.soft_failed,
-        backfilled: event.stream_ordering < 0,
+        is_backfill: event.stream_ordering < 0,
     })
 }
 
@@ -168,7 +168,7 @@ pub fn get_pdu_and_data(event_id: &EventId) -> AppResult<(SnPduEvent, CanonicalJ
             event_sn,
             is_outlier: event.is_outlier,
             soft_failed: event.soft_failed,
-            backfilled: event.stream_ordering < 0,
+            is_backfill: event.stream_ordering < 0,
         },
         data,
     ))
