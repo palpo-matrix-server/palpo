@@ -19,7 +19,7 @@ use crate::event::{PduEvent, SnPduEvent, ensure_event_sn};
 use crate::room::state::update_backward_extremities;
 use crate::room::timeline;
 use crate::utils::SeqnumQueueGuard;
-use crate::{AppError, AppResult, MatrixError};
+use crate::{AppError, AppResult, MatrixError, RoomMutexGuard};
 
 #[derive(Clone, Debug)]
 pub struct OutlierPdu {
@@ -156,7 +156,7 @@ impl OutlierPdu {
             soft_failed,
             is_backfill,
         };
-        update_backward_extremities(&pdu, remote_server).await?;
+        update_backward_extremities(&pdu, Some(remote_server)).await?;
         Ok((pdu, json_data, event_guard))
     }
 
@@ -186,6 +186,7 @@ impl OutlierPdu {
             if let AppError::Matrix(MatrixError { ref kind, .. }) = e {
                 if *kind == core::error::ErrorKind::BadJson {
                     self.rejection_reason = Some(format!("bad prev events: {}", e));
+                    let state_lock = crate::room::lock_state(&self.room_id).await;
                     return self.save_to_database(remote_server, is_backfill).await;
                 } else {
                     self.soft_failed = true;

@@ -159,7 +159,7 @@ pub(super) async fn get_messages(
                     Some(&args.filter),
                     limit,
                 )?;
-            println!("==============again_events: {events:?}");
+                println!("==============again_events: {events:?}");
             }
 
             for (_, event) in &events {

@@ -466,13 +466,9 @@ pub async fn join_room(
         soft_failed: false,
         is_backfill: false,
     };
-    timeline::append_pdu(
-        &join_pdu,
-        join_event,
-        once(join_event_id.borrow()),
-        &state_lock,
-    )
-    .await?;
+    println!("ZXDS append_pdu 3");
+
+    timeline::append_pdu(&join_pdu, join_event, &state_lock).await?;
     let frame_id_after_join = state::append_to_state(&join_pdu)?;
     drop(event_guard);
 

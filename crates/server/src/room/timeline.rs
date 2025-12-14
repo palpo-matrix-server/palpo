@@ -1,5 +1,5 @@
 use std::borrow::Borrow;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::iter::once;
 use std::sync::{LazyLock, Mutex};
 
@@ -226,15 +226,11 @@ pub fn replace_pdu(event_id: &EventId, pdu_json: &CanonicalJsonObject) -> AppRes
 ///
 /// Returns pdu id
 #[tracing::instrument(skip_all)]
-pub async fn append_pdu<'a, L>(
-    pdu: &'a SnPduEvent,
+pub async fn append_pdu(
+    pdu: &SnPduEvent,
     mut pdu_json: CanonicalJsonObject,
-    leaves: L,
     state_lock: &RoomMutexGuard,
-) -> AppResult<()>
-where
-    L: Iterator<Item = &'a EventId> + Send + 'a,
-{
+) -> AppResult<()> {
     let conf = crate::config::get();
 
     // Make unsigned fields correct. This is not properly documented in the spec, but state
@@ -260,11 +256,11 @@ where
                     ),
                 );
                 unsigned.insert(
-                    String::from("prev_sender"),
+                    "prev_sender".to_owned(),
                     CanonicalJsonValue::String(prev_state.sender.to_string()),
                 );
                 unsigned.insert(
-                    String::from("replaces_state"),
+                    "replaces_state".to_owned(),
                     CanonicalJsonValue::String(prev_state.event_id.to_string()),
                 );
             }
@@ -272,7 +268,22 @@ where
             error!("invalid unsigned type in pdu");
         }
     }
-    state::set_forward_extremities(&pdu.room_id, leaves, state_lock)?;
+    println!("ZXDS ddddddddddddddd setset_forward_extremities 1");
+
+    let mut leaves: BTreeSet<_> = state::get_forward_extremities(&pdu.room_id)?
+        .into_iter()
+        .collect();
+    // Remove any forward extremities that are referenced by this incoming event's prev_events
+    leaves.retain(|event_id| !pdu.prev_events.contains(event_id));
+    if !diesel_exists!(
+        event_edges::table.filter(event_edges::prev_id.eq(&pdu.event_id)),
+        &mut connect()?
+    )? {
+        // Only add the incoming event as a forward extremity if it is not already in the DB
+        leaves.insert(pdu.event_id.clone());
+    }
+    println!("ZXDS ddddddddddddddd setset_forward_extremities 2 leaves:{leaves:?}");
+    state::set_forward_extremities(&pdu.room_id, leaves.iter().map(Borrow::borrow), state_lock)?;
 
     #[derive(Deserialize, Clone, Debug)]
     struct ExtractEventId {
@@ -508,15 +519,16 @@ where
         .execute(&mut connect()?)?;
 
     for prev_id in &pdu.prev_events {
-        diesel::insert_into(event_edges::table)
-            .values(NewDbEventEdge {
-                room_id: pdu.room_id.clone(),
-                event_depth: pdu.depth as i64,
-                event_id: pdu.event_id.clone(),
-                event_sn: pdu.event_sn,
-                prev_id: prev_id.clone(),
-            })
-            .execute(&mut connect()?)?;
+        let new_edge = NewDbEventEdge {
+            room_id: pdu.room_id.clone(),
+            event_depth: pdu.depth as i64,
+            event_id: pdu.event_id.clone(),
+            event_sn: pdu.event_sn,
+            prev_id: prev_id.clone(),
+        };
+        if let Err(e) = new_edge.save() {
+            error!("failed to save event edge: {}", e);
+        }
     }
 
     // Update Relationships
@@ -722,14 +734,7 @@ pub async fn build_and_append_pdu(
     }
 
     let event_id = pdu.event_id.clone();
-    append_pdu(
-        &pdu,
-        pdu_json,
-        // Since this PDU references all pdu_leaves we can update the leaves of the room
-        once(event_id.borrow()),
-        state_lock,
-    )
-    .await?;
+    append_pdu(&pdu, pdu_json, state_lock).await?;
 
     // In case we are kicking or banning a user, we need to inform their server of the change
     // move to append pdu
@@ -783,7 +788,8 @@ pub fn is_event_next_to_forward_gap(event: &PduEvent) -> AppResult<bool> {
             .select((
                 event_forward_extremities::room_id,
                 event_forward_extremities::event_id
-            )).order(event_forward_extremities::id.desc())
+            ))
+            .order(event_forward_extremities::id.desc())
             .load::<(OwnedRoomId, OwnedEventId)>(&mut connect()?)?
     );
     println!(
@@ -792,7 +798,8 @@ pub fn is_event_next_to_forward_gap(event: &PduEvent) -> AppResult<bool> {
             .select((
                 event_backward_extremities::room_id,
                 event_backward_extremities::event_id
-            )).order(event_backward_extremities::id.desc())
+            ))
+            .order(event_backward_extremities::id.desc())
             .load::<(OwnedRoomId, OwnedEventId)>(&mut connect()?)?
     );
     Ok(diesel_exists!(query, &mut connect()?)?)

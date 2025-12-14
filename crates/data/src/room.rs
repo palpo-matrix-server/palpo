@@ -411,6 +411,16 @@ pub struct NewDbEventEdge {
     pub prev_id: OwnedEventId,
 }
 
+impl NewDbEventEdge {
+    pub fn save(&self) -> DataResult<()> {
+        diesel::insert_into(event_edges::table)
+            .values(self)
+            .on_conflict_do_nothing()
+            .execute(&mut connect()?)?;
+        Ok(())
+    }
+}
+
 // >= min_sn and <= max_sn
 pub fn get_timeline_gaps(
     room_id: &RoomId,

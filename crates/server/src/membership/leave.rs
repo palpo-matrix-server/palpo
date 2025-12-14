@@ -254,7 +254,6 @@ async fn leave_room_remote(
     timeline::append_pdu(
         &leave_pdu,
         leave_event_stub.clone(),
-        once(event_id.borrow()),
         &room::lock_state(room_id).await,
     )
     .await?;

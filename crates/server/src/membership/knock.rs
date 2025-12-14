@@ -232,13 +232,8 @@ pub async fn knock_room(
         soft_failed: false,
         is_backfill: false,
     };
-    timeline::append_pdu(
-        &knock_pdu,
-        knock_event,
-        once(event_id.borrow()),
-        &room::lock_state(room_id).await,
-    )
-    .await?;
+    println!("ZXDS append_pdu 4");
+    timeline::append_pdu(&knock_pdu, knock_event, &room::lock_state(room_id).await).await?;
 
     drop(event_guard);
     Ok(Some(knock_pdu))
