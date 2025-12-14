@@ -328,11 +328,11 @@ pub(super) async fn timestamp_to_event(
         let local_event = timeline::get_pdu(&local_event.0)?;
         match args.dir {
             Direction::Backward => {
-                is_event_next_to_backward_gap =
-                    timeline::is_event_next_to_backward_gap(&local_event)?
+                is_event_next_to_forward_gap = timeline::is_event_next_to_forward_gap(&local_event)?
             }
             Direction::Forward => {
-                is_event_next_to_forward_gap = timeline::is_event_next_to_forward_gap(&local_event)?
+                is_event_next_to_backward_gap =
+                    timeline::is_event_next_to_backward_gap(&local_event)?
             }
         }
     }
