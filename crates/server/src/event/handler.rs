@@ -127,7 +127,7 @@ pub(crate) async fn process_incoming_pdu(
     } else {
         debug!("succeed to process incoming pdu to timeline {}", event_id);
         let pdu = timeline::get_pdu(event_id)?;
-        update_backward_extremities(&pdu, Some(remote_server)).await?;
+        update_backward_extremities(&pdu)?;
     }
     drop(event_guard);
     crate::ROOM_ID_FEDERATION_HANDLE_TIME
@@ -186,7 +186,7 @@ pub(crate) async fn process_pulled_pdu(
     } else {
         debug!("succeed to process incoming pdu to timeline {}", event_id);
         let pdu = timeline::get_pdu(event_id)?;
-        update_backward_extremities(&pdu, Some(remote_server)).await?;
+        update_backward_extremities(&pdu)?;
 
         let mut next_ids = event_missings::table
             .filter(event_missings::room_id.eq(&pdu.room_id))
@@ -221,7 +221,9 @@ pub(crate) async fn process_pulled_pdu(
                         && !pdu.rejected()
                     {
                         let content = pdu.get_content()?;
-                        if let Err(e) = process_to_timeline_pdu(pdu, content, Some(remote_server)).await {
+                        if let Err(e) =
+                            process_to_timeline_pdu(pdu, content, Some(remote_server)).await
+                        {
                             error!("failed to process incoming pdu to timeline {}", e);
                         } else {
                             debug!("succeed to process incoming pdu to timeline {}", next_id);
@@ -663,7 +665,7 @@ pub async fn process_to_timeline_pdu(
             .map(Borrow::borrow)
             .chain(once(event_id.borrow()));
         state::set_forward_extremities(&incoming_pdu.room_id, extremities, &state_lock)?;
-        // state::update_backward_extremities(&incoming_pdu, remote_server).await?;
+        state::update_backward_extremities(&incoming_pdu)?;
         // Soft fail, we keep the event as an outlier but don't add it to the timeline
         warn!("event was soft failed: {:?}", incoming_pdu);
         crate::room::pdu_metadata::mark_event_soft_failed(&incoming_pdu.event_id)?;

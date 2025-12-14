@@ -325,10 +325,7 @@ pub fn get_backward_extremities(room_id: &RoomId) -> AppResult<Vec<OwnedEventId>
     Ok(event_ids)
 }
 
-pub async fn update_backward_extremities(
-    pdu: &SnPduEvent,
-    remote_server: Option<&ServerName>,
-) -> AppResult<()> {
+pub fn update_backward_extremities(pdu: &SnPduEvent) -> AppResult<()> {
     if pdu.is_outlier {
         diesel::insert_into(event_backward_extremities::table)
             .values((
@@ -349,7 +346,10 @@ pub async fn update_backward_extremities(
             .filter(|id| !existing_ids.contains(id))
             .cloned()
             .collect();
-        println!("============{}  ===missing_ids: {:?}", pdu.event_id, missing_ids);
+        println!(
+            "============{}  ===missing_ids: {:?}",
+            pdu.event_id, missing_ids
+        );
         if missing_ids.is_empty() {
             diesel::delete(
                 event_backward_extremities::table

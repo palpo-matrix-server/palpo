@@ -106,9 +106,8 @@ impl crate::core::state::Event for OutlierPdu {
 }
 
 impl OutlierPdu {
-    pub async fn save_to_database(
+    pub fn save_to_database(
         self,
-        remote_server: &ServerName,
         is_backfill: bool,
     ) -> AppResult<(SnPduEvent, CanonicalJsonObject, Option<SeqnumQueueGuard>)> {
         let Self {
@@ -156,7 +155,7 @@ impl OutlierPdu {
             soft_failed,
             is_backfill,
         };
-        update_backward_extremities(&pdu, Some(remote_server)).await?;
+        update_backward_extremities(&pdu)?;
         Ok((pdu, json_data, event_guard))
     }
 
@@ -170,7 +169,7 @@ impl OutlierPdu {
                 && self.rejected_prev_events.is_empty()
                 && self.rejected_auth_events.is_empty())
         {
-            return self.save_to_database(remote_server, is_backfill).await;
+            return self.save_to_database(is_backfill);
         }
 
         // Fetch any missing prev events doing all checks listed here starting at 1. These are timeline events
@@ -187,7 +186,7 @@ impl OutlierPdu {
                 if *kind == core::error::ErrorKind::BadJson {
                     self.rejection_reason = Some(format!("bad prev events: {}", e));
                     let state_lock = crate::room::lock_state(&self.room_id).await;
-                    return self.save_to_database(remote_server, is_backfill).await;
+                    return self.save_to_database(is_backfill);
                 } else {
                     self.soft_failed = true;
                 }
@@ -220,12 +219,12 @@ impl OutlierPdu {
         let version_rules = crate::room::get_version_rules(&self.room_version)?;
 
         if !self.soft_failed || self.rejected() {
-            return self.save_to_database(remote_server, is_backfill).await;
+            return self.save_to_database(is_backfill);
         }
 
         if self.any_prev_event_rejected()? {
             self.rejection_reason = Some("one or more prev events are rejected".to_string());
-            return self.save_to_database(remote_server, is_backfill).await;
+            return self.save_to_database(is_backfill);
         }
         if self.any_auth_event_rejected()?
             && let Err(e) = fetch_and_process_auth_chain(
@@ -241,7 +240,7 @@ impl OutlierPdu {
             } else {
                 self.rejection_reason = Some("one or more auth events are rejected".to_string());
             }
-            return self.save_to_database(remote_server, is_backfill).await;
+            return self.save_to_database(is_backfill);
         }
         let (_prev_events, missing_prev_event_ids) =
             timeline::get_may_missing_pdus(&self.room_id, &self.pdu.prev_events)?;
@@ -326,6 +325,6 @@ impl OutlierPdu {
                 self.soft_failed = false;
             }
         }
-        self.save_to_database(remote_server, is_backfill).await
+        self.save_to_database(is_backfill)
     }
 }

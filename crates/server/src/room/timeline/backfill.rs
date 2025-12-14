@@ -178,7 +178,7 @@ pub async fn backfill_pdu(
     else {
         return Err(AppError::internal("failed to process backfilled pdu"));
     };
-    let (pdu, value, _) = outlier_pdu.save_to_database(remote_server, true).await?;
+    let (pdu, value, _) = outlier_pdu.save_to_database(true)?;
 
     if pdu.event_ty == TimelineEventType::RoomMessage {
         #[derive(Deserialize)]
