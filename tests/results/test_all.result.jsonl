@@ -3,7 +3,6 @@
 {"Action":"fail","Test":"TestJumpToDateEndpoint/parallel"}
 {"Action":"fail","Test":"TestJumpToDateEndpoint/parallel/federation"}
 {"Action":"fail","Test":"TestJumpToDateEndpoint/parallel/federation/can_paginate_after_getting_remote_event_from_timestamp_to_event_endpoint"}
-{"Action":"fail","Test":"TestJumpToDateEndpoint/parallel/federation/looking_backwards,_should_be_able_to_find_event_that_was_sent_before_we_joined"}
 {"Action":"fail","Test":"TestMessagesOverFederation"}
 {"Action":"fail","Test":"TestMessagesOverFederation/Visible_shared_history_after_re-joining_room_(backfill)"}
 {"Action":"fail","Test":"TestMessagesOverFederation/Visible_shared_history_after_re-joining_room_(backfill)/`messagesRequestLimit`_is_lower_than_the_number_of_messages_backfilled_(assumed)"}
@@ -195,6 +194,7 @@
 {"Action":"pass","Test":"TestJson/Parallel"}
 {"Action":"pass","Test":"TestJson/Parallel/Invalid_JSON_special_values"}
 {"Action":"pass","Test":"TestJson/Parallel/Invalid_numerical_values"}
+{"Action":"pass","Test":"TestJumpToDateEndpoint/parallel/federation/looking_backwards,_should_be_able_to_find_event_that_was_sent_before_we_joined"}
 {"Action":"pass","Test":"TestJumpToDateEndpoint/parallel/federation/looking_forwards,_should_be_able_to_find_event_that_was_sent_before_we_joined"}
 {"Action":"pass","Test":"TestJumpToDateEndpoint/parallel/federation/when_looking_backwards_before_the_room_was_created,_should_be_able_to_find_event_that_was_imported"}
 {"Action":"pass","Test":"TestJumpToDateEndpoint/parallel/should_find_event_after_given_timestamp"}
