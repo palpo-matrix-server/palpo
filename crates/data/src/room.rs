@@ -282,15 +282,15 @@ impl NewDbEvent {
         id: &EventId,
         sn: Seqnum,
         value: &CanonicalJsonObject,
-        backfilled: bool,
+        is_backfill: bool,
     ) -> DataResult<Self> {
-        Self::from_json_value(id, sn, serde_json::to_value(value)?, backfilled)
+        Self::from_json_value(id, sn, serde_json::to_value(value)?, is_backfill)
     }
     pub fn from_json_value(
         id: &EventId,
         sn: Seqnum,
         mut value: JsonValue,
-        backfilled: bool,
+        is_backfill: bool,
     ) -> DataResult<Self> {
         let depth = value.get("depth").cloned().unwrap_or(0.into());
         let ty = value
@@ -306,7 +306,7 @@ impl NewDbEvent {
         obj.insert("topological_ordering".into(), depth);
         obj.insert(
             "stream_ordering".into(),
-            if backfilled { (-sn).into() } else { sn.into() },
+            if is_backfill { (-sn).into() } else { sn.into() },
         );
         Ok(serde_json::from_value(value)
             .map_err(|_e| MatrixError::bad_json("invalid json for event"))?)
@@ -399,6 +399,26 @@ pub struct NewDbEventMissing {
     pub event_id: OwnedEventId,
     pub event_sn: i64,
     pub missing_id: OwnedEventId,
+}
+
+#[derive(Insertable, Debug, Clone)]
+#[diesel(table_name = event_edges)]
+pub struct NewDbEventEdge {
+    pub room_id: OwnedRoomId,
+    pub event_id: OwnedEventId,
+    pub event_sn: i64,
+    pub event_depth: i64,
+    pub prev_id: OwnedEventId,
+}
+
+impl NewDbEventEdge {
+    pub fn save(&self) -> DataResult<()> {
+        diesel::insert_into(event_edges::table)
+            .values(self)
+            .on_conflict_do_nothing()
+            .execute(&mut connect()?)?;
+        Ok(())
+    }
 }
 
 // >= min_sn and <= max_sn

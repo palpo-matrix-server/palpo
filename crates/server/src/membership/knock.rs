@@ -230,15 +230,9 @@ pub async fn knock_room(
         event_sn,
         is_outlier: false,
         soft_failed: false,
-        backfilled: false,
+        is_backfill: false,
     };
-    timeline::append_pdu(
-        &knock_pdu,
-        knock_event,
-        once(event_id.borrow()),
-        &room::lock_state(room_id).await,
-    )
-    .await?;
+    timeline::append_pdu(&knock_pdu, knock_event, &room::lock_state(room_id).await).await?;
 
     drop(event_guard);
     Ok(Some(knock_pdu))

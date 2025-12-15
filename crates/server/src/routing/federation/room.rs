@@ -257,7 +257,7 @@ async fn send_knock(
     json_ok(SendKnockResBody { knock_room_state })
 }
 
-/// # `GET /_matrix/federation/v1/make_knock/{roomId}/{userId}`
+/// # `GET /_matrix/federation/v1/make_knock/{room_id}/{user_id}`
 ///
 /// Creates a knock template.
 #[endpoint]
@@ -312,16 +312,11 @@ async fn make_knock(
         );
     }
 
-    let (_pdu, mut pdu_json, _event_guard) = timeline::hash_and_sign_event(
-        PduBuilder::state(
-            args.user_id.to_string(),
-            &RoomMemberEventContent::new(MembershipState::Knock),
-        ),
-        &args.user_id,
-        &args.room_id,
-        &room_version_id,
-        &state_lock,
+    let (_pdu, mut pdu_json) = PduBuilder::state(
+        args.user_id.to_string(),
+        &RoomMemberEventContent::new(MembershipState::Knock),
     )
+    .hash_sign(&args.user_id, &args.room_id, &room_version_id)
     .await?;
     drop(state_lock);
 

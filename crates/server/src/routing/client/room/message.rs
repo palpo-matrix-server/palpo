@@ -12,7 +12,7 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::event::BatchToken;
-use crate::room::timeline;
+use crate::room::timeline::{self, topolo};
 use crate::routing::prelude::*;
 use crate::{PduBuilder, room};
 
@@ -100,7 +100,7 @@ pub(super) async fn get_messages(
     let mut lazy_loaded = HashSet::new();
     match args.dir {
         Direction::Forward => {
-            let events = timeline::topolo::load_pdus_forward(
+            let events = topolo::load_pdus_forward(
                 Some(sender_id),
                 &args.room_id,
                 Some(from_tk),
@@ -137,16 +137,19 @@ pub(super) async fn get_messages(
             resp.chunk = events;
         }
         Direction::Backward => {
-            let mut events = timeline::topolo::load_pdus_backward(
-                Some(sender_id),
-                &args.room_id,
-                Some(from_tk),
-                until_tk,
-                Some(&args.filter),
-                limit,
-            )?;
-            if timeline::backfill_if_required(&args.room_id, &events).await? {
-                events = timeline::topolo::load_pdus_backward(
+            let mut events: indexmap::IndexMap<i64, crate::SnPduEvent> =
+                topolo::load_pdus_backward(
+                    Some(sender_id),
+                    &args.room_id,
+                    Some(from_tk),
+                    until_tk,
+                    Some(&args.filter),
+                    limit,
+                )?;
+            let filled_events =
+                timeline::backfill_if_required(&args.room_id, &from_tk, &events, limit).await?;
+            if !filled_events.is_empty() {
+                events = topolo::load_pdus_backward(
                     Some(sender_id),
                     &args.room_id,
                     Some(from_tk),
@@ -171,7 +174,6 @@ pub(super) async fn get_messages(
                 */
                 lazy_loaded.insert(event.sender.clone());
             }
-
             next_token = events.last().map(|(_, pdu)| pdu.prev_historic_token());
             resp.start = from_tk.to_string();
             resp.end = next_token.map(|tk| tk.to_string());

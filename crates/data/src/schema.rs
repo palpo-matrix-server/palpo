@@ -213,11 +213,13 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
-    event_edges (event_id) {
+    event_edges (id) {
+        id -> Int8,
+        room_id -> Text,
         event_id -> Text,
-        prev_event_id -> Text,
-        room_id -> Nullable<Text>,
-        is_state -> Bool,
+        event_sn -> Int8,
+        event_depth -> Int8,
+        prev_id -> Text,
     }
 }
 

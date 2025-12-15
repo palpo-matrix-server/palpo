@@ -249,12 +249,11 @@ async fn leave_room_remote(
         event_sn,
         is_outlier: false,
         soft_failed: false,
-        backfilled: false,
+        is_backfill: false,
     };
     timeline::append_pdu(
         &leave_pdu,
         leave_event_stub.clone(),
-        once(event_id.borrow()),
         &room::lock_state(room_id).await,
     )
     .await?;
