@@ -295,7 +295,6 @@ where
     I: Iterator<Item = &'a EventId> + Send + 'a,
 {
     let event_ids = event_ids.collect::<Vec<_>>();
-    println!("==================set forward extremities: {:?}", event_ids);
     diesel::delete(
         event_forward_extremities::table
             .filter(event_forward_extremities::room_id.eq(room_id))
@@ -346,10 +345,6 @@ pub fn update_backward_extremities(pdu: &SnPduEvent) -> AppResult<()> {
             .filter(|id| !existing_ids.contains(id))
             .cloned()
             .collect();
-        println!(
-            "============{}  ===missing_ids: {:?}",
-            pdu.event_id, missing_ids
-        );
         if missing_ids.is_empty() {
             diesel::delete(
                 event_backward_extremities::table

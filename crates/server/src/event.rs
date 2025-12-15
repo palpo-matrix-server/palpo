@@ -154,14 +154,6 @@ pub fn get_event_for_timestamp(
                 ))
                 .select((events::id, events::origin_server_ts))
                 .first::<(OwnedEventId, UnixMillis)>(&mut connect()?)?;
-
-            println!(
-                "==============all events in room: {:#?}",
-                events::table
-                    .filter(events::room_id.eq(room_id))
-                    .order_by((events::sn.desc(),))
-                    .load::<DbEvent>(&mut connect()?)?
-            );
             Ok((local_event_id, origin_server_ts))
         }
     }

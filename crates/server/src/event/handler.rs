@@ -542,7 +542,6 @@ pub async fn process_to_timeline_pdu(
             state::force_state(&incoming_pdu.room_id, frame_id, appended, disposed)?;
 
             debug!("appended incoming pdu");
-            println!("ZXDS append_pdu 1");
             timeline::append_pdu(&incoming_pdu, json_data, &state_lock).await?;
             state::set_event_state(
                 &incoming_pdu.event_id,
@@ -648,7 +647,6 @@ pub async fn process_to_timeline_pdu(
     // 14. Check if the event passes auth based on the "current state" of the room, if not soft fail it
     if soft_fail {
         debug!("starting soft fail auth check");
-        println!("ZXDS ddddddddddddddd setset_forward_extremities 0");
         // We start looking at current room state now, so lets lock the room
         // Now we calculate the set of extremities this room has after the incoming event has been
         // applied. We start with the previous extremities (aka leaves)
@@ -672,7 +670,6 @@ pub async fn process_to_timeline_pdu(
         return Err(MatrixError::invalid_param("event has been soft failed").into());
     } else {
         debug!("appended incoming pdu");
-        println!("ZXDS append_pdu 2");
         timeline::append_pdu(&incoming_pdu, json_data, &state_lock).await?;
         state::set_event_state(
             &incoming_pdu.event_id,

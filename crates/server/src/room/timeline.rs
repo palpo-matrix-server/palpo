@@ -268,7 +268,6 @@ pub async fn append_pdu(
             error!("invalid unsigned type in pdu");
         }
     }
-    println!("ZXDS ddddddddddddddd setset_forward_extremities 1");
 
     let mut leaves: BTreeSet<_> = state::get_forward_extremities(&pdu.room_id)?
         .into_iter()
@@ -282,7 +281,6 @@ pub async fn append_pdu(
         // Only add the incoming event as a forward extremity if it is not already in the DB
         leaves.insert(pdu.event_id.clone());
     }
-    println!("ZXDS ddddddddddddddd setset_forward_extremities 2 leaves:{leaves:?}");
     state::set_forward_extremities(&pdu.room_id, leaves.iter().map(Borrow::borrow), state_lock)?;
     state::update_backward_extremities(&pdu)?;
 
@@ -782,26 +780,5 @@ pub fn is_event_next_to_forward_gap(event: &PduEvent) -> AppResult<bool> {
     let query = event_forward_extremities::table
         .filter(event_forward_extremities::room_id.eq(event.room_id()))
         .filter(event_forward_extremities::event_id.eq_any(event_ids));
-
-    println!(
-        "===================foward extriemss : {:#?}",
-        event_forward_extremities::table
-            .select((
-                event_forward_extremities::room_id,
-                event_forward_extremities::event_id
-            ))
-            .order(event_forward_extremities::id.desc())
-            .load::<(OwnedRoomId, OwnedEventId)>(&mut connect()?)?
-    );
-    println!(
-        "===================event_backward_extremities extriemss : {:#?}",
-        event_backward_extremities::table
-            .select((
-                event_backward_extremities::room_id,
-                event_backward_extremities::event_id
-            ))
-            .order(event_backward_extremities::id.desc())
-            .load::<(OwnedRoomId, OwnedEventId)>(&mut connect()?)?
-    );
     Ok(diesel_exists!(query, &mut connect()?)?)
 }

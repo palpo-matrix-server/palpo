@@ -249,7 +249,6 @@ async fn invite_user(
         rejection_reason: None,
     }
     .save()?;
-    println!("ZXDS append_pdu 5");
     timeline::append_pdu(&pdu, event, &state_lock).await?;
 
     // let sender_id: OwnedUserId = serde_json::from_value(
