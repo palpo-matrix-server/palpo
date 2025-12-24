@@ -10,8 +10,8 @@ rust-version = "1.89"
 description = """
 Matrix server implementation
 """
-homepage = "https://github.com/palpo-matrix-server/palpo"
-repository = "https://github.com/palpo-matrix-server/palpo/palpo.git"
+homepage = "https://github.com/palpo-im/palpo"
+repository = "https://github.com/palpo-im/palpo.git"
 documentation = "https://docs.rs/palpo/"
 readme = "./README.md"
 categories = ["api-bindings", "web-programming"]
@@ -72,7 +72,7 @@ jsonwebtoken = { version = "10.2.0", default-features = false, features = [
 ] }
 js_option = "0.2.0"
 konst = "0.3.16"
-# ldap3 = { git = "https://github.com/palpo-matrix-server/ldap3", branch = "main", default-features = false, features = ["sync", "tls-rustls"] }
+# ldap3 = { git = "https://github.com/palpo-im/ldap3", branch = "main", default-features = false, features = ["sync", "tls-rustls"] }
 language-tags = { version = "0.3.2", features = ["serde"] }
 lru-cache = "0.1.2"
 maplit = "1.0.2"
