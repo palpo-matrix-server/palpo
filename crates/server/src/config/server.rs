@@ -1109,10 +1109,6 @@ fn default_server_name() -> OwnedServerName {
     OwnedServerName::try_from("change.palpo.im").expect("default server name should be valid")
 }
 
-fn default_database_backend() -> String {
-    "sqlite".to_owned()
-}
-
 fn default_db_cache_capacity_mb() -> f64 {
     300.0
 }
