@@ -8,7 +8,6 @@
 {"Action":"fail","Test":"TestMessagesOverFederation/Visible_shared_history_after_re-joining_room_(backfill)/`messagesRequestLimit`_is_lower_than_the_number_of_messages_backfilled_(assumed)"}
 {"Action":"fail","Test":"TestSyncTimelineGap"}
 {"Action":"fail","Test":"TestSyncTimelineGap/full"}
-{"Action":"fail","Test":"TestSyncTimelineGap/incremental"}
 {"Action":"pass","Test":"TestACLs"}
 {"Action":"pass","Test":"TestAddAccountData"}
 {"Action":"pass","Test":"TestAddAccountData/Can_add_global_account_data"}
@@ -620,6 +619,7 @@
 {"Action":"pass","Test":"TestSyncLeaveSection/Left_rooms_appear_in_the_leave_section_of_sync"}
 {"Action":"pass","Test":"TestSyncLeaveSection/Newly_left_rooms_appear_in_the_leave_section_of_incremental_sync"}
 {"Action":"pass","Test":"TestSyncOmitsStateChangeOnFilteredEvents"}
+{"Action":"pass","Test":"TestSyncTimelineGap/incremental"}
 {"Action":"pass","Test":"TestTentativeEventualJoiningAfterRejecting"}
 {"Action":"pass","Test":"TestThreadReceiptsInSyncMSC4102"}
 {"Action":"pass","Test":"TestThreadedReceipts"}

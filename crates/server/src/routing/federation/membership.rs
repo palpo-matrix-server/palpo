@@ -13,7 +13,7 @@ use crate::core::events::{StateEventType, TimelineEventType};
 use crate::core::federation::membership::*;
 use crate::core::identifiers::*;
 use crate::core::room::{JoinRule, RoomEventReqArgs};
-use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue};
+use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_canonical_object};
 use crate::data::connect;
 use crate::data::room::NewDbEvent;
 use crate::data::schema::*;
@@ -122,18 +122,13 @@ async fn make_join(args: MakeJoinReqArgs, depot: &mut Depot) -> JsonResult<MakeJ
         extra_data: Default::default(),
     })
     .expect("member event is valid value");
-    let (_pdu, mut pdu_json, _) = timeline::hash_and_sign_event(
-        PduBuilder {
-            event_type: TimelineEventType::RoomMember,
-            content,
-            state_key: Some(args.user_id.to_string()),
-            ..Default::default()
-        },
-        &args.user_id,
-        &args.room_id,
-        &room_version_id,
-        &state_lock,
-    )
+    let (_pdu, mut pdu_json) = PduBuilder {
+        event_type: TimelineEventType::RoomMember,
+        content,
+        state_key: Some(args.user_id.to_string()),
+        ..Default::default()
+    }
+    .hash_sign(&args.user_id, &args.room_id, &room_version_id)
     .await?;
     drop(state_lock);
     maybe_strip_event_id(&mut pdu_json, &room_version_id);
@@ -164,7 +159,7 @@ async fn invite_user(
         )
         .into());
     }
-    let mut signed_event = utils::to_canonical_object(&body.event)
+    let mut signed_event = to_canonical_object(&body.event)
         .map_err(|_| MatrixError::invalid_param("invite event is invalid"))?;
 
     let invitee_id: OwnedUserId = serde_json::from_value(
@@ -254,7 +249,7 @@ async fn invite_user(
         rejection_reason: None,
     }
     .save()?;
-    timeline::append_pdu(&pdu, event, once(event_id.borrow()), &state_lock).await?;
+    timeline::append_pdu(&pdu, event, &state_lock).await?;
 
     // let sender_id: OwnedUserId = serde_json::from_value(
     //     signed_event
@@ -305,16 +300,11 @@ async fn make_leave(args: MakeLeaveReqArgs, depot: &mut Depot) -> JsonResult<Mak
     let room_version_id = room::get_version(&args.room_id)?;
     let state_lock = crate::room::lock_state(&args.room_id).await;
 
-    let (_pdu, mut pdu_json, _event_guard) = timeline::hash_and_sign_event(
-        PduBuilder::state(
-            args.user_id.to_string(),
-            &RoomMemberEventContent::new(MembershipState::Leave),
-        ),
-        &args.user_id,
-        &args.room_id,
-        &room_version_id,
-        &state_lock,
+    let (_pdu, mut pdu_json) = PduBuilder::state(
+        args.user_id.to_string(),
+        &RoomMemberEventContent::new(MembershipState::Leave),
     )
+    .hash_sign(&args.user_id, &args.room_id, &room_version_id)
     .await?;
     drop(state_lock);
 

@@ -32,7 +32,6 @@ use crate::event::{
     PduBuilder, PduEvent, ensure_event_sn, gen_event_id_canonical_json, parse_fetched_pdu,
 };
 use crate::federation::maybe_strip_event_id;
-use crate::room::state::{CompressedEvent, DeltaInfo};
 use crate::room::{state, timeline};
 use crate::sending::send_edu_server;
 use crate::{
@@ -465,15 +464,10 @@ pub async fn join_room(
         event_sn: join_event_sn,
         is_outlier: false,
         soft_failed: false,
-        backfilled: false,
+        is_backfill: false,
     };
-    timeline::append_pdu(
-        &join_pdu,
-        join_event,
-        once(join_event_id.borrow()),
-        &state_lock,
-    )
-    .await?;
+
+    timeline::append_pdu(&join_pdu, join_event, &state_lock).await?;
     let frame_id_after_join = state::append_to_state(&join_pdu)?;
     drop(event_guard);
 

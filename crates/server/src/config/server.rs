@@ -106,6 +106,7 @@ pub struct ServerConfig {
     pub home_page: Option<String>,
 
     // display: hidden
+    #[serde(default)]
     pub db: DbConfig,
 
     // display: hidden
@@ -1106,10 +1107,6 @@ fn default_listen_address() -> String {
 }
 fn default_server_name() -> OwnedServerName {
     OwnedServerName::try_from("change.palpo.im").expect("default server name should be valid")
-}
-
-fn default_database_backend() -> String {
-    "sqlite".to_owned()
 }
 
 fn default_db_cache_capacity_mb() -> f64 {

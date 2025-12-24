@@ -31,6 +31,7 @@ pub async fn fetch_and_process_missing_events(
     room_id: &RoomId,
     room_version: &RoomVersionId,
     incoming_pdu: &PduEvent,
+    is_backfill: bool,
 ) -> AppResult<()> {
     let min_depth = timeline::first_pdu_in_room(room_id)
         .ok()
@@ -110,7 +111,7 @@ pub async fn fetch_and_process_missing_events(
             room_id,
             room_version,
             event_val.clone(),
-            true,
+            is_backfill,
         )
         .await
         {

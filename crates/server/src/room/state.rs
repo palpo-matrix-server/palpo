@@ -4,7 +4,6 @@ use std::sync::{Arc, LazyLock, Mutex};
 use diesel::prelude::*;
 use indexmap::IndexMap;
 use lru_cache::LruCache;
-use palpo_data::diesel_exists;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 
@@ -25,10 +24,12 @@ use crate::core::identifiers::*;
 use crate::core::room::{AllowRule, JoinRule, RoomMembership};
 use crate::core::room_version_rules::AuthorizationRules;
 use crate::core::serde::{JsonValue, RawJson};
-use crate::core::state::StateMap;
+use crate::core::state::{Event, StateMap};
 use crate::core::{EventId, OwnedEventId, RoomId, UserId};
-use crate::data::connect;
+use crate::data::room::{NewDbEventMissing, NewDbTimelineGap};
 use crate::data::schema::*;
+use crate::data::{connect, diesel_exists};
+use crate::event::handler::process_to_timeline_pdu;
 use crate::event::{PduEvent, update_frame_id, update_frame_id_by_sn};
 use crate::room::timeline;
 use crate::{
@@ -324,14 +325,6 @@ pub fn get_backward_extremities(room_id: &RoomId) -> AppResult<Vec<OwnedEventId>
 }
 
 pub fn update_backward_extremities(pdu: &SnPduEvent) -> AppResult<()> {
-    if !pdu.is_outlier || pdu.prev_events.is_empty() {
-        diesel::delete(
-            event_backward_extremities::table
-                .filter(event_backward_extremities::room_id.eq(&pdu.room_id))
-                .filter(event_backward_extremities::event_id.eq(&pdu.event_id)),
-        )
-        .execute(&mut connect()?)?;
-    }
     if pdu.is_outlier {
         diesel::insert_into(event_backward_extremities::table)
             .values((
@@ -341,11 +334,33 @@ pub fn update_backward_extremities(pdu: &SnPduEvent) -> AppResult<()> {
             .on_conflict_do_nothing()
             .execute(&mut connect()?)?;
     } else {
-        for event_id in &pdu.prev_events {
-            let query = events::table
-                .filter(events::id.eq(event_id))
-                .filter(events::is_outlier.eq(false));
-            if !diesel_exists!(query, &mut connect()?)? {
+        let existing_ids = events::table
+            .filter(events::id.eq_any(&pdu.prev_events))
+            .filter(events::is_outlier.eq(false))
+            .select(events::id)
+            .load::<OwnedEventId>(&mut connect()?)?;
+        let missing_ids: Vec<OwnedEventId> = pdu
+            .prev_events
+            .iter()
+            .filter(|id| !existing_ids.contains(id))
+            .cloned()
+            .collect();
+        if missing_ids.is_empty() {
+            diesel::delete(
+                event_backward_extremities::table
+                    .filter(event_backward_extremities::room_id.eq(&pdu.room_id))
+                    .filter(event_backward_extremities::event_id.eq(&pdu.event_id)),
+            )
+            .execute(&mut connect()?)?;
+
+            diesel::delete(
+                timeline_gaps::table
+                    .filter(timeline_gaps::room_id.eq(&pdu.room_id))
+                    .filter(timeline_gaps::event_sn.eq(pdu.event_sn)),
+            )
+            .execute(&mut connect()?)?;
+        } else {
+            for event_id in &missing_ids {
                 diesel::insert_into(event_backward_extremities::table)
                     .values((
                         event_backward_extremities::room_id.eq(&pdu.room_id),
@@ -354,8 +369,46 @@ pub fn update_backward_extremities(pdu: &SnPduEvent) -> AppResult<()> {
                     .on_conflict_do_nothing()
                     .execute(&mut connect()?)?;
             }
+            diesel::insert_into(event_backward_extremities::table)
+                .values((
+                    event_backward_extremities::room_id.eq(&pdu.room_id),
+                    event_backward_extremities::event_id.eq(&pdu.event_id),
+                ))
+                .on_conflict_do_nothing()
+                .execute(&mut connect()?)?;
+            diesel::insert_into(timeline_gaps::table)
+                .values(NewDbTimelineGap {
+                    room_id: pdu.room_id.clone(),
+                    event_id: pdu.event_id.clone(),
+                    event_sn: pdu.event_sn,
+                })
+                .execute(&mut connect()?)?;
         }
     }
+
+    let existing_ids = events::table
+        .filter(events::id.eq_any(&pdu.prev_events))
+        .select(events::id)
+        .load::<OwnedEventId>(&mut connect()?)?;
+    let missing_ids: Vec<OwnedEventId> = pdu
+        .prev_events
+        .iter()
+        .filter(|id| !existing_ids.contains(id))
+        .cloned()
+        .collect();
+
+    for missing_id in missing_ids {
+        diesel::insert_into(event_missings::table)
+            .values(NewDbEventMissing {
+                room_id: pdu.room_id.clone(),
+                event_id: pdu.event_id.clone(),
+                event_sn: pdu.event_sn,
+                missing_id: missing_id.clone(),
+            })
+            .on_conflict_do_nothing()
+            .execute(&mut connect()?)?;
+    }
+
     Ok(())
 }
 

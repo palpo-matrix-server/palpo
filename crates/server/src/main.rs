@@ -78,7 +78,6 @@ use salvo::prelude::*;
 use tracing_futures::Instrument;
 
 use crate::config::ServerConfig;
-use crate::data::DataResult;
 
 pub type AppResult<T> = Result<T, crate::AppError>;
 pub type DieselResult<T> = Result<T, diesel::result::Error>;

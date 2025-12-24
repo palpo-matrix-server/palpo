@@ -282,15 +282,15 @@ impl NewDbEvent {
         id: &EventId,
         sn: Seqnum,
         value: &CanonicalJsonObject,
-        backfilled: bool,
+        is_backfill: bool,
     ) -> DataResult<Self> {
-        Self::from_json_value(id, sn, serde_json::to_value(value)?, backfilled)
+        Self::from_json_value(id, sn, serde_json::to_value(value)?, is_backfill)
     }
     pub fn from_json_value(
         id: &EventId,
         sn: Seqnum,
         mut value: JsonValue,
-        backfilled: bool,
+        is_backfill: bool,
     ) -> DataResult<Self> {
         let depth = value.get("depth").cloned().unwrap_or(0.into());
         let ty = value
@@ -306,7 +306,7 @@ impl NewDbEvent {
         obj.insert("topological_ordering".into(), depth);
         obj.insert(
             "stream_ordering".into(),
-            if backfilled { (-sn).into() } else { sn.into() },
+            if is_backfill { (-sn).into() } else { sn.into() },
         );
         Ok(serde_json::from_value(value)
             .map_err(|_e| MatrixError::bad_json("invalid json for event"))?)
@@ -388,72 +388,53 @@ pub fn is_banned(room_id: &RoomId) -> DataResult<bool> {
 #[diesel(table_name = timeline_gaps)]
 pub struct NewDbTimelineGap {
     pub room_id: OwnedRoomId,
+    pub event_id: OwnedEventId,
     pub event_sn: i64,
 }
 
-pub fn get_timeline_forward_gap(room_id: &RoomId, min_sn: Seqnum) -> DataResult<Option<Seqnum>> {
-    let gap = timeline_gaps::table
+#[derive(Insertable, Debug, Clone)]
+#[diesel(table_name = event_missings)]
+pub struct NewDbEventMissing {
+    pub room_id: OwnedRoomId,
+    pub event_id: OwnedEventId,
+    pub event_sn: i64,
+    pub missing_id: OwnedEventId,
+}
+
+#[derive(Insertable, Debug, Clone)]
+#[diesel(table_name = event_edges)]
+pub struct NewDbEventEdge {
+    pub room_id: OwnedRoomId,
+    pub event_id: OwnedEventId,
+    pub event_sn: i64,
+    pub event_depth: i64,
+    pub prev_id: OwnedEventId,
+}
+
+impl NewDbEventEdge {
+    pub fn save(&self) -> DataResult<()> {
+        diesel::insert_into(event_edges::table)
+            .values(self)
+            .on_conflict_do_nothing()
+            .execute(&mut connect()?)?;
+        Ok(())
+    }
+}
+
+// >= min_sn and <= max_sn
+pub fn get_timeline_gaps(
+    room_id: &RoomId,
+    min_sn: Seqnum,
+    max_sn: Seqnum,
+) -> DataResult<Vec<Seqnum>> {
+    let gaps = timeline_gaps::table
         .filter(timeline_gaps::room_id.eq(room_id))
         .filter(timeline_gaps::event_sn.ge(min_sn))
-        .select(timeline_gaps::event_sn)
-        .first::<Seqnum>(&mut connect()?)
-        .optional()?;
-    Ok(gap)
-}
-pub fn get_timeline_backward_gap(room_id: &RoomId, max_sn: Seqnum) -> DataResult<Option<Seqnum>> {
-    let gap = timeline_gaps::table
-        .filter(timeline_gaps::room_id.eq(room_id))
         .filter(timeline_gaps::event_sn.le(max_sn))
+        .order(timeline_gaps::event_sn.asc())
         .select(timeline_gaps::event_sn)
-        .first::<Seqnum>(&mut connect()?)
-        .optional()?;
-    Ok(gap)
-}
-// pub fn get_timeline_gaps(room_id: &RoomId, min_sn: Seqnum, max_sn: Seqnum) -> DataResult<Vec<Seqnum>> {
-//     let gaps = timeline_gaps::table
-//         .filter(timeline_gaps::room_id.eq(room_id))
-//         .filter(timeline_gaps::event_sn.ge(min_sn))
-//         .filter(timeline_gaps::event_sn.le(max_sn))
-//         .select(timeline_gaps::event_sn)
-//         .load::<Seqnum>(&mut connect()?)?;
-//     Ok(gaps)
-// }
-pub fn add_timeline_gap(room_id: &RoomId, event_sn: Seqnum) -> DataResult<()> {
-    let new_gap = NewDbTimelineGap {
-        room_id: room_id.to_owned(),
-        event_sn,
-    };
-    diesel::insert_into(timeline_gaps::table)
-        .values(&new_gap)
-        .on_conflict_do_nothing()
-        .execute(&mut connect()?)?;
-    Ok(())
-}
-pub fn add_timeline_gaps(room_id: &RoomId, event_sns: &[Seqnum]) -> DataResult<()> {
-    let new_gaps: Vec<NewDbTimelineGap> = event_sns
-        .iter()
-        .map(|sn| NewDbTimelineGap {
-            room_id: room_id.to_owned(),
-            event_sn: *sn,
-        })
-        .collect();
-    diesel::insert_into(timeline_gaps::table)
-        .values(&new_gaps)
-        .on_conflict_do_nothing()
-        .execute(&mut connect()?)?;
-    Ok(())
-}
-pub fn remove_timeline_gap(event_sn: Seqnum) -> DataResult<()> {
-    diesel::delete(timeline_gaps::table)
-        .filter(timeline_gaps::event_sn.eq(event_sn))
-        .execute(&mut connect()?)?;
-    Ok(())
-}
-pub fn remove_timeline_gaps(event_sns: &[Seqnum]) -> DataResult<()> {
-    diesel::delete(timeline_gaps::table)
-        .filter(timeline_gaps::event_sn.eq_any(event_sns))
-        .execute(&mut connect()?)?;
-    Ok(())
+        .load::<Seqnum>(&mut connect()?)?;
+    Ok(gaps)
 }
 
 // pub fn rename_room(old_room_id: &RoomId, new_room_id: &RoomId) -> DataResult<()> {

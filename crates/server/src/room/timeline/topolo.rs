@@ -1,6 +1,7 @@
 use diesel::prelude::*;
 use indexmap::IndexMap;
 use palpo_data::print_query;
+use palpo_data::room::DbEvent;
 
 use crate::core::client::filter::{RoomEventFilter, UrlFilter};
 use crate::core::identifiers::*;
@@ -17,7 +18,7 @@ pub fn load_pdus_forward(
     until_tk: Option<BatchToken>,
     filter: Option<&RoomEventFilter>,
     limit: usize,
-) -> AppResult<IndexMap<i64, SnPduEvent>> {
+) -> AppResult<IndexMap<Seqnum, SnPduEvent>> {
     load_pdus(
         user_id,
         room_id,
@@ -35,7 +36,7 @@ pub fn load_pdus_backward(
     until_tk: Option<BatchToken>,
     filter: Option<&RoomEventFilter>,
     limit: usize,
-) -> AppResult<IndexMap<i64, SnPduEvent>> {
+) -> AppResult<IndexMap<Seqnum, SnPduEvent>> {
     load_pdus(
         user_id,
         room_id,
@@ -173,7 +174,11 @@ pub fn load_pdus(
         }
         let events: Vec<(OwnedEventId, Seqnum, i64)> = if dir == Direction::Forward {
             query
-                .order(events::topological_ordering.asc())
+                .order((
+                    events::topological_ordering.asc(),
+                    events::origin_server_ts.asc(),
+                    events::stream_ordering.asc(),
+                ))
                 .offset(offset)
                 .limit(utils::usize_to_i64(limit))
                 .select((events::id, events::sn, events::stream_ordering))
@@ -183,10 +188,13 @@ pub fn load_pdus(
                 .collect()
         } else {
             query = query
-                .order(events::topological_ordering.desc())
+                .order((
+                    events::topological_ordering.desc(),
+                    events::origin_server_ts.desc(),
+                    events::stream_ordering.desc(),
+                ))
                 .offset(offset)
                 .limit(utils::usize_to_i64(limit));
-            print_query!(&query);
             query
                 .select((events::id, events::sn, events::stream_ordering))
                 .load::<(OwnedEventId, Seqnum, i64)>(&mut connect()?)?

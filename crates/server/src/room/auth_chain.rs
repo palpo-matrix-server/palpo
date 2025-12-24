@@ -6,7 +6,6 @@ use std::time::Instant;
 use diesel::prelude::*;
 use lru_cache::LruCache;
 
-use crate::admin::room;
 use crate::core::Seqnum;
 use crate::core::identifiers::*;
 use crate::data::connect;

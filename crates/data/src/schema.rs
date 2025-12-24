@@ -213,11 +213,13 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
-    event_edges (event_id) {
+    event_edges (id) {
+        id -> Int8,
+        room_id -> Text,
         event_id -> Text,
-        prev_event_id -> Text,
-        room_id -> Nullable<Text>,
-        is_state -> Bool,
+        event_sn -> Int8,
+        event_depth -> Int8,
+        prev_id -> Text,
     }
 }
 
@@ -244,6 +246,31 @@ diesel::table! {
         room_id -> Nullable<Text>,
         event_id -> Nullable<Text>,
         created_at -> Int8,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
+    event_missings (id) {
+        id -> Int4,
+        room_id -> Text,
+        event_id -> Text,
+        event_sn -> Int8,
+        missing_id -> Text,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
+    event_phases (event_id) {
+        event_id -> Text,
+        curr -> Text,
+        next -> Text,
+        goal -> Text,
     }
 }
 
@@ -797,6 +824,7 @@ diesel::table! {
         id -> Int8,
         room_id -> Text,
         event_sn -> Int8,
+        event_id -> Text,
     }
 }
 
@@ -1126,6 +1154,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     event_edges,
     event_forward_extremities,
     event_idempotents,
+    event_missings,
+    event_phases,
     event_points,
     event_push_actions,
     event_push_summaries,
