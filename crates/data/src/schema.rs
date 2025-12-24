@@ -85,6 +85,16 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
+    e2e_cross_signing_uia_bypass (user_id) {
+        user_id -> Text,
+        updatable_before_ts -> Int8,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use crate::full_text_search::*;
+
     e2e_device_keys (id) {
         id -> Int8,
         user_id -> Text,
@@ -494,40 +504,6 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
-    push_rule_streams (id) {
-        id -> Int8,
-        event_stream_ordering -> Int8,
-        user_id -> Text,
-        rule_id -> Text,
-        op -> Text,
-        priority_class -> Nullable<Int2>,
-        priority -> Nullable<Int4>,
-        conditions -> Nullable<Json>,
-        actions -> Nullable<Json>,
-        instance_name -> Nullable<Text>,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-    use crate::full_text_search::*;
-
-    push_rules (id) {
-        id -> Int8,
-        user_id -> Text,
-        rule_id -> Text,
-        priority_class -> Int4,
-        priority -> Int4,
-        conditions -> Json,
-        actions -> Json,
-        enabled -> Bool,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-    use crate::full_text_search::*;
-
     room_aliases (alias_id) {
         alias_id -> Text,
         room_id -> Text,
@@ -651,47 +627,11 @@ diesel::table! {
     use diesel::sql_types::*;
     use crate::full_text_search::*;
 
-    server_in_rooms (id) {
-        id -> Int8,
-        server_id -> Text,
-        room_id -> Text,
-        occur_sn -> Int8,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-    use crate::full_text_search::*;
-
     server_signing_keys (server_id) {
         server_id -> Text,
         key_data -> Json,
         updated_at -> Int8,
         created_at -> Int8,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-    use crate::full_text_search::*;
-
-    sliding_sync_connections (id) {
-        id -> Int8,
-        user_id -> Text,
-        device_id -> Text,
-        conn_id -> Text,
-        created_at -> Int8,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-    use crate::full_text_search::*;
-
-    sliding_sync_required_states (id) {
-        id -> Int8,
-        connection_id -> Int8,
-        required_state -> Text,
     }
 }
 
@@ -733,16 +673,6 @@ diesel::table! {
         device_id -> Text,
         user_agent -> Nullable<Text>,
         created_at -> Int8,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-    use crate::full_text_search::*;
-
-    test_nulls (id) {
-        id -> Int8,
-        value -> Nullable<Int8>,
     }
 }
 
@@ -1132,6 +1062,7 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(e2e_cross_signing_uia_bypass -> users (user_id));
 diesel::joinable!(user_external_ids -> users (user_id));
 diesel::joinable!(user_ratelimit_override -> users (user_id));
 
@@ -1142,6 +1073,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     device_streams,
     e2e_cross_signing_keys,
     e2e_cross_signing_sigs,
+    e2e_cross_signing_uia_bypass,
     e2e_device_keys,
     e2e_fallback_keys,
     e2e_key_changes,
@@ -1168,8 +1100,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     media_thumbnails,
     media_url_previews,
     outgoing_requests,
-    push_rule_streams,
-    push_rules,
     room_aliases,
     room_joined_servers,
     room_lookup_servers,
@@ -1179,14 +1109,10 @@ diesel::allow_tables_to_appear_in_same_query!(
     room_tags,
     room_users,
     rooms,
-    server_in_rooms,
     server_signing_keys,
-    sliding_sync_connections,
-    sliding_sync_required_states,
     stats_monthly_active_users,
     stats_room_currents,
     stats_user_daily_visits,
-    test_nulls,
     threads,
     threepid_guests,
     threepid_id_servers,

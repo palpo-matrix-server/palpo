@@ -27,11 +27,23 @@ use crate::core::client::discovery::{
 use crate::core::client::search::{ResultCategories, SearchReqArgs, SearchReqBody, SearchResBody};
 use crate::routing::prelude::*;
 
+/// Middleware to require admin privileges
+#[handler]
+pub async fn require_admin(depot: &mut Depot) -> AppResult<()> {
+    let authed = depot.authed_info()?;
+    if !authed.is_admin() {
+        return Err(MatrixError::forbidden("Requires admin privileges", None).into());
+    }
+    Ok(())
+}
+
 pub fn router() -> Router {
     let mut admin = Router::new().oapi_tag("admin");
     for v in ["_palpo/admin", "_synapse/admin"] {
         admin = admin.push(
             Router::with_path(v)
+                .hoop(crate::hoops::auth_by_access_token)
+                .hoop(require_admin)
                 .get(home)
                 .push(event::router())
                 .push(federation::router())

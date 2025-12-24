@@ -130,6 +130,13 @@ pub fn get_device(user_id: &UserId, device_id: &DeviceId) -> DataResult<DbUserDe
         .map_err(Into::into)
 }
 
+pub fn get_devices(user_id: &UserId) -> DataResult<Vec<DbUserDevice>> {
+    user_devices::table
+        .filter(user_devices::user_id.eq(user_id))
+        .load::<DbUserDevice>(&mut connect()?)
+        .map_err(Into::into)
+}
+
 pub fn is_device_exists(user_id: &UserId, device_id: &DeviceId) -> DataResult<bool> {
     let query = user_devices::table
         .filter(user_devices::user_id.eq(user_id))

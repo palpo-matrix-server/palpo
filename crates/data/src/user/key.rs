@@ -245,3 +245,37 @@ pub fn keys_changed_users(
             .map_err(Into::into)
     }
 }
+
+/// Check if user has a master cross-signing key
+pub fn has_master_cross_signing_key(user_id: &UserId) -> DataResult<bool> {
+    let count = e2e_cross_signing_keys::table
+        .filter(e2e_cross_signing_keys::user_id.eq(user_id))
+        .filter(e2e_cross_signing_keys::key_type.eq("master"))
+        .count()
+        .get_result::<i64>(&mut connect()?)?;
+    Ok(count > 0)
+}
+
+/// Set the timestamp until which cross-signing key replacement is allowed without UIA
+pub fn set_cross_signing_replacement_allowed(user_id: &UserId, expires_ts: i64) -> DataResult<()> {
+    diesel::insert_into(e2e_cross_signing_uia_bypass::table)
+        .values((
+            e2e_cross_signing_uia_bypass::user_id.eq(user_id),
+            e2e_cross_signing_uia_bypass::updatable_before_ts.eq(expires_ts),
+        ))
+        .on_conflict(e2e_cross_signing_uia_bypass::user_id)
+        .do_update()
+        .set(e2e_cross_signing_uia_bypass::updatable_before_ts.eq(expires_ts))
+        .execute(&mut connect()?)?;
+    Ok(())
+}
+
+/// Get the timestamp until which cross-signing key replacement is allowed without UIA
+pub fn get_cross_signing_replacement_allowed(user_id: &UserId) -> DataResult<Option<i64>> {
+    e2e_cross_signing_uia_bypass::table
+        .filter(e2e_cross_signing_uia_bypass::user_id.eq(user_id))
+        .select(e2e_cross_signing_uia_bypass::updatable_before_ts)
+        .first::<i64>(&mut connect()?)
+        .optional()
+        .map_err(Into::into)
+}

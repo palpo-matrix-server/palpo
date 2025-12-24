@@ -118,6 +118,12 @@ pub struct ResetPasswordReqBody {
     pub logout_devices: Option<bool>,
 }
 
+/// Request for suspend
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct SuspendReqBody {
+    pub suspend: bool,
+}
+
 /// Response for admin status
 #[derive(Debug, Serialize, ToSchema)]
 pub struct AdminStatusResponse {
@@ -133,7 +139,83 @@ pub struct AdminStatusReqBody {
 /// Response for cross signing
 #[derive(Debug, Serialize, ToSchema)]
 pub struct CrossSigningResponse {
-    // Empty response on success
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub updatable_without_uia_before_ms: Option<i64>,
+}
+
+// ============================================================================
+// Phase 2 Types
+// ============================================================================
+
+/// Response for whois
+#[derive(Debug, Serialize, ToSchema)]
+pub struct WhoisResponse {
+    pub user_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub devices: Option<std::collections::HashMap<String, WhoisDeviceInfo>>,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct WhoisDeviceInfo {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sessions: Option<Vec<WhoisSessionInfo>>,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct WhoisSessionInfo {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub connections: Option<Vec<WhoisConnectionInfo>>,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct WhoisConnectionInfo {
+    pub ip: Option<String>,
+    pub last_seen: Option<i64>,
+    pub user_agent: Option<String>,
+}
+
+/// Response for joined_rooms
+#[derive(Debug, Serialize, ToSchema)]
+pub struct JoinedRoomsResponse {
+    pub joined_rooms: Vec<String>,
+    pub total: i64,
+}
+
+/// Response for pushers
+#[derive(Debug, Serialize, ToSchema)]
+pub struct PushersResponse {
+    pub pushers: Vec<serde_json::Value>,
+    pub total: i64,
+}
+
+/// Response for account data
+#[derive(Debug, Serialize, ToSchema)]
+pub struct AccountDataResponse {
+    pub account_data: AccountDataContent,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct AccountDataContent {
+    pub global: std::collections::HashMap<String, serde_json::Value>,
+    pub rooms: std::collections::HashMap<String, std::collections::HashMap<String, serde_json::Value>>,
+}
+
+/// Request for ratelimit
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct RateLimitReqBody {
+    #[serde(default)]
+    pub messages_per_second: Option<i32>,
+    #[serde(default)]
+    pub burst_count: Option<i32>,
+}
+
+/// Response for ratelimit
+#[derive(Debug, Serialize, ToSchema)]
+pub struct RateLimitResponse {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub messages_per_second: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub burst_count: Option<i32>,
 }
 
 // ============================================================================
@@ -383,6 +465,7 @@ pub async fn list_users_v3(
 /// POST /_synapse/admin/v1/users/{user_id}/_allow_cross_signing_replacement_without_uia
 ///
 /// Allow a user to replace cross-signing keys without UIA
+/// This replacement is permitted for 10 minutes
 #[endpoint]
 pub async fn allow_cross_signing_replacement(
     user_id: PathParam<OwnedUserId>,
@@ -394,12 +477,19 @@ pub async fn allow_cross_signing_replacement(
         return Err(MatrixError::not_found("User not found").into());
     }
 
-    // In a full implementation, this would set a flag allowing the user
-    // to replace their cross-signing keys without User-Interactive Authentication.
-    // For now, we just acknowledge the request.
-    // TODO: Implement actual cross-signing replacement flag storage
+    // Check if user has a master cross-signing key
+    if !data::user::key::has_master_cross_signing_key(&user_id)? {
+        return Err(MatrixError::not_found("User has no master cross-signing key").into());
+    }
 
-    json_ok(CrossSigningResponse {})
+    // Allow replacement for 10 minutes
+    let now_ms = crate::core::UnixMillis::now().get() as i64;
+    let expires_ts = now_ms + 10 * 60 * 1000;
+    data::user::key::set_cross_signing_replacement_allowed(&user_id, expires_ts)?;
+
+    json_ok(CrossSigningResponse {
+        updatable_without_uia_before_ms: Some(expires_ts),
+    })
 }
 
 // ============================================================================
@@ -532,6 +622,209 @@ pub async fn unshadow_ban_user(user_id: PathParam<OwnedUserId>) -> EmptyResult {
     empty_ok()
 }
 
+/// PUT /_synapse/admin/v1/suspend/{user_id}
+///
+/// Suspend or unsuspend a user
+#[endpoint]
+pub async fn suspend_user(
+    user_id: PathParam<OwnedUserId>,
+    body: JsonBody<SuspendReqBody>,
+) -> JsonResult<serde_json::Value> {
+    let user_id = user_id.into_inner();
+    let body = body.into_inner();
+
+    // Verify user exists
+    if !data::user::user_exists(&user_id)? {
+        return Err(MatrixError::not_found("User not found").into());
+    }
+
+    data::user::set_suspended(&user_id, body.suspend)?;
+
+    let key = format!("user_{}_suspended", user_id);
+    json_ok(serde_json::json!({ key: body.suspend }))
+}
+
+// ============================================================================
+// Phase 2: Extended User Management
+// ============================================================================
+
+/// GET /_synapse/admin/v1/whois/{user_id}
+///
+/// Get information about a user's sessions
+#[endpoint]
+pub async fn whois_user(user_id: PathParam<OwnedUserId>) -> JsonResult<WhoisResponse> {
+    let user_id = user_id.into_inner();
+
+    // Verify user exists
+    if !data::user::user_exists(&user_id)? {
+        return Err(MatrixError::not_found("User not found").into());
+    }
+
+    // Get user's devices and session info
+    let devices = data::user::device::get_devices(&user_id)?;
+    let mut device_map = std::collections::HashMap::new();
+
+    for device in devices {
+        let connections = vec![WhoisConnectionInfo {
+            ip: device.last_seen_ip,
+            last_seen: device.last_seen_at.map(|t| t.get() as i64),
+            user_agent: device.user_agent,
+        }];
+
+        device_map.insert(
+            device.device_id.to_string(),
+            WhoisDeviceInfo {
+                sessions: Some(vec![WhoisSessionInfo {
+                    connections: Some(connections),
+                }]),
+            },
+        );
+    }
+
+    json_ok(WhoisResponse {
+        user_id: user_id.to_string(),
+        devices: if device_map.is_empty() { None } else { Some(device_map) },
+    })
+}
+
+/// GET /_synapse/admin/v1/users/{user_id}/joined_rooms
+///
+/// Get list of rooms a user has joined
+#[endpoint]
+pub async fn user_joined_rooms(user_id: PathParam<OwnedUserId>) -> JsonResult<JoinedRoomsResponse> {
+    let user_id = user_id.into_inner();
+
+    // Verify user exists
+    if !data::user::user_exists(&user_id)? {
+        return Err(MatrixError::not_found("User not found").into());
+    }
+
+    let rooms = data::user::joined_rooms(&user_id)?;
+    let total = rooms.len() as i64;
+
+    json_ok(JoinedRoomsResponse {
+        joined_rooms: rooms.into_iter().map(|r| r.to_string()).collect(),
+        total,
+    })
+}
+
+/// GET /_synapse/admin/v1/users/{user_id}/pushers
+///
+/// Get all pushers for a user
+#[endpoint]
+pub async fn user_pushers(user_id: PathParam<OwnedUserId>) -> JsonResult<PushersResponse> {
+    let user_id = user_id.into_inner();
+
+    // Verify user exists
+    if !data::user::user_exists(&user_id)? {
+        return Err(MatrixError::not_found("User not found").into());
+    }
+
+    let pushers = data::user::pusher::get_pushers(&user_id)?;
+    let total = pushers.len() as i64;
+
+    let pusher_list: Vec<serde_json::Value> = pushers
+        .into_iter()
+        .map(|p| serde_json::json!({
+            "app_display_name": p.app_display_name,
+            "app_id": p.app_id,
+            "device_display_name": p.device_display_name,
+            "kind": p.kind,
+            "lang": p.lang,
+            "pushkey": p.pushkey,
+        }))
+        .collect();
+
+    json_ok(PushersResponse {
+        pushers: pusher_list,
+        total,
+    })
+}
+
+/// GET /_synapse/admin/v1/users/{user_id}/accountdata
+///
+/// Get all account data for a user
+#[endpoint]
+pub async fn user_account_data(user_id: PathParam<OwnedUserId>) -> JsonResult<AccountDataResponse> {
+    let user_id = user_id.into_inner();
+
+    // Verify user exists
+    if !data::user::user_exists(&user_id)? {
+        return Err(MatrixError::not_found("User not found").into());
+    }
+
+    let global_data = data::user::get_global_account_data(&user_id)?;
+    let room_data = data::user::get_room_account_data(&user_id)?;
+
+    json_ok(AccountDataResponse {
+        account_data: AccountDataContent {
+            global: global_data,
+            rooms: room_data,
+        },
+    })
+}
+
+/// GET /_synapse/admin/v1/users/{user_id}/override_ratelimit
+///
+/// Get ratelimit override for a user
+#[endpoint]
+pub async fn get_user_ratelimit(user_id: PathParam<OwnedUserId>) -> JsonResult<RateLimitResponse> {
+    let user_id = user_id.into_inner();
+
+    // Verify user exists
+    if !data::user::user_exists(&user_id)? {
+        return Err(MatrixError::not_found("User not found").into());
+    }
+
+    let ratelimit = data::user::get_ratelimit(&user_id)?;
+
+    json_ok(RateLimitResponse {
+        messages_per_second: ratelimit.as_ref().and_then(|r| r.messages_per_second),
+        burst_count: ratelimit.as_ref().and_then(|r| r.burst_count),
+    })
+}
+
+/// POST /_synapse/admin/v1/users/{user_id}/override_ratelimit
+///
+/// Set ratelimit override for a user
+#[endpoint]
+pub async fn set_user_ratelimit(
+    user_id: PathParam<OwnedUserId>,
+    body: JsonBody<RateLimitReqBody>,
+) -> JsonResult<RateLimitResponse> {
+    let user_id = user_id.into_inner();
+    let body = body.into_inner();
+
+    // Verify user exists
+    if !data::user::user_exists(&user_id)? {
+        return Err(MatrixError::not_found("User not found").into());
+    }
+
+    data::user::set_ratelimit(&user_id, body.messages_per_second, body.burst_count)?;
+
+    json_ok(RateLimitResponse {
+        messages_per_second: body.messages_per_second,
+        burst_count: body.burst_count,
+    })
+}
+
+/// DELETE /_synapse/admin/v1/users/{user_id}/override_ratelimit
+///
+/// Delete ratelimit override for a user
+#[endpoint]
+pub async fn delete_user_ratelimit(user_id: PathParam<OwnedUserId>) -> EmptyResult {
+    let user_id = user_id.into_inner();
+
+    // Verify user exists
+    if !data::user::user_exists(&user_id)? {
+        return Err(MatrixError::not_found("User not found").into());
+    }
+
+    data::user::delete_ratelimit(&user_id)?;
+
+    empty_ok()
+}
+
 // ============================================================================
 // Router
 // ============================================================================
@@ -570,5 +863,23 @@ pub fn router() -> Router {
             Router::with_path("v1/users/{user_id}/shadow_ban")
                 .post(shadow_ban_user)
                 .delete(unshadow_ban_user),
+        )
+        // v1/suspend/{user_id}
+        .push(Router::with_path("v1/suspend/{user_id}").put(suspend_user))
+        // Phase 2: Extended User Management
+        // v1/whois/{user_id}
+        .push(Router::with_path("v1/whois/{user_id}").get(whois_user))
+        // v1/users/{user_id}/joined_rooms
+        .push(Router::with_path("v1/users/{user_id}/joined_rooms").get(user_joined_rooms))
+        // v1/users/{user_id}/pushers
+        .push(Router::with_path("v1/users/{user_id}/pushers").get(user_pushers))
+        // v1/users/{user_id}/accountdata
+        .push(Router::with_path("v1/users/{user_id}/accountdata").get(user_account_data))
+        // v1/users/{user_id}/override_ratelimit
+        .push(
+            Router::with_path("v1/users/{user_id}/override_ratelimit")
+                .get(get_user_ratelimit)
+                .post(set_user_ratelimit)
+                .delete(delete_user_ratelimit),
         )
 }
