@@ -2,7 +2,6 @@ mod admin;
 mod appservice;
 mod client;
 mod federation;
-mod identity;
 mod media;
 
 use salvo::prelude::*;
@@ -39,7 +38,6 @@ pub fn root() -> Router {
                 .push(media::router())
                 .push(federation::router())
                 .push(federation::key::router())
-                .push(identity::router())
                 .push(appservice::router()),
         )
         .push(admin::router())
