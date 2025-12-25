@@ -68,16 +68,6 @@ async fn access_control(
     // headers.insert("Cross-Origin-Embedder-Policy", "require-corp".parse().unwrap());
     // headers.insert("Cross-Origin-Opener-Policy", "same-origin".parse().unwrap());
 }
-pub fn get_origin_host(req: &mut Request) -> Option<String> {
-    let origin = req
-        .headers()
-        .get("Origin")
-        .and_then(|v| std::str::from_utf8(v.as_bytes()).ok())
-        .unwrap_or_default();
-    Url::parse(origin)
-        .ok()
-        .and_then(|url| url.host_str().map(|v| v.to_owned()))
-}
 
 #[handler]
 pub async fn limit_rate() -> AppResult<()> {
