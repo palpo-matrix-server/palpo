@@ -27,17 +27,23 @@ pub fn verify_password(user: &DbUser, password: &str) -> AppResult<()> {
     }
 }
 
-pub fn set_password(user_id: &UserId, password: &str) -> AppResult<()> {
-    if let Ok(hash) = utils::hash_password(password) {
-        diesel::insert_into(user_passwords::table)
-            .values(NewDbPassword {
-                user_id: user_id.to_owned(),
-                hash,
-                created_at: UnixMillis::now(),
-            })
-            .execute(&mut connect()?)?;
-        Ok(())
-    } else {
-        Err(MatrixError::invalid_param("Password does not meet the requirements.").into())
-    }
+pub fn get_password_hash(user_id: &UserId) -> AppResult<String> {
+    user_passwords::table
+        .filter(user_passwords::user_id.eq(user_id))
+        .order_by(user_passwords::id.desc())
+        .select(user_passwords::hash)
+        .first::<String>(&mut connect()?)
+        .map_err(Into::into)
+}
+
+/// Set/update password hash for a user
+pub fn set_password(user_id: &UserId, hash: &str) -> AppResult<()> {
+    diesel::insert_into(user_passwords::table)
+        .values(NewDbPassword {
+            user_id: user_id.to_owned(),
+            hash: hash.to_owned(),
+            created_at: UnixMillis::now(),
+        })
+        .execute(&mut connect()?)?;
+    Ok(())
 }
