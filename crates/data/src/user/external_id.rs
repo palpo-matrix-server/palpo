@@ -1,7 +1,7 @@
 use diesel::prelude::*;
 
-use crate::core::identifiers::*;
 use crate::core::UnixMillis;
+use crate::core::identifiers::*;
 use crate::schema::*;
 use crate::{DataResult, connect};
 
@@ -25,7 +25,10 @@ pub struct NewDbUserExternalId {
 }
 
 /// Get user_id by external auth provider and external_id
-pub fn get_user_by_external_id(auth_provider: &str, external_id: &str) -> DataResult<Option<OwnedUserId>> {
+pub fn get_user_by_external_id(
+    auth_provider: &str,
+    external_id: &str,
+) -> DataResult<Option<OwnedUserId>> {
     user_external_ids::table
         .filter(user_external_ids::auth_provider.eq(auth_provider))
         .filter(user_external_ids::external_id.eq(external_id))
@@ -44,7 +47,11 @@ pub fn get_external_ids_by_user(user_id: &UserId) -> DataResult<Vec<DbUserExtern
 }
 
 /// Record a new external ID for a user
-pub fn record_external_id(auth_provider: &str, external_id: &str, user_id: &UserId) -> DataResult<()> {
+pub fn record_external_id(
+    auth_provider: &str,
+    external_id: &str,
+    user_id: &UserId,
+) -> DataResult<()> {
     diesel::insert_into(user_external_ids::table)
         .values(NewDbUserExternalId {
             auth_provider: auth_provider.to_owned(),

@@ -59,8 +59,5 @@ pub fn router() -> Router {
             Router::with_path("v1/auth_providers/{provider}/users/{external_id}")
                 .get(get_user_by_external_id),
         )
-        .push(
-            Router::with_path("v1/threepid/{medium}/users/{address}")
-                .get(get_user_by_threepid),
-        )
+        .push(Router::with_path("v1/threepid/{medium}/users/{address}").get(get_user_by_threepid))
 }

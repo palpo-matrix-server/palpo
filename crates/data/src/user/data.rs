@@ -155,17 +155,26 @@ pub fn get_global_account_data(user_id: &UserId) -> DataResult<HashMap<String, J
 }
 
 /// Get all room-specific account data for a user
-pub fn get_room_account_data(user_id: &UserId) -> DataResult<HashMap<String, HashMap<String, JsonValue>>> {
+pub fn get_room_account_data(
+    user_id: &UserId,
+) -> DataResult<HashMap<String, HashMap<String, JsonValue>>> {
     let rows = user_datas::table
         .filter(user_datas::user_id.eq(user_id))
         .filter(user_datas::room_id.is_not_null())
-        .select((user_datas::room_id, user_datas::data_type, user_datas::json_data))
+        .select((
+            user_datas::room_id,
+            user_datas::data_type,
+            user_datas::json_data,
+        ))
         .load::<(Option<OwnedRoomId>, String, JsonValue)>(&mut connect()?)?;
 
     let mut result = HashMap::new();
     for (room_id, data_type, json_data) in rows {
         if let Some(room_id) = room_id {
-            result.entry(room_id.to_string()).or_insert_with(HashMap::new).insert(data_type, json_data);
+            result
+                .entry(room_id.to_string())
+                .or_insert_with(HashMap::new)
+                .insert(data_type, json_data);
         }
     }
     Ok(result)

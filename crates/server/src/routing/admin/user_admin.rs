@@ -17,7 +17,7 @@ use salvo::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::core::identifiers::*;
-use crate::{data, empty_ok, json_ok, user, EmptyResult, JsonResult, MatrixError};
+use crate::{EmptyResult, JsonResult, MatrixError, data, empty_ok, json_ok, user};
 
 // ============================================================================
 // Response/Request Types
@@ -124,6 +124,13 @@ pub struct SuspendReqBody {
     pub suspend: bool,
 }
 
+/// Response for suspend
+#[derive(Debug, Serialize, ToSchema)]
+pub struct SuspendResponse {
+    pub user_id: String,
+    pub suspended: bool,
+}
+
 /// Response for admin status
 #[derive(Debug, Serialize, ToSchema)]
 pub struct AdminStatusResponse {
@@ -197,7 +204,8 @@ pub struct AccountDataResponse {
 #[derive(Debug, Serialize, ToSchema)]
 pub struct AccountDataContent {
     pub global: std::collections::HashMap<String, serde_json::Value>,
-    pub rooms: std::collections::HashMap<String, std::collections::HashMap<String, serde_json::Value>>,
+    pub rooms:
+        std::collections::HashMap<String, std::collections::HashMap<String, serde_json::Value>>,
 }
 
 /// Request for ratelimit
@@ -223,7 +231,8 @@ pub struct RateLimitResponse {
 // ============================================================================
 
 fn build_user_info(user_id: &UserId) -> crate::AppResult<UserInfoV2> {
-    let db_user = data::user::get_user(user_id).map_err(|_| MatrixError::not_found("User not found"))?;
+    let db_user =
+        data::user::get_user(user_id).map_err(|_| MatrixError::not_found("User not found"))?;
 
     let display_name = data::user::display_name(user_id).ok().flatten();
     let avatar_url = data::user::avatar_url(user_id).ok().flatten();
@@ -237,14 +246,16 @@ fn build_user_info(user_id: &UserId) -> crate::AppResult<UserInfoV2> {
             })
             .collect()
     });
-    let external_ids = data::user::get_external_ids_by_user(user_id).ok().map(|eids| {
-        eids.into_iter()
-            .map(|eid| ExternalIdInfo {
-                auth_provider: eid.auth_provider,
-                external_id: eid.external_id,
-            })
-            .collect()
-    });
+    let external_ids = data::user::get_external_ids_by_user(user_id)
+        .ok()
+        .map(|eids| {
+            eids.into_iter()
+                .map(|eid| ExternalIdInfo {
+                    auth_provider: eid.auth_provider,
+                    external_id: eid.external_id,
+                })
+                .collect()
+        });
 
     Ok(UserInfoV2 {
         name: user_id.to_string(),
@@ -360,6 +371,15 @@ pub async fn put_user_v2(
         data::user::set_display_name(&user_id, display_name)?;
     }
 
+    // Update threepids
+    if let Some(threepids) = body.threepids {
+        let entries: Vec<(String, String, Option<i64>, Option<i64>)> = threepids
+            .into_iter()
+            .map(|tp| (tp.medium, tp.address, tp.added_at, tp.validated_at))
+            .collect();
+        data::user::replace_threepids(&user_id, &entries)?;
+    }
+
     // Update avatar
     if let Some(avatar_url) = &body.avatar_url {
         if let Ok(mxc_uri) = <&MxcUri>::try_from(avatar_url.as_str()) {
@@ -382,6 +402,11 @@ pub async fn put_user_v2(
     // Update locked status
     if let Some(locked) = body.locked {
         data::user::set_locked(&user_id, locked, None)?;
+    }
+
+    // Update user type
+    if let Some(user_type) = body.user_type {
+        data::user::set_user_type(&user_id, Some(user_type.as_str()))?;
     }
 
     // Update external IDs if provided
@@ -562,7 +587,8 @@ pub async fn reset_password(
 pub async fn get_admin_status(user_id: PathParam<OwnedUserId>) -> JsonResult<AdminStatusResponse> {
     let user_id = user_id.into_inner();
 
-    let is_admin = data::user::is_admin(&user_id).map_err(|_| MatrixError::not_found("User not found"))?;
+    let is_admin =
+        data::user::is_admin(&user_id).map_err(|_| MatrixError::not_found("User not found"))?;
 
     json_ok(AdminStatusResponse { admin: is_admin })
 }
@@ -629,7 +655,7 @@ pub async fn unshadow_ban_user(user_id: PathParam<OwnedUserId>) -> EmptyResult {
 pub async fn suspend_user(
     user_id: PathParam<OwnedUserId>,
     body: JsonBody<SuspendReqBody>,
-) -> JsonResult<serde_json::Value> {
+) -> JsonResult<SuspendResponse> {
     let user_id = user_id.into_inner();
     let body = body.into_inner();
 
@@ -640,8 +666,10 @@ pub async fn suspend_user(
 
     data::user::set_suspended(&user_id, body.suspend)?;
 
-    let key = format!("user_{}_suspended", user_id);
-    json_ok(serde_json::json!({ key: body.suspend }))
+    json_ok(SuspendResponse {
+        user_id: user_id.to_string(),
+        suspended: body.suspend,
+    })
 }
 
 // ============================================================================
@@ -683,7 +711,11 @@ pub async fn whois_user(user_id: PathParam<OwnedUserId>) -> JsonResult<WhoisResp
 
     json_ok(WhoisResponse {
         user_id: user_id.to_string(),
-        devices: if device_map.is_empty() { None } else { Some(device_map) },
+        devices: if device_map.is_empty() {
+            None
+        } else {
+            Some(device_map)
+        },
     })
 }
 
@@ -725,14 +757,16 @@ pub async fn user_pushers(user_id: PathParam<OwnedUserId>) -> JsonResult<Pushers
 
     let pusher_list: Vec<serde_json::Value> = pushers
         .into_iter()
-        .map(|p| serde_json::json!({
-            "app_display_name": p.app_display_name,
-            "app_id": p.app_id,
-            "device_display_name": p.device_display_name,
-            "kind": p.kind,
-            "lang": p.lang,
-            "pushkey": p.pushkey,
-        }))
+        .map(|p| {
+            serde_json::json!({
+                "app_display_name": p.app_display_name,
+                "app_id": p.app_id,
+                "device_display_name": p.device_display_name,
+                "kind": p.kind,
+                "lang": p.lang,
+                "pushkey": p.pushkey,
+            })
+        })
         .collect();
 
     json_ok(PushersResponse {
