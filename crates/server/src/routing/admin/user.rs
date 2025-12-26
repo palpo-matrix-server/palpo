@@ -2,20 +2,9 @@ use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde::Deserialize;
 
-use crate::core::UnixMillis;
 use crate::core::client::device::Device;
-use crate::core::federation::authorization::{EventAuthReqArgs, EventAuthResBody};
-use crate::core::federation::event::{
-    EventReqArgs, EventResBody, MissingEventsReqBody, MissingEventsResBody,
-};
 use crate::core::identifiers::*;
-use crate::core::room::{TimestampToEventReqArgs, TimestampToEventResBody};
-use crate::data::room::DbEvent;
-use crate::room::{state, timeline};
-use crate::{
-    AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, data, empty_ok,
-    json_ok,
-};
+use crate::{EmptyResult, JsonResult, MatrixError, data, empty_ok, json_ok};
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateDeviceReqBody {
@@ -49,6 +38,7 @@ pub fn put_device(
     device_id: PathParam<OwnedDeviceId>,
     body: JsonBody<UpdateDeviceReqBody>,
 ) -> JsonResult<Device> {
+    let body = body.into_inner();
     let update = data::user::device::DeviceUpdate {
         display_name: Some(body.display_name),
         user_agent: None,
