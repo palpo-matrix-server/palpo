@@ -8,7 +8,7 @@ use crate::core::serde::{JsonValue, RawJson};
 use crate::core::{MatrixError, Seqnum, UnixMillis};
 use crate::schema::*;
 use crate::user::{NewDbAccessToken, NewDbRefreshToken};
-use crate::{DataError, DataResult, connect, diesel_exists};
+use crate::{DataError, DataResult, connect};
 
 #[derive(Identifiable, Queryable, Debug, Clone)]
 #[diesel(table_name = user_devices)]
@@ -127,6 +127,56 @@ pub fn get_device(user_id: &UserId, device_id: &DeviceId) -> DataResult<DbUserDe
         .filter(user_devices::user_id.eq(user_id))
         .filter(user_devices::device_id.eq(device_id))
         .first::<DbUserDevice>(&mut connect()?)
+        .map_err(Into::into)
+}
+
+#[derive(AsChangeset, Default, Debug)]
+#[diesel(table_name = user_devices)]
+struct DbUserDeviceChanges {
+    display_name: Option<Option<String>>,
+    user_agent: Option<Option<String>>,
+    last_seen_ip: Option<Option<String>>,
+    last_seen_at: Option<Option<UnixMillis>>,
+}
+
+pub struct DeviceUpdate {
+    pub display_name: Option<Option<String>>,
+    pub user_agent: Option<Option<String>>,
+    pub last_seen_ip: Option<Option<String>>,
+    pub last_seen_at: Option<Option<UnixMillis>>,
+}
+
+impl From<DeviceUpdate> for DbUserDeviceChanges {
+    fn from(value: DeviceUpdate) -> Self {
+        Self {
+            display_name: value.display_name,
+            user_agent: value.user_agent,
+            last_seen_ip: value.last_seen_ip,
+            last_seen_at: value.last_seen_at,
+        }
+    }
+}
+
+pub fn update_device(
+    user_id: &UserId,
+    device_id: &DeviceId,
+    update: DeviceUpdate,
+) -> DataResult<DbUserDevice> {
+    let changes: DbUserDeviceChanges = update.into();
+    diesel::update(
+        user_devices::table
+            .filter(user_devices::user_id.eq(user_id))
+            .filter(user_devices::device_id.eq(device_id)),
+    )
+    .set(changes)
+    .get_result::<DbUserDevice>(&mut connect()?)
+    .map_err(Into::into)
+}
+
+pub fn get_devices(user_id: &UserId) -> DataResult<Vec<DbUserDevice>> {
+    user_devices::table
+        .filter(user_devices::user_id.eq(user_id))
+        .load::<DbUserDevice>(&mut connect()?)
         .map_err(Into::into)
 }
 

@@ -1,24 +1,10 @@
-use std::str::FromStr;
-
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
+use serde::Serialize;
 
-use crate::core::UnixMillis;
-use crate::core::client::device::Device;
+use crate::admin;
 use crate::core::client::space::{HierarchyReqArgs, HierarchyResBody};
-use crate::core::federation::authorization::{EventAuthReqArgs, EventAuthResBody};
-use crate::core::federation::event::{
-    EventReqArgs, EventResBody, MissingEventsReqBody, MissingEventsResBody,
-};
-use crate::core::identifiers::*;
-use crate::core::room::{TimestampToEventReqArgs, TimestampToEventResBody};
-use crate::data::room::DbEvent;
-use crate::room::space::PaginationToken;
-use crate::room::{state, timeline};
-use crate::{
-    AppError, AuthArgs, DepotExt, EmptyResult, JsonResult, MatrixError, config, data, empty_ok,
-    json_ok,
-};
+use crate::{AuthArgs, DepotExt, JsonResult, json_ok};
 
 pub fn router() -> Router {
     Router::new().push(Router::with_path("v1").push(
@@ -26,6 +12,61 @@ pub fn router() -> Router {
             Router::with_path("{room_id}").push(Router::with_path("hierarchy").get(get_hierarchy)),
         ),
     ))
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+struct RoomInfoResponse {
+    room_id: String,
+    name: String,
+    joined_members: u64,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+struct RoomsResponse {
+    offset: i64,
+    total_rooms: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    next_batch: Option<String>,
+    rooms: Vec<RoomInfoResponse>,
+}
+
+#[handler]
+pub fn list_rooms(
+    from: QueryParam<i64, false>,
+    limit: QueryParam<i64, false>,
+) -> JsonResult<RoomsResponse> {
+    let offset = from.into_inner().unwrap_or(0).max(0);
+    let limit = limit.into_inner().unwrap_or(100).clamp(1, 1000);
+
+    let all_rooms = crate::room::all_room_ids()?;
+    let total_rooms = all_rooms.len() as i64;
+
+    let rooms: Vec<RoomInfoResponse> = all_rooms
+        .into_iter()
+        .skip(offset as usize)
+        .take(limit as usize)
+        .map(|room_id| {
+            let info = admin::get_room_info(&room_id);
+            RoomInfoResponse {
+                room_id: info.id.to_string(),
+                name: info.name,
+                joined_members: info.joined_members,
+            }
+        })
+        .collect();
+
+    let next_batch = if (offset as usize + rooms.len()) < total_rooms as usize {
+        Some((offset + rooms.len() as i64).to_string())
+    } else {
+        None
+    };
+
+    json_ok(RoomsResponse {
+        offset,
+        total_rooms,
+        next_batch,
+        rooms,
+    })
 }
 
 #[handler]
@@ -38,15 +79,4 @@ pub async fn get_hierarchy(
 
     let res_body = crate::room::space::get_room_hierarchy(authed.user_id(), &args).await?;
     json_ok(res_body)
-}
-
-#[handler]
-pub fn list_rooms(
-    user_id: PathParam<OwnedUserId>,
-    device_id: PathParam<OwnedDeviceId>,
-) -> JsonResult<Device> {
-    let Ok(device) = data::user::device::get_device(&user_id, &device_id) else {
-        return Err(MatrixError::not_found("device is not found.").into());
-    };
-    json_ok(device.into_matrix_device())
 }

@@ -90,6 +90,16 @@ pub struct NewDbUserIgnore {
     pub created_at: UnixMillis,
 }
 
+#[derive(Insertable, Debug, Clone)]
+#[diesel(table_name = user_threepids)]
+pub struct NewDbUserThreepid {
+    pub user_id: OwnedUserId,
+    pub medium: String,
+    pub address: String,
+    pub validated_at: UnixMillis,
+    pub added_at: UnixMillis,
+}
+
 pub fn is_admin(user_id: &UserId) -> DataResult<bool> {
     users::table
         .filter(users::id.eq(user_id))
@@ -416,6 +426,30 @@ pub fn get_threepids(user_id: &UserId) -> DataResult<Vec<ThreepidInfo>> {
         .map_err(Into::into)
 }
 
+/// Replace all threepids for a user
+pub fn replace_threepids(
+    user_id: &UserId,
+    threepids: &[(String, String, Option<i64>, Option<i64>)],
+) -> DataResult<()> {
+    let mut conn = connect()?;
+    diesel::delete(user_threepids::table.filter(user_threepids::user_id.eq(user_id)))
+        .execute(&mut conn)?;
+
+    let now = UnixMillis::now();
+    for (medium, address, added_at, validated_at) in threepids {
+        diesel::insert_into(user_threepids::table)
+            .values(NewDbUserThreepid {
+                user_id: user_id.to_owned(),
+                medium: medium.clone(),
+                address: address.clone(),
+                validated_at: validated_at.map(|ts| UnixMillis(ts as u64)).unwrap_or(now),
+                added_at: added_at.map(|ts| UnixMillis(ts as u64)).unwrap_or(now),
+            })
+            .execute(&mut conn)?;
+    }
+    Ok(())
+}
+
 /// Set admin status for a user
 pub fn set_admin(user_id: &UserId, is_admin: bool) -> DataResult<()> {
     diesel::update(users::table.find(user_id))
@@ -428,6 +462,14 @@ pub fn set_admin(user_id: &UserId, is_admin: bool) -> DataResult<()> {
 pub fn set_shadow_banned(user_id: &UserId, shadow_banned: bool) -> DataResult<()> {
     diesel::update(users::table.find(user_id))
         .set(users::shadow_banned.eq(shadow_banned))
+        .execute(&mut connect()?)?;
+    Ok(())
+}
+
+/// Set user type (e.g. guest/user/admin specific types)
+pub fn set_user_type(user_id: &UserId, user_type: Option<&str>) -> DataResult<()> {
+    diesel::update(users::table.find(user_id))
+        .set(users::ty.eq(user_type))
         .execute(&mut connect()?)?;
     Ok(())
 }
@@ -452,6 +494,20 @@ pub fn set_locked(user_id: &UserId, locked: bool, locker_id: Option<&UserId>) ->
     Ok(())
 }
 
+/// Set suspended status for a user
+pub fn set_suspended(user_id: &UserId, suspended: bool) -> DataResult<()> {
+    if suspended {
+        diesel::update(users::table.find(user_id))
+            .set(users::suspended_at.eq(Some(UnixMillis::now())))
+            .execute(&mut connect()?)?;
+    } else {
+        diesel::update(users::table.find(user_id))
+            .set(users::suspended_at.eq::<Option<UnixMillis>>(None))
+            .execute(&mut connect()?)?;
+    }
+    Ok(())
+}
+
 /// List users with pagination and filtering
 #[derive(Debug, Clone, Default)]
 pub struct ListUsersFilter {
@@ -468,35 +524,40 @@ pub struct ListUsersFilter {
 
 pub fn list_users(filter: &ListUsersFilter) -> DataResult<(Vec<DbUser>, i64)> {
     let mut query = users::table.into_boxed();
+    let mut count_query = users::table.into_boxed();
 
     // Filter by name (localpart contains)
     if let Some(ref name) = filter.name {
-        query = query.filter(users::localpart.ilike(format!("%{}%", name)));
+        let pattern = format!("%{}%", name);
+        query = query.filter(users::localpart.ilike(pattern.clone()));
+        count_query = count_query.filter(users::localpart.ilike(pattern));
     }
 
     // Filter by guests
     if let Some(guests) = filter.guests {
         query = query.filter(users::is_guest.eq(guests));
+        count_query = count_query.filter(users::is_guest.eq(guests));
     }
 
     // Filter by deactivated
     if let Some(deactivated) = filter.deactivated {
         if deactivated {
             query = query.filter(users::deactivated_at.is_not_null());
+            count_query = count_query.filter(users::deactivated_at.is_not_null());
         } else {
             query = query.filter(users::deactivated_at.is_null());
+            count_query = count_query.filter(users::deactivated_at.is_null());
         }
     }
 
     // Filter by admin
     if let Some(admins) = filter.admins {
         query = query.filter(users::is_admin.eq(admins));
+        count_query = count_query.filter(users::is_admin.eq(admins));
     }
 
-    // Get total count before pagination
-    let total: i64 = users::table
-        .count()
-        .get_result(&mut connect()?)?;
+    // Get total count with filters applied
+    let total: i64 = count_query.count().get_result(&mut connect()?)?;
 
     // Apply ordering
     let dir_asc = filter.dir.as_ref().map(|d| d == "f").unwrap_or(true);
@@ -556,4 +617,55 @@ pub fn list_users(filter: &ListUsersFilter) -> DataResult<(Vec<DbUser>, i64)> {
     let users = query.load::<DbUser>(&mut connect()?)?;
 
     Ok((users, total))
+}
+
+/// Ratelimit override info
+#[derive(Debug, Clone)]
+pub struct RateLimitOverride {
+    pub messages_per_second: Option<i32>,
+    pub burst_count: Option<i32>,
+}
+
+pub fn get_ratelimit(user_id: &UserId) -> DataResult<Option<RateLimitOverride>> {
+    user_ratelimit_override::table
+        .find(user_id)
+        .select((
+            user_ratelimit_override::messages_per_second,
+            user_ratelimit_override::burst_count,
+        ))
+        .first::<(Option<i32>, Option<i32>)>(&mut connect()?)
+        .optional()
+        .map(|opt| {
+            opt.map(|(mps, bc)| RateLimitOverride {
+                messages_per_second: mps,
+                burst_count: bc,
+            })
+        })
+        .map_err(Into::into)
+}
+
+pub fn set_ratelimit(
+    user_id: &UserId,
+    messages_per_second: Option<i32>,
+    burst_count: Option<i32>,
+) -> DataResult<()> {
+    diesel::insert_into(user_ratelimit_override::table)
+        .values((
+            user_ratelimit_override::user_id.eq(user_id),
+            user_ratelimit_override::messages_per_second.eq(messages_per_second),
+            user_ratelimit_override::burst_count.eq(burst_count),
+        ))
+        .on_conflict(user_ratelimit_override::user_id)
+        .do_update()
+        .set((
+            user_ratelimit_override::messages_per_second.eq(messages_per_second),
+            user_ratelimit_override::burst_count.eq(burst_count),
+        ))
+        .execute(&mut connect()?)?;
+    Ok(())
+}
+
+pub fn delete_ratelimit(user_id: &UserId) -> DataResult<()> {
+    diesel::delete(user_ratelimit_override::table.find(user_id)).execute(&mut connect()?)?;
+    Ok(())
 }
