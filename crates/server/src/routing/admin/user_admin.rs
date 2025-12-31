@@ -357,7 +357,7 @@ pub async fn put_user_v2(
         // Update password if provided
         if let Some(password) = &body.password {
             let hash = crate::utils::hash_password(password)?;
-            data::user::set_password(&user_id, &hash)?;
+            crate::user::set_password(&user_id, &hash)?;
 
             // Logout devices if requested
             if body.logout_devices.unwrap_or(true) {
@@ -570,7 +570,7 @@ pub async fn reset_password(
 
     // Hash and set new password
     let hash = crate::utils::hash_password(&body.new_password)?;
-    data::user::set_password(&user_id, &hash)?;
+    crate::user::set_password(&user_id, &hash)?;
 
     // Logout all devices if requested (default true)
     if body.logout_devices.unwrap_or(true) {
