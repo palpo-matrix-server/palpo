@@ -15,6 +15,17 @@ use crate::{PrivOwnedStr, RoomVersionId};
 #[non_exhaustive]
 // Please keep the variants sorted alphabetically.
 pub enum ErrorKind {
+    /// `M_APPSERVICE_LOGIN_UNSUPPORTED`
+    ///
+    /// An application service used the [`m.login.application_service`] type an endpoint from the
+    /// [legacy authentication API] in a way that is not supported by the homeserver, because the
+    /// server only supports the [OAuth 2.0 API].
+    ///
+    /// [`m.login.application_service`]: https://spec.matrix.org/latest/application-service-api/#server-admin-style-permissions
+    /// [legacy authentication API]: https://spec.matrix.org/latest/client-server-api/#legacy-api
+    /// [OAuth 2.0 API]: https://spec.matrix.org/latest/client-server-api/#oauth-20-api
+    AppserviceLoginUnsupported,
+
     /// `M_BAD_ALIAS`
     ///
     /// One or more [room aliases] within the `m.room.canonical_alias` event do
@@ -149,6 +160,13 @@ pub enum ErrorKind {
     ///
     /// The desired user name is not valid.
     InvalidUsername,
+
+    /// `M_INVITE_BLOCKED`
+    ///
+    /// The invite was interdicted by moderation tools or configured access controls without having
+    /// been witnessed by the invitee.
+    #[cfg(feature = "unstable-msc4380")]
+    InviteBlocked,
 
     /// `M_LIMIT_EXCEEDED`
     ///
@@ -419,6 +437,7 @@ impl ErrorKind {
     /// Get the [`ErrorCode`] for this `ErrorKind`.
     pub fn code(&self) -> ErrorCode {
         match self {
+            ErrorKind::AppserviceLoginUnsupported => ErrorCode::AppserviceLoginUnsupported,
             ErrorKind::BadAlias => ErrorCode::BadAlias,
             ErrorKind::BadJson => ErrorCode::BadJson,
             ErrorKind::BadState => ErrorCode::BadState,
@@ -439,6 +458,8 @@ impl ErrorKind {
             ErrorKind::InvalidParam => ErrorCode::InvalidParam,
             ErrorKind::InvalidRoomState => ErrorCode::InvalidRoomState,
             ErrorKind::InvalidUsername => ErrorCode::InvalidUsername,
+            #[cfg(feature = "unstable-msc4380")]
+            ErrorKind::InviteBlocked => ErrorCode::InviteBlocked,
             ErrorKind::LimitExceeded { .. } => ErrorCode::LimitExceeded,
             ErrorKind::MissingParam => ErrorCode::MissingParam,
             ErrorKind::MissingToken => ErrorCode::MissingToken,

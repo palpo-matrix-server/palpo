@@ -166,6 +166,7 @@ impl<'de> Visitor<'de> for ErrorKindVisitor {
         let errcode = errcode.ok_or_else(|| de::Error::missing_field("errcode"))?;
 
         Ok(match errcode {
+            ErrorCode::AppserviceLoginUnsupported => ErrorKind::AppserviceLoginUnsupported,
             ErrorCode::BadAlias => ErrorKind::BadAlias,
             ErrorCode::BadJson => ErrorKind::BadJson,
             ErrorCode::BadState => ErrorKind::BadState,
@@ -204,6 +205,8 @@ impl<'de> Visitor<'de> for ErrorKindVisitor {
             ErrorCode::InvalidParam => ErrorKind::InvalidParam,
             ErrorCode::InvalidRoomState => ErrorKind::InvalidRoomState,
             ErrorCode::InvalidUsername => ErrorKind::InvalidUsername,
+            #[cfg(feature = "unstable-msc4380")]
+            ErrorCode::InviteBlocked => ErrorKind::InviteBlocked,
             ErrorCode::LimitExceeded => ErrorKind::LimitExceeded {
                 retry_after: retry_after_ms
                     .map(from_json_value::<u64>)
@@ -274,6 +277,17 @@ impl<'de> Visitor<'de> for ErrorKindVisitor {
 #[palpo_enum(rename_all = "M_MATRIX_ERROR_CASE")]
 // Please keep the variants sorted alphabetically.
 pub enum ErrorCode {
+    /// `M_APPSERVICE_LOGIN_UNSUPPORTED`
+    ///
+    /// An application service used the [`m.login.application_service`] type an endpoint from the
+    /// [legacy authentication API] in a way that is not supported by the homeserver, because the
+    /// server only supports the [OAuth 2.0 API].
+    ///
+    /// [`m.login.application_service`]: https://spec.matrix.org/latest/application-service-api/#server-admin-style-permissions
+    /// [legacy authentication API]: https://spec.matrix.org/latest/client-server-api/#legacy-api
+    /// [OAuth 2.0 API]: https://spec.matrix.org/latest/client-server-api/#oauth-20-api
+    AppserviceLoginUnsupported,
+
     /// `M_BAD_ALIAS`
     ///
     /// One or more [room aliases] within the `m.room.canonical_alias` event do
@@ -396,6 +410,16 @@ pub enum ErrorCode {
     ///
     /// The desired user name is not valid.
     InvalidUsername,
+
+    /// `M_INVITE_BLOCKED`
+    ///
+    /// The invite was interdicted by moderation tools or configured access controls without having
+    /// been witnessed by the invitee.
+    ///
+    /// Unstable prefix intentionally shared with MSC4155 for compatibility.
+    #[cfg(feature = "unstable-msc4380")]
+    #[ruma_enum(rename = "ORG.MATRIX.MSC4155.INVITE_BLOCKED")]
+    InviteBlocked,
 
     /// `M_LIMIT_EXCEEDED`
     ///

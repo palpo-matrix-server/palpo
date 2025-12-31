@@ -314,6 +314,13 @@ pub struct PushConditionRoomCtx {
     /// [MSC4306]: https://github.com/matrix-org/matrix-spec-proposals/pull/4306
     #[cfg(feature = "unstable-msc4306")]
     pub has_thread_subscription_fn: Option<Arc<HasThreadSubscriptionFn>>,
+
+    /// When the `unstable-msc4306` feature is enabled with the field above, it changes the auto
+    /// trait implementations of the struct to `!RefUnwindSafe` and `!UnwindSafe`. So we use
+    /// `PhantomData` to keep the same bounds on the field when the feature is disabled, to always
+    /// have the same auto trait implementations.
+    #[cfg(not(feature = "unstable-msc4306"))]
+    has_thread_subscription_fn: std::marker::PhantomData<Arc<HasThreadSubscriptionFn>>,
 }
 impl PushConditionRoomCtx {
     /// Create a new `PushConditionRoomCtx`.
@@ -331,8 +338,8 @@ impl PushConditionRoomCtx {
             power_levels: None,
             #[cfg(feature = "unstable-msc3931")]
             supported_features: Vec::new(),
-            #[cfg(feature = "unstable-msc4306")]
-            has_thread_subscription_fn: None,
+            #[cfg(not(feature = "unstable-msc4306"))]
+            has_thread_subscription_fn: Default::default(),
         }
     }
 
@@ -349,13 +356,11 @@ impl PushConditionRoomCtx {
         ) -> HasThreadSubscriptionFuture<'a>
         + Send
         + Sync
-        + RefUnwindSafe
         + 'static,
         #[cfg(target_family = "wasm")]
         has_thread_subscription_fn: impl for<'a> Fn(
             &'a EventId,
         ) -> HasThreadSubscriptionFuture<'a>
-        + RefUnwindSafe
         + 'static,
     ) -> Self {
         Self {
@@ -751,7 +756,7 @@ type HasThreadSubscriptionFn =
 //         assert!(!"m".matches_word("[[:alpha:]]?"));
 //         assert!("[[:alpha:]]!".matches_word("[[:alpha:]]?"));
 
-//         // From the spec: <https://spec.matrix.org/v1.16/client-server-api/#conditions-1>
+//          From the spec: <https://spec.matrix.org/v1.17/client-server-api/#conditions-1>
 //         assert!("An example event.".matches_word("ex*ple"));
 //         assert!("exple".matches_word("ex*ple"));
 //         assert!("An exciting triple-whammy".matches_word("ex*ple"));
@@ -800,7 +805,7 @@ type HasThreadSubscriptionFn =
 //         assert!("".matches_pattern("*", false));
 //         assert!(!"foo".matches_pattern("", false));
 
-//         // From the spec: <https://spec.matrix.org/v1.16/client-server-api/#conditions-1>
+//         // From the spec: <https://spec.matrix.org/v1.17/client-server-api/#conditions-1>
 //         assert!("Lunch plans".matches_pattern("lunc?*", false));
 //         assert!("LUNCH".matches_pattern("lunc?*", false));
 //         assert!(!" lunch".matches_pattern("lunc?*", false));

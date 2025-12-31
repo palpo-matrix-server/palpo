@@ -251,6 +251,19 @@ pub enum AuthType {
     #[palpo_enum(rename = "m.login.registration_token")]
     RegistrationToken,
 
+    /// Terms of service (`m.login.terms`).
+    ///
+    /// This type is only valid during account registration.
+    #[ruma_enum(rename = "m.login.terms")]
+    Terms,
+
+    /// OAuth 2.0 (`m.oauth`).
+    ///
+    /// This type is only valid with the cross-signing keys upload endpoint, after logging in with
+    /// the OAuth 2.0 API.
+    #[ruma_enum(rename = "m.oauth", alias = "org.matrix.cross_signing_reset")]
+    OAuth,
+    
     #[doc(hidden)]
     _Custom(PrivOwnedStr),
 }
@@ -644,6 +657,68 @@ impl UiaaInfo {
             session: None,
             auth_error: None,
         }
+    }
+
+    /// Get the parameters for the given [`AuthType`], if they are available in the `params` object.
+    ///
+    /// Returns `Ok(Some(_))` if the parameters for the authentication type were found and the
+    /// deserialization worked, `Ok(None)` if the parameters for the authentication type were not
+    /// found, and `Err(_)` if the parameters for the authentication type were found but their
+    /// deserialization failed.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use ruma_client_api::uiaa::UiaaInfo;
+    /// use ruma_client_api::uiaa::{AuthType, LoginTermsParams};
+    ///
+    /// # let uiaa_info = UiaaInfo::new(Vec::new());
+    /// let login_terms_params = uiaa_info.params::<LoginTermsParams>(&AuthType::Terms)?;
+    /// # Ok::<(), serde_json::Error>(())
+    /// ```
+    pub fn params<'a, T: Deserialize<'a>>(
+        &'a self,
+        auth_type: &AuthType,
+    ) -> Result<Option<T>, serde_json::Error> {
+        struct AuthTypeVisitor<'b, T> {
+            auth_type: &'b AuthType,
+            _phantom: PhantomData<T>,
+        }
+
+        impl<'de, T> de::Visitor<'de> for AuthTypeVisitor<'_, T>
+        where
+            T: Deserialize<'de>,
+        {
+            type Value = Option<T>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("a key-value map")
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: de::MapAccess<'de>,
+            {
+                let mut params = None;
+
+                while let Some(key) = map.next_key::<Cow<'de, str>>()? {
+                    if AuthType::from(key) == *self.auth_type {
+                        params = Some(map.next_value()?);
+                    } else {
+                        map.next_value::<de::IgnoredAny>()?;
+                    }
+                }
+
+                Ok(params)
+            }
+        }
+
+        let Some(params) = &self.params else {
+            return Ok(None);
+        };
+
+        let mut deserializer = serde_json::Deserializer::from_str(params.get());
+        deserializer.deserialize_map(AuthTypeVisitor { auth_type, _phantom: PhantomData })
     }
 }
 

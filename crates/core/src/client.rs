@@ -19,6 +19,8 @@ pub mod redact;
 pub mod register;
 pub mod relation;
 pub mod room;
+#[cfg(feature = "unstable-msc4143")]
+pub mod rtc;
 pub mod search;
 pub mod server;
 pub mod session;

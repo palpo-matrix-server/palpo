@@ -15,8 +15,9 @@ use crate::{
 /// Describes how users are allowed to join the room.
 #[derive(ToSchema, Clone, Debug, Serialize, EventContent)]
 #[palpo_event(type = "m.room.join_rules", kind = State, state_key_type = EmptyStateKey)]
+#[serde(transparent)]
 pub struct RoomJoinRulesEventContent {
-    /// The type of rules used for users wishing to join this room.
+    /// The rule used for users wishing to join this room.
     #[palpo_event(skip_redaction)]
     #[serde(flatten)]
     pub join_rule: JoinRule,
@@ -75,81 +76,138 @@ impl SyncRoomJoinRulesEvent {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use crate::owned_room_id;
-//     use assert_matches2::assert_matches;
+#[cfg(test)]
+mod tests {
+    use assert_matches2::assert_matches;
+    use ruma_common::owned_room_id;
+    use serde_json::json;
 
-//     use super::{AllowRule, JoinRule, OriginalSyncRoomJoinRulesEvent,
-// RoomJoinRulesEventContent};
+    use super::{
+        AllowRule, JoinRule, OriginalSyncRoomJoinRulesEvent, RedactedRoomJoinRulesEventContent,
+        RoomJoinRulesEventContent,
+    };
+    use crate::room::join_rules::RedactedSyncRoomJoinRulesEvent;
 
-//     #[test]
-//     fn deserialize() {
-//         let json = r#"{"join_rule": "public"}"#;
-//         let event: RoomJoinRulesEventContent =
-// serde_json::from_str(json).unwrap();         assert_matches!(
-//             event,
-//             RoomJoinRulesEventContent {
-//                 join_rule: JoinRule::Public
-//             }
-//         );
-//     }
+    #[test]
+    fn deserialize_content() {
+        let json = r#"{"join_rule": "public"}"#;
 
-//     #[test]
-//     fn deserialize_restricted() {
-//         let json = r#"{
-//             "join_rule": "restricted",
-//             "allow": [
-//                 {
-//                     "type": "m.room_membership",
-//                     "room_id": "!mods:example.org"
-//                 },
-//                 {
-//                     "type": "m.room_membership",
-//                     "room_id": "!users:example.org"
-//                 }
-//             ]
-//         }"#;
-//         let event: RoomJoinRulesEventContent =
-// serde_json::from_str(json).unwrap();         match event.join_rule {
-//             JoinRule::Restricted(restricted) => assert_eq!(
-//                 restricted.allow,
-//                 &[
-//
-// AllowRule::room_membership(owned_room_id!("!mods:example.org")),
-// AllowRule::room_membership(owned_room_id!("!users:example.org"))
-// ]             ),
-//             rule => panic!("Deserialized to wrong variant: {rule:?}"),
-//         }
-//     }
+        let event: RoomJoinRulesEventContent = serde_json::from_str(json).unwrap();
+        assert_matches!(event, RoomJoinRulesEventContent { join_rule: JoinRule::Public });
 
-//     #[test]
-//     fn deserialize_restricted_event() {
-//         let json = r#"{
-//             "type": "m.room.join_rules",
-//             "sender": "@admin:community.rs",
-//             "content": {
-//                 "join_rule": "restricted",
-//                 "allow": [
-//                     { "type": "m.room_membership","room_id":
-// "!KqeUnzmXPIhHRaWMTs:mccarty.io" }                 ]
-//             },
-//             "state_key": "",
-//             "origin_server_ts":1630508835342,
-//             "unsigned": {
-//                 "age":4165521871
-//             },
-//             "event_id": "$0ACb9KSPlT3al3kikyRYvFhMqXPP9ZcQOBrsdIuh58U"
-//         }"#;
+        let event: RedactedRoomJoinRulesEventContent = serde_json::from_str(json).unwrap();
+        assert_matches!(event, RedactedRoomJoinRulesEventContent { join_rule: JoinRule::Public });
+    }
 
-//         assert_matches!
-// (serde_json::from_str::<OriginalSyncRoomJoinRulesEvent>(json), Ok(_));     }
+    #[test]
+    fn deserialize_restricted() {
+        let json = r#"{
+            "join_rule": "restricted",
+            "allow": [
+                {
+                    "type": "m.room_membership",
+                    "room_id": "!mods:example.org"
+                },
+                {
+                    "type": "m.room_membership",
+                    "room_id": "!users:example.org"
+                }
+            ]
+        }"#;
 
-//     #[test]
-//     fn roundtrip_custom_allow_rule() {
-//         let json = r#"{"type":"org.msc9000.something","foo":"bar"}"#;
-//         let allow_rule: AllowRule = serde_json::from_str(json).unwrap();
-//         assert_matches!(&allow_rule, AllowRule::_Custom(_));
-//         assert_eq!(serde_json::to_string(&allow_rule).unwrap(), json);
-//     }
-// }
+        let event: RoomJoinRulesEventContent = serde_json::from_str(json).unwrap();
+        assert_matches!(event.join_rule, JoinRule::Restricted(restricted));
+        assert_eq!(
+            restricted.allow,
+            &[
+                AllowRule::room_membership(owned_room_id!("!mods:example.org")),
+                AllowRule::room_membership(owned_room_id!("!users:example.org"))
+            ]
+        );
+
+        let event: RedactedRoomJoinRulesEventContent = serde_json::from_str(json).unwrap();
+        assert_matches!(event.join_rule, JoinRule::Restricted(restricted));
+        assert_eq!(
+            restricted.allow,
+            &[
+                AllowRule::room_membership(owned_room_id!("!mods:example.org")),
+                AllowRule::room_membership(owned_room_id!("!users:example.org"))
+            ]
+        );
+    }
+
+    #[test]
+    fn deserialize_restricted_event() {
+        let json = r#"{
+            "type": "m.room.join_rules",
+            "sender": "@admin:community.rs",
+            "content": {
+                "join_rule": "restricted",
+                "allow": [
+                    { "type": "m.room_membership","room_id": "!KqeUnzmXPIhHRaWMTs:mccarty.io" }
+                ]
+            },
+            "state_key": "",
+            "origin_server_ts":1630508835342,
+            "unsigned": {
+                "age":4165521871
+            },
+            "event_id": "$0ACb9KSPlT3al3kikyRYvFhMqXPP9ZcQOBrsdIuh58U"
+        }"#;
+
+        assert_matches!(serde_json::from_str::<OriginalSyncRoomJoinRulesEvent>(json), Ok(_));
+    }
+
+    #[test]
+    fn deserialize_redacted_restricted_event() {
+        let json = r#"{
+            "type": "m.room.join_rules",
+            "sender": "@admin:community.rs",
+            "content": {
+                "join_rule": "restricted",
+                "allow": [
+                    { "type": "m.room_membership","room_id": "!KqeUnzmXPIhHRaWMTs:mccarty.io" }
+                ]
+            },
+            "state_key": "",
+            "origin_server_ts":1630508835342,
+            "unsigned": {
+                "age":4165521871,
+                "redacted_because": {
+                    "type": "m.room.redaction",
+                    "content": {
+                        "redacts": "$0ACb9KSPlT3al3kikyRYvFhMqXPP9ZcQOBrsdIuh58U"
+                    },
+                    "event_id": "$h29iv0s8",
+                    "origin_server_ts": 1,
+                    "sender": "@carl:example.com"
+                }
+            },
+            "event_id": "$0ACb9KSPlT3al3kikyRYvFhMqXPP9ZcQOBrsdIuh58U"
+        }"#;
+
+        assert_matches!(serde_json::from_str::<RedactedSyncRoomJoinRulesEvent>(json), Ok(_));
+    }
+
+    #[test]
+    fn restricted_room_no_allow_field() {
+        let json = r#"{"join_rule":"restricted"}"#;
+        let join_rules: RoomJoinRulesEventContent = serde_json::from_str(json).unwrap();
+        assert_matches!(
+            join_rules,
+            RoomJoinRulesEventContent { join_rule: JoinRule::Restricted(_) }
+        );
+    }
+
+    #[test]
+    fn reserialize_unsupported_join_rule() {
+        let json = json!({"join_rule": "local.matrix.custom", "foo": "bar"});
+
+        let content = serde_json::from_value::<RoomJoinRulesEventContent>(json.clone()).unwrap();
+        assert_eq!(content.join_rule.as_str(), "local.matrix.custom");
+        let data = content.join_rule.data();
+        assert_eq!(data.get("foo").unwrap().as_str(), Some("bar"));
+
+        assert_eq!(serde_json::to_value(&content).unwrap(), json);
+    }
+}

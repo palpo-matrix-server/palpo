@@ -267,7 +267,7 @@ impl CallApplicationContent {
 /// The call scope defines different call ownership models.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
 #[derive(ToSchema, Clone, StringEnum)]
-#[palpo_enum(rename_all = "m.snake_case")]
+#[ruma_enum(rename_all(prefix = "m.", rule = "snake_case"))]
 pub enum CallScope {
     /// A call which every user of a room can join and create.
     ///
