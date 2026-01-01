@@ -483,10 +483,13 @@ impl IdDst {
             /// `RUSTFLAGS` or `.cargo/config.toml` (under `[build]` -> `rustflags = ["..."]`)
             /// to the following;
             /// - `palpo_identifiers_storage="Arc"` to use [`Arc`](std::sync::Arc) as a wrapper type.
+            #[derive(diesel::deserialize::FromSqlRow, diesel::expression::AsExpression)]
+            #[diesel(sql_type = diesel::sql_types::Text)]
             pub struct #owned_ident #generics {
-                #[cfg(not(any(palpo_identifiers_storage = "Arc")))]
-                inner: #box_type,
-                #[cfg(palpo_identifiers_storage = "Arc")]
+                // #[cfg(not(any(palpo_identifiers_storage = "Arc")))]
+                // inner: #box_type,
+                // #[cfg(palpo_identifiers_storage = "Arc")]
+                // inner: #arc_type,
                 inner: #arc_type,
             }
 
@@ -496,9 +499,9 @@ impl IdDst {
 
                 fn to_owned(&self) -> Self::Owned {
                     #owned_ident {
-                        #[cfg(not(any(palpo_identifiers_storage = "Arc")))]
-                        inner: #ident::from_box(self.as_str().into()),
-                        #[cfg(palpo_identifiers_storage = "Arc")]
+                        // #[cfg(not(any(palpo_identifiers_storage = "Arc")))]
+                        // inner: #ident::from_box(self.as_str().into()),
+                        // #[cfg(palpo_identifiers_storage = "Arc")]
                         inner: #ident::from_arc(self.as_str().into()),
                     }
                 }
@@ -528,9 +531,9 @@ impl IdDst {
             #[automatically_derived]
             impl #impl_generics ::std::convert::From<#owned_type> for ::std::string::String {
                 fn from(id: #owned_type) -> Self {
-                    #[cfg(not(any(palpo_identifiers_storage = "Arc")))]
-                    { id.inner.into() }
-                    #[cfg(palpo_identifiers_storage = "Arc")]
+                    // #[cfg(not(any(palpo_identifiers_storage = "Arc")))]
+                    // { id.inner.into() }
+                    // #[cfg(palpo_identifiers_storage = "Arc")]
                     { id.inner.as_ref().into() }
                 }
             }
@@ -578,9 +581,9 @@ impl IdDst {
             impl #impl_generics ::std::convert::From<#arc_type> for #owned_type {
                 fn from(a: #arc_type) -> Self {
                     Self {
-                        #[cfg(not(any(palpo_identifiers_storage = "Arc")))]
-                        inner: a.as_ref().into(),
-                        #[cfg(palpo_identifiers_storage = "Arc")]
+                        // #[cfg(not(any(palpo_identifiers_storage = "Arc")))]
+                        // inner: a.as_ref().into(),
+                        // #[cfg(palpo_identifiers_storage = "Arc")]
                         inner: a,
                     }
                 }
@@ -589,9 +592,9 @@ impl IdDst {
             #[automatically_derived]
             impl #impl_generics ::std::convert::From<#owned_type> for #box_type {
                 fn from(a: #owned_type) -> Self {
-                    #[cfg(not(any(palpo_identifiers_storage = "Arc")))]
-                    { a.inner }
-                    #[cfg(palpo_identifiers_storage = "Arc")]
+                    // #[cfg(not(any(palpo_identifiers_storage = "Arc")))]
+                    // { a.inner }
+                    // #[cfg(palpo_identifiers_storage = "Arc")]
                     { a.inner.as_ref().into() }
                 }
             }
@@ -599,9 +602,9 @@ impl IdDst {
             #[automatically_derived]
             impl #impl_generics ::std::convert::From<#owned_type> for #arc_type {
                 fn from(a: #owned_type) -> Self {
-                    #[cfg(not(any(palpo_identifiers_storage = "Arc")))]
-                    { a.inner.into() }
-                    #[cfg(palpo_identifiers_storage = "Arc")]
+                    // #[cfg(not(any(palpo_identifiers_storage = "Arc")))]
+                    // { a.inner.into() }
+                    // #[cfg(palpo_identifiers_storage = "Arc")]
                     { a.inner }
                 }
             }

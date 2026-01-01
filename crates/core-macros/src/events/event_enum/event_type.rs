@@ -77,6 +77,7 @@ impl EventTypeEnum<'_> {
             /// from a string with `::from()` / `.into()`. To check for events that are not available as a
             /// documented variant here, use its string representation, obtained through `.to_string()`.
             #[derive(salvo::oapi::ToSchema, Clone, PartialEq, Eq, Hash, diesel::deserialize::FromSqlRow, diesel::expression::AsExpression)]
+            #[diesel(sql_type = diesel::sql_types::Text)]
             pub enum #ident {
                 #( #variants )*
                 #[doc(hidden)]
@@ -238,6 +239,19 @@ impl EventTypeEnum<'_> {
                     S: #serde::Serializer,
                 {
                     self.to_cow_str().serialize(serializer)
+                }
+            }
+
+            impl diesel::deserialize::FromSql<diesel::sql_types::Text, diesel::pg::Pg> for #ident {
+                fn from_sql(bytes: diesel::pg::PgValue<'_>) -> diesel::deserialize::Result<Self> {
+                    let value = <String as diesel::deserialize::FromSql<diesel::sql_types::Text, diesel::pg::Pg>>::from_sql(bytes)?;
+                    Ok(Self::from(value))
+                }
+            }
+
+            impl diesel::serialize::ToSql<diesel::sql_types::Text, diesel::pg::Pg> for #ident {
+                fn to_sql(&self, out: &mut diesel::serialize::Output<'_, '_, diesel::pg::Pg>) -> diesel::serialize::Result {
+                    diesel::serialize::ToSql::<diesel::sql_types::Text, diesel::pg::Pg>::to_sql(self.to_cow_str().as_ref(), &mut out.reborrow())
                 }
             }
         }

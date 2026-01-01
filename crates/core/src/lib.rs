@@ -36,7 +36,7 @@ extern crate tracing;
 pub mod auth_scheme;
 pub mod http_headers;
 pub mod media;
-pub mod path_builder;
+// pub mod path_builder;
 pub mod state;
 pub mod user;
 pub mod utils;

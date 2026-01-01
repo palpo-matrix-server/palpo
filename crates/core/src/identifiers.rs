@@ -118,7 +118,7 @@ macro_rules! owned_device_id {
 #[doc(hidden)]
 pub mod __private_macros {
     pub use crate::macros::{
-        device_key_id, event_id, mxc_uri, room_alias_id, room_id, room_version_id, server_name,
+        event_id, mxc_uri, room_alias_id, room_id, room_version_id, server_name,
         server_signing_key_version, user_id,
     };
 }

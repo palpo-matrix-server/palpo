@@ -338,7 +338,6 @@ impl PushConditionRoomCtx {
             power_levels: None,
             #[cfg(feature = "unstable-msc3931")]
             supported_features: Vec::new(),
-            #[cfg(not(feature = "unstable-msc4306"))]
             has_thread_subscription_fn: Default::default(),
         }
     }

@@ -4,7 +4,6 @@
 
 use std::time::Duration;
 
-use crate::path_builder::SinglePath;
 use salvo::oapi::{ToParameters, ToSchema};
 use serde::{Deserialize, Serialize};
 

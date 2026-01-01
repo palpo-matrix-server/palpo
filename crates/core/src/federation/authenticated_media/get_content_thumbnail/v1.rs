@@ -11,7 +11,7 @@ use crate::federation::{
     authenticated_media::{ContentMetadata, FileOrLocation},
     authentication::ServerSignatures,
 };
-use crate::media::Method;
+use crate::media::ResizeMethod;
 
 // metadata! {
 //     method: GET,
@@ -30,7 +30,7 @@ pub struct GetContentThumbnailArgs {
     /// The desired resizing method.
     #[salvo(parameter(parameter_in = Query))]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub method: Option<Method>,
+    pub method: Option<ResizeMethod>,
 
     /// The *desired* width of the thumbnail.
     ///

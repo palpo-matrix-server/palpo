@@ -83,7 +83,7 @@ pub fn compile_unstable_poll_results<'a>(
 ) -> IndexMap<&'a str, BTreeSet<&'a UserId>> {
     let answer_ids = poll.answers.iter().map(|a| a.id.as_str()).collect();
     let users_selections =
-        filter_selections(&answer_ids, poll.max_selections, responses, end_timestamp);
+        filter_selections(answer_ids, poll.max_selections, responses, end_timestamp);
 
     aggregate_results(poll.answers.iter().map(|a| a.id.as_str()), users_selections)
 }
@@ -134,7 +134,7 @@ where
         if response.0 < item.origin_server_ts {
             *response = (
                 item.origin_server_ts,
-                validate_selections(answer_ids, max_selections, item.selections),
+                validate_selections(&answer_ids, max_selections, item.selections),
             );
         }
     }

@@ -8,7 +8,7 @@ use salvo::oapi::{ToParameters, ToSchema};
 use serde::{Deserialize, Serialize};
 
 use crate::federation::authenticated_media::{ContentMetadata, FileOrLocation};
-use crate::{Metadata, media::Method, path_builder::SinglePath};
+use crate::{media::ResizeMethod};
 
 /// Request type for the `get_content_thumbnail` endpoint.
 #[derive(ToParameters, Deserialize, Debug)]
@@ -20,7 +20,7 @@ pub struct GetContentThumbnailArgs {
     /// The desired resizing method.
     #[salvo(parameter(parameter_in = Query))]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub method: Option<Method>,
+    pub method: Option<ResizeMethod>,
 
     /// The *desired* width of the thumbnail.
     ///

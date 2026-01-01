@@ -14,6 +14,12 @@ rust-version.workspace = true
 [lib]
 proc-macro = true
 
+[features]
+# Make the request and response macros expand internal derives they would
+# usually emit in the `#[derive()]` list directly, such that Rust Analyzer's
+# expand macro helper can render their output. Requires a nightly toolchain.
+__internal_macro_expand = ["syn/visit-mut"]
+
 [dependencies]
 as_variant = { workspace = true }
 palpo-identifiers-validation = { workspace = true }

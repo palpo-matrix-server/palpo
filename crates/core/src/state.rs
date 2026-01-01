@@ -588,10 +588,13 @@ where
         && creators_lock.get().is_none()
     {
         // The m.room.create event is not in the auth events, we can get its ID via the room ID.
-        room_create_event = event
-            .room_id()
-            .and_then(|room_id| room_id.room_create_event_id().ok())
-            .and_then(|room_create_event_id| fetch_event(&room_create_event_id));
+        // room_create_event = event
+        //     .room_id()
+        //     .and_then(|room_id| room_id.room_create_event_id().ok())
+        //     .and_then(|room_create_event_id| fetch_event(&room_create_event_id));
+        if let Ok(room_create_event_id) = event.room_id().room_create_event_id() {
+            room_create_event = fetch_event(room_create_event_id.to_owned()).await.ok();
+        }
     }
 
     for auth_event_id in event
@@ -866,15 +869,15 @@ where
 
     let mut order_map = HashMap::new();
     for event_id in events.iter() {
-        if let Some(event) = fetch_event(event_id.borrow())
-            && let Ok(position) = mainline_position(event, &mainline_map, &fetch_event)
+        if let Ok(event) = fetch_event(event_id.to_owned()).await
+            && let Ok(position) = mainline_position(&event, &mainline_map, &fetch_event).await
         {
             order_map.insert(
-                event_id,
+                event_id.to_owned(),
                 (
                     position,
-                    fetch_event(event_id.borrow()).map(|event| event.origin_server_ts()),
-                    event_id,
+                    fetch_event(event_id.to_owned()).await.map(|event| event.origin_server_ts()),
+                    event_id.to_owned(),
                 ),
             );
         }

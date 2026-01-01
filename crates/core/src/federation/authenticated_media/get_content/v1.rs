@@ -7,7 +7,7 @@ use std::time::Duration;
 use salvo::oapi::{ToParameters, ToSchema};
 use serde::{Deserialize, Serialize};
 
-use crate::{
+use crate::federation::{
     authenticated_media::{ContentMetadata, FileOrLocation},
     authentication::ServerSignatures,
 };
@@ -49,19 +49,19 @@ impl MediaDownloadArgs {
     }
 }
 
-/// Response type for the `get_content` endpoint.
-#[derive(ToSchema, Serialize, Clone, Debug)]
-pub struct MediaDownloadResBody {
-    /// The metadata of the media.
-    pub metadata: ContentMetadata,
+// /// Response type for the `get_content` endpoint.
+// #[derive(ToSchema, Serialize, Clone, Debug)]
+// pub struct MediaDownloadResBody {
+//     /// The metadata of the media.
+//     pub metadata: ContentMetadata,
 
-    /// The content of the media.
-    pub content: FileOrLocation,
-}
+//     /// The content of the media.
+//     pub content: FileOrLocation,
+// }
 
-impl MediaDownloadResBody {
-    /// Creates a new `Response` with the given metadata and content.
-    pub fn new(metadata: ContentMetadata, content: FileOrLocation) -> Self {
-        Self { metadata, content }
-    }
-}
+// impl MediaDownloadResBody {
+//     /// Creates a new `Response` with the given metadata and content.
+//     pub fn new(metadata: ContentMetadata, content: FileOrLocation) -> Self {
+//         Self { metadata, content }
+//     }
+// }

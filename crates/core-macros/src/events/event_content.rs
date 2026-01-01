@@ -216,7 +216,7 @@ impl EventContent {
 
             Some(quote! {
                 #[doc = #possibly_redacted_doc]
-                #[derive(Clone, Debug, #serde::Deserialize, #serde::Serialize)]
+                #[derive(salvo::oapi::ToSchema, #serde::Deserialize, #serde::Serialize, Clone, Debug)]
                 #vis struct #possibly_redacted_ident {
                     #( #possibly_redacted_fields, )*
                 }
@@ -305,7 +305,7 @@ impl EventContent {
             }
 
             #[doc = #without_relation_doc]
-            #[derive(Clone, Debug, #serde::Deserialize, #serde::Serialize)]
+            #[derive(salvo::oapi::ToSchema, #serde::Deserialize, #serde::Serialize, Clone, Debug)]
             #vis struct #without_relation_ident #without_relation_struct_definition
 
             impl #without_relation_ident {
