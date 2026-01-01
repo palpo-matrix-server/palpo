@@ -12,6 +12,7 @@ use reqwest::Url;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Deserializer, Serialize};
 
+use crate::events::presence::PresenceEvent;
 use crate::events::receipt::ReceiptEvent;
 use crate::events::typing::TypingEvent;
 #[cfg(feature = "unstable-msc4203")]
@@ -231,7 +232,7 @@ impl Serialize for _CustomEphemeralData {
 
 /// An event sent using send-to-device messaging with additional fields when pushed to an
 /// application service.
-#[derive(Clone, Debug)]
+#[derive(ToSchema, Clone, Debug)]
 #[cfg(feature = "unstable-msc4203")]
 pub struct AnyAppserviceToDeviceEvent {
     /// The to-device event.

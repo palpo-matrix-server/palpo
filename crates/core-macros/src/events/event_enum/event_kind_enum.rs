@@ -268,7 +268,7 @@ impl EventEnumVariation<'_> {
 
         Ok(quote! {
             #( #attrs )*
-            #[derive(Clone, Debug)]
+            #[derive(salvo::oapi::ToSchema, Clone, Debug)]
             #[allow(clippy::large_enum_variant, unused_qualifications)]
             pub enum #ident {
                 #(

@@ -314,7 +314,7 @@ impl MatrixVersion {
     }
 
     // Internal function to do ordering in const-fn contexts
-    const fn const_ord(&self, other: &Self) -> Ordering {
+    pub(crate) const fn const_ord(&self, other: &Self) -> Ordering {
         let self_parts = self.into_parts();
         let other_parts = other.into_parts();
 
@@ -330,7 +330,7 @@ impl MatrixVersion {
 
     // Internal function to check if this version is the legacy (v1.0) version in
     // const-fn contexts
-    const fn is_legacy(&self) -> bool {
+    pub(crate) const fn is_legacy(&self) -> bool {
         let self_parts = self.into_parts();
 
         use konst::primitive::cmp::cmp_u8;

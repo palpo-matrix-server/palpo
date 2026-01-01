@@ -141,7 +141,7 @@ impl EventContent {
             }
 
             #[doc = #redacted_doc]
-            #[derive(Clone, Debug, #serde::Deserialize, #serde::Serialize)]
+            #[derive(salvo::oapi::ToSchema, #serde::Deserialize, #serde::Serialize, Clone, Debug)]
             #vis struct #redacted_ident {
                 #( #redacted_fields, )*
             }

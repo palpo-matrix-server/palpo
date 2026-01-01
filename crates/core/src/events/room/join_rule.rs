@@ -20,6 +20,7 @@ pub struct RoomJoinRulesEventContent {
     /// The rule used for users wishing to join this room.
     #[palpo_event(skip_redaction)]
     #[serde(flatten)]
+    #[salvo(schema(value_type = Object, additional_properties = true))]
     pub join_rule: JoinRule,
 }
 

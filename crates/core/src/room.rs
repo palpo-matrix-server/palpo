@@ -126,6 +126,7 @@ pub enum JoinRule {
     Public,
 
     #[doc(hidden)]
+    #[salvo(schema(value_type = Object, additional_properties = true))]
     _Custom(CustomJoinRule),
 }
 

@@ -9,6 +9,7 @@ use std::borrow::Cow;
 
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::Value as JsonValue;
+use salvo::oapi::ToSchema;
 
 use crate::{auth_scheme::AccessToken, serde::JsonObject};
 
@@ -34,14 +35,14 @@ use crate::{auth_scheme::AccessToken, serde::JsonObject};
 // }
 
 /// Response type for the `transports` endpoint.
-#[response(error = crate::Error)]
-#[derive(Default)]
-pub struct Response {
+#[derive(ToSchema, Serialize, Default)]
+pub struct RtcTransportsResBody {
     /// The RTC transports advertised by the homeserver.
+    #[salvo(schema(value_type = Object, additional_properties = true))]
     pub rtc_transports: Vec<RtcTransport>,
 }
 
-impl Response {
+impl RtcTransportsResBody {
     /// Creates a `Response` with the given RTC transports.
     pub fn new(rtc_transports: Vec<RtcTransport>) -> Self {
         Self { rtc_transports }

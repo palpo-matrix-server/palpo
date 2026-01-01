@@ -36,7 +36,7 @@ impl EventEnum<'_> {
 
         Ok(quote! {
             #( #attrs )*
-            #[derive(Clone, Debug, #serde::Serialize)]
+            #[derive(salvo::oapi::ToSchema, #serde::Serialize, Clone, Debug)]
             #[serde(untagged)]
             #[allow(clippy::large_enum_variant, unused_qualifications)]
             pub enum #ident {
@@ -166,7 +166,7 @@ impl EventEnum<'_> {
 
         Ok(quote! {
             #( #attrs )*
-            #[derive(Clone, Debug)]
+            #[derive(salvo::oapi::ToSchema, Clone, Debug)]
             #[allow(clippy::large_enum_variant, unused_qualifications)]
             pub enum #ident {
                 #(

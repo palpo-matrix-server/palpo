@@ -639,6 +639,25 @@ impl IdDst {
                     self.as_str().hash(state)
                 }
             }
+
+            impl #impl_generics salvo::oapi::ToSchema for #owned_type {
+                fn to_schema(components: &mut salvo::oapi::Components) -> salvo::oapi::RefOr<salvo::oapi::Schema>{
+                    <String>::to_schema(components)
+                }
+            }
+
+            impl #impl_generics diesel::deserialize::FromSql<diesel::sql_types::Text, diesel::pg::Pg> for #owned_type {
+                fn from_sql(bytes: diesel::pg::PgValue<'_>) -> diesel::deserialize::Result<Self> {
+                    let value = <String as diesel::deserialize::FromSql<diesel::sql_types::Text, diesel::pg::Pg>>::from_sql(bytes)?;
+                    Ok(Self::try_from(value)?)
+                }
+            }
+
+            impl #impl_generics diesel::serialize::ToSql<diesel::sql_types::Text, diesel::pg::Pg> for #owned_type {
+                fn to_sql(&self, out: &mut diesel::serialize::Output<'_, '_, diesel::pg::Pg>) -> diesel::serialize::Result {
+                    diesel::serialize::ToSql::<diesel::sql_types::Text, diesel::pg::Pg>::to_sql(self.as_str(), &mut out.reborrow())
+                }
+            }
         }
     }
 

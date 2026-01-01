@@ -81,19 +81,19 @@ impl GetContentThumbnailArgs {
 //     );
 // }
 
-/// Response type for the `get_content_thumbnail` endpoint.
-#[derive(ToSchema, Serialize, Clone, Debug)]
-pub struct GetContentThumbnailResBody {
-    /// The metadata of the media.
-    pub metadata: ContentMetadata,
+// /// Response type for the `get_content_thumbnail` endpoint.
+// #[derive(ToSchema, Serialize, Clone, Debug)]
+// pub struct GetContentThumbnailResBody {
+//     /// The metadata of the media.
+//     pub metadata: ContentMetadata,
 
-    /// The content of the media.
-    pub content: FileOrLocation,
-}
+//     /// The content of the media.
+//     pub content: FileOrLocation,
+// }
 
-impl GetContentThumbnailResBody {
-    /// Creates a new `GetContentThumbnailResBody` with the given metadata and content.
-    pub fn new(metadata: ContentMetadata, content: FileOrLocation) -> Self {
-        Self { metadata, content }
-    }
-}
+// impl GetContentThumbnailResBody {
+//     /// Creates a new `GetContentThumbnailResBody` with the given metadata and content.
+//     pub fn new(metadata: ContentMetadata, content: FileOrLocation) -> Self {
+//         Self { metadata, content }
+//     }
+// }

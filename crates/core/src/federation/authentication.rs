@@ -2,16 +2,17 @@
 
 use std::{fmt, str::FromStr};
 
-use headers::authorization::Credentials;
-use http::HeaderValue;
-use http_auth::ChallengeParser;
+use crate::serde::CanonicalJsonObject;
+use crate::signatures::{Ed25519KeyPair, KeyPair, PublicKeyMap};
 use crate::{
-    CanonicalJsonObject, IdParseError, OwnedServerName, OwnedServerSigningKeyId, ServerName,
-    api::auth_scheme::AuthScheme,
+    IdParseError, OwnedServerName, OwnedServerSigningKeyId, ServerName,
+    auth_scheme::AuthScheme,
     http_headers::quote_ascii_string_if_required,
     serde::{Base64, Base64DecodeError},
 };
-use crate::signatures::{Ed25519KeyPair, KeyPair, PublicKeyMap};
+use http::HeaderValue;
+use http_auth::ChallengeParser;
+use salvo::http::headers::authorization::Credentials;
 use thiserror::Error;
 use tracing::debug;
 
@@ -426,8 +427,8 @@ pub enum XMatrixVerificationError {
 
 #[cfg(test)]
 mod tests {
-    use headers::{HeaderValue, authorization::Credentials};
     use crate::{OwnedServerName, serde::Base64};
+    use headers::{HeaderValue, authorization::Credentials};
 
     use super::XMatrix;
 

@@ -11,7 +11,7 @@ use crate::federation::{
     authenticated_media::{ContentMetadata, FileOrLocation},
     authentication::ServerSignatures,
 };
-use crate::{media::Method, metadata};
+use crate::media::Method;
 
 // metadata! {
 //     method: GET,
@@ -24,7 +24,7 @@ use crate::{media::Method, metadata};
 #[derive(ToParameters, Deserialize, Debug)]
 pub struct GetContentThumbnailArgs {
     /// The media ID from the `mxc://` URI (the path component).
-    #[palpo_api(path)]
+    #[salvo(parameter(parameter_in = Path))]
     pub media_id: String,
 
     /// The desired resizing method.
@@ -81,19 +81,19 @@ impl GetContentThumbnailArgs {
     }
 }
 
-/// Response type for the `get_content_thumbnail` endpoint.
-#[derive(ToSchema, Serialize, Clone, Debug)]
-pub struct GetContentThumbnailResBody {
-    /// The metadata of the thumbnail.
-    pub metadata: ContentMetadata,
+// /// Response type for the `get_content_thumbnail` endpoint.
+// #[derive(ToSchema, Serialize, Clone, Debug)]
+// pub struct GetContentThumbnailResBody {
+//     /// The metadata of the thumbnail.
+//     pub metadata: ContentMetadata,
 
-    /// The content of the thumbnail.
-    pub content: FileOrLocation,
-}
+//     /// The content of the thumbnail.
+//     pub content: FileOrLocation,
+// }
 
-impl GetContentThumbnailResBody {
-    /// Creates a new `GetContentThumbnailResBody` with the given metadata and content.
-    pub fn new(metadata: ContentMetadata, content: FileOrLocation) -> Self {
-        Self { metadata, content }
-    }
-}
+// impl GetContentThumbnailResBody {
+//     /// Creates a new `GetContentThumbnailResBody` with the given metadata and content.
+//     pub fn new(metadata: ContentMetadata, content: FileOrLocation) -> Self {
+//         Self { metadata, content }
+//     }
+// }

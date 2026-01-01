@@ -76,7 +76,7 @@ impl EventTypeEnum<'_> {
             /// This type can hold an arbitrary string. To build events with a custom type, convert it
             /// from a string with `::from()` / `.into()`. To check for events that are not available as a
             /// documented variant here, use its string representation, obtained through `.to_string()`.
-            #[derive(Clone, PartialEq, Eq, Hash)]
+            #[derive(salvo::oapi::ToSchema, Clone, PartialEq, Eq, Hash, diesel::deserialize::FromSqlRow, diesel::expression::AsExpression)]
             pub enum #ident {
                 #( #variants )*
                 #[doc(hidden)]
