@@ -1,7 +1,6 @@
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
-use crate::core::UnixMillis;
 use crate::core::federation::authorization::{EventAuthReqArgs, EventAuthResBody};
 use crate::core::federation::event::{
     EventReqArgs, EventResBody, MissingEventsReqBody, MissingEventsResBody,

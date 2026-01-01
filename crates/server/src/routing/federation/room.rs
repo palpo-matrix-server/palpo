@@ -1,4 +1,3 @@
-use clap::error;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
 use serde_json::value::to_raw_value;

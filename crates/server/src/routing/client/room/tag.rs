@@ -7,9 +7,7 @@ use crate::core::client::tag::{OperateTagReqArgs, TagsResBody, UpsertTagReqBody}
 use crate::core::events::RoomAccountDataEventType;
 use crate::core::events::tag::TagEventContent;
 use crate::core::user::UserRoomReqArgs;
-use crate::{
-    AuthArgs, DepotExt, EmptyResult, JsonResult, OptionalExtension, data, empty_ok, json_ok,
-};
+use crate::{AuthArgs, DepotExt, EmptyResult, JsonResult, data, empty_ok, json_ok};
 
 /// #GET /_matrix/client/r0/user/{user_id}/rooms/{room_idd}/tags
 /// Returns tags on the room.

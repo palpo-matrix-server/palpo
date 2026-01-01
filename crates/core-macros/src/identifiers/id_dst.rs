@@ -384,7 +384,6 @@ impl IdDst {
         let impl_generics = &self.impl_generics;
         let generic_params = &self.generics.params;
 
-        let palpo_core = NameSpace::palpo_core();
         let serde = NameSpace::serde();
 
         Some(quote! {
@@ -569,6 +568,13 @@ impl IdDst {
                     Self { inner: id.into() }
                 }
             }
+            #[automatically_derived]
+            impl #impl_generics ::std::convert::From<&#owned_type> for #owned_type {
+                fn from(id: &#owned_type) -> Self {
+                    id.to_owned()
+                }
+            }
+
 
             #[automatically_derived]
             impl #impl_generics ::std::convert::From<#box_type> for #owned_type {
