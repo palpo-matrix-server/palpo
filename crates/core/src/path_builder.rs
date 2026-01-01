@@ -97,7 +97,7 @@ pub trait PathBuilder: Sized {
     fn _path_parameters(&self) -> Vec<&'static str>;
 }
 
-/// The complete history of this endpoint as far as Ruma knows, together with all variants on
+/// The complete history of this endpoint as far as Palpo knows, together with all variants on
 /// versions stable and unstable.
 ///
 /// The amount and positioning of path variables are the same over all path variants.

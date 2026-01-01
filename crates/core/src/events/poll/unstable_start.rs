@@ -284,7 +284,7 @@ pub struct UnstablePollStartContentBlock {
     ///
     /// Defaults to `1`.
     #[serde(default = "PollContentBlock::default_max_selections")]
-    pub max_selections: u64,
+    pub max_selections: u32,
 
     /// The possible answers to the poll.
     pub answers: UnstablePollAnswers,

@@ -3481,6 +3481,7 @@ dependencies = [
 name = "palpo-core-macros"
 version = "0.2.0"
 dependencies = [
+ "as_variant",
  "palpo-identifiers-validation",
  "proc-macro-crate",
  "proc-macro2",

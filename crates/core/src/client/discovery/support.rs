@@ -98,7 +98,7 @@ impl Contact {
 /// An informal description of what the contact methods are used for.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
 #[derive(ToSchema, Clone, StringEnum)]
-#[ruma_enum(rename_all(prefix = "m.role.", rule = "snake_case"))]
+#[palpo_enum(rename_all(prefix = "m.role.", rule = "snake_case"))]
 #[non_exhaustive]
 pub enum ContactRole {
     /// A catch-all role for any queries.

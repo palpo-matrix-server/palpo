@@ -14,7 +14,7 @@ use crate::{
     Direction, EventEncryptionAlgorithm, OwnedEventId, OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId,
     OwnedUserId, PrivOwnedStr, RoomId, RoomVersionId, UnixMillis,
     events::StateEventType,
-    serde::{StringEnum, from_raw_json_value},
+    serde::{StringEnum, JsonObject, from_raw_json_value},
 };
 
 /// An enum of possible room types.
@@ -91,7 +91,6 @@ pub struct RoomEventTypeReqArgs {
     #[salvo(parameter(parameter_in = Path))]
     pub event_type: StateEventType,
 }
-
 
 /// The rule used for users wishing to join this room.
 ///

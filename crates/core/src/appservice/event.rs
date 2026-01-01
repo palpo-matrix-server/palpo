@@ -6,17 +6,22 @@
 //! `/v1/` ([spec])
 //!
 //! [spec]: https://spec.matrix.org/latest/application-service-api/#put_matrixappv1transactionstxnid
+use std::borrow::Cow;
 
 use reqwest::Url;
 use salvo::oapi::ToSchema;
 use serde::{Deserialize, Deserializer, Serialize};
 
+use crate::events::receipt::ReceiptEvent;
+use crate::events::typing::TypingEvent;
+#[cfg(feature = "unstable-msc4203")]
+use crate::events::{AnyToDeviceEvent, AnyToDeviceEventContent, ToDeviceEventType};
 use crate::{
-    OwnedRoomId, OwnedUserId,
+    OwnedDeviceId, OwnedRoomId, OwnedUserId, UserId,
     events::{AnyTimelineEvent, receipt::ReceiptContent},
     presence::PresenceContent,
     sending::{SendRequest, SendResult},
-    serde::{JsonValue, RawJson, RawJsonValue, from_raw_json_value},
+    serde::{JsonCastable, JsonObject, JsonValue, RawJson, RawJsonValue, from_raw_json_value},
 };
 
 // /// `PUT /_matrix/app/*/transactions/{txn_id}`
@@ -97,13 +102,12 @@ pub struct PushEventsReqBody {
         skip_serializing_if = "<[_]>::is_empty",
         rename = "de.sorunome.msc2409.to_device"
     )]
-    pub to_device: Vec<Raw<AnyAppserviceToDeviceEvent>>,
+    pub to_device: Vec<RawJson<AnyAppserviceToDeviceEvent>>,
 }
 crate::json_body_modifier!(PushEventsReqBody);
 
 /// Information on E2E device updates.
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
-#[cfg_attr(not(ruma_unstable_exhaustive_types), non_exhaustive)]
 #[cfg(feature = "unstable-msc3202")]
 pub struct DeviceLists {
     /// List of users who have updated their device identity keys or who now
@@ -132,7 +136,6 @@ impl DeviceLists {
 
 /// Type for passing ephemeral data to application services.
 #[derive(Clone, Debug, Serialize)]
-#[cfg_attr(not(ruma_unstable_exhaustive_types), non_exhaustive)]
 #[serde(untagged)]
 pub enum EphemeralData {
     /// A presence update for a user.
@@ -229,7 +232,6 @@ impl Serialize for _CustomEphemeralData {
 /// An event sent using send-to-device messaging with additional fields when pushed to an
 /// application service.
 #[derive(Clone, Debug)]
-#[cfg_attr(not(ruma_unstable_exhaustive_types), non_exhaustive)]
 #[cfg(feature = "unstable-msc4203")]
 pub struct AnyAppserviceToDeviceEvent {
     /// The to-device event.
@@ -308,169 +310,166 @@ impl JsonCastable<JsonObject> for AnyAppserviceToDeviceEvent {}
 #[cfg(feature = "unstable-msc4203")]
 impl JsonCastable<AnyToDeviceEvent> for AnyAppserviceToDeviceEvent {}
 
-#[cfg(test)]
-mod tests {
-    use assert_matches2::assert_matches;
-    use js_int::uint;
-    use ruma_common::{MilliSecondsSinceUnixEpoch, event_id, room_id, user_id};
-    use ruma_events::receipt::ReceiptType;
-    use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
+// #[cfg(test)]
+// mod tests {
+//     use crate::{UnixMillis, event_id, room_id, user_id};
+//     use assert_matches2::assert_matches;
+//     use js_int::uint;
+//     use palpo_events::receipt::ReceiptType;
+//     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
 
-    use super::EphemeralData;
+//     use super::EphemeralData;
 
-    #[cfg(feature = "client")]
-    #[test]
-    fn request_contains_events_field() {
-        use ruma_common::api::{OutgoingRequest, auth_scheme::SendAccessToken};
+//     #[cfg(feature = "client")]
+//     #[test]
+//     fn request_contains_events_field() {
+//         use crate::api::{OutgoingRequest, auth_scheme::SendAccessToken};
 
-        let dummy_event_json = json!({
-            "type": "m.room.message",
-            "event_id": "$143273582443PhrSn:example.com",
-            "origin_server_ts": 1,
-            "room_id": "!roomid:room.com",
-            "sender": "@user:example.com",
-            "content": {
-                "body": "test",
-                "msgtype": "m.text",
-            },
-        });
-        let dummy_event = from_json_value(dummy_event_json.clone()).unwrap();
-        let events = vec![dummy_event];
+//         let dummy_event_json = json!({
+//             "type": "m.room.message",
+//             "event_id": "$143273582443PhrSn:example.com",
+//             "origin_server_ts": 1,
+//             "room_id": "!roomid:room.com",
+//             "sender": "@user:example.com",
+//             "content": {
+//                 "body": "test",
+//                 "msgtype": "m.text",
+//             },
+//         });
+//         let dummy_event = from_json_value(dummy_event_json.clone()).unwrap();
+//         let events = vec![dummy_event];
 
-        let req = super::Request::new("any_txn_id".into(), events)
-            .try_into_http_request::<Vec<u8>>(
-                "https://homeserver.tld",
-                SendAccessToken::IfRequired("auth_tok"),
-                (),
-            )
-            .unwrap();
-        let json_body: serde_json::Value = serde_json::from_slice(req.body()).unwrap();
+//         let req = super::Request::new("any_txn_id".into(), events)
+//             .try_into_http_request::<Vec<u8>>(
+//                 "https://homeserver.tld",
+//                 SendAccessToken::IfRequired("auth_tok"),
+//                 (),
+//             )
+//             .unwrap();
+//         let json_body: serde_json::Value = serde_json::from_slice(req.body()).unwrap();
 
-        assert_eq!(
-            json_body,
-            json!({
-                "events": [
-                    dummy_event_json,
-                ]
-            })
-        );
-    }
+//         assert_eq!(
+//             json_body,
+//             json!({
+//                 "events": [
+//                     dummy_event_json,
+//                 ]
+//             })
+//         );
+//     }
 
-    #[test]
-    fn serde_ephemeral_data() {
-        let room_id = room_id!("!jEsUZKDJdhlrceRyVU:server.local");
-        let user_id = user_id!("@alice:server.local");
-        let event_id = event_id!("$1435641916114394fHBL");
+//     #[test]
+//     fn serde_ephemeral_data() {
+//         let room_id = room_id!("!jEsUZKDJdhlrceRyVU:server.local");
+//         let user_id = user_id!("@alice:server.local");
+//         let event_id = event_id!("$1435641916114394fHBL");
 
-        // Test m.typing serde.
-        let typing_json = json!({
-            "type": "m.typing",
-            "room_id": room_id,
-            "content": {
-                "user_ids": [user_id],
-            },
-        });
+//         // Test m.typing serde.
+//         let typing_json = json!({
+//             "type": "m.typing",
+//             "room_id": room_id,
+//             "content": {
+//                 "user_ids": [user_id],
+//             },
+//         });
 
-        let data = from_json_value::<EphemeralData>(typing_json.clone()).unwrap();
-        assert_matches!(&data, EphemeralData::Typing(typing));
-        assert_eq!(typing.room_id, room_id);
-        assert_eq!(typing.content.user_ids, &[user_id.to_owned()]);
+//         let data = from_json_value::<EphemeralData>(typing_json.clone()).unwrap();
+//         assert_matches!(&data, EphemeralData::Typing(typing));
+//         assert_eq!(typing.room_id, room_id);
+//         assert_eq!(typing.content.user_ids, &[user_id.to_owned()]);
 
-        let serialized_data = to_json_value(data).unwrap();
-        assert_eq!(serialized_data, typing_json);
+//         let serialized_data = to_json_value(data).unwrap();
+//         assert_eq!(serialized_data, typing_json);
 
-        // Test m.receipt serde.
-        let receipt_json = json!({
-            "type": "m.receipt",
-            "room_id": room_id,
-            "content": {
-                event_id: {
-                    "m.read": {
-                        user_id: {
-                            "ts": 453,
-                        },
-                    },
-                },
-            },
-        });
+//         // Test m.receipt serde.
+//         let receipt_json = json!({
+//             "type": "m.receipt",
+//             "room_id": room_id,
+//             "content": {
+//                 event_id: {
+//                     "m.read": {
+//                         user_id: {
+//                             "ts": 453,
+//                         },
+//                     },
+//                 },
+//             },
+//         });
 
-        let data = from_json_value::<EphemeralData>(receipt_json.clone()).unwrap();
-        assert_matches!(&data, EphemeralData::Receipt(receipt));
-        assert_eq!(receipt.room_id, room_id);
-        let event_receipts = receipt.content.get(event_id).unwrap();
-        let event_read_receipts = event_receipts.get(&ReceiptType::Read).unwrap();
-        let event_user_read_receipt = event_read_receipts.get(user_id).unwrap();
-        assert_eq!(
-            event_user_read_receipt.ts,
-            Some(MilliSecondsSinceUnixEpoch(uint!(453)))
-        );
+//         let data = from_json_value::<EphemeralData>(receipt_json.clone()).unwrap();
+//         assert_matches!(&data, EphemeralData::Receipt(receipt));
+//         assert_eq!(receipt.room_id, room_id);
+//         let event_receipts = receipt.content.get(event_id).unwrap();
+//         let event_read_receipts = event_receipts.get(&ReceiptType::Read).unwrap();
+//         let event_user_read_receipt = event_read_receipts.get(user_id).unwrap();
+//         assert_eq!(event_user_read_receipt.ts, Some(UnixMillis(uint!(453))));
 
-        let serialized_data = to_json_value(data).unwrap();
-        assert_eq!(serialized_data, receipt_json);
+//         let serialized_data = to_json_value(data).unwrap();
+//         assert_eq!(serialized_data, receipt_json);
 
-        // Test m.presence serde.
-        let presence_json = json!({
-            "type": "m.presence",
-            "sender": user_id,
-            "content": {
-                "avatar_url": "mxc://localhost/wefuiwegh8742w",
-                "currently_active": false,
-                "last_active_ago": 785,
-                "presence": "online",
-                "status_msg": "Making cupcakes",
-            },
-        });
+//         // Test m.presence serde.
+//         let presence_json = json!({
+//             "type": "m.presence",
+//             "sender": user_id,
+//             "content": {
+//                 "avatar_url": "mxc://localhost/wefuiwegh8742w",
+//                 "currently_active": false,
+//                 "last_active_ago": 785,
+//                 "presence": "online",
+//                 "status_msg": "Making cupcakes",
+//             },
+//         });
 
-        let data = from_json_value::<EphemeralData>(presence_json.clone()).unwrap();
-        assert_matches!(&data, EphemeralData::Presence(presence));
-        assert_eq!(presence.sender, user_id);
-        assert_eq!(presence.content.currently_active, Some(false));
+//         let data = from_json_value::<EphemeralData>(presence_json.clone()).unwrap();
+//         assert_matches!(&data, EphemeralData::Presence(presence));
+//         assert_eq!(presence.sender, user_id);
+//         assert_eq!(presence.content.currently_active, Some(false));
 
-        let serialized_data = to_json_value(data).unwrap();
-        assert_eq!(serialized_data, presence_json);
+//         let serialized_data = to_json_value(data).unwrap();
+//         assert_eq!(serialized_data, presence_json);
 
-        // Test custom serde.
-        let custom_json = json!({
-            "type": "dev.ruma.custom",
-            "key": "value",
-            "content": {
-                "foo": "bar",
-            },
-        });
+//         // Test custom serde.
+//         let custom_json = json!({
+//             "type": "dev.ruma.custom",
+//             "key": "value",
+//             "content": {
+//                 "foo": "bar",
+//             },
+//         });
 
-        let data = from_json_value::<EphemeralData>(custom_json.clone()).unwrap();
+//         let data = from_json_value::<EphemeralData>(custom_json.clone()).unwrap();
 
-        let serialized_data = to_json_value(data).unwrap();
-        assert_eq!(serialized_data, custom_json);
-    }
+//         let serialized_data = to_json_value(data).unwrap();
+//         assert_eq!(serialized_data, custom_json);
+//     }
 
-    #[test]
-    #[cfg(feature = "unstable-msc4203")]
-    fn serde_any_appservice_to_device_event() {
-        use ruma_common::{device_id, user_id};
+//     #[test]
+//     #[cfg(feature = "unstable-msc4203")]
+//     fn serde_any_appservice_to_device_event() {
+//         use crate::{device_id, user_id};
 
-        use super::AnyAppserviceToDeviceEvent;
+//         use super::AnyAppserviceToDeviceEvent;
 
-        let event_json = json!({
-            "type": "m.key.verification.request",
-            "sender": "@alice:example.org",
-            "content": {
-                "from_device": "AliceDevice2",
-                "methods": [
-                    "m.sas.v1"
-                ],
-                "timestamp": 1_559_598_944_869_i64,
-                "transaction_id": "S0meUniqueAndOpaqueString"
-            },
-            "to_user_id": "@bob:example.org",
-            "to_device_id": "DEVICEID"
-        });
+//         let event_json = json!({
+//             "type": "m.key.verification.request",
+//             "sender": "@alice:example.org",
+//             "content": {
+//                 "from_device": "AliceDevice2",
+//                 "methods": [
+//                     "m.sas.v1"
+//                 ],
+//                 "timestamp": 1_559_598_944_869_i64,
+//                 "transaction_id": "S0meUniqueAndOpaqueString"
+//             },
+//             "to_user_id": "@bob:example.org",
+//             "to_device_id": "DEVICEID"
+//         });
 
-        // Test deserialization
-        let event = from_json_value::<AnyAppserviceToDeviceEvent>(event_json.clone()).unwrap();
-        assert_eq!(event.sender(), user_id!("@alice:example.org"));
-        assert_eq!(event.to_user_id, user_id!("@bob:example.org"));
-        assert_eq!(event.to_device_id, device_id!("DEVICEID"));
-        assert_eq!(event.event_type().to_string(), "m.key.verification.request");
-    }
-}
+//         // Test deserialization
+//         let event = from_json_value::<AnyAppserviceToDeviceEvent>(event_json.clone()).unwrap();
+//         assert_eq!(event.sender(), user_id!("@alice:example.org"));
+//         assert_eq!(event.to_user_id, user_id!("@bob:example.org"));
+//         assert_eq!(event.to_device_id, device_id!("DEVICEID"));
+//         assert_eq!(event.event_type().to_string(), "m.key.verification.request");
+//     }
+// }

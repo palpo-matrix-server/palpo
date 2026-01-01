@@ -79,7 +79,7 @@ impl SyncRoomJoinRulesEvent {
 #[cfg(test)]
 mod tests {
     use assert_matches2::assert_matches;
-    use ruma_common::owned_room_id;
+    use crate::owned_room_id;
     use serde_json::json;
 
     use super::{
@@ -93,10 +93,20 @@ mod tests {
         let json = r#"{"join_rule": "public"}"#;
 
         let event: RoomJoinRulesEventContent = serde_json::from_str(json).unwrap();
-        assert_matches!(event, RoomJoinRulesEventContent { join_rule: JoinRule::Public });
+        assert_matches!(
+            event,
+            RoomJoinRulesEventContent {
+                join_rule: JoinRule::Public
+            }
+        );
 
         let event: RedactedRoomJoinRulesEventContent = serde_json::from_str(json).unwrap();
-        assert_matches!(event, RedactedRoomJoinRulesEventContent { join_rule: JoinRule::Public });
+        assert_matches!(
+            event,
+            RedactedRoomJoinRulesEventContent {
+                join_rule: JoinRule::Public
+            }
+        );
     }
 
     #[test]
@@ -155,7 +165,10 @@ mod tests {
             "event_id": "$0ACb9KSPlT3al3kikyRYvFhMqXPP9ZcQOBrsdIuh58U"
         }"#;
 
-        assert_matches!(serde_json::from_str::<OriginalSyncRoomJoinRulesEvent>(json), Ok(_));
+        assert_matches!(
+            serde_json::from_str::<OriginalSyncRoomJoinRulesEvent>(json),
+            Ok(_)
+        );
     }
 
     #[test]
@@ -186,7 +199,10 @@ mod tests {
             "event_id": "$0ACb9KSPlT3al3kikyRYvFhMqXPP9ZcQOBrsdIuh58U"
         }"#;
 
-        assert_matches!(serde_json::from_str::<RedactedSyncRoomJoinRulesEvent>(json), Ok(_));
+        assert_matches!(
+            serde_json::from_str::<RedactedSyncRoomJoinRulesEvent>(json),
+            Ok(_)
+        );
     }
 
     #[test]
@@ -195,7 +211,9 @@ mod tests {
         let join_rules: RoomJoinRulesEventContent = serde_json::from_str(json).unwrap();
         assert_matches!(
             join_rules,
-            RoomJoinRulesEventContent { join_rule: JoinRule::Restricted(_) }
+            RoomJoinRulesEventContent {
+                join_rule: JoinRule::Restricted(_)
+            }
         );
     }
 

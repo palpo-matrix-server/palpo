@@ -77,7 +77,7 @@ impl KeyVerificationCancelEventContent {
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
 // FIXME: Add `m.foo_bar` as a naming scheme in StringEnum and remove rename attributes.
 #[derive(ToSchema, Clone, StringEnum)]
-#[ruma_enum(rename_all(prefix = "m.", rule = "snake_case"))]
+#[palpo_enum(rename_all(prefix = "m.", rule = "snake_case"))]
 #[non_exhaustive]
 pub enum CancelCode {
     /// The user cancelled the verification.

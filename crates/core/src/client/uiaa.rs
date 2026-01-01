@@ -2,6 +2,7 @@
 //!
 //! [uiaa]: https://spec.matrix.org/latest/client-server-api/#user-interactive-authentication-api
 
+use std::marker::PhantomData;
 use std::{borrow::Cow, error::Error as StdError, fmt};
 
 use salvo::prelude::*;
@@ -254,16 +255,16 @@ pub enum AuthType {
     /// Terms of service (`m.login.terms`).
     ///
     /// This type is only valid during account registration.
-    #[ruma_enum(rename = "m.login.terms")]
+    #[palpo_enum(rename = "m.login.terms")]
     Terms,
 
     /// OAuth 2.0 (`m.oauth`).
     ///
     /// This type is only valid with the cross-signing keys upload endpoint, after logging in with
     /// the OAuth 2.0 API.
-    #[ruma_enum(rename = "m.oauth", alias = "org.matrix.cross_signing_reset")]
+    #[palpo_enum(rename = "m.oauth", alias = "org.matrix.cross_signing_reset")]
     OAuth,
-    
+
     #[doc(hidden)]
     _Custom(PrivOwnedStr),
 }
@@ -669,8 +670,8 @@ impl UiaaInfo {
     /// # Example
     ///
     /// ```
-    /// # use ruma_client_api::uiaa::UiaaInfo;
-    /// use ruma_client_api::uiaa::{AuthType, LoginTermsParams};
+    /// # use palpo_client_api::uiaa::UiaaInfo;
+    /// use palpo_client_api::uiaa::{AuthType, LoginTermsParams};
     ///
     /// # let uiaa_info = UiaaInfo::new(Vec::new());
     /// let login_terms_params = uiaa_info.params::<LoginTermsParams>(&AuthType::Terms)?;
@@ -718,7 +719,10 @@ impl UiaaInfo {
         };
 
         let mut deserializer = serde_json::Deserializer::from_str(params.get());
-        deserializer.deserialize_map(AuthTypeVisitor { auth_type, _phantom: PhantomData })
+        deserializer.deserialize_map(AuthTypeVisitor {
+            auth_type,
+            _phantom: PhantomData,
+        })
     }
 }
 

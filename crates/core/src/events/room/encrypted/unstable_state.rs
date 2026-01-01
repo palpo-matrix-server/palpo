@@ -1,7 +1,7 @@
 //! Types for `m.room.encrypted` state events, as defined in [MSC4362][msc].
 //!
 //! [msc]: https://github.com/matrix-org/matrix-spec-proposals/pull/4362
-use ruma_macros::EventContent;
+use palpo_macros::EventContent;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -11,8 +11,7 @@ use crate::{
 
 /// The content of an `m.room.encrypted` state event.
 #[derive(Clone, Debug, Deserialize, Serialize, EventContent)]
-#[cfg_attr(not(ruma_unstable_exhaustive_types), non_exhaustive)]
-#[ruma_event(type = "m.room.encrypted", kind = State, state_key_type = String, custom_possibly_redacted)]
+#[palpo_event(type = "m.room.encrypted", kind = State, state_key_type = String, custom_possibly_redacted)]
 pub struct StateRoomEncryptedEventContent {
     /// Algorithm-specific fields.
     #[serde(flatten)]
@@ -21,7 +20,6 @@ pub struct StateRoomEncryptedEventContent {
 
 /// The possibly redacted form of [`StateRoomEncryptedEventContent`].
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
-#[cfg_attr(not(ruma_unstable_exhaustive_types), non_exhaustive)]
 pub struct PossiblyRedactedStateRoomEncryptedEventContent {
     /// Algorithm-specific fields.
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
@@ -46,7 +44,7 @@ mod tests {
 
     use assert_matches2::assert_matches;
     use js_int::uint;
-    use ruma_common::{MilliSecondsSinceUnixEpoch, room_id, user_id};
+    use crate::{UnixMillis, room_id, user_id};
     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
 
     use crate::{
@@ -79,7 +77,10 @@ mod tests {
             "session_id": "session_id",
         });
 
-        assert_eq!(to_json_value(&key_verification_start_content).unwrap(), json_data);
+        assert_eq!(
+            to_json_value(&key_verification_start_content).unwrap(),
+            json_data
+        );
     }
 
     #[test]
@@ -93,7 +94,10 @@ mod tests {
 
         let content: StateRoomEncryptedEventContent = from_json_value(json_data).unwrap();
 
-        assert_matches!(content.scheme, EncryptedEventScheme::MegolmV1AesSha2(scheme));
+        assert_matches!(
+            content.scheme,
+            EncryptedEventScheme::MegolmV1AesSha2(scheme)
+        );
         assert_eq!(scheme.ciphertext, "ciphertext");
         assert_eq!(scheme.sender_key, None);
         assert_eq!(scheme.device_id, None);
@@ -118,9 +122,15 @@ mod tests {
         });
         let event = from_json_value::<AnyStateEvent>(json_data).unwrap();
 
-        assert_matches!(event, AnyStateEvent::RoomEncrypted(StateEvent::Original(ev)));
+        assert_matches!(
+            event,
+            AnyStateEvent::RoomEncrypted(StateEvent::Original(ev))
+        );
 
-        assert_matches!(ev.content.scheme, EncryptedEventScheme::MegolmV1AesSha2(scheme));
+        assert_matches!(
+            ev.content.scheme,
+            EncryptedEventScheme::MegolmV1AesSha2(scheme)
+        );
         assert_eq!(scheme.ciphertext, "ciphertext");
         assert_eq!(scheme.sender_key, None);
         assert_eq!(scheme.device_id, None);
@@ -128,7 +138,10 @@ mod tests {
 
         assert_eq!(ev.sender, user_id!("@example:example.com"));
         assert_eq!(ev.room_id, room_id!("!roomid:example.com"));
-        assert_eq!(ev.origin_server_ts, MilliSecondsSinceUnixEpoch(uint!(1_234_567_890)));
+        assert_eq!(
+            ev.origin_server_ts,
+            UnixMillis(uint!(1_234_567_890))
+        );
         assert_eq!(ev.state_key, "");
     }
 }

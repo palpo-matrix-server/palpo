@@ -274,7 +274,7 @@ impl<'de> Visitor<'de> for ErrorKindVisitor {
 ///
 /// [error codes]: https://spec.matrix.org/latest/client-server-api/#standard-error-response
 #[derive(StringEnum, Clone)]
-#[palpo_enum(rename_all = "M_MATRIX_ERROR_CASE")]
+#[palpo_enum(rename_all(prefix = "M_", rule = "SCREAMING_SNAKE_CASE"))]
 // Please keep the variants sorted alphabetically.
 pub enum ErrorCode {
     /// `M_APPSERVICE_LOGIN_UNSUPPORTED`
@@ -418,7 +418,7 @@ pub enum ErrorCode {
     ///
     /// Unstable prefix intentionally shared with MSC4155 for compatibility.
     #[cfg(feature = "unstable-msc4380")]
-    #[ruma_enum(rename = "ORG.MATRIX.MSC4155.INVITE_BLOCKED")]
+    #[palpo_enum(rename = "ORG.MATRIX.MSC4155.INVITE_BLOCKED")]
     InviteBlocked,
 
     /// `M_LIMIT_EXCEEDED`

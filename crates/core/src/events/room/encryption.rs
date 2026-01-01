@@ -22,7 +22,7 @@ pub struct RoomEncryptionEventContent {
 
     /// Whether state events should be encrypted alongside message-like events.
     #[cfg(feature = "unstable-msc4362")]
-    #[serde(default, skip_serializing_if = "ruma_common::serde::is_default")]
+    #[serde(default, skip_serializing_if = "crate::serde::is_default")]
     #[serde(rename = "io.element.msc4362.encrypt_state_events")]
     pub encrypt_state_events: bool,
 
