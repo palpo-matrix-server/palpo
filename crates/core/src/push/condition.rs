@@ -603,12 +603,18 @@ impl StrExt for str {
     }
 }
 
-#[cfg(feature = "unstable-msc4306")]
+#[cfg(not(target_family = "wasm"))]
 type HasThreadSubscriptionFuture<'a> = Pin<Box<dyn Future<Output = bool> + Send + 'a>>;
 
-#[cfg(feature = "unstable-msc4306")]
+#[cfg(target_family = "wasm")]
+type HasThreadSubscriptionFuture<'a> = Pin<Box<dyn Future<Output = bool> + 'a>>;
+
+#[cfg(not(target_family = "wasm"))]
 type HasThreadSubscriptionFn =
-    dyn for<'a> Fn(&'a EventId) -> HasThreadSubscriptionFuture<'a> + Send + Sync + RefUnwindSafe;
+    dyn for<'a> Fn(&'a EventId) -> HasThreadSubscriptionFuture<'a> + Send + Sync;
+
+#[cfg(target_family = "wasm")]
+type HasThreadSubscriptionFn = dyn for<'a> Fn(&'a EventId) -> HasThreadSubscriptionFuture<'a>;
 
 // #[cfg(test)]
 // mod tests {

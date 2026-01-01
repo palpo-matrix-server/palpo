@@ -191,7 +191,6 @@ impl JoinRule {
             JoinRule::Restricted(_) => "restricted",
             JoinRule::KnockRestricted(_) => "knock_restricted",
             JoinRule::Public => "public",
-            JoinRule::_Custom(rule) => &rule.0,
             JoinRule::_Custom(CustomJoinRule { join_rule, .. }) => join_rule,
         }
     }

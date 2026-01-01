@@ -876,7 +876,7 @@ where
                 event_id.to_owned(),
                 (
                     position,
-                    fetch_event(event_id.to_owned()).await.map(|event| event.origin_server_ts()),
+                    fetch_event(event_id.to_owned()).await.map(|event| event.origin_server_ts()).ok(),
                     event_id.to_owned(),
                 ),
             );
