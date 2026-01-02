@@ -4,10 +4,7 @@
 //! `/v3/` ([spec])
 //!
 //! [spec]: https://spec.matrix.org/latest/client-server-api/#fallback
-use salvo::oapi::{ToParameters, ToSchema};
-use serde::{Deserialize, Serialize};
-
-use crate::auth_scheme::NoAuthentication;
+use serde::Deserialize;
 
 use crate::client::uiaa::AuthType;
 

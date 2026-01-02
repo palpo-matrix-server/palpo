@@ -5,14 +5,13 @@
 use std::error::Error as StdError;
 use std::{borrow::Cow, fmt, marker::PhantomData};
 
-use bytes::BufMut;
 use serde::{Deserialize, Deserializer, Serialize, de};
-use serde_json::{from_slice as from_json_slice, value::RawValue as RawJsonValue};
+use serde_json::value::RawValue as RawJsonValue;
 
 use crate::PrivOwnedStr;
 use crate::error::AuthenticateError;
 pub use crate::error::ErrorKind;
-use crate::{error::IntoHttpError, serde::StringEnum};
+use crate::serde::StringEnum;
 
 mod auth_data;
 mod auth_params;

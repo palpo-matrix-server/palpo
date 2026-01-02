@@ -18,9 +18,8 @@ use crate::events::typing::TypingEvent;
 #[cfg(feature = "unstable-msc4203")]
 use crate::events::{AnyToDeviceEvent, AnyToDeviceEventContent, ToDeviceEventType};
 use crate::{
-    OwnedDeviceId, OwnedRoomId, OwnedUserId, UserId,
-    events::{AnyTimelineEvent, receipt::ReceiptContent},
-    presence::PresenceContent,
+    OwnedDeviceId, OwnedUserId, UserId,
+    events::AnyTimelineEvent,
     sending::{SendRequest, SendResult},
     serde::{JsonCastable, JsonObject, JsonValue, RawJson, RawJsonValue, from_raw_json_value},
 };

@@ -10,7 +10,7 @@ use std::{fmt, marker::PhantomData};
 
 use serde::{
     Deserialize, Deserializer,
-    de::{self, SeqAccess, Visitor},
+    de::{self, SeqAccess, DeserializeOwned, Visitor},
 };
 pub use serde_json::{
     json,
@@ -117,6 +117,30 @@ where
     E: de::Error,
 {
     serde_json::from_str(val.get()).map_err(E::custom)
+}
+
+/// Helper function for returning a default value if deserialization of the type fails.
+///
+/// Assumes that the content being deserialized is JSON.
+///
+/// Used as `#[serde(deserialize_with = "default_on_error")]`.
+pub fn default_on_error<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: DeserializeOwned + Default,
+{
+    let value = match Box::<RawJsonValue>::deserialize(deserializer) {
+        Ok(value) => value,
+        Err(error) => {
+            debug!("deserialization error, using default value: {error}");
+            return Ok(T::default());
+        }
+    };
+
+    Ok(from_raw_json_value(&value).unwrap_or_else(|error: D::Error| {
+        debug!("deserialization error, using default value: {error}");
+        T::default()
+    }))
 }
 
 /// Helper function for ignoring invalid items in a `Vec`, instead letting them cause the entire

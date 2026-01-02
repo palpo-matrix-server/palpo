@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 /// The content of an `m.invite_permission_config` event.
 ///
 /// A single property: `block_all`.
-#[derive(Clone, Debug, Default, Deserialize, Serialize, EventContent)]
+#[derive(ToSchema, Clone, Debug, Default, Deserialize, Serialize, EventContent)]
 #[palpo_event(
     kind = GlobalAccountData,
     type = "org.matrix.msc4380.invite_permission_config",
