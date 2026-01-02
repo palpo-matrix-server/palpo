@@ -2,7 +2,6 @@
 
 pub mod appservice;
 pub mod authentication;
-pub mod authorization;
 pub mod client;
 pub mod device;
 pub mod directory;
