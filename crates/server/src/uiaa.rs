@@ -94,12 +94,9 @@ pub fn try_auth(
         .map(|session| get_session(user_id, device_id, session))
         .unwrap_or_else(|| Ok(uiaa_info.clone()))?;
 
-    println!("===============try_auth  0");
     if uiaa_info.session.is_none() {
-        println!("===============try_auth  1");
         uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
     }
-    println!("===============try_auth  2");
     let conf = crate::config::get();
 
     match auth {
@@ -154,7 +151,6 @@ pub fn try_auth(
         completed = true;
     }
 
-    println!("===============try_auth  6");
     if !completed {
         crate::uiaa::update_session(
             user_id,
@@ -165,7 +161,6 @@ pub fn try_auth(
         return Ok((false, uiaa_info));
     }
 
-    println!("===============try_auth  7");
     // UIAA was successful! Remove this session and return true
     crate::uiaa::update_session(
         user_id,

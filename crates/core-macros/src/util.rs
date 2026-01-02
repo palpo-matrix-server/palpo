@@ -103,7 +103,7 @@ pub(crate) fn cfg_expand_struct(item: &mut syn::ItemStruct) {
         let expanded = match proc_macro::TokenStream::from(cfg_macro_call).expand_expr() {
             Ok(t) => t,
             Err(e) => {
-                eprintln!("Failed to expand cfg! {e}");
+                eprintln!("failed to expand cfg! {e}");
                 return None;
             }
         };
