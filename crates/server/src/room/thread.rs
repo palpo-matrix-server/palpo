@@ -9,7 +9,7 @@ use crate::data::connect;
 use crate::data::room::DbThread;
 use crate::data::schema::*;
 use crate::room::timeline;
-use crate::{AppResult, MatrixError, SnPduEvent};
+use crate::{AppResult, SnPduEvent};
 
 pub fn get_threads(
     room_id: &RoomId,

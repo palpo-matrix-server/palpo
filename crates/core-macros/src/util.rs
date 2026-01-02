@@ -1,6 +1,6 @@
 use proc_macro_crate::{FoundCrate, crate_name};
-use proc_macro2::{Span, TokenStream};
-use quote::{ToTokens, TokenStreamExt, format_ident, quote};
+use proc_macro2::TokenStream;
+use quote::{ToTokens, format_ident, quote};
 use syn::{
     Attribute, Field, Ident, LitStr, meta::ParseNestedMeta, punctuated::Punctuated, visit::Visit,
 };
@@ -20,7 +20,7 @@ impl NameSpace {
     }
 
     pub(crate) fn serde() -> TokenStream {
-        let palpo_core =  Self::palpo_core();
+        let palpo_core = Self::palpo_core();
         quote! { #palpo_core::__private::serde }
     }
 

@@ -6,7 +6,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::{ToTokens, format_ident, quote};
 use syn::parse::{Parse, ParseStream};
 
-use crate::util::{NameSpace, m_prefix_name_to_type_name};
+use crate::util::m_prefix_name_to_type_name;
 
 /// All the common event kinds.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord)]
