@@ -144,7 +144,7 @@ pub struct PollContentBlock {
         default = "PollContentBlock::default_max_selections",
         skip_serializing_if = "PollContentBlock::max_selections_is_default"
     )]
-    pub max_selections: u64,
+    pub max_selections: u32,
 
     /// The possible answers to the poll.
     pub answers: PollAnswers,
@@ -161,11 +161,11 @@ impl PollContentBlock {
         }
     }
 
-    pub(super) fn default_max_selections() -> u64 {
+    pub(super) fn default_max_selections() -> u32{
         1
     }
 
-    fn max_selections_is_default(max_selections: &u64) -> bool {
+    fn max_selections_is_default(max_selections: &u32) -> bool {
         max_selections == &Self::default_max_selections()
     }
 }

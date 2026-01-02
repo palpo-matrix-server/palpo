@@ -18,7 +18,7 @@ markdown = ["dep:pulldown-cmark"]
 ring-compat = ["dep:subslice"]
 compat-empty-string-null = []
 
-# unstable: by using any of these, you opt out of all semver guarantees Ruma
+# unstable: by using any of these, you opt out of all semver guarantees Palpo
 #           otherwise provides!
 unstable-exhaustive-types = []
 unstable-extensible-events = [
@@ -77,6 +77,7 @@ unstable-msc4140 = []
 unstable-msc4143 = []
 unstable-msc4171 = []
 unstable-msc4191 = []
+unstable-msc4195 = ["unstable-msc4143"]
 unstable-msc4186 = []
 unstable-msc4203 = []
 unstable-msc4230 = []
@@ -90,6 +91,8 @@ unstable-msc4310 = []
 unstable-msc4319 = []
 unstable-msc4334 = ["dep:language-tags"]
 unstable-msc4359 = []
+unstable-msc4362 = []
+unstable-msc4380 = []
 unstable-pdu = []
 unstable-unspecified = []
 

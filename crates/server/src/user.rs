@@ -56,14 +56,7 @@ pub fn create_user(user_id: impl Into<OwnedUserId>, password: Option<&str>) -> A
         .get_result::<DbUser>(&mut connect()?)?;
     let display_name = user_id.localpart().to_owned();
     if let Some(password) = password {
-        let hash = crate::utils::hash_password(password)?;
-        diesel::insert_into(user_passwords::table)
-            .values(NewDbPassword {
-                user_id,
-                hash,
-                created_at: UnixMillis::now(),
-            })
-            .execute(&mut connect()?)?;
+        crate::user::set_password(&user.id, password)?;
     }
     if let Err(e) = set_display_name(&user.id, &display_name) {
         tracing::warn!("failed to set profile for new user (non-fatal): {}", e);

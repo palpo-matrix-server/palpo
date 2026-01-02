@@ -1,6 +1,3 @@
-use std::borrow::Borrow;
-use std::iter::once;
-
 use diesel::prelude::*;
 use salvo::oapi::extract::*;
 use salvo::prelude::*;
@@ -22,7 +19,7 @@ use crate::federation::maybe_strip_event_id;
 use crate::room::{ensure_room, timeline};
 use crate::{
     DepotExt, EmptyResult, IsRemoteOrLocal, JsonResult, MatrixError, PduBuilder, SnPduEvent,
-    config, data, empty_ok, json_ok, membership, room, utils,
+    config, data, empty_ok, json_ok, membership, room, 
 };
 
 pub fn router_v1() -> Router {

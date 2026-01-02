@@ -3,7 +3,6 @@ use diesel::prelude::*;
 use crate::core::UnixMillis;
 use crate::core::identifiers::*;
 use crate::schema::*;
-use crate::{DataResult, connect};
 
 #[derive(Identifiable, Debug, Clone)]
 #[diesel(table_name = user_passwords)]

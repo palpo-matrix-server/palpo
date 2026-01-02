@@ -338,7 +338,7 @@ async fn send_events(
                         ),
                     )
                 })?;
-            let req_body = PushEventsReqBody { events: pdu_jsons };
+            let req_body = PushEventsReqBody { events: pdu_jsons, to_device: vec![] };
 
             let txn_id = &*general_purpose::URL_SAFE_NO_PAD.encode(utils::hash_keys(
                 events.iter().filter_map(|e| match e {

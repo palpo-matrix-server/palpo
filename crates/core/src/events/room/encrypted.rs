@@ -16,6 +16,8 @@ use crate::{
 };
 
 mod relation_serde;
+#[cfg(feature = "unstable-msc4362")]
+pub mod unstable_state;
 
 /// The content of an `m.room.encrypted` event.
 #[derive(ToSchema, Deserialize, Serialize, Clone, Debug, EventContent)]

@@ -504,7 +504,6 @@ pub async fn process_to_timeline_pdu(
             // Now that the event has passed all auth it is added into the timeline.
             // We use the `state_at_event` instead of `state_after` so we accurately
             // represent the state for this event.
-            let event_id = incoming_pdu.event_id.clone();
             debug!("compressing state at event");
             let compressed_state_ids = Arc::new(
                 state_at_incoming_event

@@ -226,7 +226,7 @@ impl XMatrix {
         let request_object = Self::request_object(request, &origin, &destination)?;
 
         // The spec says to use the algorithm to sign JSON, so we could use
-        // ruma_signatures::sign_json, however since we would need to extract the signature from the
+        // crate::signatures::sign_json, however since we would need to extract the signature from the
         // JSON afterwards let's be a bit more efficient about it.
         let serialized_request_object = serde_json::to_vec(&request_object)?;
         let (key_id, signature) = key_pair.sign(&serialized_request_object).into_parts();

@@ -332,7 +332,7 @@ pub struct Failure {
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
 #[derive(ToSchema, Clone, StringEnum)]
 #[non_exhaustive]
-#[palpo_enum(rename_all = "M_MATRIX_ERROR_CASE")]
+#[palpo_enum(rename_all(prefix = "M_", rule = "SCREAMING_SNAKE_CASE"))]
 pub enum FailureErrorCode {
     /// The signature is invalid.
     InvalidSignature,

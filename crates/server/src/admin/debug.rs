@@ -230,7 +230,7 @@ pub(super) async fn get_room_state(ctx: &Context<'_>, room: OwnedRoomOrAliasId) 
     // TODO: admin
     unimplemented!();
     // let room_id = crate::room::alias::resolve(&room).await?;
-    // let room_state: Vec<Raw<AnyStateEvent>> = crate::room::state::room_state_full_pdus(&room_id)
+    // let room_state: Vec<RawJson<AnyStateEvent>> = crate::room::state::room_state_full_pdus(&room_id)
     //     .map_ok(Event::into_format)
     //     .try_collect()
     //     .await?;

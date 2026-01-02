@@ -178,7 +178,7 @@ pub struct EmptyMembershipData {
 /// It is used when the user disconnected and a Future ([MSC4140](https://github.com/matrix-org/matrix-spec-proposals/pull/4140))
 /// was used to update the membership after the client was not reachable anymore.
 #[derive(ToSchema, Clone, StringEnum)]
-#[palpo_enum(rename_all = "m.snake_case")]
+#[palpo_enum(rename_all(prefix = "m.", rule = "snake_case"))]
 pub enum LeaveReason {
     /// The user left the call by losing network connection or closing
     /// the client before it was able to send the leave event.

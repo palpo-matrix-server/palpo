@@ -1,5 +1,4 @@
-use std::borrow::Borrow;
-use std::iter::once;
+
 
 use salvo::http::StatusError;
 
@@ -13,7 +12,7 @@ use crate::core::identifiers::*;
 use crate::core::room::JoinRule;
 use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, to_canonical_value};
 use crate::data::room::NewDbEvent;
-use crate::event::{PduBuilder, PduEvent, ensure_event_sn, fetching, gen_event_id, handler};
+use crate::event::{PduBuilder, PduEvent, ensure_event_sn,  gen_event_id};
 use crate::room::timeline;
 use crate::{
     AppError, AppResult, GetUrlOrigin, IsRemoteOrLocal, MatrixError, SnPduEvent, config, room,

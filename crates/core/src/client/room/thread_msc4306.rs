@@ -24,11 +24,11 @@ use crate::OwnedEventId;
 // #[request(error = crate::Error)]
 // pub struct Request {
 //     /// The room ID where the thread is located.
-//     #[ruma_api(path)]
+//     #[palpo_api(path)]
 //     pub room_id: OwnedRoomId,
 
 //     /// The event ID of the thread root to get the status for.
-//     #[ruma_api(path)]
+//     #[palpo_api(path)]
 //     pub thread_root: OwnedEventId,
 // }
 
@@ -66,11 +66,11 @@ impl ThreadSubscriptionResBody {
 #[derive(ToSchema, Deserialize, Debug)]
 pub struct SetThreadSubscriptionReqBody {
     // /// The room ID where the thread is located.
-    // #[ruma_api(path)]
+    // #[palpo_api(path)]
     // pub room_id: OwnedRoomId,
 
     // /// The event ID of the thread root to subscribe to.
-    // #[ruma_api(path)]
+    // #[palpo_api(path)]
     // pub thread_root: OwnedEventId,
     /// Whether the subscription was made automatically by a client, not by manual user choice,
     /// and up to which event.
@@ -120,11 +120,11 @@ impl SetThreadSubscriptionReqBody {
 // #[request(error = crate::Error)]
 // pub struct Request {
 //     /// The room ID where the thread is located.
-//     #[ruma_api(path)]
+//     #[palpo_api(path)]
 //     pub room_id: OwnedRoomId,
 
 //     /// The event ID of the thread root to unsubscribe to.
-//     #[ruma_api(path)]
+//     #[palpo_api(path)]
 //     pub thread_root: OwnedEventId,
 // }
 

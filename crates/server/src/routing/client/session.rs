@@ -313,7 +313,7 @@ async fn get_access_token(
             stages: vec![AuthType::Password],
         }],
         completed: Vec::new(),
-        params: Box::default(),
+        params: None,
         session: None,
         auth_error: None,
     };

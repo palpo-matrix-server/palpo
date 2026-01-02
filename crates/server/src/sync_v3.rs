@@ -1,6 +1,5 @@
 use std::collections::{BTreeMap, HashMap, HashSet, hash_map::Entry};
 
-use diesel::prelude::*;
 use indexmap::IndexMap;
 use state::DbRoomStateField;
 

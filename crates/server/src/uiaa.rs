@@ -109,7 +109,7 @@ pub fn try_auth(
             let username = match identifier {
                 UserIdentifier::UserIdOrLocalpart(username) => username,
                 _ => {
-                    return Err(MatrixError::unauthorized("Identifier type not recognized.").into());
+                    return Err(MatrixError::unauthorized("identifier type not recognized.").into());
                 }
             };
 
@@ -120,7 +120,7 @@ pub fn try_auth(
             }
 
             let Ok(user) = data::user::get_user(&auth_user_id) else {
-                return Err(MatrixError::unauthorized("User not found.").into());
+                return Err(MatrixError::unauthorized("user not found.").into());
             };
             crate::user::verify_password(&user, password)?;
         }

@@ -27,7 +27,9 @@ use crate::{Direction, OwnedEventId, OwnedRoomId};
 pub struct ThreadSubscriptionsChangesReqArgs {
     /// The direction to use for pagination.
     ///
-    /// Always `b`ackwards at the time of implementation (2025-08-21).
+    /// Only `Direction::Backward` is meant to be supported, which is why this field is private
+    /// for now (as of 2025-08-21).
+    #[allow(dead_code)]
     dir: Direction,
 
     /// A token to continue pagination from.

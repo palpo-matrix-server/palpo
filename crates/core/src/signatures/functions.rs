@@ -816,14 +816,10 @@ fn servers_to_check_signatures(
         let authorized_user = authorized_user.as_str().ok_or_else(|| {
             JsonError::not_of_type("join_authorised_via_users_server", JsonType::String)
         })?;
-        match <&UserId>::try_from(authorized_user) {
-            Ok(authorized_user) => {
-                servers_to_check.insert(authorized_user.server_name().to_owned());
-            }
-            Err(e) => {
-                warn!("failed to parse join_authorised_via_users_server user id: {e}");
-            }
-        }
+        let authorized_user =
+            <&UserId>::try_from(authorized_user).map_err(|e| Error::from(ParseError::UserId(e)))?;
+
+        servers_to_check.insert(authorized_user.server_name().to_owned());
     }
 
     Ok(servers_to_check)

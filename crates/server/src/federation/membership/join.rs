@@ -3,13 +3,9 @@ use crate::core::events::room::member::{MembershipState, RoomMemberEventContent}
 use crate::core::federation::membership::{RoomStateV1, RoomStateV2};
 use crate::core::identifiers::*;
 use crate::core::serde::{CanonicalJsonValue, RawJsonValue, to_raw_json_value};
-use crate::data::schema::*;
-use crate::data::{connect, diesel_exists};
 use crate::event::{gen_event_id_canonical_json, handler};
 use crate::room::{state, timeline};
-use crate::{AppError, AppResult, IsRemoteOrLocal, MatrixError, room, sending};
-
-use diesel::prelude::*;
+use crate::{AppResult, IsRemoteOrLocal, MatrixError, room, sending};
 
 pub async fn send_join_v1(
     origin: &ServerName,

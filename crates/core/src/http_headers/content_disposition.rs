@@ -115,12 +115,12 @@ impl TryFrom<&[u8]> for ContentDisposition {
         // compatibility.
         while pos != value.len() {
             if let Some(param) = RawParam::parse_next(value, &mut pos) {
-                if param.name.eq_ignore_ascii_case(b"filename*") {
-                    if let Some(value) = param.decode_value() {
-                        filename_ext = Some(value);
-                        // We can stop parsing, this is the only parameter that we need.
-                        break;
-                    }
+                if param.name.eq_ignore_ascii_case(b"filename*")
+                    && let Some(value) = param.decode_value()
+                {
+                    filename_ext = Some(value);
+                    // We can stop parsing, this is the only parameter that we need.
+                    break;
                 } else if param.name.eq_ignore_ascii_case(b"filename")
                     && let Some(value) = param.decode_value()
                 {

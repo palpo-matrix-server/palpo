@@ -117,8 +117,13 @@ pub enum MatrixVersion {
 
     /// Version 1.16 of the Matrix specification, released in Q3 2025.
     ///
-    /// See <https://spec.matrix.org/v1.16/>.
+    /// See <https://spec.matrix.org/v1.17/>.
     V1_16,
+
+    /// Version 1.17 of the Matrix specification, released in Q4 2025.
+    ///
+    /// See <https://spec.matrix.org/v1.17/>.
+    V1_17,
 }
 
 impl TryFrom<&str> for MatrixVersion {
@@ -146,6 +151,8 @@ impl TryFrom<&str> for MatrixVersion {
             "v1.13" => V1_13,
             "v1.14" => V1_14,
             "v1.15" => V1_15,
+            "v1.16" => V1_16,
+            "v1.17" => V1_17,
             _ => return Err(UnknownVersionError),
         })
     }
@@ -208,6 +215,7 @@ impl MatrixVersion {
             MatrixVersion::V1_14 => "v1.14",
             MatrixVersion::V1_15 => "v1.15",
             MatrixVersion::V1_16 => "v1.16",
+            MatrixVersion::V1_17 => "v1.17",
         };
 
         Some(string)
@@ -233,6 +241,7 @@ impl MatrixVersion {
             MatrixVersion::V1_14 => (1, 14),
             MatrixVersion::V1_15 => (1, 15),
             MatrixVersion::V1_16 => (1, 16),
+            MatrixVersion::V1_17 => (1, 17),
         }
     }
 
@@ -256,6 +265,8 @@ impl MatrixVersion {
             (1, 13) => Ok(MatrixVersion::V1_13),
             (1, 14) => Ok(MatrixVersion::V1_14),
             (1, 15) => Ok(MatrixVersion::V1_15),
+            (1, 16) => Ok(MatrixVersion::V1_16),
+            (1, 17) => Ok(MatrixVersion::V1_17),
             _ => Err(UnknownVersionError),
         }
     }
@@ -303,7 +314,7 @@ impl MatrixVersion {
     }
 
     // Internal function to do ordering in const-fn contexts
-    const fn const_ord(&self, other: &Self) -> Ordering {
+    pub(crate) const fn const_ord(&self, other: &Self) -> Ordering {
         let self_parts = self.into_parts();
         let other_parts = other.into_parts();
 
@@ -319,7 +330,7 @@ impl MatrixVersion {
 
     // Internal function to check if this version is the legacy (v1.0) version in
     // const-fn contexts
-    const fn is_legacy(&self) -> bool {
+    pub(crate) const fn is_legacy(&self) -> bool {
         let self_parts = self.into_parts();
 
         use konst::primitive::cmp::cmp_u8;
@@ -362,8 +373,10 @@ impl MatrixVersion {
             | MatrixVersion::V1_14
             // <https://spec.matrix.org/v1.15/rooms/#complete-list-of-room-versions>
             | MatrixVersion::V1_15 => RoomVersionId::V11,
-            // <https://spec.matrix.org/v1.16/rooms/#complete-list-of-room-versions>
-            MatrixVersion::V1_16 => RoomVersionId::V12,
+            // <https://spec.matrix.org/v1.17/rooms/#complete-list-of-room-versions>
+            MatrixVersion::V1_16
+            // <https://spec.matrix.org/v1.17/rooms/#complete-list-of-room-versions>
+            | MatrixVersion::V1_17 => RoomVersionId::V12,
         }
     }
 }

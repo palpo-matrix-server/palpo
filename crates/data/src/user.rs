@@ -21,8 +21,8 @@ pub mod key_backup;
 pub use key_backup::*;
 pub mod session;
 pub use session::*;
-pub mod presence;
 pub mod external_id;
+pub mod presence;
 pub use external_id::*;
 use std::mem;
 
