@@ -118,8 +118,7 @@ impl UiaaInfo {
     /// # Example
     ///
     /// ```
-    /// # use palpo_core::uiaa::UiaaInfo;
-    /// use palpo_core::uiaa::{AuthType, LoginTermsParams};
+    /// use palpo_core::client::uiaa::{AuthType, UiaaInfo, LoginTermsParams};
     ///
     /// # let uiaa_info = UiaaInfo::new(Vec::new());
     /// let login_terms_params = uiaa_info.params::<LoginTermsParams>(&AuthType::Terms)?;

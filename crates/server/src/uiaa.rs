@@ -109,33 +109,25 @@ pub fn try_auth(
             password,
             ..
         }) => {
-            println!("===============try_auth  3");
             let username = match identifier {
                 UserIdentifier::UserIdOrLocalpart(username) => username,
                 _ => {
-                    println!("===============try_auth  3 === 0");
                     return Err(MatrixError::unauthorized("identifier type not recognized.").into());
                 }
             };
 
-                    println!("===============try_auth  3 === 1");
             let auth_user_id = UserId::parse_with_server_name(username.clone(), &conf.server_name)
                 .map_err(|_| MatrixError::unauthorized("User ID is invalid."))?;
             if user_id != auth_user_id {
-                    println!("===============try_auth  3 === 2");
                 return Err(MatrixError::forbidden("User ID does not match.", None).into());
             }
 
-                    println!("===============try_auth  3 === 3");
             let Ok(user) = data::user::get_user(&auth_user_id) else {
-                    println!("===============try_auth  3 === 4");
                 return Err(MatrixError::unauthorized("user not found.").into());
             };
-                    println!("===============try_auth  3 === 5");
             crate::user::verify_password(&user, password)?;
         }
         AuthData::RegistrationToken(t) => {
-            println!("===============try_auth  x  3");
             if Some(t.token.trim()) == conf.registration_token.as_deref() {
                 uiaa_info.completed.push(AuthType::RegistrationToken);
             } else {
@@ -145,13 +137,11 @@ pub fn try_auth(
             }
         }
         AuthData::Dummy(_) => {
-            println!("===============try_auth  xx3");
             uiaa_info.completed.push(AuthType::Dummy);
         }
         k => error!("type not supported: {:?}", k),
     }
 
-    println!("===============try_auth  5");
     // Check if a flow now succeeds
     let mut completed = false;
     'flows: for flow in &mut uiaa_info.flows {

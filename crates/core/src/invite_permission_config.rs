@@ -2,7 +2,7 @@
 //!
 //! [`m.invite_permission_config`]: https://github.com/matrix-org/matrix-spec-proposals/pull/4380
 
-use palpo_macros::EventContent;
+use palpo_core_macros::EventContent;
 use serde::{Deserialize, Serialize};
 
 /// The content of an `m.invite_permission_config` event.

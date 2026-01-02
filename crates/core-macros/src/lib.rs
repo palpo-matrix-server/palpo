@@ -155,7 +155,7 @@ use self::{
 ///
 /// ```ignore
 /// # // HACK: This is "ignore" because of cyclical dependency drama.
-/// use palpo_macros::event_enum;
+/// use palpo_core_macros::event_enum;
 ///
 /// event_enum! {
 ///     enum ToDevice {
@@ -463,7 +463,7 @@ pub fn derive_from_event_to_enum(input: TokenStream) -> TokenStream {
 ///
 /// ```ignore
 /// # // HACK: This is "ignore" because of cyclical dependency drama.
-/// use palpo_macros::IdDst;
+/// use palpo_core_macros::IdDst;
 ///
 /// #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, IdDst)]
 /// #[palpo_id(validate = palpo_identifiers_validation::user_id::validate)]
@@ -572,7 +572,7 @@ pub fn base64_public_key(input: TokenStream) -> TokenStream {
 /// ## Example
 ///
 /// ```
-/// # use palpo_macros::AsRefStr;
+/// # use palpo_core_macros::AsRefStr;
 /// #[derive(AsRefStr)]
 /// #[palpo_enum(rename_all = "lowercase")]
 /// pub enum MyEnum {
@@ -616,7 +616,7 @@ pub fn derive_enum_as_ref_str(input: TokenStream) -> TokenStream {
 /// ## Example
 ///
 /// ```
-/// # use palpo_macros::FromString;
+/// # use palpo_core_macros::FromString;
 /// #[derive(FromString)]
 /// #[palpo_enum(rename_all = "lowercase")]
 /// pub enum MyEnum {

@@ -1,7 +1,7 @@
 //! Types for `m.room.encrypted` state events, as defined in [MSC4362][msc].
 //!
 //! [msc]: https://github.com/matrix-org/matrix-spec-proposals/pull/4362
-use palpo_macros::EventContent;
+use palpo_core_macros::EventContent;
 use serde::{Deserialize, Serialize};
 
 use crate::{
