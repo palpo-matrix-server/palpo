@@ -7,11 +7,11 @@
 
 use std::borrow::Cow;
 
+use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::Value as JsonValue;
-use salvo::oapi::ToSchema;
 
-use crate::{auth_scheme::AccessToken, serde::JsonObject};
+use crate::serde::JsonObject;
 
 // metadata! {
 //     method: GET,
@@ -151,7 +151,7 @@ impl From<LivekitMultiSfuTransport> for RtcTransport {
 }
 
 #[cfg(feature = "unstable-msc4195")]
-impl From<LivekitMultiSfuTransport> for crate::discovery::discover_homeserver::LiveKitRtcFocusInfo {
+impl From<LivekitMultiSfuTransport> for crate::client::discovery::homeserver::LiveKitRtcFocusInfo {
     fn from(value: LivekitMultiSfuTransport) -> Self {
         let LivekitMultiSfuTransport {
             livekit_service_url,
@@ -163,9 +163,9 @@ impl From<LivekitMultiSfuTransport> for crate::discovery::discover_homeserver::L
 }
 
 #[cfg(feature = "unstable-msc4195")]
-impl From<crate::discovery::discover_homeserver::LiveKitRtcFocusInfo> for LivekitMultiSfuTransport {
-    fn from(value: crate::discovery::discover_homeserver::LiveKitRtcFocusInfo) -> Self {
-        let crate::discovery::discover_homeserver::LiveKitRtcFocusInfo { service_url } = value;
+impl From<crate::client::discovery::homeserver::LiveKitRtcFocusInfo> for LivekitMultiSfuTransport {
+    fn from(value: crate::client::discovery::homeserver::LiveKitRtcFocusInfo) -> Self {
+        let crate::client::discovery::homeserver::LiveKitRtcFocusInfo { service_url } = value;
         Self {
             livekit_service_url: service_url,
         }

@@ -1,7 +1,7 @@
 #![cfg(feature = "client")]
 
 use http::HeaderMap;
-use palpo_core::client::discovery::discover_homeserver;
+use palpo_core::client::discovery::homeserver;
 use crate::api::{MatrixVersion, OutgoingRequest as _, SendAccessToken};
 
 #[test]

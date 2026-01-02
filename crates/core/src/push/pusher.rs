@@ -15,7 +15,7 @@
 //! - sender rules
 //! - underride rules
 
-use salvo::prelude::ToSchema;
+use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize, de, ser::SerializeStruct};
 use serde_json::value::from_value as from_json_value;
 

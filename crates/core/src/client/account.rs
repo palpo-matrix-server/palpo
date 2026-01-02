@@ -1,7 +1,7 @@
 pub mod data;
 pub mod threepid;
 
-use salvo::prelude::ToSchema;
+use salvo::oapi::ToSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::macros::StringEnum;

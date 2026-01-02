@@ -4,10 +4,8 @@
 
 use std::time::Duration;
 
-use salvo::oapi::{ToParameters, ToSchema};
-use serde::{Deserialize, Serialize};
-
-use crate::federation::authenticated_media::{ContentMetadata, FileOrLocation};
+use salvo::oapi::ToParameters;
+use serde::Deserialize;
 
 /// Request type for the `get_content` endpoint.
 #[derive(ToParameters, Deserialize, Debug)]

@@ -4,13 +4,8 @@
 
 use std::time::Duration;
 
-use salvo::oapi::{ToParameters, ToSchema};
-use serde::{Deserialize, Serialize};
-
-use crate::federation::{
-    authenticated_media::{ContentMetadata, FileOrLocation},
-    authentication::ServerSignatures,
-};
+use salvo::oapi::ToParameters;
+use serde::Deserialize;
 
 // metadata! {
 //     method: GET,
