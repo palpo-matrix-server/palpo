@@ -94,9 +94,12 @@ pub fn try_auth(
         .map(|session| get_session(user_id, device_id, session))
         .unwrap_or_else(|| Ok(uiaa_info.clone()))?;
 
+    println!("===============try_auth  0");
     if uiaa_info.session.is_none() {
+        println!("===============try_auth  1");
         uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
     }
+    println!("===============try_auth  2");
     let conf = crate::config::get();
 
     match auth {
@@ -106,25 +109,33 @@ pub fn try_auth(
             password,
             ..
         }) => {
+            println!("===============try_auth  3");
             let username = match identifier {
                 UserIdentifier::UserIdOrLocalpart(username) => username,
                 _ => {
-                    return Err(MatrixError::unauthorized("Identifier type not recognized.").into());
+                    println!("===============try_auth  3 === 0");
+                    return Err(MatrixError::unauthorized("identifier type not recognized.").into());
                 }
             };
 
+                    println!("===============try_auth  3 === 1");
             let auth_user_id = UserId::parse_with_server_name(username.clone(), &conf.server_name)
                 .map_err(|_| MatrixError::unauthorized("User ID is invalid."))?;
             if user_id != auth_user_id {
+                    println!("===============try_auth  3 === 2");
                 return Err(MatrixError::forbidden("User ID does not match.", None).into());
             }
 
+                    println!("===============try_auth  3 === 3");
             let Ok(user) = data::user::get_user(&auth_user_id) else {
-                return Err(MatrixError::unauthorized("User not found.").into());
+                    println!("===============try_auth  3 === 4");
+                return Err(MatrixError::unauthorized("user not found.").into());
             };
+                    println!("===============try_auth  3 === 5");
             crate::user::verify_password(&user, password)?;
         }
         AuthData::RegistrationToken(t) => {
+            println!("===============try_auth  x  3");
             if Some(t.token.trim()) == conf.registration_token.as_deref() {
                 uiaa_info.completed.push(AuthType::RegistrationToken);
             } else {
@@ -134,11 +145,13 @@ pub fn try_auth(
             }
         }
         AuthData::Dummy(_) => {
+            println!("===============try_auth  xx3");
             uiaa_info.completed.push(AuthType::Dummy);
         }
         k => error!("type not supported: {:?}", k),
     }
 
+    println!("===============try_auth  5");
     // Check if a flow now succeeds
     let mut completed = false;
     'flows: for flow in &mut uiaa_info.flows {
@@ -151,6 +164,7 @@ pub fn try_auth(
         completed = true;
     }
 
+    println!("===============try_auth  6");
     if !completed {
         crate::uiaa::update_session(
             user_id,
@@ -161,6 +175,7 @@ pub fn try_auth(
         return Ok((false, uiaa_info));
     }
 
+    println!("===============try_auth  7");
     // UIAA was successful! Remove this session and return true
     crate::uiaa::update_session(
         user_id,

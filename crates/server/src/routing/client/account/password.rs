@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use diesel::prelude::*;
 use palpo_core::client::account::ChangePasswordReqBody;
 use salvo::oapi::extract::*;
@@ -30,6 +32,7 @@ pub fn authed_router() -> Router {
 /// - Triggers device list updates
 #[endpoint]
 async fn change_password(
+    req: &mut Request,
     _aa: AuthArgs,
     body: JsonBody<ChangePasswordReqBody>,
     depot: &mut Depot,
@@ -45,15 +48,24 @@ async fn change_password(
         session: None,
         auth_error: None,
     };
+    println!(
+        "\n\n\n\nChange password UIAA info: {:?}",
+        req.parse_json::<'_, BTreeMap<String, serde_json::Value>>()
+            .await
+    );
     let Some(auth) = &body.auth else {
         uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
+        println!("================0");
         return Err(uiaa_info.into());
     };
+    println!("Auth data: {:?}", authed);
     if crate::uiaa::try_auth(authed.user_id(), authed.device_id(), auth, &uiaa_info).is_err() {
         uiaa_info.session = Some(utils::random_string(SESSION_ID_LENGTH));
+        println!("================1");
         return Err(uiaa_info.into());
     }
 
+    println!("================2");
     crate::user::set_password(authed.user_id(), &body.new_password)?;
     if let Some(access_token_id) = authed.access_token_id() {
         diesel::delete(

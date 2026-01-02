@@ -4,10 +4,10 @@
 /// `/v2/` ([spec])
 ///
 /// [spec]: https://spec.matrix.org/latest/identity-service-api/#post_matrixidentityv23pidbind
-use crate::{thirdparty::Medium, UnixMillis, OwnedClientSecret, OwnedSessionId, OwnedUserId, ServerSignatures};
-use crate::{thirdparty::Medium, OwnedClientSecret, OwnedSessionId};
+use crate::{third_party::Medium, UnixMillis, OwnedClientSecret, OwnedSessionId, OwnedUserId, ServerSignatures};
+use crate::{third_party::Medium, OwnedClientSecret, OwnedSessionId};
 
-use crate::{thirdparty::Medium, ClientSecret, OwnedSessionId, OwnedUserId};
+use crate::{third_party::Medium, ClientSecret, OwnedSessionId, OwnedUserId};
 use serde::{Deserialize, Serialize};
 
 // const METADATA: Metadata = metadata! {

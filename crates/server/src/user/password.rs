@@ -9,20 +9,28 @@ use crate::data::user::NewDbPassword;
 use crate::{AppResult, MatrixError};
 
 pub fn verify_password(user: &DbUser, password: &str) -> AppResult<()> {
+    println!("===============verify_password=== {user:?} , password: {password}");
     if user.deactivated_at.is_some() {
-        return Err(MatrixError::user_deactivated("The user has been deactivated").into());
+        println!("===============verify_password 1");
+        return Err(MatrixError::user_deactivated("the user has been deactivated").into());
     }
+    println!("===============verify_password 2");
     let hash = crate::user::get_password_hash(&user.id)
-        .map_err(|_| MatrixError::unauthorized("Wrong username or password."))?;
+        .map_err(|_| MatrixError::unauthorized("wrong username or password."))?;
     if hash.is_empty() {
-        return Err(MatrixError::user_deactivated("The user has been deactivated").into());
+        println!("===============verify_password 3");
+        return Err(MatrixError::user_deactivated("the user has been deactivated").into());
     }
 
+    println!("===============verify_password 4  hash:{hash}  password:{password}");
     let hash_matches = argon2::verify_encoded(&hash, password.as_bytes()).unwrap_or(false);
 
+    println!("===============verify_password 5");
     if !hash_matches {
-        Err(MatrixError::unauthorized("Wrong username or password.").into())
+        println!("===============verify_password 6");
+        Err(MatrixError::unauthorized("wrong username or password.").into())
     } else {
+        println!("===============verify_password 7");
         Ok(())
     }
 }
@@ -37,7 +45,9 @@ pub fn get_password_hash(user_id: &UserId) -> AppResult<String> {
 }
 
 /// Set/update password hash for a user
-pub fn set_password(user_id: &UserId, hash: &str) -> AppResult<()> {
+pub fn set_password(user_id: &UserId, password: &str) -> AppResult<()> {
+    let hash = crate::utils::hash_password(password)?;
+    println!("===============set_password  user_id:{user_id}  hash:{hash}");
     diesel::insert_into(user_passwords::table)
         .values(NewDbPassword {
             user_id: user_id.to_owned(),
