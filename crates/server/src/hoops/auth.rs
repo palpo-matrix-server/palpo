@@ -4,7 +4,7 @@ use diesel::prelude::*;
 use salvo::http::headers::{HeaderMapExt, authorization::Authorization};
 use salvo::prelude::*;
 
-use crate::core::authorization::XMatrix;
+use crate::core::federation::authentication::XMatrix;
 use crate::core::serde::CanonicalJsonValue;
 use crate::core::signatures;
 use crate::data::connect;

@@ -279,11 +279,16 @@ where
 
     let current_target_user_membership = fetch_state.user_membership(target_user).await?;
 
-    // Since v1, if target user’s current membership state is join or ban, reject.
+    // Since v1, if target user’s current membership state is join or ban, reject??? complement test looks failed.
+    // TestRestrictedRoomsRemoteJoinInMSC3787Room/Join_should_succeed_when_invited
     if matches!(
         current_target_user_membership,
         MembershipState::Join | MembershipState::Ban
     ) {
+        tracing::warn!(
+            ?current_target_user_membership,
+            "cannot invite user that is already joined or banned"
+        );
         return Err(StateError::forbidden(
             "cannot invite user that is joined or banned",
         ));

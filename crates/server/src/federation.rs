@@ -1,7 +1,7 @@
 use salvo::http::header::AUTHORIZATION;
 use salvo::http::headers::authorization::Credentials;
 
-use crate::core::authorization::XMatrix;
+use crate::core::federation::authentication::XMatrix;
 use crate::core::error::AuthenticateError;
 use crate::core::error::ErrorKind;
 use crate::core::identifiers::*;

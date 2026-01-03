@@ -83,7 +83,7 @@ pub struct UiaaInfo {
     /// Authentication parameters required for the client to complete authentication.
     ///
     /// To create a `Box<RawJsonValue>`, use `serde_json::value::to_raw_value`.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    // #[serde(skip_serializing_if = "Option::is_none")] // commented for complement test DELETE TestDeviceManagement/DELETE_/device/{deviceId}
     pub params: Option<Box<RawJsonValue>>,
 
     /// Session key for client to use to complete authentication.
