@@ -736,21 +736,16 @@ pub fn required_keys(
 ) -> Result<BTreeMap<OwnedServerName, Vec<OwnedServerSigningKeyId>>, Error> {
     use CanonicalJsonValue::Object;
 
-    println!("========required_keys 0");
     let mut map = BTreeMap::<OwnedServerName, Vec<OwnedServerSigningKeyId>>::new();
     let Some(Object(signatures)) = object.get("signatures") else {
-        println!("========required_keys 2");
         return Ok(map);
     };
 
-    println!("========required_keys 3");
     for server in servers_to_check_signatures(object, &version.signatures)? {
         let Some(Object(set)) = signatures.get(server.as_str()) else {
-            println!("========required_keys 4");
             continue;
         };
 
-        println!("========required_keys 5");
         let entry = map.entry(server.clone()).or_default();
         set.keys()
             .cloned()
@@ -759,7 +754,6 @@ pub fn required_keys(
             .for_each(|key_id| entry.push(key_id));
     }
 
-    println!("========required_keys 6");
     Ok(map)
 }
 
@@ -778,12 +772,9 @@ fn servers_to_check_signatures(
     object: &CanonicalJsonObject,
     rules: &SignaturesRules,
 ) -> Result<BTreeSet<OwnedServerName>, Error> {
-    println!("========servers_to_check_signatures 0rules: {rules:?}   object: {object:#?}");
     let mut servers_to_check = BTreeSet::new();
 
-    println!("========servers_to_check_signatures 1");
     if !is_invite_via_third_party_id(object)? {
-        println!("========servers_to_check_signatures 2");
         match object.get("sender") {
             Some(CanonicalJsonValue::String(raw_sender)) => {
                 let user_id = <&UserId>::try_from(raw_sender.as_str())
@@ -795,10 +786,8 @@ fn servers_to_check_signatures(
             _ => return Err(JsonError::field_missing_from_object("sender")),
         }
     }
-    println!("========servers_to_check_signatures 3");
 
     if rules.check_event_id_server {
-        println!("========servers_to_check_signatures 4");
         match object.get("event_id") {
             Some(CanonicalJsonValue::String(raw_event_id)) => {
                 let event_id: OwnedEventId = raw_event_id
@@ -813,31 +802,33 @@ fn servers_to_check_signatures(
             }
             Some(_) => return Err(JsonError::not_of_type("event_id", JsonType::String)),
             _ => {
-                println!("========servers_to_check_signatures 5");
                 return Err(JsonError::field_missing_from_object("event_id"));
             }
         }
     }
 
-    println!("========servers_to_check_signatures 6");
     if rules.check_join_authorised_via_users_server
         && let Some(authorized_user) = object
             .get("content")
             .and_then(|c| c.as_object())
             .and_then(|c| c.get("join_authorised_via_users_server"))
     {
-        println!("========servers_to_check_signatures 7");
         let authorized_user = authorized_user.as_str().ok_or_else(|| {
             JsonError::not_of_type("join_authorised_via_users_server", JsonType::String)
         })?;
-        println!("========servers_to_check_signatures 8  {authorized_user:?}");
-        let authorized_user =
-            <&UserId>::try_from(authorized_user).map_err(|e| Error::from(ParseError::UserId(e)))?;
 
-        servers_to_check.insert(authorized_user.server_name().to_owned());
+        match <&UserId>::try_from(authorized_user) {
+            Ok(user_id) => {
+                servers_to_check.insert(user_id.server_name().to_owned());
+            }
+            Err(e) => {
+                tracing::warn!(
+                    "failed to parse join_authorised_via_users_server: {authorized_user:?}: {e}"
+                );
+            }
+        }
     }
 
-    println!("========servers_to_check_signatures 9");
     Ok(servers_to_check)
 }
 
