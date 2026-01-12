@@ -1,4 +1,5 @@
 mod event;
+mod event_report;
 mod federation;
 mod media;
 mod register;
@@ -10,21 +11,8 @@ mod user;
 mod user_admin;
 mod user_lookup;
 
-use std::collections::BTreeMap;
-
-use salvo::oapi::extract::*;
 use salvo::prelude::*;
 
-use crate::config;
-use crate::core::client::discovery::{
-    capabilities::{
-        Capabilities, CapabilitiesResBody, ChangePasswordCapability, RoomVersionStability,
-        RoomVersionsCapability, SetAvatarUrlCapability, SetDisplayNameCapability,
-        ThirdPartyIdChangesCapability,
-    },
-    versions::VersionsResBody,
-};
-use crate::core::client::search::{ResultCategories, SearchReqArgs, SearchReqBody, SearchResBody};
 use crate::routing::prelude::*;
 
 /// Middleware to require admin privileges
@@ -46,6 +34,7 @@ pub fn router() -> Router {
                 .hoop(require_admin)
                 .get(home)
                 .push(event::router())
+                .push(event_report::router())
                 .push(federation::router())
                 .push(media::router())
                 .push(register::router())

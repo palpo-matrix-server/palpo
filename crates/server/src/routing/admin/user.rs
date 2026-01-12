@@ -74,7 +74,7 @@ fn to_admin_device_response(device: data::user::device::DbUserDevice) -> AdminDe
     }
 }
 
-#[handler]
+#[endpoint]
 pub fn list_devices(user_id: PathParam<OwnedUserId>) -> JsonResult<AdminDevicesListResponse> {
     let user_id = user_id.into_inner();
 
@@ -85,7 +85,7 @@ pub fn list_devices(user_id: PathParam<OwnedUserId>) -> JsonResult<AdminDevicesL
     json_ok(AdminDevicesListResponse { devices, total })
 }
 
-#[handler]
+#[endpoint]
 pub fn create_device(
     user_id: PathParam<OwnedUserId>,
     body: JsonBody<CreateDeviceReqBody>,
@@ -115,7 +115,7 @@ pub fn create_device(
     empty_ok()
 }
 
-#[handler]
+#[endpoint]
 pub fn get_device(
     user_id: PathParam<OwnedUserId>,
     device_id: PathParam<OwnedDeviceId>,
@@ -126,7 +126,7 @@ pub fn get_device(
     json_ok(to_admin_device_response(device))
 }
 
-#[handler]
+#[endpoint]
 pub fn put_device(
     user_id: PathParam<OwnedUserId>,
     device_id: PathParam<OwnedDeviceId>,
@@ -145,7 +145,7 @@ pub fn put_device(
     json_ok(to_admin_device_response(device))
 }
 
-#[handler]
+#[endpoint]
 pub fn delete_device(
     user_id: PathParam<OwnedUserId>,
     device_id: PathParam<OwnedDeviceId>,
@@ -154,7 +154,7 @@ pub fn delete_device(
     empty_ok()
 }
 
-#[handler]
+#[endpoint]
 pub fn delete_devices(
     user_id: PathParam<OwnedUserId>,
     body: JsonBody<DeleteDevicesReqBody>,
