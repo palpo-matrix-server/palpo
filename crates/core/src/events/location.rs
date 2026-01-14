@@ -196,7 +196,7 @@ impl AssetContent {
 /// The type of an asset.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
 #[derive(ToSchema, Clone, Default, StringEnum)]
-#[palpo_enum(rename_all = "m.snake_case")]
+#[palpo_enum(rename_all(prefix = "m.", rule = "snake_case"))]
 #[non_exhaustive]
 pub enum AssetType {
     /// The asset is the sender of the event.

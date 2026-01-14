@@ -2,7 +2,6 @@
 
 pub mod appservice;
 pub mod authentication;
-pub mod authorization;
 pub mod client;
 pub mod device;
 pub mod directory;
@@ -36,6 +35,7 @@ extern crate tracing;
 pub mod auth_scheme;
 pub mod http_headers;
 pub mod media;
+// pub mod path_builder;
 pub mod state;
 pub mod user;
 pub mod utils;

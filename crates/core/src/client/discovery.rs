@@ -4,3 +4,4 @@ pub mod capabilities;
 pub mod client;
 pub mod support;
 pub mod versions;
+pub mod homeserver;

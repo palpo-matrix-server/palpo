@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# ./tests/complement.sh ../complement  ./__test_tmp.detail.txt  ./__test_tmp.result.jsonl
+# ./tests/complement.sh ../complement  __test_all.result.log  __test_all.result.jsonl
 set -euo pipefail
 
 # Path to Complement's source code

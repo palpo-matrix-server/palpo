@@ -1,6 +1,6 @@
 use assert_matches2::assert_matches;
 use assign::assign;
-use palpo_client_api::{
+use palpo_core::client::{
     error::ErrorKind,
     uiaa::{self, AuthData, AuthFlow, AuthType, UiaaInfo, , UserIdentifier},
 };

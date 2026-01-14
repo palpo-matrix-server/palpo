@@ -236,6 +236,31 @@ impl fmt::Display for UnknownVersionError {
 
 impl StdError for UnknownVersionError {}
 
+/// An error that happens when an incorrect amount of arguments have been passed to [`PathBuilder`]
+/// parts formatting.
+///
+/// [`PathBuilder`]: super::path_builder::PathBuilder
+#[derive(Debug)]
+pub struct IncorrectArgumentCount {
+    /// The expected amount of arguments.
+    pub expected: usize,
+
+    /// The amount of arguments received.
+    pub got: usize,
+}
+
+impl fmt::Display for IncorrectArgumentCount {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "incorrect path argument count, expected {}, got {}",
+            self.expected, self.got
+        )
+    }
+}
+
+impl StdError for IncorrectArgumentCount {}
+
 /// An error when serializing the HTTP headers.
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]

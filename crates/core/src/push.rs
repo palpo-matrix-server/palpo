@@ -36,7 +36,7 @@ pub use patterned_push_rule::*;
 pub use push_rule::{RuleKind, *};
 pub use pusher::*;
 pub use ruleset::Ruleset;
-use salvo::prelude::ToSchema;
+use salvo::oapi::ToSchema;
 pub use simple_push_rule::*;
 
 #[cfg(feature = "unstable-msc3932")]

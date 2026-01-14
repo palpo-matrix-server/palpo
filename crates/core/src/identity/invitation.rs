@@ -65,7 +65,7 @@ impl SignInvitationResBody {
 /// `/v2/` ([spec])
 ///
 /// [spec]: https://spec.matrix.org/latest/identity-service-api/#post_matrixidentityv2store-invite
-use crate::{room::RoomType, thirdparty::Medium, OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId, OwnedUserId};
+use crate::{room::RoomType, third_party::Medium, OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId, OwnedUserId};
 use serde::{ser::SerializeSeq, Deserialize, Serialize};
 
 // const METADATA: Metadata = metadata! {

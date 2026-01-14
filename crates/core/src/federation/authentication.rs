@@ -2,17 +2,19 @@
 
 use std::{fmt, str::FromStr};
 
-use http_auth::ChallengeParser;
-use salvo::http::{HeaderValue, headers::authorization::Credentials};
-use thiserror::Error;
-
+use crate::serde::CanonicalJsonObject;
+use crate::signatures::{Ed25519KeyPair, KeyPair, PublicKeyMap};
 use crate::{
     IdParseError, OwnedServerName, OwnedServerSigningKeyId, ServerName,
     auth_scheme::AuthScheme,
     http_headers::quote_ascii_string_if_required,
-    serde::{Base64, Base64DecodeError, CanonicalJsonObject},
-    signatures::{self, Ed25519KeyPair, KeyPair},
+    serde::{Base64, Base64DecodeError},
 };
+use http::HeaderValue;
+use http_auth::ChallengeParser;
+use salvo::http::headers::authorization::Credentials;
+use thiserror::Error;
+use tracing::debug;
 
 /// Authentication is performed by adding an `X-Matrix` header including a signature in the request
 /// headers, as defined in the [Matrix Server-Server API][spec].
@@ -80,8 +82,8 @@ impl<'a> ServerSignaturesInput<'a> {
     }
 }
 
-/// Typed representation of an `Authorization` header of scheme `X-Matrix`, as
-/// defined in the [Matrix Server-Server API][spec].
+/// Typed representation of an `Authorization` header of scheme `X-Matrix`, as defined in the
+/// [Matrix Server-Server API][spec].
 ///
 /// [spec]: https://spec.matrix.org/latest/server-server-api/#request-authentication
 #[derive(Clone)]
@@ -91,14 +93,13 @@ pub struct XMatrix {
     pub origin: OwnedServerName,
     /// The server name of the receiving sender.
     ///
-    /// For compatibility with older servers, recipients should accept requests
-    /// without this parameter, but MUST always send it. If this property is
-    /// included, but the value does not match the receiving server's name,
-    /// the receiving server must deny the request with an HTTP status code
-    /// 401 Unauthorized.
+    /// For compatibility with older servers, recipients should accept requests without this
+    /// parameter, but MUST always send it. If this property is included, but the value does
+    /// not match the receiving server's name, the receiving server must deny the request with
+    /// an HTTP status code 401 Unauthorized.
     pub destination: Option<OwnedServerName>,
-    /// The ID - including the algorithm name - of the sending server's key that
-    /// was used to sign the request.
+    /// The ID - including the algorithm name - of the sending server's key that was used to sign
+    /// the request.
     pub key: OwnedServerSigningKeyId,
     /// The signature of the JSON.
     pub sig: Base64,
@@ -226,7 +227,7 @@ impl XMatrix {
         let request_object = Self::request_object(request, &origin, &destination)?;
 
         // The spec says to use the algorithm to sign JSON, so we could use
-        // ruma_signatures::sign_json, however since we would need to extract the signature from the
+        // crate::signatures::sign_json, however since we would need to extract the signature from the
         // JSON afterwards let's be a bit more efficient about it.
         let serialized_request_object = serde_json::to_vec(&request_object)?;
         let (key_id, signature) = key_pair.sign(&serialized_request_object).into_parts();
@@ -241,6 +242,36 @@ impl XMatrix {
             key,
             sig,
         })
+    }
+
+    /// Verify that the signature in the `sig` field is valid for the given incoming HTTP request,
+    /// with the given public keys map from the origin.
+    pub fn verify_request<T: AsRef<[u8]>>(
+        &self,
+        request: &http::Request<T>,
+        destination: &ServerName,
+        public_key_map: &PublicKeyMap,
+    ) -> Result<(), XMatrixVerificationError> {
+        if self
+            .destination
+            .as_deref()
+            .is_some_and(|xmatrix_destination| xmatrix_destination != destination)
+        {
+            return Err(XMatrixVerificationError::DestinationMismatch);
+        }
+
+        let mut request_object = Self::request_object(request, &self.origin, destination)
+            .map_err(|error| crate::signatures::Error::Json(error.into()))?;
+        let entity_signature =
+            CanonicalJsonObject::from([(self.key.to_string(), self.sig.encode().into())]);
+        let signatures =
+            CanonicalJsonObject::from([(self.origin.to_string(), entity_signature.into())]);
+        request_object.insert("signatures".to_owned(), signatures.into());
+
+        Ok(crate::signatures::verify_json(
+            public_key_map,
+            &request_object,
+        )?)
     }
 }
 
@@ -391,21 +422,21 @@ pub enum XMatrixVerificationError {
 
     /// The signature verification failed.
     #[error("signature verification failed: {0}")]
-    Signature(#[from] signatures::Error),
+    Signature(#[from] crate::signatures::Error),
 }
 
 // #[cfg(test)]
 // mod tests {
-//     use headers::{authorization::Credentials, HeaderValue};
-//     use crate::{serde::Base64, OwnedServerName};
+//     use crate::{OwnedServerName, serde::Base64};
+//     use headers::{HeaderValue, authorization::Credentials};
 
 //     use super::XMatrix;
 
 //     #[test]
 //     fn xmatrix_auth_pre_1_3() {
-//         let header =
-//             HeaderValue::from_static("X-Matrix
-// origin=\"origin.hs.example.com\",key=\"ed25519:key1\",sig=\"dGVzdA==\"");
+//         let header = HeaderValue::from_static(
+//             "X-Matrix origin=\"origin.hs.example.com\",key=\"ed25519:key1\",sig=\"dGVzdA==\"",
+//         );
 //         let origin = "origin.hs.example.com".try_into().unwrap();
 //         let key = "ed25519:key1".try_into().unwrap();
 //         let sig = Base64::new(b"test".to_vec());
@@ -424,17 +455,17 @@ pub enum XMatrixVerificationError {
 
 //         assert_eq!(
 //             credentials.encode(),
-//             "X-Matrix
-// key=\"ed25519:key1\",origin=origin.hs.example.com,sig=dGVzdA"         );
+//             "X-Matrix key=\"ed25519:key1\",origin=origin.hs.example.com,sig=dGVzdA"
+//         );
 //     }
 
 //     #[test]
 //     fn xmatrix_auth_1_3() {
-//         let header = HeaderValue::from_static("X-Matrix
-// origin=\"origin.hs.example.com\",destination=\"destination.hs.example.com\",
-// key=\"ed25519:key1\",sig=\"dGVzdA==\"");         let origin: OwnedServerName
-// = "origin.hs.example.com".try_into().unwrap();         let destination:
-// OwnedServerName = "destination.hs.example.com".try_into().unwrap();
+//         let header = HeaderValue::from_static(
+//             "X-Matrix origin=\"origin.hs.example.com\",destination=\"destination.hs.example.com\",key=\"ed25519:key1\",sig=\"dGVzdA==\"",
+//         );
+//         let origin: OwnedServerName = "origin.hs.example.com".try_into().unwrap();
+//         let destination: OwnedServerName = "destination.hs.example.com".try_into().unwrap();
 //         let key = "ed25519:key1".try_into().unwrap();
 //         let sig = Base64::new(b"test".to_vec());
 //         let credentials = XMatrix::try_from(&header).unwrap();
@@ -445,14 +476,17 @@ pub enum XMatrixVerificationError {
 
 //         let credentials = XMatrix::new(origin, destination, key, sig);
 
-//         assert_eq!(credentials.encode(), "X-Matrix
-// destination=destination.hs.example.com,key=\"ed25519:key1\",origin=origin.hs.
-// example.com,sig=dGVzdA");     }
+//         assert_eq!(
+//             credentials.encode(),
+//             "X-Matrix destination=destination.hs.example.com,key=\"ed25519:key1\",origin=origin.hs.example.com,sig=dGVzdA"
+//         );
+//     }
 
 //     #[test]
 //     fn xmatrix_quoting() {
-//         let header = HeaderValue::from_static(r#"X-Matrix
-// origin="example.com:1234",key="abc\"def\\:ghi",sig=dGVzdA,"#);
+//         let header = HeaderValue::from_static(
+//             r#"X-Matrix origin="example.com:1234",key="abc\"def\\:ghi",sig=dGVzdA,"#,
+//         );
 
 //         let origin: OwnedServerName = "example.com:1234".try_into().unwrap();
 //         let key = r#"abc"def\:ghi"#.try_into().unwrap();
@@ -472,22 +506,24 @@ pub enum XMatrixVerificationError {
 
 //         assert_eq!(
 //             credentials.encode(),
-//             r#"X-Matrix
-// key="abc\"def\\:ghi",origin="example.com:1234",sig=dGVzdA"#         );
+//             r#"X-Matrix key="abc\"def\\:ghi",origin="example.com:1234",sig=dGVzdA"#
+//         );
 //     }
 
 //     #[test]
 //     fn xmatrix_auth_1_3_with_extra_spaces() {
-//         let header = HeaderValue::from_static("X-Matrix
-// origin=\"origin.hs.example.com\"  ,
-// destination=\"destination.hs.example.com\",key=\"ed25519:key1\",
-// sig=\"dGVzdA\"");         let credentials =
-// XMatrix::try_from(&header).unwrap();         let sig =
-// Base64::new(b"test".to_vec());
+//         let header = HeaderValue::from_static(
+//             "X-Matrix origin=\"origin.hs.example.com\"  ,     destination=\"destination.hs.example.com\",key=\"ed25519:key1\", sig=\"dGVzdA\"",
+//         );
+//         let credentials = XMatrix::try_from(&header).unwrap();
+//         let sig = Base64::new(b"test".to_vec());
 
 //         assert_eq!(credentials.origin, "origin.hs.example.com");
-//         assert_eq!(credentials.destination.unwrap(),
-// "destination.hs.example.com");         assert_eq!(credentials.key,
-// "ed25519:key1");         assert_eq!(credentials.sig, sig);
+//         assert_eq!(
+//             credentials.destination.unwrap(),
+//             "destination.hs.example.com"
+//         );
+//         assert_eq!(credentials.key, "ed25519:key1");
+//         assert_eq!(credentials.sig, sig);
 //     }
 // }

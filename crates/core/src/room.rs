@@ -14,7 +14,7 @@ use crate::{
     Direction, EventEncryptionAlgorithm, OwnedEventId, OwnedMxcUri, OwnedRoomAliasId, OwnedRoomId,
     OwnedUserId, PrivOwnedStr, RoomId, RoomVersionId, UnixMillis,
     events::StateEventType,
-    serde::{StringEnum, from_raw_json_value},
+    serde::{StringEnum, JsonObject, from_raw_json_value},
 };
 
 /// An enum of possible room types.
@@ -94,9 +94,9 @@ pub struct RoomEventTypeReqArgs {
 
 /// The rule used for users wishing to join this room.
 ///
-/// This type can hold an arbitrary string. To check for values that are not
-/// available as a documented variant here, use its string representation,
-/// obtained through `.as_str()`.
+/// This type can hold an arbitrary join rule. To check for values that are not available as a
+/// documented variant here, get its kind with [`.kind()`](Self::kind) or its string representation
+/// with [`.as_str()`](Self::as_str), and its associated data with [`.data()`](Self::data).
 #[derive(ToSchema, Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(tag = "join_rule", rename_all = "snake_case")]
 pub enum JoinRule {
@@ -126,11 +126,25 @@ pub enum JoinRule {
     Public,
 
     #[doc(hidden)]
-    #[serde(skip_serializing)]
-    _Custom(PrivOwnedStr),
+    #[salvo(schema(value_type = Object))]
+    _Custom(CustomJoinRule),
 }
 
 impl JoinRule {
+    /// Returns the kind of this `JoinRule`.
+    pub fn kind(&self) -> JoinRuleKind {
+        match self {
+            Self::Invite => JoinRuleKind::Invite,
+            Self::Knock => JoinRuleKind::Knock,
+            Self::Private => JoinRuleKind::Private,
+            Self::Restricted(_) => JoinRuleKind::Restricted,
+            Self::KnockRestricted(_) => JoinRuleKind::KnockRestricted,
+            Self::Public => JoinRuleKind::Public,
+            Self::_Custom(CustomJoinRule { join_rule, .. }) => {
+                JoinRuleKind::_Custom(PrivOwnedStr(join_rule.as_str().into()))
+            }
+        }
+    }
     pub fn is_restricted(&self) -> bool {
         matches!(self, JoinRule::Restricted(_) | JoinRule::KnockRestricted(_))
     }
@@ -177,7 +191,36 @@ impl JoinRule {
             JoinRule::Restricted(_) => "restricted",
             JoinRule::KnockRestricted(_) => "knock_restricted",
             JoinRule::Public => "public",
-            JoinRule::_Custom(rule) => &rule.0,
+            JoinRule::_Custom(CustomJoinRule { join_rule, .. }) => join_rule,
+        }
+    }
+
+    /// Returns the associated data of this `JoinRule`.
+    ///
+    /// The returned JSON object won't contain the `join_rule` field, use
+    /// [`.kind()`](Self::kind) or [`.as_str()`](Self::as_str) to access those.
+    ///
+    /// Prefer to use the public variants of `JoinRule` where possible; this method is meant to
+    /// be used for custom join rules only.
+    pub fn data(&self) -> Cow<'_, JsonObject> {
+        fn serialize<T: Serialize>(obj: &T) -> JsonObject {
+            match serde_json::to_value(obj).expect("join rule serialization should succeed") {
+                JsonValue::Object(mut obj) => {
+                    obj.remove("body");
+                    obj
+                }
+                _ => panic!("all message types should serialize to objects"),
+            }
+        }
+
+        match self {
+            JoinRule::Invite | JoinRule::Knock | JoinRule::Private | JoinRule::Public => {
+                Cow::Owned(JsonObject::new())
+            }
+            JoinRule::Restricted(restricted) | JoinRule::KnockRestricted(restricted) => {
+                Cow::Owned(serialize(restricted))
+            }
+            Self::_Custom(c) => Cow::Borrowed(&c.data),
         }
     }
 }
@@ -207,9 +250,21 @@ impl<'de> Deserialize<'de> for JoinRule {
             "restricted" => from_raw_json_value(&json).map(Self::Restricted),
             "knock_restricted" => from_raw_json_value(&json).map(Self::KnockRestricted),
             "public" => Ok(Self::Public),
-            _ => Ok(Self::_Custom(PrivOwnedStr(join_rule.into()))),
+            _ => from_raw_json_value(&json).map(Self::_Custom),
         }
     }
+}
+
+/// The payload for an unsupported join rule.
+#[doc(hidden)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub struct CustomJoinRule {
+    /// The kind of join rule.
+    join_rule: String,
+
+    /// The remaining data.
+    #[serde(flatten)]
+    data: JsonObject,
 }
 
 /// Configuration of the `Restricted` join rule.
@@ -495,8 +550,17 @@ impl<'de> Deserialize<'de> for RoomSummary {
 
 /// The rule used for users wishing to join a room.
 ///
-/// In contrast to the regular `JoinRule` in `palpo_events`, this enum holds only simplified
-/// conditions for joining restricted rooms.
+/// In contrast to the regular [`JoinRule`], this enum holds only simplified conditions for joining
+/// restricted rooms.
+///
+/// This type can hold an arbitrary join rule. To check for values that are not available as a
+/// documented variant here, get its kind with `.kind()` or use its string representation, obtained
+/// through `.as_str()`.
+///
+/// Because this type contains a few neighbouring fields instead of a whole object, and it is not
+/// possible to know which fields to parse for unknown variants, this type will fail to serialize if
+/// it doesn't match one of the documented variants. It is only possible to construct an
+/// undocumented variant by deserializing it, so do not re-serialize this type.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
 #[serde(tag = "join_rule", rename_all = "snake_case")]
 pub enum JoinRuleSummary {
@@ -566,7 +630,9 @@ impl From<JoinRule> for JoinRuleSummary {
             JoinRule::Restricted(restricted) => Self::Restricted(restricted.into()),
             JoinRule::KnockRestricted(restricted) => Self::KnockRestricted(restricted.into()),
             JoinRule::Public => Self::Public,
-            JoinRule::_Custom(rule) => Self::_Custom(rule),
+            JoinRule::_Custom(CustomJoinRule { join_rule, .. }) => {
+                Self::_Custom(PrivOwnedStr(join_rule.into()))
+            }
         }
     }
 }

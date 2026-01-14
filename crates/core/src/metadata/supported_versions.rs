@@ -39,10 +39,10 @@ impl SupportedVersions {
     }
 }
 
-/// The Matrix features supported by Ruma.
+/// The Matrix features supported by Palpo.
 ///
 /// Features that are not behind a cargo feature are features that are part of the Matrix
-/// specification and that Ruma still supports, like the unstable version of an endpoint or a stable
+/// specification and that Palpo still supports, like the unstable version of an endpoint or a stable
 /// feature. Features behind a cargo feature are only supported when this feature is enabled.
 #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/doc/string_enum.md"))]
 #[derive(Clone, StringEnum, Hash)]
@@ -147,6 +147,15 @@ pub enum FeatureFlag {
     #[cfg(feature = "unstable-msc4186")]
     #[palpo_enum(rename = "org.matrix.simplified_msc3575")]
     Msc4186,
+
+    /// `org.matrix.msc4380_invite_permission_config` ([MSC])
+    ///
+    /// Invite Blocking.
+    ///
+    /// [MSC]: https://github.com/matrix-org/matrix-spec-proposals/pull/4380
+    #[cfg(feature = "unstable-msc4380")]
+    #[palpo_enum(rename = "org.matrix.msc4380")]
+    Msc4380,
 
     #[doc(hidden)]
     _Custom(PrivOwnedStr),

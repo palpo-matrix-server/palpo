@@ -59,7 +59,7 @@ fn is_default_bits(val: &u64) -> bool {
 ///
 /// The only algorithm currently specified is `m.secret_storage.v1.aes-hmac-sha2`, so this
 /// essentially represents `AesHmacSha2KeyDescription` in the
-/// [spec](https://spec.matrix.org/v1.16/client-server-api/#msecret_storagev1aes-hmac-sha2).
+/// [spec](https://spec.matrix.org/v1.17/client-server-api/#msecret_storagev1aes-hmac-sha2).
 #[derive(ToSchema, Clone, Debug, Serialize, EventContent)]
 #[palpo_event(type = "m.secret_storage.key.*", kind = GlobalAccountData)]
 pub struct SecretStorageKeyEventContent {

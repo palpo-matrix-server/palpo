@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use diesel::prelude::*;
 use palpo_core::client::account::ChangePasswordReqBody;
 use salvo::oapi::extract::*;
@@ -30,6 +32,7 @@ pub fn authed_router() -> Router {
 /// - Triggers device list updates
 #[endpoint]
 async fn change_password(
+    req: &mut Request,
     _aa: AuthArgs,
     body: JsonBody<ChangePasswordReqBody>,
     depot: &mut Depot,

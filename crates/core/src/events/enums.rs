@@ -23,6 +23,22 @@ pub const RECOMMENDED_STRIPPED_STATE_EVENT_TYPES: &[StateEventType] = &[
     StateEventType::RoomEncryption,
 ];
 
+/// Event types that servers should transfer upon [room upgrade]. The exact details for what is
+/// transferred is left as an implementation detail.
+///
+/// [room upgrade]: https://spec.matrix.org/v1.17/client-server-api/#server-behaviour-19
+pub const RECOMMENDED_TRANSFERABLE_STATE_EVENT_TYPES: &[StateEventType] = &[
+    StateEventType::RoomServerAcl,
+    StateEventType::RoomEncryption,
+    StateEventType::RoomName,
+    StateEventType::RoomAvatar,
+    StateEventType::RoomTopic,
+    StateEventType::RoomGuestAccess,
+    StateEventType::RoomHistoryVisibility,
+    StateEventType::RoomJoinRules,
+    StateEventType::RoomPowerLevels,
+];
+
 event_enum! {
     /// Any global account data event.
     enum GlobalAccountData {
@@ -31,6 +47,9 @@ event_enum! {
         #[palpo_enum(ident = DoNotDisturb, alias = "m.do_not_disturb")]
         "dm.filament.do_not_disturb" => super::do_not_disturb,
         "m.identity_server" => super::identity_server,
+        #[cfg(feature = "unstable-msc4380")]
+        #[palpo_enum(ident = InvitePermissionConfig, alias = "m.invite_permission_config")]
+        "org.matrix.msc4380.invite_permission_config" => super::invite_permission_config,
         "m.ignored_user_list" => super::ignored_user_list,
         "m.push_rules" => super::push_rules,
         "m.secret_storage.default_key" => super::secret_storage::default_key,
@@ -160,6 +179,8 @@ event_enum! {
         "m.room.canonical_alias" => super::room::canonical_alias,
         "m.room.create" => super::room::create,
         "m.room.encryption" => super::room::encryption,
+        #[cfg(feature = "unstable-msc4362")]
+        "m.room.encrypted" => super::room::encrypted::unstable_state,
         "m.room.guest_access" => super::room::guest_access,
         "m.room.history_visibility" => super::room::history_visibility,
         "m.room.join_rules" => super::room::join_rule,

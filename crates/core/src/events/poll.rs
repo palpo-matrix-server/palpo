@@ -58,7 +58,7 @@ pub fn compile_poll_results<'a>(
 ) -> IndexMap<&'a str, BTreeSet<&'a UserId>> {
     let answer_ids = poll.answers.iter().map(|a| a.id.as_str()).collect();
     let users_selections =
-        filter_selections(&answer_ids, poll.max_selections, responses, end_timestamp);
+        filter_selections(answer_ids, poll.max_selections, responses, end_timestamp);
 
     aggregate_results(poll.answers.iter().map(|a| a.id.as_str()), users_selections)
 }
@@ -83,7 +83,7 @@ pub fn compile_unstable_poll_results<'a>(
 ) -> IndexMap<&'a str, BTreeSet<&'a UserId>> {
     let answer_ids = poll.answers.iter().map(|a| a.id.as_str()).collect();
     let users_selections =
-        filter_selections(&answer_ids, poll.max_selections, responses, end_timestamp);
+        filter_selections(answer_ids, poll.max_selections, responses, end_timestamp);
 
     aggregate_results(poll.answers.iter().map(|a| a.id.as_str()), users_selections)
 }
@@ -91,7 +91,7 @@ pub fn compile_unstable_poll_results<'a>(
 /// Validate the selections of a response.
 fn validate_selections<'a>(
     answer_ids: &BTreeSet<&str>,
-    max_selections: u64,
+    max_selections: u32,
     selections: &'a [String],
 ) -> Option<impl Iterator<Item = &'a str> + use<'a>> {
     // Vote is spoiled if any answer is unknown.
@@ -106,12 +106,21 @@ fn validate_selections<'a>(
     Some(selections.iter().take(max_selections).map(Deref::deref))
 }
 
-fn filter_selections<'a>(
-    answer_ids: &BTreeSet<&str>,
-    max_selections: u64,
-    responses: impl IntoIterator<Item = PollResponseData<'a>>,
+fn filter_selections<'a, R>(
+    answer_ids: BTreeSet<&str>,
+    max_selections: u32,
+    responses: R,
     end_timestamp: Option<UnixMillis>,
-) -> BTreeMap<&'a UserId, (UnixMillis, Option<impl Iterator<Item = &'a str>>)> {
+) -> BTreeMap<
+    &'a UserId,
+    (
+        UnixMillis,
+        Option<impl Iterator<Item = &'a str> + use<'a, R>>,
+    ),
+>
+where
+    R: IntoIterator<Item = PollResponseData<'a>>,
+{
     let mut filtered_map = BTreeMap::new();
     for item in responses.into_iter().filter(|ev| {
         // Filter out responses after the end_timestamp.
@@ -125,7 +134,7 @@ fn filter_selections<'a>(
         if response.0 < item.origin_server_ts {
             *response = (
                 item.origin_server_ts,
-                validate_selections(answer_ids, max_selections, item.selections),
+                validate_selections(&answer_ids, max_selections, item.selections),
             );
         }
     }

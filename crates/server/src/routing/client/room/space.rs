@@ -1,14 +1,7 @@
-use std::str::FromStr;
-
 use salvo::prelude::*;
 
 use crate::core::client::space::{HierarchyReqArgs, HierarchyResBody};
-use crate::core::identifiers::*;
-use crate::core::room::RoomType;
-use crate::room::space::{
-    PaginationToken, SummaryAccessibility, get_parent_children_via, summary_to_chunk,
-};
-use crate::{AuthArgs, DepotExt, JsonResult, MatrixError, json_ok, room};
+use crate::{AuthArgs, DepotExt, JsonResult, json_ok, room};
 
 /// `#GET /_matrix/client/v1/rooms/{room_id}/hierarchy`
 /// Paginates over the space tree in a depth-first manner to locate child rooms of a given space.

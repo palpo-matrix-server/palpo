@@ -36,7 +36,7 @@ impl FlattenedJson {
                         .insert(path.clone(), FlattenedJsonValue::EmptyObject)
                         .is_some()
                     {
-                        warn!("Duplicate path in flattened JSON: {path}");
+                        warn!("duplicate path in flattened json: {path}");
                     }
                 } else {
                     for (key, value) in fields {
@@ -54,7 +54,7 @@ impl FlattenedJson {
                 if let Some(v) = FlattenedJsonValue::from_json_value(value)
                     && self.map.insert(path.clone(), v).is_some()
                 {
-                    warn!("Duplicate path in flattened JSON: {path}");
+                    warn!("duplicate path in flattened json: {path}");
                 }
             }
         }

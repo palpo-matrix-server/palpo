@@ -109,10 +109,10 @@ impl VideoEventContent {
 #[derive(ToSchema, Clone, Debug, Serialize, Deserialize)]
 pub struct VideoDetailsContentBlock {
     /// The width of the video in pixels.
-    pub width: u64,
+    pub width: u32,
 
     /// The height of the video in pixels.
-    pub height: u64,
+    pub height: u32,
 
     /// The duration of the video in seconds.
     #[serde(
@@ -126,7 +126,7 @@ pub struct VideoDetailsContentBlock {
 impl VideoDetailsContentBlock {
     /// Creates a new `VideoDetailsContentBlock` with the given height and
     /// width.
-    pub fn new(width: u64, height: u64) -> Self {
+    pub fn new(width: u32, height: u32) -> Self {
         Self {
             width,
             height,

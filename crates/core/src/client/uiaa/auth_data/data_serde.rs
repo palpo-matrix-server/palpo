@@ -1,13 +1,48 @@
-//! Helper module for the Serialize / Deserialize impl's for the UserIdentifier
-//! struct in the parent module.
+//! Custom Serialize / Deserialize implementations for the authentication data types.
 
+use std::borrow::Cow;
+
+use crate::{serde::from_raw_json_value, third_party::Medium};
 use serde::{Deserialize, Deserializer, Serialize, de, ser::SerializeStruct};
+use serde_json::value::RawValue as RawJsonValue;
 
-use super::{CustomThirdPartyId, UserIdentifier};
-use crate::{
-    serde::{RawJsonValue, from_raw_json_value},
-    third_party::Medium,
-};
+use super::{AuthData, CustomThirdPartyId, UserIdentifier};
+
+impl<'de> Deserialize<'de> for AuthData {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let json = Box::<RawJsonValue>::deserialize(deserializer)?;
+
+        #[derive(Deserialize)]
+        struct ExtractType<'a> {
+            #[serde(borrow, rename = "type")]
+            auth_type: Option<Cow<'a, str>>,
+        }
+
+        let auth_type = serde_json::from_str::<ExtractType<'_>>(json.get())
+            .map_err(de::Error::custom)?
+            .auth_type;
+
+        match auth_type.as_deref() {
+            Some("m.login.password") => from_raw_json_value(&json).map(Self::Password),
+            Some("m.login.recaptcha") => from_raw_json_value(&json).map(Self::ReCaptcha),
+            Some("m.login.email.identity") => from_raw_json_value(&json).map(Self::EmailIdentity),
+            Some("m.login.msisdn") => from_raw_json_value(&json).map(Self::Msisdn),
+            Some("m.login.dummy") => from_raw_json_value(&json).map(Self::Dummy),
+            Some("m.login.registration_token") => {
+                from_raw_json_value(&json).map(Self::RegistrationToken)
+            }
+            Some("m.login.terms") => from_raw_json_value(&json).map(Self::Terms),
+            Some("m.oauth" | "org.matrix.cross_signing_reset") => {
+                from_raw_json_value(&json).map(Self::OAuth)
+            }
+            None => from_raw_json_value(&json).map(Self::FallbackAcknowledgement),
+            Some(_) => from_raw_json_value(&json).map(Self::_Custom),
+        }
+    }
+}
 
 impl Serialize for UserIdentifier {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -90,21 +125,14 @@ impl<'de> Deserialize<'de> for UserIdentifier {
         match id_type {
             ExtractType::User => from_raw_json_value(&json)
                 .map(|user_id: UserIdOrLocalpart| Self::UserIdOrLocalpart(user_id.user)),
-            ExtractType::Phone => {
-                from_raw_json_value(&json).map(|nb: PhoneNumber| Self::PhoneNumber {
-                    country: nb.country,
-                    phone: nb.phone,
-                })
-            }
+            ExtractType::Phone => from_raw_json_value(&json)
+                .map(|nb: PhoneNumber| Self::PhoneNumber { country: nb.country, phone: nb.phone }),
             ExtractType::ThirdParty => {
                 let ThirdPartyId { medium, address } = from_raw_json_value(&json)?;
                 match medium {
                     Medium::Email => Ok(Self::Email { address }),
                     Medium::Msisdn => Ok(Self::Msisdn { number: address }),
-                    _ => Ok(Self::_CustomThirdParty(CustomThirdPartyId {
-                        medium,
-                        address,
-                    })),
+                    _ => Ok(Self::_CustomThirdParty(CustomThirdPartyId { medium, address })),
                 }
             }
         }
@@ -114,17 +142,16 @@ impl<'de> Deserialize<'de> for UserIdentifier {
 // #[cfg(test)]
 // mod tests {
 //     use assert_matches2::assert_matches;
-//     use serde_json::{from_value as from_json_value, json, to_value as
-// to_json_value};
+//     use serde_json::{from_value as from_json_value, json, to_value as to_json_value};
 
 //     use crate::uiaa::UserIdentifier;
 
 //     #[test]
 //     fn serialize() {
 //         assert_eq!(
-//
-// to_json_value(UserIdentifier::UserIdOrLocalpart("@user:notareal.hs".
-// to_owned())).unwrap(),             json!({
+//             to_json_value(UserIdentifier::UserIdOrLocalpart("@user:notareal.hs".to_owned()))
+//                 .unwrap(),
+//             json!({
 //                 "type": "m.id.user",
 //                 "user": "@user:notareal.hs",
 //             })
@@ -144,10 +171,8 @@ impl<'de> Deserialize<'de> for UserIdentifier {
 //         );
 
 //         assert_eq!(
-//             to_json_value(UserIdentifier::Email {
-//                 address: "me@myprovider.net".to_owned()
-//             })
-//             .unwrap(),
+//             to_json_value(UserIdentifier::Email { address: "me@myprovider.net".to_owned() })
+//                 .unwrap(),
 //             json!({
 //                 "type": "m.id.thirdparty",
 //                 "medium": "email",
@@ -156,10 +181,7 @@ impl<'de> Deserialize<'de> for UserIdentifier {
 //         );
 
 //         assert_eq!(
-//             to_json_value(UserIdentifier::Msisdn {
-//                 number: "330102030405".to_owned()
-//             })
-//             .unwrap(),
+//             to_json_value(UserIdentifier::Msisdn { number: "330102030405".to_owned() }).unwrap(),
 //             json!({
 //                 "type": "m.id.thirdparty",
 //                 "medium": "msisdn",
@@ -168,8 +190,9 @@ impl<'de> Deserialize<'de> for UserIdentifier {
 //         );
 
 //         assert_eq!(
-//             to_json_value(UserIdentifier::third_party_id("robot".into(),
-// "01001110".to_owned())).unwrap(),             json!({
+//             to_json_value(UserIdentifier::third_party_id("robot".into(), "01001110".to_owned()))
+//                 .unwrap(),
+//             json!({
 //                 "type": "m.id.thirdparty",
 //                 "medium": "robot",
 //                 "address": "01001110",
@@ -183,19 +206,15 @@ impl<'de> Deserialize<'de> for UserIdentifier {
 //             "type": "m.id.user",
 //             "user": "@user:notareal.hs",
 //         });
-//         assert_matches!(from_json_value(json),
-// Ok(UserIdentifier::UserIdOrLocalpart(user)));         assert_eq!(user,
-// "@user:notareal.hs");
+//         assert_matches!(from_json_value(json), Ok(UserIdentifier::UserIdOrLocalpart(user)));
+//         assert_eq!(user, "@user:notareal.hs");
 
 //         let json = json!({
 //             "type": "m.id.phone",
 //             "country": "33",
 //             "phone": "0102030405",
 //         });
-//         assert_matches!(
-//             from_json_value(json),
-//             Ok(UserIdentifier::PhoneNumber { country, phone })
-//         );
+//         assert_matches!(from_json_value(json), Ok(UserIdentifier::PhoneNumber { country, phone }));
 //         assert_eq!(country, "33");
 //         assert_eq!(phone, "0102030405");
 
@@ -204,16 +223,16 @@ impl<'de> Deserialize<'de> for UserIdentifier {
 //             "medium": "email",
 //             "address": "me@myprovider.net",
 //         });
-//         assert_matches!(from_json_value(json), Ok(UserIdentifier::Email {
-// address }));         assert_eq!(address, "me@myprovider.net");
+//         assert_matches!(from_json_value(json), Ok(UserIdentifier::Email { address }));
+//         assert_eq!(address, "me@myprovider.net");
 
 //         let json = json!({
 //             "type": "m.id.thirdparty",
 //             "medium": "msisdn",
 //             "address": "330102030405",
 //         });
-//         assert_matches!(from_json_value(json), Ok(UserIdentifier::Msisdn {
-// number }));         assert_eq!(number, "330102030405");
+//         assert_matches!(from_json_value(json), Ok(UserIdentifier::Msisdn { number }));
+//         assert_eq!(number, "330102030405");
 
 //         let json = json!({
 //             "type": "m.id.thirdparty",

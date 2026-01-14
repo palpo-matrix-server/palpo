@@ -1,0 +1,215 @@
+//! `GET /_matrix/client/*/auth/{auth_type}/fallback/web?session={session_id}`
+//!
+//! Get UIAA fallback web page.
+//! `/v3/` ([spec])
+//!
+//! [spec]: https://spec.matrix.org/latest/client-server-api/#fallback
+use serde::Deserialize;
+
+use crate::client::uiaa::AuthType;
+
+// metadata! {
+//     method: GET,
+//     rate_limited: false,
+//     authentication: NoAuthentication,
+//     history: {
+//         1.0 => "/_matrix/client/r0/auth/{auth_type}/fallback/web",
+//         1.1 => "/_matrix/client/v3/auth/{auth_type}/fallback/web",
+//     }
+// }
+
+/// Request type for the `authorize_fallback` endpoint.
+#[derive(Deserialize, Debug)]
+pub struct FallbackWebArgs {
+    /// The type name (`m.login.dummy`, etc.) of the UIAA stage to get a fallback page for.
+    // #[salvo(parameter(parameter_in = Path))]
+    pub auth_type: AuthType,
+
+    /// The ID of the session given by the homeserver.
+    // #[salvo(parameter(parameter_in = Query))]
+    pub session: String,
+}
+
+impl FallbackWebArgs {
+    /// Creates a new `FallbackWebArgs` with the given auth type and session ID.
+    pub fn new(auth_type: AuthType, session: String) -> Self {
+        Self { auth_type, session }
+    }
+}
+
+// /// Response type for the `authorize_fallback` endpoint.
+// #[derive(Debug, Clone)]
+// #[allow(clippy::exhaustive_enums)]
+// pub enum Response {
+//     /// The response is a redirect.
+//     Redirect(Redirect),
+
+//     /// The response is an HTML page.
+//     Html(HtmlPage),
+// }
+
+// /// The data of a redirect.
+// #[derive(Debug, Clone)]
+// pub struct Redirect {
+//     /// The URL to redirect the user to.
+//     pub url: String,
+// }
+
+// /// The data of a HTML page.
+// #[derive(Debug, Clone)]
+// pub struct HtmlPage {
+//     /// The body of the HTML page.
+//     pub body: Vec<u8>,
+// }
+
+// impl Response {
+//     /// Creates a new HTML `Response` with the given HTML body.
+//     pub fn html(body: Vec<u8>) -> Self {
+//         Self::Html(HtmlPage { body })
+//     }
+
+//     /// Creates a new HTML `Response` with the given redirect URL.
+//     pub fn redirect(url: String) -> Self {
+//         Self::Redirect(Redirect { url })
+//     }
+// }
+
+// #[cfg(feature = "server")]
+// impl crate::api::OutgoingResponse for Response {
+//     fn try_into_http_response<T: Default + bytes::BufMut>(
+//         self,
+//     ) -> Result<http::Response<T>, crate::api::error::IntoHttpError> {
+//         match self {
+//             Response::Redirect(Redirect { url }) => Ok(http::Response::builder()
+//                 .status(http::StatusCode::FOUND)
+//                 .header(http::header::LOCATION, url)
+//                 .body(T::default())?),
+//             Response::Html(HtmlPage { body }) => Ok(http::Response::builder()
+//                 .status(http::StatusCode::OK)
+//                 .header(http::header::CONTENT_TYPE, "text/html; charset=utf-8")
+//                 .body(crate::serde::slice_to_buf(&body))?),
+//         }
+//     }
+// }
+
+// #[cfg(feature = "client")]
+// impl crate::api::IncomingResponse for Response {
+//     type EndpointError = crate::Error;
+
+//     fn try_from_http_response<T: AsRef<[u8]>>(
+//         response: http::Response<T>,
+//     ) -> Result<Self, crate::api::error::FromHttpResponseError<Self::EndpointError>> {
+//         use crate::api::{
+//             EndpointError,
+//             error::{DeserializationError, FromHttpResponseError, HeaderDeserializationError},
+//         };
+
+//         if response.status().as_u16() >= 400 {
+//             return Err(FromHttpResponseError::Server(
+//                 Self::EndpointError::from_http_response(response),
+//             ));
+//         }
+
+//         if response.status() == http::StatusCode::FOUND {
+//             let Some(location) = response.headers().get(http::header::LOCATION) else {
+//                 return Err(DeserializationError::Header(
+//                     HeaderDeserializationError::MissingHeader(http::header::LOCATION.to_string()),
+//                 )
+//                 .into());
+//             };
+
+//             let url = location.to_str()?;
+//             return Ok(Self::Redirect(Redirect {
+//                 url: url.to_owned(),
+//             }));
+//         }
+
+//         let body = response.into_body().as_ref().to_owned();
+//         Ok(Self::Html(HtmlPage { body }))
+//     }
+// }
+
+// #[cfg(all(test, feature = "client"))]
+// mod tests_client {
+//     use crate::api::IncomingResponse;
+//     use assert_matches2::assert_matches;
+//     use http::header::{CONTENT_TYPE, LOCATION};
+
+//     use super::Response;
+
+//     #[test]
+//     fn incoming_redirect() {
+//         use super::Redirect;
+
+//         let http_response = http::Response::builder()
+//             .status(http::StatusCode::FOUND)
+//             .header(LOCATION, "http://localhost/redirect")
+//             .body(Vec::<u8>::new())
+//             .unwrap();
+
+//         let response = Response::try_from_http_response(http_response).unwrap();
+//         assert_matches!(response, Response::Redirect(Redirect { url }));
+//         assert_eq!(url, "http://localhost/redirect");
+//     }
+
+//     #[test]
+//     fn incoming_html() {
+//         use super::HtmlPage;
+
+//         let http_response = http::Response::builder()
+//             .status(http::StatusCode::OK)
+//             .header(CONTENT_TYPE, "text/html; charset=utf-8")
+//             .body(b"<h1>My Page</h1>")
+//             .unwrap();
+
+//         let response = Response::try_from_http_response(http_response).unwrap();
+//         assert_matches!(response, Response::Html(HtmlPage { body }));
+//         assert_eq!(body, b"<h1>My Page</h1>");
+//     }
+// }
+
+// #[cfg(all(test, feature = "server"))]
+// mod tests_server {
+//     use crate::api::OutgoingResponse;
+//     use http::header::{CONTENT_TYPE, LOCATION};
+
+//     use super::Response;
+
+//     #[test]
+//     fn outgoing_redirect() {
+//         let response = Response::redirect("http://localhost/redirect".to_owned());
+
+//         let http_response = response.try_into_http_response::<Vec<u8>>().unwrap();
+
+//         assert_eq!(http_response.status(), http::StatusCode::FOUND);
+//         assert_eq!(
+//             http_response
+//                 .headers()
+//                 .get(LOCATION)
+//                 .unwrap()
+//                 .to_str()
+//                 .unwrap(),
+//             "http://localhost/redirect"
+//         );
+//         assert!(http_response.into_body().is_empty());
+//     }
+
+//     #[test]
+//     fn outgoing_html() {
+//         let response = Response::html(b"<h1>My Page</h1>".to_vec());
+
+//         let http_response = response.try_into_http_response::<Vec<u8>>().unwrap();
+
+//         assert_eq!(http_response.status(), http::StatusCode::OK);
+//         assert_eq!(
+//             http_response
+//                 .headers()
+//                 .get(CONTENT_TYPE)
+//                 .unwrap()
+//                 .to_str()
+//                 .unwrap(),
+//             "text/html; charset=utf-8"
+//         );
+//         assert_eq!(http_response.into_body(), b"<h1>My Page</h1>");
+//     }
+// }

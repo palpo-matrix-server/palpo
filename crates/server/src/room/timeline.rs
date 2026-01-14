@@ -1,13 +1,11 @@
 use std::borrow::Borrow;
 use std::collections::{BTreeSet, HashMap, HashSet};
-use std::iter::once;
 use std::sync::{LazyLock, Mutex};
 
 use diesel::prelude::*;
 use serde::Deserialize;
-use serde_json::value::to_raw_value;
-use ulid::Ulid;
 
+use crate::core::Seqnum;
 use crate::core::events::push_rules::PushRulesEventContent;
 use crate::core::events::room::canonical_alias::RoomCanonicalAliasEventContent;
 use crate::core::events::room::encrypted::Relation;
@@ -16,19 +14,13 @@ use crate::core::events::{GlobalAccountDataEventType, StateEventType, TimelineEv
 use crate::core::identifiers::*;
 use crate::core::presence::PresenceState;
 use crate::core::push::{Action, Ruleset, Tweak};
-use crate::core::room_version_rules::RoomIdFormatVersion;
-use crate::core::serde::{
-    CanonicalJsonObject, CanonicalJsonValue, JsonValue, to_canonical_object, to_canonical_value,
-    validate_canonical_json,
-};
+use crate::core::serde::{CanonicalJsonObject, CanonicalJsonValue, JsonValue, to_canonical_object};
 use crate::core::state::{Event, StateError, event_auth};
-use crate::core::{Seqnum, UnixMillis};
 use crate::data::room::{DbEvent, DbEventData, NewDbEvent, NewDbEventEdge};
 use crate::data::schema::*;
 use crate::data::{connect, diesel_exists};
 use crate::event::{EventHash, PduBuilder, PduEvent};
 use crate::room::{push_action, state, timeline};
-use crate::utils::SeqnumQueueGuard;
 use crate::{
     AppError, AppResult, MatrixError, RoomMutexGuard, SnPduEvent, config, data, membership, utils,
 };
@@ -732,7 +724,6 @@ pub async fn build_and_append_pdu(
         check_pdu_for_admin_room(&pdu, sender)?;
     }
 
-    let event_id = pdu.event_id.clone();
     append_pdu(&pdu, pdu_json, state_lock).await?;
 
     // In case we are kicking or banning a user, we need to inform their server of the change
